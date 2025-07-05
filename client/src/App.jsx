@@ -23,6 +23,7 @@ function App() {
     return (
         <AppProvider>
             <RouterProvider router={router} />
+            <h1>hays</h1>
         </AppProvider>
     )
 }
