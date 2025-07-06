@@ -2,12 +2,14 @@
 @import url("https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap");
 
 @theme {
+    /*Custom color specified for KEEPSAKE  */
     --color-primary: #0082a6;
     --color-secondary: #c4dee3;
     --color-tertiary: #86b9c7;
     --color-white: #fffafa;
     --color-black: #3f3f3f;
 
+    /* Custom fonts for this project */
     --font-inter: sans-serif, "Inter";
     --font-weight-100: 100;
     --font-weight-200: 200;

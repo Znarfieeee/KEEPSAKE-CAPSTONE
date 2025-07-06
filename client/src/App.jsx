@@ -7,11 +7,7 @@ function App() {
     const router = createBrowserRouter([
         {
             path: "/",
-            element: (
-                <ProtectedRoute>
-                    <Layout />
-                </ProtectedRoute>
-            ),
+            element: <Layout />,
             children: [
                 {
                     index: true,
@@ -20,12 +16,7 @@ function App() {
             ],
         },
     ])
-    return (
-        <AppProvider>
-            <RouterProvider router={router} />
-            <h1>hays</h1>
-        </AppProvider>
-    )
+    return <RouterProvider router={router} />
 }
 
 export default App
