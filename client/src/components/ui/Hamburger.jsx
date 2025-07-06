@@ -28,10 +28,29 @@ const StyledWrapper = styled.div`
     }
 
     .hamburger svg {
-        /* The size of the SVG defines the overall size */
-        height: 3em;
-        /* Define the transition for transforming the SVG */
+        height: 2em; /* default size for mobile */
         transition: transform 600ms cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    /* Small screens (sm) */
+    @media (min-width: 640px) {
+        .hamburger svg {
+            height: 2.5em;
+        }
+    }
+
+    /* Medium screens (md) */
+    @media (min-width: 768px) {
+        .hamburger svg {
+            height: 3em;
+        }
+    }
+
+    /* Large screens (lg) */
+    @media (min-width: 1024px) {
+        .hamburger svg {
+            height: 3.5em;
+        }
     }
 
     .line {
@@ -40,7 +59,6 @@ const StyledWrapper = styled.div`
         stroke-linecap: round;
         stroke-linejoin: round;
         stroke-width: 3;
-        /* Define the transition for transforming the Stroke */
         transition: stroke-dasharray 600ms cubic-bezier(0.4, 0, 0.2, 1),
             stroke-dashoffset 600ms cubic-bezier(0.4, 0, 0.2, 1);
     }
