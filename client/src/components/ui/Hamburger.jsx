@@ -1,11 +1,11 @@
 import React from "react"
 import styled from "styled-components"
 
-const Hamburger = () => {
+const Hamburger = ({ open, toggle }) => {
     return (
         <StyledWrapper>
             <label className="hamburger">
-                <input type="checkbox" />
+                <input type="checkbox" checked={open} onChange={toggle} />
                 <svg viewBox="0 0 32 32">
                     <path
                         className="line line-top-bottom"
@@ -55,7 +55,7 @@ const StyledWrapper = styled.div`
 
     .line {
         fill: none;
-        stroke: black;
+        stroke: #3f3f3f;
         stroke-linecap: round;
         stroke-linejoin: round;
         stroke-width: 3;
