@@ -41,7 +41,7 @@ hr {
 }
 
 .rise-up {
-    animation: riseUp 2.5s ease-out forwards;
+    animation: riseUp 2s ease-out forwards;
 }
 
 @keyframes topDown {
@@ -86,5 +86,5 @@ hr {
 }
 
 .right-to-left {
-    animation: rightLeft 2s ease-out forwards;
+    animation: rightLeft 2.5s ease-out forwards;
 }
