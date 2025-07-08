@@ -1,0 +1,112 @@
+@import "tailwindcss";
+@import url("https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap");
+
+@theme {
+    /*Custom color specified for KEEPSAKE  */
+    --color-primary: #0082a6;
+    --color-secondary: #c4dee3;
+    --color-tertiary: #86b9c7;
+    --color-white: #fffafa;
+    --color-black: #3f3f3f;
+
+    /* Custom fonts for this project */
+    --font-inter: sans-serif, "Inter";
+    --font-weight-100: 100;
+    --font-weight-200: 200;
+    --font-weight-300: 300;
+    --font-weight-400: 400;
+    --font-weight-500: 500;
+    --font-weight-600: 600;
+    --font-weight-700: 700;
+    --font-weight-800: 800;
+    --font-weight-900: 900;
+}
+
+hr {
+    border: none;
+    border-top: 1px solid #b0b0b0;
+    width: 90%;
+    margin: 0 auto;
+}
+
+@keyframes riseUp {
+    from {
+        opacity: 0;
+        transform: translateY(40px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.rise-up {
+    animation: riseUp 2s ease-out forwards;
+}
+
+@keyframes topDown {
+    from {
+        opacity: 0;
+        transform: translateY(-40px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0px);
+    }
+}
+
+.top-down {
+    animation: topDown 0.5s ease-out forwards;
+}
+
+@keyframes leftRight {
+    from {
+        opacity: 0;
+        transform: translateX(-40px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0px);
+    }
+}
+
+.left-to-right {
+    animation: leftRight 1s ease-out forwards;
+}
+
+@keyframes rightLeft {
+    from {
+        opacity: 0;
+        transform: translateX(40px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0px);
+    }
+}
+
+.right-to-left {
+    animation: rightLeft 2.5s ease-out forwards;
+}
+
+/* Login Page */
+.login-bg {
+    width: 100%;
+    height: 100vh;
+    background: linear-gradient(27deg, #c4dee3 50%, #fffafa 50%);
+}
+
+.form-control input {
+    background-color: transparent;
+    border: 0;
+    border-bottom: 0px #fffafa;
+    width: 100%;
+    padding: 12px 0;
+    font-size: 14px;
+}
+
+.form-control input:focus,
+.form-control input:valid {
+    outline: 0;
+    border-bottom: 2px #c4dee3 solid;
+}

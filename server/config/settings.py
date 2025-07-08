@@ -8,6 +8,7 @@ import os
 settings_bp = Blueprint('settings', __name__)
 url = os.environ.get("SUPABASE_URL")
 key = os.environ.get("SUPABASE_KEY")
+service_role = os.environ.get("SUPABASE_SERVICE_ROLE_KEY")
 supabase = create_client(url, key)
 
 try:
