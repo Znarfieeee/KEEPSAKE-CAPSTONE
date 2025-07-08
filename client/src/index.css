@@ -88,3 +88,25 @@ hr {
 .right-to-left {
     animation: rightLeft 2.5s ease-out forwards;
 }
+
+/* Login Page */
+.login-bg {
+    width: 100%;
+    height: 100vh;
+    background: linear-gradient(27deg, #c4dee3 50%, #fffafa 50%);
+}
+
+.form-control input {
+    background-color: transparent;
+    border: 0;
+    border-bottom: 0px #fffafa;
+    width: 100%;
+    padding: 12px 0;
+    font-size: 14px;
+}
+
+.form-control input:focus,
+.form-control input:valid {
+    outline: 0;
+    border-bottom: 2px #c4dee3 solid;
+}
