@@ -370,9 +370,9 @@ function Landing_page() {
                                     is dedicated to simplifying baby health
                                     record management. Since 2025, we've been
                                     providing parents and healthcare providers
-                                    with a secure, user-friendly platform to
-                                    easily track, store, and share medical
-                                    milestones.
+                                    with a user-friendly platform to easily
+                                    track, store, and share medical data
+                                    securely.
                                 </p>
                             </div>
                             <hr className="md:hidden" />
