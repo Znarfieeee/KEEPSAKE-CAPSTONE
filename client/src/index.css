@@ -59,6 +59,10 @@ hr {
     animation: topDown 0.5s ease-out forwards;
 }
 
+.top-down-header {
+    animation: topDown 3s ease-out forwards;
+}
+
 @keyframes leftRight {
     from {
         opacity: 0;

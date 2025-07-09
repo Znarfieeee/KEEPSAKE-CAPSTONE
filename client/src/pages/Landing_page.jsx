@@ -127,13 +127,17 @@ function Landing_page() {
         return () => window.removeEventListener("scroll", handleScroll)
     }, [lastY])
 
+    function buttonClicked() {
+        alert("The button is clicked")
+    }
+
     return (
         <>
             <div id="landing" className="bg-white font-inter overflow-x-hidden">
                 <header
                     className={`
                                 fixed justify-center mx-auto inset-x-0 z-50 bg-white/80 backdrop-blur-sm shadow
-                                transition-transform duration-300 ease-in-out
+                                transition-transform duration-300 ease-in-out top-down-header
                                 ${show ? "translate-y-0" : "-translate-y-full"}
                             `}>
                     <div className="flex justify-between items-center p-2 w-full mx-auto md:px-16 lg:px-40">
@@ -148,17 +152,29 @@ function Landing_page() {
                             alt="KEEPSAKE Logo"
                             className="h-10 w-auto md:h-14"
                         />
-                        <nav className="flex flex-row items-center justify-center h-full gap-6  md:gap-8 md:text-md max-md:hidden lg:gap-20">
-                            <Link to="/" onClick={toggleDrawer}>
+                        <nav className="flex flex-row items-center justify-center h-full gap-6 font-semibold md:gap-8 text-sm max-md:hidden lg:gap-20">
+                            <Link
+                                to="/"
+                                onClick={buttonClicked}
+                                className="hover:text-primary transition ease-in-out duration-300 delay-50">
                                 Home
                             </Link>
-                            <Link to="/services" onClick={toggleDrawer}>
+                            <Link
+                                to="/services"
+                                onClick={buttonClicked}
+                                className="hover:text-primary transition ease-in-out duration-300 delay-50">
                                 Services
                             </Link>
-                            <Link to="/about" onClick={toggleDrawer}>
+                            <Link
+                                to="/about"
+                                onClick={buttonClicked}
+                                className="hover:text-primary transition ease-in-out duration-300 delay-50">
                                 About us
                             </Link>
-                            <Link to="/clinics" onClick={toggleDrawer}>
+                            <Link
+                                to="/clinics"
+                                onClick={buttonClicked}
+                                className="hover:text-primary transition ease-in-out duration-300 delay-50">
                                 Clinics
                             </Link>
                         </nav>
@@ -225,12 +241,14 @@ function Landing_page() {
                                 className="flex justify-center items-center my-10 gap-6 z-10 rise-up md:mt-15">
                                 <Button
                                     variant="default"
-                                    className="px-6 py-4 text-base lg:px-8 lg:py-6 lg:text-lg">
+                                    className="px-6 py-4 text-base lg:px-8 lg:py-6 lg:text-lg transition hover:scale-120 duration-300 delay-30"
+                                    onClick={buttonClicked}>
                                     Get Started
                                 </Button>
                                 <Button
                                     variant="outline"
-                                    className="px-6 py-4 text-base lg:px-8 lg:py-6 lg:text-lg">
+                                    className="px-6 py-4 text-base lg:px-8 lg:py-6 lg:text-lg transition hover:scale-120 duration-300 delay-30"
+                                    onClick={buttonClicked}>
                                     Learn More
                                 </Button>
                             </div>

@@ -31,7 +31,7 @@ def login():
     data = request.json
     email = data.get('email')
     password = data.get('password')
-    result = supabase.auth.sign_in_with_password({"email": email, "password": password})
+    result = supabase.auth.sign_in_with_password({"email": email, "encrypted_password": password})
     if result.get('error'):
         return jsonify({"error": result['error']['message']}), 401
     return jsonify({"message": "Login successful!", "status": "success", "session": result['session']}), 200

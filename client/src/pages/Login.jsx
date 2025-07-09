@@ -11,6 +11,10 @@ const Login = () => {
     const email = useRef()
     const password = useRef()
 
+    function fpBtn() {
+        alert("Forget password is clicked!")
+    }
+
     return (
         <>
             <div
@@ -22,7 +26,7 @@ const Login = () => {
                     <img
                         src={LOGO}
                         alt="KEEPSAKE Logo"
-                        className="h-30 w-auto p-6"
+                        className="h-15 mb-10 w-auto"
                     />
                     <hr className="mt-6 pb-4" />
                     <div id="input-container" className="w-full">
@@ -38,7 +42,9 @@ const Login = () => {
                         <div className="flex flex-col form-control mt-4">
                             <div className="flex flex-row justify-between items-center">
                                 <label htmlFor="password">Password</label>
-                                <Link className="text-primary hover:text-secondary text-sm transition duration-300 ease-in-out">
+                                <Link
+                                    className="text-primary hover:text-secondary text-sm transition duration-300 ease-in-out"
+                                    onClick={fpBtn}>
                                     Forget password?
                                 </Link>
                             </div>
