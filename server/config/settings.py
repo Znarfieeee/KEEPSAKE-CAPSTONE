@@ -21,7 +21,7 @@ def get_user_supabase_client() -> "supabase_py.Client":
     if auth_header.startswith("Bearer "):
         jwt = auth_header.removeprefix("Bearer ").strip()
 
-    # When jwt is provided we use it as the api_key so Supabase recognises the user
+    # When jwt is provided we use it as the api_key so Supabase recognizes the user
     return create_client(url, jwt or key)
 
 try:

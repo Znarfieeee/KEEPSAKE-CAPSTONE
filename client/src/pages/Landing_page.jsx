@@ -263,7 +263,7 @@ function Landing_page() {
                     {/* How it Works */}
                     <section
                         id="separator-one"
-                        className="w-screen bg-primary p-8 mt-20 grid">
+                        className="w-screen bg-primary p-4 md:p-8 mt-20 grid">
                         <div className="max-w-3xl mx-auto text-center">
                             <h2 className="text-3xl font-bold text-white">
                                 How It Works
@@ -272,7 +272,7 @@ function Landing_page() {
                                 Just three simple steps to get started service
                             </p>
                         </div>
-                        <div className="flex flex-col justify-center items-center gap-4 mt-8 px-6 md:flex-row md:gap-6 lg:mx-50 lg:gap-15">
+                        <div className="flex flex-col justify-center items-center gap-4 mt-8 px-4 md:flex-row md:gap-6 lg:mx-50 lg:gap-15">
                             {steps.map((step, idx) => (
                                 <div
                                     key={idx}

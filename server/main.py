@@ -1,6 +1,6 @@
 from flask import Flask, render_template, request, jsonify
 from config.settings import settings_bp
-from server.auth.auth_routes import auth_bp
+from routes.auth_routes import auth_bp
 
 app = Flask("keepsake")
 app.secret_key = "1234qwer"
