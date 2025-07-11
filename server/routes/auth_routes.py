@@ -13,6 +13,7 @@ def create_invite():
     email = data.get('email')
     child_id = data.get('child_id')
     created_by = data.get('created_by')
+    role = data.get('role')
     
     try:
         invite_result = supabase.table('INVITE_TOKENS').insert({
@@ -20,7 +21,8 @@ def create_invite():
             'CHILD_ID': child_id,
             'TOKEN': None,  # Supabase will handle the actual invite token
             'EXPIRES_AT': datetime.datetime.utcnow() + datetime.timedelta(days=7),
-            'CREATED_BY': created_by
+            'CREATED_BY': created_by,
+            'ROLE': role
         }).execute()
 
         if invite_result.get('error'):
@@ -72,8 +74,10 @@ def login():
                 "user": {
                     "id": auth_response.user.id,
                     "email": auth_response.user.email,
-                    "created_at": auth_response.user.created_at,
+                    "token": auth_response.session.access_token,
+                    # "role": auth_response.user.user_metadata.role,
                 },
+                "expires_at": auth_response.session.expires_at,
             })
 
             # Set HttpOnly, Secure cookies so they are inaccessible to JS
@@ -136,57 +140,3 @@ def logout():
             "message": "Error during logout",
             "details": str(e)
         }), 500
-
-# ---- Refresh access token using refresh token cookie ----
-
-@auth_bp.route('/token/refresh', methods=['POST'])
-def refresh_token():
-    """Issue a new access token using refresh token stored in HttpOnly cookie"""
-    refresh_token_cookie = request.cookies.get("sb-refresh-token")
-    if not refresh_token_cookie:
-        return jsonify({
-            "status": "error",
-            "message": "Refresh token missing",
-        }), 401
-
-    try:
-        refresh_res = supabase.auth.refresh_session(refresh_token_cookie)
-
-        if refresh_res.error:
-            raise Exception(refresh_res.error.message)
-
-        new_session = refresh_res.session
-
-        response = jsonify({
-            "status": "success",
-            "message": "Token refreshed",
-        })
-
-        # Update cookies
-        access_expires = datetime.datetime.utcfromtimestamp(new_session.expires_at)
-        response.set_cookie(
-            "sb-access-token",
-            new_session.access_token,
-            httponly=True,
-            secure=True,
-            samesite="Strict",
-            expires=access_expires,
-        )
-
-        response.set_cookie(
-            "sb-refresh-token",
-            new_session.refresh_token,
-            httponly=True,
-            secure=True,
-            samesite="Strict",
-            max_age=60 * 60 * 24 * 7,
-        )
-
-        return response, 200
-
-    except Exception as e:
-        return jsonify({
-            "status": "error",
-            "message": "Could not refresh token",
-            "details": str(e),
-        }), 400

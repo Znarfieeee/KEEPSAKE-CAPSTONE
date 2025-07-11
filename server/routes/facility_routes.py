@@ -4,7 +4,7 @@ from datetime import datetime
 
 facility_bp = Blueprint('facility', __name__)
 
-@facility_bp.route('/create_facility', methods=['POST'])
+@facility_bp.route('/auth/create_facility', methods=['POST'])
 def create_facility():
     try:
         data = request.json
@@ -56,7 +56,7 @@ def create_facility():
         }), 500
 
 # Wala pa nahuman
-@facility_bp.route('/get_facility_by_id', methods=['GET'])
+@facility_bp.route('/auth/get_facility_by_id', methods=['GET'])
 def get_facility_by_id():
     try:
         facility_id = request.args.get('facility_id')

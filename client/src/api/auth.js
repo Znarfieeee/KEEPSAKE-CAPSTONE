@@ -1,31 +1,36 @@
 import backendConnection from "./backendApi"
 import axios from "axios"
 
+const axiosConfig = {
+    withCredentials: true,
+    headers: {
+        "Content-Type": "application/json",
+    },
+}
+
 export const login = async (email, password) => {
-    try {
-        const response = await axios.post(`${backendConnection()}/login`, {
-            headers: {
-                "Content-Type": "application/json",
-            },
-            body: JSON.stringify({ email, password }),
-        })
+    const response = await axios.post(
+        `${backendConnection()}/login`,
+        { email, password },
+        axiosConfig
+    )
+    return response.data
+}
 
-        const result = await response.json()
+export const logout = async () => {
+    const response = await axios.post(
+        `${backendConnection()}/logout`,
+        {},
+        axiosConfig
+    )
+    return response.data
+}
 
-        if (!response === 200) {
-            throw new Error("Invalid login response from server: " + result)
-        }
-
-        //  Replace it with supabase session management
-        if (result) {
-            if (result.token) {
-                localStorage.setItem("token", result.token)
-            }
-            return result
-        } else {
-            throw new Error("Invalid login response from server: " + result)
-        }
-    } catch (err) {
-        throw new Error("Invalid login response from server: " + err)
-    }
+export const refresh = async () => {
+    const response = await axios.post(
+        `${backendConnection()}/token/refresh`,
+        {},
+        axiosConfig
+    )
+    return response.data
 }
