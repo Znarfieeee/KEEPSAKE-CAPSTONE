@@ -1,7 +1,6 @@
 import React from "react"
 import { Navigate, useLocation } from "react-router-dom"
-// import { useAuth } from "../context/AuthContext"
-// import { showToast } from "../util/alertHelper"
+import { useAuth } from "../context/AuthContext"
 import Loader from "./ui/Loader"
 
 /**
@@ -14,7 +13,7 @@ import Loader from "./ui/Loader"
  * @param {string} [props.requiredRole] Optional role required to access this route (e.g., "Admin")
  */
 const ProtectedRoute = ({ children, requiredRole }) => {
-    const { user, loading } = useAuth()
+    const { user, loading, role } = useAuth()
     const location = useLocation()
 
     // Show loading state while checking authentication
@@ -29,7 +28,7 @@ const ProtectedRoute = ({ children, requiredRole }) => {
     }
 
     // Check role-based access if requiredRole is specified
-    if (requiredRole && user?.role !== requiredRole) {
+    if (requiredRole && role !== requiredRole) {
         // Show access denied message for insufficient privileges
         return (
             <div className="flex flex-col items-center justify-center min-h-screen bg-gray-100 p-4">
@@ -45,10 +44,6 @@ const ProtectedRoute = ({ children, requiredRole }) => {
                     <button
                         onClick={() => {
                             alert("Unauthorized Access!")
-                            // showToast(
-                            //     "error",
-                            //     "Access denied: Insufficient privileges"
-                            // )
                             window.history.back()
                         }}
                         className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 focus:outline-none">

@@ -156,25 +156,25 @@ function Landing_page() {
                             <Link
                                 to="/"
                                 onClick={buttonClicked}
-                                className="hover:text-primary transition ease-in-out duration-300 delay-50">
+                                className="hover:text-primary transition ease-in-out duration-300 delay-50 hover:scale-120">
                                 Home
                             </Link>
                             <Link
                                 to="/services"
                                 onClick={buttonClicked}
-                                className="hover:text-primary transition ease-in-out duration-300 delay-50">
+                                className="hover:text-primary transition ease-in-out duration-300 delay-50 hover:scale-120">
                                 Services
                             </Link>
                             <Link
                                 to="/about"
                                 onClick={buttonClicked}
-                                className="hover:text-primary transition ease-in-out duration-300 delay-50">
+                                className="hover:text-primary transition ease-in-out duration-300 delay-50 hover:scale-120">
                                 About us
                             </Link>
                             <Link
                                 to="/clinics"
                                 onClick={buttonClicked}
-                                className="hover:text-primary transition ease-in-out duration-300 delay-50">
+                                className="hover:text-primary transition ease-in-out duration-300 delay-50 hover:scale-120">
                                 Clinics
                             </Link>
                         </nav>
@@ -182,7 +182,7 @@ function Landing_page() {
                         <Link to="/login">
                             <Button
                                 variant="default"
-                                className="px-4 py-2 text-base md:px-6 md:py-4 md:text-md">
+                                className="px-4 py-2 text-base md:px-6 md:py-4 md:text-md hover:scale-110 transition-all duration-300 delay-50">
                                 Login
                             </Button>
                         </Link>
@@ -197,16 +197,24 @@ function Landing_page() {
                     }
                     `}>
                         <nav className="flex flex-row items-center justify-center h-full gap-6">
-                            <Link to="/" onClick={toggleDrawer}>
+                            <Link
+                                to="/"
+                                className="hover:text-primary transition ease-in-out duration-300 delay-50 hover:scale-120">
                                 Home
                             </Link>
-                            <Link to="/services" onClick={toggleDrawer}>
+                            <Link
+                                to="/services"
+                                className="hover:text-primary transition ease-in-out duration-300 delay-50 hover:scale-120">
                                 Services
                             </Link>
-                            <Link to="/about" onClick={toggleDrawer}>
+                            <Link
+                                to="/about"
+                                className="hover:text-primary transition ease-in-out duration-300 delay-50 hover:scale-120">
                                 About us
                             </Link>
-                            <Link to="/clinics" onClick={toggleDrawer}>
+                            <Link
+                                to="/clinics"
+                                className="hover:text-primary transition ease-in-out duration-300 delay-50 hover:scale-120">
                                 Clinics
                             </Link>
                         </nav>

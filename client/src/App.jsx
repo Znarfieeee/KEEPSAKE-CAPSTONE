@@ -1,26 +1,43 @@
-import { createBrowserRouter, RouterProvider } from "react-router-dom"
+import { createBrowserRouter, RouterProvider, Outlet } from "react-router-dom"
 import Landing_page from "./pages/Landing_page"
-// import ProtectedRoute from "./components/ProtectedRoute"
-import Layout from "./layout/Layout"
+import Layout from "./layout/PediaproLayout"
 import Login from "./pages/Login"
+import NotFound from "./pages/NotFound"
+import { AuthProvider } from "./context/AuthContext"
+
+const AuthWrapper = () => (
+    <AuthProvider>
+        <Outlet />
+    </AuthProvider>
+)
 
 function App() {
     const router = createBrowserRouter([
         {
-            path: "/",
-            element: <Layout />,
+            element: <AuthWrapper />, // Provides auth to all child routes within router context
             children: [
                 {
-                    index: true,
-                    element: <Landing_page />,
+                    path: "/",
+                    element: <Layout />,
+                    children: [
+                        {
+                            index: true,
+                            element: <Landing_page />,
+                        },
+                    ],
+                },
+                {
+                    path: "/login",
+                    element: <Login />,
+                },
+                {
+                    path: "*",
+                    element: <NotFound />,
                 },
             ],
         },
-        {
-            path: "/login",
-            element: <Login />,
-        },
     ])
+
     return <RouterProvider router={router} />
 }
 
