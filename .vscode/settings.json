@@ -1,3 +1,11 @@
 {
-    "cSpell.words": ["gensalt", "hashpw", "jsonify"]
+    "cSpell.words": [
+        "gensalt",
+        "hashpw",
+        "jsonify",
+        "pediapro",
+        "supabase",
+        "vite",
+        "dotenv"
+    ]
 }

@@ -102,7 +102,7 @@ function Landing_page() {
     ]
 
     useEffect(() => {
-        const threshold = 50
+        const threshold = 30
         const handleScroll = () => {
             const currentY = window.scrollY
             const scrollDiff = Math.abs(currentY - lastY)
@@ -127,13 +127,17 @@ function Landing_page() {
         return () => window.removeEventListener("scroll", handleScroll)
     }, [lastY])
 
+    function buttonClicked() {
+        alert("The button is clicked")
+    }
+
     return (
         <>
             <div id="landing" className="bg-white font-inter overflow-x-hidden">
                 <header
                     className={`
-                                fixed justify-center mx-auto inset-x-0 z-50 bg-white/80 backdrop-blur-sm shadow
-                                transition-transform duration-300 ease-in-out
+                                fixed justify-center mx-auto inset-x-0 z-50 bg-white shadow
+                                transition-transform duration-300 ease-in-out top-down-header
                                 ${show ? "translate-y-0" : "-translate-y-full"}
                             `}>
                     <div className="flex justify-between items-center p-2 w-full mx-auto md:px-16 lg:px-40">
@@ -148,17 +152,29 @@ function Landing_page() {
                             alt="KEEPSAKE Logo"
                             className="h-10 w-auto md:h-14"
                         />
-                        <nav className="flex flex-row items-center justify-center h-full gap-6  md:gap-8 md:text-md max-md:hidden lg:gap-20">
-                            <Link to="/" onClick={toggleDrawer}>
+                        <nav className="hidden flex-row items-center justify-center h-full gap-6 font-semibold text-sm md:flex md:gap-8 lg:gap-20">
+                            <Link
+                                to="/"
+                                onClick={buttonClicked}
+                                className="hover:text-primary transition ease-in-out duration-300 delay-50 hover:scale-120">
                                 Home
                             </Link>
-                            <Link to="/services" onClick={toggleDrawer}>
+                            <Link
+                                to="/services"
+                                onClick={buttonClicked}
+                                className="hover:text-primary transition ease-in-out duration-300 delay-50 hover:scale-120">
                                 Services
                             </Link>
-                            <Link to="/about" onClick={toggleDrawer}>
+                            <Link
+                                to="/about"
+                                onClick={buttonClicked}
+                                className="hover:text-primary transition ease-in-out duration-300 delay-50 hover:scale-120">
                                 About us
                             </Link>
-                            <Link to="/clinics" onClick={toggleDrawer}>
+                            <Link
+                                to="/clinics"
+                                onClick={buttonClicked}
+                                className="hover:text-primary transition ease-in-out duration-300 delay-50 hover:scale-120">
                                 Clinics
                             </Link>
                         </nav>
@@ -166,31 +182,35 @@ function Landing_page() {
                         <Link to="/login">
                             <Button
                                 variant="default"
-                                className="px-4 py-2 text-base md:px-6 md:py-4 md:text-md">
+                                className="px-4 py-2 text-base md:px-6 md:py-4 md:text-md hover:scale-110 transition-all duration-300 delay-50">
                                 Login
                             </Button>
                         </Link>
                     </div>
                     {/* Drawer */}
                     <div
-                        className={`fixed left-0 w-full bg-white/80 backdrop-blur-sm shadow-lg z-40 transition-all rounded-b-xl duration-500 overflow-hidden
-                    ${
-                        drawerOpen
-                            ? "top-[71px] h-15 opacity-100"
-                            : "top-[71px] h-0 opacity-0"
-                    }
+                        className={`fixed left-0 w-full bg-white shadow-lg z-40 transition-all border-t-2 border-gray-200 rounded-b-xl duration-500 overflow-hidden
+                    ${drawerOpen ? "h-15" : "h-0"}
                     `}>
-                        <nav className="flex flex-row items-center justify-center h-full gap-6">
-                            <Link to="/" onClick={toggleDrawer}>
+                        <nav className="flex flex-row justify-center items-center h-full gap-6">
+                            <Link
+                                to="/"
+                                className="hover:text-primary transition ease-in-out duration-300 delay-50 hover:scale-120">
                                 Home
                             </Link>
-                            <Link to="/services" onClick={toggleDrawer}>
+                            <Link
+                                to="/services"
+                                className="hover:text-primary transition ease-in-out duration-300 delay-50 hover:scale-120">
                                 Services
                             </Link>
-                            <Link to="/about" onClick={toggleDrawer}>
+                            <Link
+                                to="/about"
+                                className="hover:text-primary transition ease-in-out duration-300 delay-50 hover:scale-120">
                                 About us
                             </Link>
-                            <Link to="/clinics" onClick={toggleDrawer}>
+                            <Link
+                                to="/clinics"
+                                className="hover:text-primary transition ease-in-out duration-300 delay-50 hover:scale-120">
                                 Clinics
                             </Link>
                         </nav>
@@ -225,12 +245,14 @@ function Landing_page() {
                                 className="flex justify-center items-center my-10 gap-6 z-10 rise-up md:mt-15">
                                 <Button
                                     variant="default"
-                                    className="px-6 py-4 text-base lg:px-8 lg:py-6 lg:text-lg">
+                                    className="px-6 py-4 text-base lg:px-8 lg:py-6 lg:text-lg transition hover:scale-120 duration-300 delay-30"
+                                    onClick={buttonClicked}>
                                     Get Started
                                 </Button>
                                 <Button
                                     variant="outline"
-                                    className="px-6 py-4 text-base lg:px-8 lg:py-6 lg:text-lg">
+                                    className="px-6 py-4 text-base lg:px-8 lg:py-6 lg:text-lg transition hover:scale-120 duration-300 delay-30"
+                                    onClick={buttonClicked}>
                                     Learn More
                                 </Button>
                             </div>
@@ -245,7 +267,7 @@ function Landing_page() {
                     {/* How it Works */}
                     <section
                         id="separator-one"
-                        className="w-screen bg-primary p-8 mt-20 grid">
+                        className="w-screen bg-primary p-4 md:p-8 mt-20 grid">
                         <div className="max-w-3xl mx-auto text-center">
                             <h2 className="text-3xl font-bold text-white">
                                 How It Works
@@ -254,7 +276,7 @@ function Landing_page() {
                                 Just three simple steps to get started service
                             </p>
                         </div>
-                        <div className="flex flex-col justify-center items-center gap-4 mt-8 px-6 md:flex-row md:gap-6 lg:mx-50 lg:gap-15">
+                        <div className="flex flex-col justify-center items-center gap-4 mt-8 px-4 md:flex-row md:gap-6 lg:mx-50 lg:gap-15">
                             {steps.map((step, idx) => (
                                 <div
                                     key={idx}
@@ -352,9 +374,9 @@ function Landing_page() {
                                     is dedicated to simplifying baby health
                                     record management. Since 2025, we've been
                                     providing parents and healthcare providers
-                                    with a secure, user-friendly platform to
-                                    easily track, store, and share medical
-                                    milestones.
+                                    with a user-friendly platform to easily
+                                    track, store, and share medical data
+                                    securely.
                                 </p>
                             </div>
                             <hr className="md:hidden" />

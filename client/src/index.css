@@ -1,5 +1,6 @@
-@import "tailwindcss";
 @import url("https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap");
+@import "tailwindcss";
+@import "tw-animate-css";
 
 @theme {
     /*Custom color specified for KEEPSAKE  */
@@ -57,6 +58,10 @@ hr {
 
 .top-down {
     animation: topDown 0.5s ease-out forwards;
+}
+
+.top-down-header {
+    animation: topDown 3s ease-out forwards;
 }
 
 @keyframes leftRight {
