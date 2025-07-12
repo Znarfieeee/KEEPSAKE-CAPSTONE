@@ -42,14 +42,14 @@ const StyledWrapper = styled.div`
     /* Medium screens (md) */
     @media (min-width: 768px) {
         .hamburger svg {
-            height: 3em;
+            height: 2.5em;
         }
     }
 
     /* Large screens (lg) */
     @media (min-width: 1024px) {
         .hamburger svg {
-            height: 3.5em;
+            height: 2.5em;
         }
     }
 

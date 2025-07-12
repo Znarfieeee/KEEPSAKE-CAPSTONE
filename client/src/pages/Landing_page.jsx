@@ -102,7 +102,7 @@ function Landing_page() {
     ]
 
     useEffect(() => {
-        const threshold = 50
+        const threshold = 30
         const handleScroll = () => {
             const currentY = window.scrollY
             const scrollDiff = Math.abs(currentY - lastY)
@@ -136,7 +136,7 @@ function Landing_page() {
             <div id="landing" className="bg-white font-inter overflow-x-hidden">
                 <header
                     className={`
-                                fixed justify-center mx-auto inset-x-0 z-50 bg-white/80 backdrop-blur-sm shadow
+                                fixed justify-center mx-auto inset-x-0 z-50 bg-white shadow
                                 transition-transform duration-300 ease-in-out top-down-header
                                 ${show ? "translate-y-0" : "-translate-y-full"}
                             `}>
@@ -152,7 +152,7 @@ function Landing_page() {
                             alt="KEEPSAKE Logo"
                             className="h-10 w-auto md:h-14"
                         />
-                        <nav className="flex flex-row items-center justify-center h-full gap-6 font-semibold md:gap-8 text-sm max-md:hidden lg:gap-20">
+                        <nav className="hidden flex-row items-center justify-center h-full gap-6 font-semibold text-sm md:flex md:gap-8 lg:gap-20">
                             <Link
                                 to="/"
                                 onClick={buttonClicked}
@@ -189,14 +189,10 @@ function Landing_page() {
                     </div>
                     {/* Drawer */}
                     <div
-                        className={`fixed left-0 w-full bg-white/80 backdrop-blur-sm shadow-lg z-40 transition-all rounded-b-xl duration-500 overflow-hidden
-                    ${
-                        drawerOpen
-                            ? "top-[71px] h-15 opacity-100"
-                            : "top-[71px] h-0 opacity-0"
-                    }
+                        className={`fixed left-0 w-full bg-white shadow-lg z-40 transition-all border-t-2 border-gray-200 rounded-b-xl duration-500 overflow-hidden
+                    ${drawerOpen ? "h-15" : "h-0"}
                     `}>
-                        <nav className="flex flex-row items-center justify-center h-full gap-6">
+                        <nav className="flex flex-row justify-center items-center h-full gap-6">
                             <Link
                                 to="/"
                                 className="hover:text-primary transition ease-in-out duration-300 delay-50 hover:scale-120">

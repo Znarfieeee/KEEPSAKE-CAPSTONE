@@ -5,6 +5,7 @@
         "jsonify",
         "pediapro",
         "supabase",
-        "vite"
+        "vite",
+        "dotenv"
     ]
 }

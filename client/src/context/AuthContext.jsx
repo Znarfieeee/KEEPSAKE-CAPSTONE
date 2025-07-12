@@ -34,6 +34,10 @@ export const AuthProvider = ({ children }) => {
         }
     }
 
+    const btnClicked = () => {
+        alert("Button clicked")
+    }
+
     return (
         <AuthContext.Provider
             value={{
@@ -43,6 +47,7 @@ export const AuthProvider = ({ children }) => {
                 signOut,
                 loading,
                 role: user?.role,
+                btnClicked,
             }}>
             {children}
         </AuthContext.Provider>

@@ -1,9 +1,15 @@
 import { createBrowserRouter, RouterProvider, Outlet } from "react-router-dom"
+import { AuthProvider } from "./context/AuthContext"
+
+// Pages
 import Landing_page from "./pages/Landing_page"
-import Layout from "./layout/PediaproLayout"
 import Login from "./pages/Login"
 import NotFound from "./pages/NotFound"
-import { AuthProvider } from "./context/AuthContext"
+
+import AdminDashboard from "./pages/systemAdmin/AdminDashboard"
+
+import AdminLayout from "./layout/AdminLayout"
+import Layout from "./layout/PediaproLayout"
 
 const AuthWrapper = () => (
     <AuthProvider>
@@ -18,17 +24,21 @@ function App() {
             children: [
                 {
                     path: "/",
-                    element: <Layout />,
-                    children: [
-                        {
-                            index: true,
-                            element: <Landing_page />,
-                        },
-                    ],
+                    element: <Landing_page />,
                 },
                 {
                     path: "/login",
                     element: <Login />,
+                },
+                {
+                    path: "/system_admin",
+                    element: <AdminLayout />,
+                    children: [
+                        {
+                            path: "/system_admin/dashboard",
+                            element: <AdminDashboard />,
+                        },
+                    ],
                 },
                 {
                     path: "*",
