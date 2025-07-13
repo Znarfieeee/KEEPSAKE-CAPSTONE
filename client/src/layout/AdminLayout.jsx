@@ -2,13 +2,12 @@ import React, { useState } from "react"
 import { Outlet, Link } from "react-router-dom"
 
 // UI Components
-import { BiTachometer, BiCalendar } from "react-icons/bi"
+import { BiTachometer, BiCalendar, BiLogOut } from "react-icons/bi"
 import { TbHeartbeat } from "react-icons/tb"
-import { AiOutlineUser } from "react-icons/ai"
 import { IoMdAnalytics } from "react-icons/io"
 import { MdQrCodeScanner } from "react-icons/md"
 import Hamburger from "../components/ui/Hamburger"
-import { Avatar, Menu, Portal } from "@chakra-ui/react"
+import AccountPlaceholder from "../components/AccountPlaceholder"
 
 const sideNavLinks = [
     {
@@ -59,30 +58,8 @@ function AdminLayout() {
                             className="h-10 w-auto"
                         />
                     </div>
-                    <div className="flex items-center gap-2">
-                        <Menu.Root positioning={{ placement: "right-end" }}>
-                            <Menu.Trigger rounded="full" focusRing="outside">
-                                <Avatar.Root size="sm">
-                                    <Avatar.Fallback name="Segun Adebayo" />
-                                    <Avatar.Image src="https://bit.ly/sage-adebayo" />
-                                </Avatar.Root>
-                            </Menu.Trigger>
-                            <Portal>
-                                <Menu.Positioner>
-                                    <Menu.Content>
-                                        <Menu.Item value="account">
-                                            Account
-                                        </Menu.Item>
-                                        <Menu.Item value="settings">
-                                            Settings
-                                        </Menu.Item>
-                                        <Menu.Item value="logout">
-                                            Logout
-                                        </Menu.Item>
-                                    </Menu.Content>
-                                </Menu.Positioner>
-                            </Portal>
-                        </Menu.Root>
+                    <div className="flex items-center gap-2 mr-6">
+                        <AccountPlaceholder />
                     </div>
                 </div>
             </header>
