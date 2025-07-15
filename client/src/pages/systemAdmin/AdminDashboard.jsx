@@ -1,13 +1,13 @@
 import React from "react"
-import TotalFacilities from "../../components/dashboard/TotalFacilities"
-import ActiveUsers from "../../components/dashboard/ActiveUsers"
-import SystemHealth from "../../components/dashboard/SystemHealth"
-import MonthlyRevenue from "../../components/dashboard/MonthlyRevenue"
-import ActiveUsersByRole from "../../components/dashboard/ActiveUsersByRole"
-import SystemMonitoring from "../../components/dashboard/SystemMonitoring"
-import FacilitySubscriptions from "../../components/dashboard/FacilitySubscriptions"
-import ParentSubscriptions from "../../components/dashboard/ParentSubscriptions"
-import RevenueSources from "../../components/dashboard/RevenueSources"
+import TotalFacilities from "../../components/sysAdmin_dashboard/TotalFacilities"
+import ActiveUsers from "../../components/sysAdmin_dashboard/ActiveUsers"
+import SystemHealth from "../../components/sysAdmin_dashboard/SystemHealth"
+import MonthlyRevenue from "../../components/sysAdmin_dashboard/MonthlyRevenue"
+import ActiveUsersByRole from "../../components/sysAdmin_dashboard/ActiveUsersByRole"
+import SystemMonitoring from "../../components/sysAdmin_dashboard/SystemMonitoring"
+import FacilitySubscriptions from "../../components/sysAdmin_dashboard/FacilitySubscriptions"
+import ParentSubscriptions from "../../components/sysAdmin_dashboard/ParentSubscriptions"
+import RevenueSources from "../../components/sysAdmin_dashboard/RevenueSources"
 
 const AdminDashboard = () => {
     return (
