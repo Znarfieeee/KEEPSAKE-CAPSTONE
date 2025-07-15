@@ -1,13 +1,27 @@
 import React from "react"
+import { useAuth } from "../context/auth"
+import { useNavigate } from "react-router-dom"
 
 // UI Components
 import { AiOutlineUser } from "react-icons/ai"
 import { BiLogOut } from "react-icons/bi"
-
-import { Separator } from "@/components/ui/separator"
 import { Avatar, Menu, Portal } from "@chakra-ui/react"
 
 const AccountPlaceholder = () => {
+    const { signOut } = useAuth()
+    const navigate = useNavigate()
+
+    const handleLogout = async () => {
+        try {
+            await signOut()
+        } catch (e) {
+            console.error("Logout failed", e)
+        } finally {
+            // After sign-out, redirect to login page
+            navigate("/login")
+        }
+    }
+
     return (
         <div>
             <Menu.Root positioning={{ placement: "bottom-end" }}>
@@ -28,7 +42,10 @@ const AccountPlaceholder = () => {
                                 </p>
                             </span>
                             <Menu.Separator />
-                            <Menu.Item value="logout" className="bg-white">
+                            <Menu.Item
+                                value="logout"
+                                className="bg-white"
+                                onClick={handleLogout}>
                                 <BiLogOut className="text-xl" />
                                 Logout
                             </Menu.Item>

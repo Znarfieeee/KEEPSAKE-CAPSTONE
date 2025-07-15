@@ -1,5 +1,5 @@
 from flask import Blueprint, request, jsonify
-from config.settings import supabase
+from config.settings import supabase, supabase_service_role_client
 import datetime
 from gotrue.errors import AuthApiError
 
@@ -51,6 +51,7 @@ def create_invite():
 def login():
     try:
         data = request.json
+        
         if not data or not data.get('email') or not data.get('password'):
             return jsonify({
                 "status": "error",
@@ -59,28 +60,53 @@ def login():
 
         email = data.get('email')
         password = data.get('password')
+        
+        # ------------------------------------------------------------
+        # Fetch the user's role from the USERS table using the service
+        # role client so that RLS/permission errors (code 42501) are avoided.
+        # ------------------------------------------------------------
+        try:
+            sr_client = supabase_service_role_client()
+            user_role = (
+                sr_client.table("USERS").select("ROLE").eq("EMAIL", email).execute()
+            )
+        except Exception:
+            # In case of any error (e.g., table doesn't exist), fall back to None.
+            user_role = None
 
         # Attempt to sign in
         try:
             auth_response = supabase.auth.sign_in_with_password({
                 "email": email,
-                "password": password
-            })
-            
-            # Build response without exposing tokens in the body
-            response = jsonify({
-                "status": "success",
-                "message": "Login successful!",
-                "user": {
-                    "id": auth_response.user.id,
-                    "email": auth_response.user.email,
-                    "token": auth_response.session.access_token,
-                    # "role": auth_response.user.user_metadata.role,
-                },
-                "expires_at": auth_response.session.expires_at,
+                "password": password,
             })
 
-            # Set HttpOnly, Secure cookies so they are inaccessible to JS
+            # ------------------------------------------------------------
+            # Build the JSON payload
+            # ------------------------------------------------------------
+            # Prefer a `role` stored in user_metadata; fall back to the value
+            # fetched from the `USERS` table if present.
+            metadata_role = (auth_response.user.user_metadata or {}).get("role")
+            table_role = (
+                user_role.data[0]["ROLE"] if user_role and user_role.data else None
+            )
+            role = metadata_role or table_role
+
+            response = jsonify(
+                {
+                    "status": "success",
+                    "message": "Login successful!",
+                    "user": {
+                        "id": auth_response.user.id,
+                        "email": auth_response.user.email,
+                        "token": auth_response.session.access_token,
+                        "role": role,
+                        "metadata": auth_response.user.user_metadata,
+                    },
+                    "expires_at": auth_response.session.expires_at,
+                }
+            )
+            
             access_expires = datetime.datetime.utcfromtimestamp(
                 auth_response.session.expires_at
             )
@@ -129,9 +155,19 @@ def logout():
             "status": "success",
             "message": "Logged out successfully",
         })
-        # Clear cookies
-        response.delete_cookie("sb-access-token")
-        response.delete_cookie("sb-refresh-token")
+        
+        response.delete_cookie(
+            "sb-access-token",
+            path="/",
+            secure=True,
+            samesite="Strict",
+        )
+        response.delete_cookie(
+            "sb-refresh-token",
+            path="/",
+            secure=True,
+            samesite="Strict",
+        )
 
         return response, 200
     except Exception as e:

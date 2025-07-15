@@ -1,4 +1,5 @@
-import React, { useState } from "react"
+import React, { useState, useEffect } from "react"
+import { useNavigate } from "react-router-dom"
 import { login, logout } from "../api/auth"
 import { AuthContext } from "./auth"
 // import { showToast } from "../util/alertHelper"
@@ -6,6 +7,8 @@ import { AuthContext } from "./auth"
 export const AuthProvider = ({ children }) => {
     const [user, setUser] = useState(null)
     const [loading, setLoading] = useState(false) // Initialize as false
+
+    const navigate = useNavigate()
 
     const signIn = async (email, password) => {
         setLoading(true)
@@ -37,6 +40,31 @@ export const AuthProvider = ({ children }) => {
     const btnClicked = () => {
         alert("Button clicked")
     }
+
+    /* ------------------------------------------------------------------
+     * Navigate based on the authenticated user's role
+     * ------------------------------------------------------------------*/
+    useEffect(() => {
+        if (!loading && user?.role) {
+            switch (user.role) {
+                case "SystemAdmin":
+                case "admin":
+                    navigate("/system_admin")
+                    break
+                case "Pediapro":
+                    navigate("/pediapro")
+                    break
+                case "Keepsaker":
+                    navigate("/keepsaker")
+                    break
+                case "VitalCustodian":
+                    navigate("/vital_custodian")
+                    break
+                default:
+                    navigate("/")
+            }
+        }
+    }, [loading, user, navigate])
 
     return (
         <AuthContext.Provider

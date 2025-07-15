@@ -14,6 +14,7 @@ export const login = async (email, password) => {
         { email, password },
         axiosConfig
     )
+    console.log(response.data)
     return response.data
 }
 
@@ -23,6 +24,7 @@ export const logout = async () => {
         {},
         axiosConfig
     )
+    console.log(response.data)
     return response.data
 }
 
