@@ -5,6 +5,7 @@ import { useNavigate } from "react-router-dom"
 // UI Components
 import { AiOutlineUser } from "react-icons/ai"
 import { BiLogOut } from "react-icons/bi"
+import { BiCog } from "react-icons/bi"
 import { Avatar, Menu, Portal } from "@chakra-ui/react"
 
 const AccountPlaceholder = () => {
@@ -21,7 +22,6 @@ const AccountPlaceholder = () => {
             navigate("/login")
         }
     }
-
     return (
         <div>
             <Menu.Root positioning={{ placement: "bottom-end" }}>
@@ -42,6 +42,13 @@ const AccountPlaceholder = () => {
                                 </p>
                             </span>
                             <Menu.Separator />
+                            <Menu.Item
+                                value="settings"
+                                className="bg-white"
+                                onClick={() => navigate("/admin/settings")}>
+                                <BiCog className="text-xl" />
+                                Settings
+                            </Menu.Item>
                             <Menu.Item
                                 value="logout"
                                 className="bg-white"

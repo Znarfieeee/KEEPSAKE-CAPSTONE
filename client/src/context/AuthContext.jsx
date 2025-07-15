@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react"
 import { useNavigate } from "react-router-dom"
 import { login, logout } from "../api/auth"
 import { AuthContext } from "./auth"
-// import { showToast } from "../util/alertHelper"
+import { showToast } from "../util/alertHelper"
 
 export const AuthProvider = ({ children }) => {
     const [user, setUser] = useState(null)
@@ -15,10 +15,12 @@ export const AuthProvider = ({ children }) => {
         try {
             const response = await login(email, password)
 
+            showToast("success", "Login successful")
             setUser(response.user)
             setLoading(false)
             return response
         } catch (err) {
+            showToast("error", "Login failed")
             setLoading(false) // Reset loading on error
             throw err // Re-throw the error to be handled by the login component
         }
@@ -30,8 +32,10 @@ export const AuthProvider = ({ children }) => {
 
         try {
             await logout() // Added await here
+            showToast("success", "Logout successful")
         } catch (err) {
             console.error("There is an error: ", err)
+            showToast("error", "Logout failed")
         } finally {
             setLoading(false)
         }
