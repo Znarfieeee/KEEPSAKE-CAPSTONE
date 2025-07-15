@@ -35,7 +35,7 @@ function App() {
                     element: <AdminLayout />,
                     children: [
                         {
-                            path: "/system_admin/dashboard",
+                            index: true,
                             element: <AdminDashboard />,
                         },
                     ],

@@ -2,12 +2,13 @@ import React, { useState } from "react"
 import { Outlet, Link } from "react-router-dom"
 
 // UI Components
-import { BiTachometer, BiCalendar, BiLogOut } from "react-icons/bi"
+import { BiTachometer, BiCalendar } from "react-icons/bi"
 import { TbHeartbeat } from "react-icons/tb"
 import { IoMdAnalytics } from "react-icons/io"
 import { MdQrCodeScanner } from "react-icons/md"
 import Hamburger from "../components/ui/Hamburger"
 import AccountPlaceholder from "../components/AccountPlaceholder"
+import NotificationPlaceholder from "../components/ui/NotificationPlaceholder"
 
 const sideNavLinks = [
     {
@@ -59,25 +60,26 @@ function AdminLayout() {
                         />
                     </div>
                     <div className="flex items-center gap-2 mr-6">
-                        <AccountPlaceholder />
+                        <NotificationPlaceholder className=" text-black" />
+                        <AccountPlaceholder className=" text-black" />
                     </div>
                 </div>
             </header>
 
             {/* Sidebar */}
             <aside
-                className={`fixed top-16 left-0 h-[calc(100vh-4rem)] w-64 bg-white shadow-lg transition-transform duration-300 ease-in-out transform ${
+                className={`fixed top-16 left-0 h-[calc(100vh-4rem)] w-64 bg-secondary/80 backdrop-blur-sm z-50 shadow-lg transition-transform duration-300 ease-in-out transform ${
                     drawerOpen ? "translate-x-0" : "-translate-x-full"
                 }`}>
                 <nav className="h-full py-6">
-                    <div className="space-y-2">
+                    <div className="space-y-4 mt-10">
                         {sideNavLinks.map((link, index) => (
                             <Link
                                 key={index}
                                 to={link.to}
-                                className="flex items-center gap-3 px-4 py-3 text-gray-700 hover:bg-gray-100 transition-colors">
+                                className="flex items-center gap-3 px-8 py-4 text-black hover:bg-gray-100 duration-300 delay-30 transition-colors">
                                 {link.icon}
-                                <span className="text-sm font-medium">
+                                <span className="text-sm font-bold">
                                     {link.title}
                                 </span>
                             </Link>
@@ -87,10 +89,7 @@ function AdminLayout() {
             </aside>
 
             {/* Main Content */}
-            <main
-                className={`pt-16 min-h-screen transition-all duration-300 ${
-                    drawerOpen ? "ml-64" : "ml-0"
-                }`}>
+            <main className="pt-16 min-h-screen">
                 <div className="p-6">
                     <Outlet />
                 </div>

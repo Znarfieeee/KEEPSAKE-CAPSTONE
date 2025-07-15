@@ -260,7 +260,7 @@ function Landing_page() {
                         <img
                             src={hero1}
                             alt="Hero 1"
-                            className="mt-4 right-to-left mx-auto -z-px md:h-125 md:w-auto"
+                            className="mt-4 right-to-left mx-auto -z-px md:h-100 md:mt-20 md:w-auto"
                         />
                     </section>
 
@@ -465,7 +465,7 @@ function Landing_page() {
                             </div>
                         </div>
                     </section>
-                    <footer className="bg-primary w-screen text-center p-2 text-white font-semibold">
+                    <footer className="bg-primary w-screen text-center p-2 text-xs text-white font-semibold">
                         © 2025 KEEPSAKE, All Rights Reserved
                     </footer>
                 </section>
