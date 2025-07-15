@@ -1,78 +1,101 @@
-import React from "react"
-import { Outlet, Link, Navigate } from "react-router-dom"
+import React, { useState } from "react"
+import { Outlet, Link } from "react-router-dom"
 
 // UI Components
-import { BiTachometer, BiCalendar } from "react-icons/bi"
+import { CgFileDocument } from "react-icons/cg"
+import { TbBrandGoogleAnalytics } from "react-icons/tb"
+import { RiDashboardLine } from "react-icons/ri"
+import { BiCalendar } from "react-icons/bi"
 import { TbHeartbeat } from "react-icons/tb"
-import { IoMdAnalytics } from "react-icons/io"
 import { MdQrCodeScanner } from "react-icons/md"
 import Hamburger from "../components/ui/Hamburger"
+import AccountPlaceholder from "../components/AccountPlaceholder"
+import NotificationPlaceholder from "../components/ui/NotificationPlaceholder"
 
-function Layout() {
+const mainSideNavLinks = [
+    {
+        icon: <RiDashboardLine className="text-xl" />,
+        title: "DASHBOARD",
+        to: "/pediapro/dashboard",
+    },
+    {
+        icon: <BiCalendar className="text-xl" />,
+        title: "APPOINTMENTS",
+        to: "/pediapro/appointments",
+    },
+    {
+        icon: <TbHeartbeat className="text-xl" />,
+        title: "PATIENT RECORDS",
+        to: "/pediapro/patient_records",
+    },
+    {
+        icon: <TbBrandGoogleAnalytics className="text-xl" />,
+        title: "REPORTS",
+        to: "/pediapro/reports",
+    },
+    {
+        icon: <MdQrCodeScanner className="text-xl" />,
+        title: "QR CODE SCANNER",
+        to: "/pediapro/qr_scanner",
+    },
+]
+
+function AdminLayout() {
+    const [drawerOpen, setDrawerOpen] = useState(false)
+    const toggleDrawer = () => setDrawerOpen(open => !open)
+
     return (
-        <div>
-            {/* <header className="absolute inset-0 z-50 shadow border-b-2 border-gray-100">
-                <div className="flex justify-between items-center px-6 py-2">
-                    <div className="box1">
-                        <div id="menu-btn-container">
-                            <Hamburger />
-                        </div>
+        <div className="min-h-screen bg-gray-50">
+            {/* Header */}
+            <header className="fixed top-0 left-0 right-0 h-16 bg-white shadow-sm z-50">
+                <div className="flex justify-between items-center h-full px-4 md:px-6">
+                    <div className="flex items-center gap-4">
+                        <Hamburger
+                            open={drawerOpen}
+                            toggle={toggleDrawer}
+                            className="text-gray-700"
+                        />
                         <img
-                            src="../assets/KEEPSAKE.png"
+                            src="/KEEPSAKE.png"
                             alt="KEEPSAKE smart beginnings"
-                            className="h-20 w-auto"
+                            className="h-10 w-auto"
                         />
                     </div>
-                    <div className="box2">
-                        <button>
-                            <img
-                                src="../assets/account-logo.png"
-                                alt="Account"
-                                className="h-35 w-auto cursor-pointer hover:scale-110 transition duration-300 delay-50"
-                            />
-                        </button>
+                    <div className="flex items-center gap-2 mr-6">
+                        <NotificationPlaceholder className=" text-black" />
+                        <AccountPlaceholder className=" text-black" />
                     </div>
                 </div>
-                <nav id="sidenav" className="relative inset-0 w-120 h-full">
-                    <Link
-                        to="/pediapro/dashboard"
-                        className="flex flex-row w-full p-4 justify-between text-black hover:bg-white/40 hover:text-gray-500 hover:scale-105 transition duration-300 delay-50">
-                        <BiTachometer />
-                        <BiCalendar />
-                        <span>DASHBOARD</span>
-                    </Link>
-                    <Link
-                        to="/pediapro/appointments"
-                        className="flex flex-row w-full p-4 justify-between text-black hover:bg-white/40 hover:text-gray-500 hover:scale-105 transition duration-300 delay-50">
-                        <BiCalendar />
-                        <span>APPOINTMENTS</span>
-                    </Link>
-                    <Link
-                        to="/pediapro/patient_records"
-                        className="flex flex-row w-full p-4 justify-between text-black hover:bg-white/40 hover:text-gray-500 hover:scale-105 transition duration-300 delay-50">
-                        <TbHeartbeat />
-                        <span>PATIENT RECORDS</span>
-                    </Link>
-                    <Link
-                        to="/pediapro/reports"
-                        className="flex flex-row w-full p-4 justify-between text-black hover:bg-white/40 hover:text-gray-500 hover:scale-105 transition duration-300 delay-50">
-                        <IoMdAnalytics />
-                        <span>REPORTS</span>
-                    </Link>
-                    <Link
-                        to="/pediapro/qr_scanner"
-                        className="flex flex-row w-full p-4 justify-between text-black hover:bg-white/40 hover:text-gray-500 hover:scale-105 transition duration-300 delay-50">
-                        <MdQrCodeScanner />
-                        <span>QR CDE SCANNER</span>
-                    </Link>
-                </nav>
             </header>
-            <footer className="bg-primary w-screen text-center p-2 text-white font-semibold">
-            © 2025 KEEPSAKE, All Rights Reserved
-            </footer> */}
-            <Outlet />
+
+            {/* Sidebar */}
+            <aside
+                className={`fixed top-16 left-0 h-[calc(100vh-4rem)] w-64 text-black bg-secondary/80 backdrop-blur-sm z-50 shadow-lg transition-transform duration-400 ease-in-out transform ${
+                    drawerOpen ? "translate-x-0" : "-translate-x-full"
+                }`}>
+                <nav className="h-full py-6">
+                    <div className="mt-10">
+                        {mainSideNavLinks.map((link, index) => (
+                            <Link
+                                key={index}
+                                to={link.to}
+                                className="flex items-center gap-4 px-8 py-3 text-black hover:bg-gray-100 duration-300 delay-30 transition-colors">
+                                {link.icon}
+                                <span className="text-sm">{link.title}</span>
+                            </Link>
+                        ))}
+                    </div>
+                </nav>
+            </aside>
+
+            {/* Main Content */}
+            <main className="pt-16 min-h-screen">
+                <div className="p-6">
+                    <Outlet />
+                </div>
+            </main>
         </div>
     )
 }
 
-export default Layout
+export default AdminLayout
