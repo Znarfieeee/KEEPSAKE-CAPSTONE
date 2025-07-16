@@ -18,7 +18,7 @@ const mainSideNavLinks = [
     {
         icon: <RiDashboardLine className="text-xl" />,
         title: "Dashboard",
-        to: "/admin/dashboard",
+        to: "/admin",
     },
     {
         icon: <BsBuilding className="text-xl" />,
