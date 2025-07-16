@@ -23,7 +23,7 @@ const mainSideNavLinks = [
     {
         icon: <BsBuilding className="text-xl" />,
         title: "Facilities Registry",
-        to: "/admin/facilities_registry",
+        to: "/admin/facilities",
     },
     {
         icon: <AiOutlineCreditCard className="text-xl" />,

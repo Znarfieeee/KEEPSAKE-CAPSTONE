@@ -7,6 +7,7 @@ import { showToast } from "../util/alertHelper"
 export const AuthProvider = ({ children }) => {
     const [user, setUser] = useState(null)
     const [loading, setLoading] = useState(false) // Initialize as false
+    const [userDetail, setUserDetail] = useState(null) // New state for user detail
 
     const navigate = useNavigate()
 
@@ -17,6 +18,7 @@ export const AuthProvider = ({ children }) => {
 
             showToast("success", "Login successful")
             setUser(response.user)
+            setUserDetail(response.user_detail) // Save full user record
             setLoading(false)
             return response
         } catch (err) {
@@ -45,6 +47,8 @@ export const AuthProvider = ({ children }) => {
         alert("Button clicked")
     }
 
+    // Additional utility method can be added later to refresh userDetail if needed.
+
     /* ------------------------------------------------------------------
      * Navigate based on the authenticated user's role
      * ------------------------------------------------------------------*/
@@ -53,7 +57,7 @@ export const AuthProvider = ({ children }) => {
             switch (user.role) {
                 case "SystemAdmin":
                 case "admin":
-                    navigate("/system_admin")
+                    navigate("/admin")
                     break
                 case "Pediapro":
                     navigate("/pediapro")
@@ -75,6 +79,8 @@ export const AuthProvider = ({ children }) => {
             value={{
                 user,
                 setUser,
+                userDetail,
+                setUserDetail,
                 signIn,
                 signOut,
                 loading,

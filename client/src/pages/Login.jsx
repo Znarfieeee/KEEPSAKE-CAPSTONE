@@ -3,10 +3,18 @@ import { Link } from "react-router-dom"
 import { useAuth } from "../context/auth"
 
 // Images
-import LOGO from "../assets/logo2.png"
+import LOGO from "../assets/logo1.png"
+import GoogleIcon from "../assets/google-logo.png"
 
 // UI Components
 import { Button } from "../components/ui/Button"
+import { Separator } from "../components/ui/separator"
+import {
+    TooltipProvider,
+    Tooltip,
+    TooltipTrigger,
+    TooltipContent,
+} from "../components/ui/Tooltip"
 
 const Login = () => {
     const emailRef = useRef()
@@ -36,12 +44,20 @@ const Login = () => {
             className="login-bg text-black flex justify-center items-center">
             <form
                 onSubmit={handleSubmit}
-                className="flex flex-col justify-center items-center shadow p-6 border-px border-black bg-white min-w-2xs min-h-20 md:w-lg">
-                <img
-                    src={LOGO}
-                    alt="KEEPSAKE Logo"
-                    className="h-15 mb-10 w-auto"
-                />
+                className="flex flex-col justify-center items-center shadow p-6 border-1 border-gray-200 bg-white w-md rounded-lg">
+                <div id="header-container" className="p-4 mb-6 space-y-2">
+                    <img
+                        src={LOGO}
+                        alt="KEEPSAKE Logo"
+                        className="h-20 w-auto mx-auto"
+                    />
+                    <span className="text-center">
+                        <h1 className="text-2xl font-bold">Welcome back!</h1>
+                        <p className="text-sm">
+                            Please enter your details to login
+                        </p>
+                    </span>
+                </div>
                 <hr className="mt-6 pb-4" />
                 <div id="input-container" className="w-full">
                     <div className="flex flex-col form-control">
@@ -50,7 +66,7 @@ const Login = () => {
                             type="email"
                             name="email"
                             id="email"
-                            placeholder="Enter email"
+                            placeholder="juan@keepsake.com"
                             ref={emailRef}
                             required
                         />
@@ -68,7 +84,7 @@ const Login = () => {
                             type="password"
                             name="password"
                             id="password"
-                            placeholder="Enter password"
+                            placeholder="********"
                             ref={passwordRef}
                             required
                         />
@@ -82,6 +98,32 @@ const Login = () => {
                         </Button>
                     </div>
                 </div>
+                <div className="flex items-center w-full mt-6">
+                    {/* <Separator className="flex-grow" /> */}
+                    <span className="text-xs text-muted-foreground mx-auto">
+                        OR
+                    </span>
+                    {/* <Separator className="flex-grow" /> */}
+                </div>
+                <Button className="w-[90%] mt-6 bg-gray-100 border border-gray-300 hover:bg-gray-200">
+                    <img src={GoogleIcon} alt="Google" className="h-6" />
+                </Button>
+                <p className="text-sm mt-4 text-center">
+                    Manual self-registration is disabled.&nbsp;
+                    <TooltipProvider>
+                        <Tooltip>
+                            <TooltipTrigger asChild>
+                                <span className="underline text-primary">
+                                    Why?
+                                </span>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                                Consult the nearest available clinic with
+                                KEEPSAKE to have an account.
+                            </TooltipContent>
+                        </Tooltip>
+                    </TooltipProvider>
+                </p>
             </form>
         </div>
     )

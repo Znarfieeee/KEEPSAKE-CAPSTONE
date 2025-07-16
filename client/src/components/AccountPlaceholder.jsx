@@ -9,7 +9,7 @@ import { BiCog } from "react-icons/bi"
 import { Avatar, Menu, Portal } from "@chakra-ui/react"
 
 const AccountPlaceholder = () => {
-    const { signOut } = useAuth()
+    const { signOut, user, userDetail } = useAuth()
     const navigate = useNavigate()
 
     const handleLogout = async () => {
@@ -35,11 +35,34 @@ const AccountPlaceholder = () => {
                 <Portal>
                     <Menu.Positioner className="w-50">
                         <Menu.Content className="flex flex-col gap-2">
-                            <span className="px-3">
-                                <h1>Dr. S. Wong </h1>
-                                <p className="text-sm text-gray-500">
-                                    Sulfur Soap
-                                </p>
+                            <span className="px-3 flex flex-col gap-0.5">
+                                <h1>
+                                    {`${userDetail?.firstname || ""} ${
+                                        userDetail?.lastname || ""
+                                    }`.trim() ||
+                                        user?.metadata?.full_name ||
+                                        user?.metadata?.name ||
+                                        user?.email ||
+                                        "User"}
+                                </h1>
+                                {userDetail?.specialty && (
+                                    <p className="text-sm text-gray-500 capitalize">
+                                        {user?.role === "SystemAdmin" ||
+                                        user?.role === "admin"
+                                            ? "Admin"
+                                            : userDetail?.specialty}
+                                    </p>
+                                )}
+                                {user?.email && (
+                                    <p className="text-sm text-gray-500">
+                                        {user.email}
+                                    </p>
+                                )}
+                                {user?.role && (
+                                    <p className="text-sm text-gray-500 capitalize">
+                                        {user.role}
+                                    </p>
+                                )}
                             </span>
                             <Menu.Separator />
                             <Menu.Item
