@@ -20,6 +20,7 @@ import { IoShieldHalfOutline } from "react-icons/io5"
 import { CiMobile3 } from "react-icons/ci"
 import { TbClockCog } from "react-icons/tb"
 import { PiDevicesLight } from "react-icons/pi"
+import Footer4Col from "../components/mvpblocks/footer-4col"
 
 function Landing_page() {
     const [drawerOpen, setDrawerOpen] = useState(false)
@@ -82,22 +83,6 @@ function Landing_page() {
             icon: <PiDevicesLight className="h-8 w-8 text-rose-600" />,
             title: "Multi-Device Access",
             desc: "Access your baby's information anytime, anywhere, on any device.",
-        },
-    ]
-
-    const clinics = [
-        {
-            name: "De La Peña's Pediatric Clinic",
-            address:
-                "8W23+MC7 ASCO Bldg, Tiburcio Padilla St, Cebu City, 6000 Cebu",
-        },
-        {
-            name: "Dr. Darwin L. Pitogo",
-            address: "Maria Antonio Village, Labogon, Mandaue, 6014 Cebu",
-        },
-        {
-            name: "Alima Pediatric Clinic",
-            address: "Urgello St, Cebu City, 6000 Cebu",
         },
     ]
 
@@ -260,7 +245,7 @@ function Landing_page() {
                         <img
                             src={hero1}
                             alt="Hero 1"
-                            className="mt-4 right-to-left mx-auto -z-px md:h-125 md:w-auto"
+                            className="mt-4 right-to-left mx-auto -z-px md:h-100 md:mt-20 md:w-auto"
                         />
                     </section>
 
@@ -361,113 +346,7 @@ function Landing_page() {
                         </div>
                     </section>
                     {/* Footer Section */}
-                    <section className="footer w-screen flex flex-col text-black bg-gradient-to-t from-[#c4dee3] to-[#fffafa] p-6 mt-6 ">
-                        <div
-                            id="container"
-                            className="grid md:grid-cols-2 lg:grid-cols-4">
-                            <div id="box1" className="my-6">
-                                <h1 className="text-center text-2xl font-bold">
-                                    KEEPSAKE
-                                </h1>
-                                <p className="text-justify text-md px-4 mt-2">
-                                    <strong>KEEPSAKE </strong>
-                                    is dedicated to simplifying baby health
-                                    record management. Since 2025, we've been
-                                    providing parents and healthcare providers
-                                    with a user-friendly platform to easily
-                                    track, store, and share medical data
-                                    securely.
-                                </p>
-                            </div>
-                            <hr className="md:hidden" />
-                            <div id="box2" className="my-6">
-                                <h1 className="text-center text-2xl font-bold">
-                                    Clinics
-                                </h1>
-                                <div className="max-w-2xl mx-auto px-6 flex flex-col gap-2">
-                                    {clinics.map((clinic, idx) => (
-                                        <div
-                                            key={idx}
-                                            className="flex flex-col text-start">
-                                            <h3 className="mt-2 text-md font-semibold">
-                                                {clinic.name}
-                                            </h3>
-                                            <p className=" text-sm">
-                                                {clinic.address}
-                                            </p>
-                                        </div>
-                                    ))}
-                                    <Link
-                                        to="/"
-                                        className="hover:text-white transition-all duration-200">
-                                        See more...
-                                    </Link>
-                                </div>
-                            </div>
-                            <hr className="md:hidden" />
-                            <div id="box3" className="mx-auto my-6">
-                                <h1 className="text-center text-2xl font-bold">
-                                    Connect with us
-                                </h1>
-                                <div
-                                    id="link"
-                                    className="grid grid-cols-2 gap-20 mx-auto pt-4 text-center lg:text-start">
-                                    <div className="left-side flex flex-col gap-2">
-                                        <Link
-                                            to="/"
-                                            className="hover:text-white transition-all duration-200">
-                                            Facebook
-                                        </Link>
-                                        <Link
-                                            to="/"
-                                            className="hover:text-white transition-all duration-200">
-                                            Twitter
-                                        </Link>
-                                        <Link
-                                            to="/"
-                                            className="hover:text-white transition-all duration-200">
-                                            Instagram
-                                        </Link>
-                                    </div>
-                                    <div className="right-side flex flex-col gap-2">
-                                        <Link
-                                            to="/"
-                                            className="hover:text-white transition-all duration-200">
-                                            Career
-                                        </Link>
-                                        <Link
-                                            to="/"
-                                            className="hover:text-white transition-all duration-200">
-                                            Support
-                                        </Link>
-                                        <Link
-                                            to="/"
-                                            className="hover:text-white transition-all duration-200">
-                                            Privacy policy
-                                        </Link>
-                                    </div>
-                                </div>
-                            </div>
-                            <hr className="md:hidden" />
-                            <div
-                                id="box4"
-                                className="my-6 mx-auto text-center md:text-start lg:text-start">
-                                <h1 className="text-xl font-bold">Email us</h1>
-                                <p className="text-sm">support@keepsake.com</p>
-
-                                <h1 className="text-xl font-bold mt-8">
-                                    Address
-                                </h1>
-                                <p className="text-sm">
-                                    123 Fatima St., Bulacao, Cebu City, 6000
-                                    Cebu
-                                </p>
-                            </div>
-                        </div>
-                    </section>
-                    <footer className="bg-primary w-screen text-center p-2 text-white font-semibold">
-                        © 2025 KEEPSAKE, All Rights Reserved
-                    </footer>
+                    <Footer4Col />
                 </section>
             </div>
         </>

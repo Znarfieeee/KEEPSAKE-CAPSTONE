@@ -30,16 +30,7 @@ def get_user_supabase_client() -> "supabase_py.Client":
     return client
 
 def supabase_service_role_client() -> "supabase_py.Client":
-    return create_client(
-        url,
-        service_role,
-        {
-            "auth": {
-                "autoRefreshToken": False,
-                "persistSession": False,
-            }
-        },
-    )
+    return create_client(url,service_role)
 
 try:
     if supabase:

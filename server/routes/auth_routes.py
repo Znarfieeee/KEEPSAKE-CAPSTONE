@@ -1,5 +1,5 @@
 from flask import Blueprint, request, jsonify
-from config.settings import supabase
+from config.settings import supabase, supabase_service_role_client
 import datetime
 from gotrue.errors import AuthApiError
 
@@ -51,42 +51,88 @@ def create_invite():
 def login():
     try:
         data = request.json
-        if not data or not data.get('email') or not data.get('password'):
-            return jsonify({
-                "status": "error",
-                "message": "Email and password are required"
-            }), 400
-
         email = data.get('email')
         password = data.get('password')
+
+        
+        # ------------------------------------------------------------
+        # Fetch the full user record from the USERS table using the
+        # service-role client. Using the elevated client avoids RLS
+        # errors (code 42501).
+        # ------------------------------------------------------------
+ 
+        user_detail = None  # Default – will remain None if query fails
+        try:
+            # Use service role client to bypass RLS
+            sr_client = supabase_service_role_client().auth.admin
+ 
+            user_record_resp = (
+                supabase_service_role_client()
+                .table("USERS")
+                .select("*")
+                .eq("EMAIL", email)
+                .single()
+                .execute()
+            )
+ 
+            if user_record_resp and user_record_resp.data:
+                # We expect only one record per e-mail. Grab the first.
+                user_record = user_record_resp.data
+ 
+                # Build a camel-cased payload that is easier to consume on
+                # the frontend (AccountPlaceholder expects these keys).
+                user_detail = {
+                    "firstname": user_record.get("FIRSTNAME"),
+                    "lastname": user_record.get("LASTNAME"),
+                    "specialty": user_record.get("SPECIALTY"),
+                    "role": user_record.get("ROLE"),
+                    "id": user_record.get("USER_ID") or user_record.get("ID"),
+                }
+ 
+            # Extract role for downstream logic if available
+            user_role = user_detail.get("role") if user_detail else None
+ 
+        except Exception as e:
+            # In case of any error (e.g., table doesn't exist), fall back to None.
+            print(f"Error fetching user details: {str(e)}")
+            user_role = None
+            user_detail = None
 
         # Attempt to sign in
         try:
             auth_response = supabase.auth.sign_in_with_password({
                 "email": email,
-                "password": password
-            })
-            
-            # Build response without exposing tokens in the body
-            response = jsonify({
-                "status": "success",
-                "message": "Login successful!",
-                "user": {
-                    "id": auth_response.user.id,
-                    "email": auth_response.user.email,
-                    "token": auth_response.session.access_token,
-                    # "role": auth_response.user.user_metadata.role,
-                },
-                "expires_at": auth_response.session.expires_at,
+                "password": password,
             })
 
-            # Set HttpOnly, Secure cookies so they are inaccessible to JS
+            # ------------------------------------------------------------
+            # Build the JSON payload
+            # ------------------------------------------------------------
+            # Prefer a `role` stored in user_metadata; fall back to the value
+            # fetched from the `USERS` table if present.
+            metadata_role = (auth_response.user.user_metadata or {}).get("role")
+            role = metadata_role or user_role
+            
+            response = jsonify(
+                {
+                    "status": "success",
+                    "message": "Login successful!",
+                    "user": {
+                        "id": auth_response.user.id,
+                        "email": auth_response.user.email,
+                        "role": role,
+                        "metadata": auth_response.user.user_metadata,
+                    },
+                    "user_detail": user_detail,
+                    "expires_at": auth_response.session.expires_at,
+                }
+            )
+            
             access_expires = datetime.datetime.utcfromtimestamp(
                 auth_response.session.expires_at
             )
 
             response.set_cookie(
-                "sb-access-token",
                 auth_response.session.access_token,
                 httponly=True,
                 secure=True,
@@ -96,7 +142,6 @@ def login():
 
             # Refresh token is long-lived (1 week sample)
             response.set_cookie(
-                "sb-refresh-token",
                 auth_response.session.refresh_token,
                 httponly=True,
                 secure=True,
@@ -110,8 +155,7 @@ def login():
             # Handle specific Supabase auth errors
             return jsonify({
                 "status": "error",
-                "message": "Invalid login credentials",
-                "details": str(auth_error)
+                "message": str(auth_error)
             }), 401
 
     except Exception as e:
@@ -129,9 +173,19 @@ def logout():
             "status": "success",
             "message": "Logged out successfully",
         })
-        # Clear cookies
-        response.delete_cookie("sb-access-token")
-        response.delete_cookie("sb-refresh-token")
+        
+        response.delete_cookie(
+            "sb-access-token",
+            path="/",
+            secure=True,
+            samesite="Strict",
+        )
+        response.delete_cookie(
+            "sb-refresh-token",
+            path="/",
+            secure=True,
+            samesite="Strict",
+        )
 
         return response, 200
     except Exception as e:

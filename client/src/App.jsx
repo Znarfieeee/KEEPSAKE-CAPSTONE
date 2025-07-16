@@ -7,6 +7,7 @@ import Login from "./pages/Login"
 import NotFound from "./pages/NotFound"
 
 import AdminDashboard from "./pages/systemAdmin/AdminDashboard"
+import FacilitiesRegistry from "./pages/systemAdmin/FacilitiesRegistry"
 
 import AdminLayout from "./layout/AdminLayout"
 import Layout from "./layout/PediaproLayout"
@@ -31,12 +32,16 @@ function App() {
                     element: <Login />,
                 },
                 {
-                    path: "/system_admin",
+                    path: "/admin",
                     element: <AdminLayout />,
                     children: [
                         {
-                            path: "/system_admin/dashboard",
+                            index: true,
                             element: <AdminDashboard />,
+                        },
+                        {
+                            path: "facilities",
+                            element: <FacilitiesRegistry />,
                         },
                     ],
                 },
