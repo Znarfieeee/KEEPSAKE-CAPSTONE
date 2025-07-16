@@ -11,7 +11,7 @@ import RevenueSources from "../../components/sysAdmin_dashboard/RevenueSources"
 
 const AdminDashboard = () => {
     return (
-        <div className="p-6 ">
+        <div className="p-6">
             <div className="grid grid-cols-12 grid-rows-6 gap-4">
                 {/* Top stats */}
                 <div className="col-span-3 row-span-1">
