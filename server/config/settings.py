@@ -35,6 +35,7 @@ def supabase_service_role_client() -> "supabase_py.Client":
 try:
     if supabase:
         print("Successfully connected to supabase!")
+        print(supabase.table('USERS').select('*').execute())
     else:
         print("Error connecting to supabase!")
 except Exception as e:
