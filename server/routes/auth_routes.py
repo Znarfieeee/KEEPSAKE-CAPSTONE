@@ -17,12 +17,12 @@ def create_invite():
     
     try:
         invite_result = supabase.table('INVITE_TOKENS').insert({
-            'EMAIL': email,
-            'CHILD_ID': child_id,
-            'TOKEN': None,  # Supabase will handle the actual invite token
-            'EXPIRES_AT': datetime.datetime.utcnow() + datetime.timedelta(days=7),
-            'CREATED_BY': created_by,
-            'ROLE': role
+            'email': email,
+            'child_id': child_id,
+            'token': None,  # Supabase will handle the actual invite token
+            'expires_at': datetime.datetime.utcnow() + datetime.timedelta(days=7),
+            'created_by': created_by,
+            'role': role
         }).execute()
 
         if invite_result.get('error'):
@@ -32,7 +32,7 @@ def create_invite():
         invite = supabase.auth.admin.invite_user({
             'email': email,
             'data': {
-                'invite_id': invite_result.data[0]['INV_ID']
+                'invite_id': invite_result.data[0]['invite_id']
             }
         })
         
@@ -68,9 +68,9 @@ def login():
  
             user_record_resp = (
                 supabase_service_role_client()
-                .table("USERS")
+                .table("users")
                 .select("*")
-                .eq("EMAIL", email)
+                .eq("email", email)
                 .single()
                 .execute()
             )
@@ -82,11 +82,11 @@ def login():
                 # Build a camel-cased payload that is easier to consume on
                 # the frontend (AccountPlaceholder expects these keys).
                 user_detail = {
-                    "firstname": user_record.get("FIRSTNAME"),
-                    "lastname": user_record.get("LASTNAME"),
-                    "specialty": user_record.get("SPECIALTY"),
-                    "role": user_record.get("ROLE"),
-                    "id": user_record.get("USER_ID") or user_record.get("ID"),
+                    "firstname": user_record.get("firstname"),
+                    "lastname": user_record.get("lastname"),
+                    "specialty": user_record.get("specialty"),
+                    "role": user_record.get("role"),
+                    "id": user_record.get("id") or user_record.get("id"),
                 }
  
             # Extract role for downstream logic if available
