@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from "react"
 import { useNavigate } from "react-router-dom"
-import { login, logout } from "../api/auth"
+import { login, logout, getSession } from "../api/auth"
 import { AuthContext } from "./auth"
 import { showToast } from "../util/alertHelper"
 
 export const AuthProvider = ({ children }) => {
     const [user, setUser] = useState(null)
-    const [loading, setLoading] = useState(false) // Initialize as false
+    const [loading, setLoading] = useState(true) // Start as true until we check existing session
     const [userDetail, setUserDetail] = useState(null) // New state for user detail
 
     const navigate = useNavigate()
@@ -50,12 +50,34 @@ export const AuthProvider = ({ children }) => {
     // Additional utility method can be added later to refresh userDetail if needed.
 
     /* ------------------------------------------------------------------
+     * On initial mount, attempt to restore session from server cookies
+     * ------------------------------------------------------------------*/
+    useEffect(() => {
+        const fetchSession = async () => {
+            try {
+                const res = await getSession()
+                if (res.status === "success") {
+                    setUser(res.user)
+                    setUserDetail(res.user_detail)
+                }
+                // eslint-disable-next-line no-unused-vars
+            } catch (_err) {
+                // No active session or failed request – silently ignore
+            } finally {
+                setLoading(false)
+            }
+        }
+
+        fetchSession()
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [])
+
+    /* ------------------------------------------------------------------
      * Navigate based on the authenticated user's role
      * ------------------------------------------------------------------*/
     useEffect(() => {
         if (!loading && user?.role) {
             switch (user.role) {
-                case "SystemAdmin":
                 case "admin":
                     navigate("/admin")
                     break

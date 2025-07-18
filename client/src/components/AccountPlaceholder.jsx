@@ -61,14 +61,14 @@ const AccountPlaceholder = () => {
                             <Menu.Separator />
                             <Menu.Item
                                 value="settings"
-                                className="bg-white"
+                                className="bg-white cursor-pointer"
                                 onClick={() => navigate("/admin/settings")}>
                                 <BiCog className="text-xl" />
                                 Settings
                             </Menu.Item>
                             <Menu.Item
                                 value="logout"
-                                className="bg-white"
+                                className="bg-white cursor-pointer"
                                 onClick={handleLogout}>
                                 <BiLogOut className="text-xl" />
                                 Logout

@@ -4,11 +4,10 @@ import { useAuth } from "../context/auth"
 
 // Images
 import LOGO from "../assets/logo1.png"
-import GoogleIcon from "../assets/google-logo.png"
 
 // UI Components
-import { Button } from "../components/ui/Button"
-import { Separator } from "../components/ui/separator"
+import GoogleButton from "../components/ui/GoogleButton"
+import LoadingButton from "../components/ui/LoadingButton"
 import {
     TooltipProvider,
     Tooltip,
@@ -93,9 +92,13 @@ const Login = () => {
                         <p className="text-red-500 text-sm mt-2">{formError}</p>
                     )}
                     <div id="btn" className="flex justify-center items-center">
-                        <Button className="w-[90%] mt-6" disabled={loading}>
-                            {loading ? "Signing in..." : "Sign in"}
-                        </Button>
+                        <LoadingButton
+                            isLoading={loading}
+                            onClick={handleSubmit}
+                            className="w-[90%] mt-6 bg-primary text-white"
+                            loadingText="Signing in..."
+                            children="Sign in"
+                        />
                     </div>
                 </div>
                 <div className="flex items-center w-full mt-6">
@@ -105,9 +108,7 @@ const Login = () => {
                     </span>
                     {/* <Separator className="flex-grow" /> */}
                 </div>
-                <Button className="w-[90%] mt-6 bg-gray-100 border border-gray-300 hover:bg-gray-200">
-                    <img src={GoogleIcon} alt="Google" className="h-6" />
-                </Button>
+                <GoogleButton className="w-[90%] mt-6 bg-gray-100 border border-gray-300 hover:bg-gray-200" />
                 <p className="text-sm mt-4 text-center">
                     Manual self-registration is disabled.&nbsp;
                     <TooltipProvider>

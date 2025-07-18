@@ -226,20 +226,24 @@ def login():
             )
 
             response.set_cookie(
+                "sb-access-token",
                 auth_response.session.access_token,
                 httponly=True,
                 secure=True,
                 samesite="Strict",
                 expires=access_expires,
+                path="/",
             )
 
             # Refresh token is long-lived (1 week sample)
             response.set_cookie(
+                "sb-refresh-token",
                 auth_response.session.refresh_token,
                 httponly=True,
                 secure=True,
                 samesite="Strict",
                 max_age=60 * 60 * 24 * 7,
+                path="/",
             )
 
             return response, 200
@@ -287,3 +291,64 @@ def logout():
             "message": "Error during logout",
             "details": str(e)
         }), 500
+
+@auth_bp.route('/session', methods=['GET'])
+def get_session():
+    """Return the currently authenticated user if a valid cookie-based session exists."""
+    try:
+        token = request.cookies.get("sb-access-token")
+        if not token:
+            return jsonify({"status": "error", "message": "No active session"}), 401
+
+        # Validate / decode the JWT with Supabase
+        user_resp = supabase.auth.get_user(token)
+        if user_resp.user is None:
+            return jsonify({"status": "error", "message": "Invalid session"}), 401
+
+        user = user_resp.user
+
+        # ------------------------------------------------------------
+        # Optionally enrich with additional details from the USERS table
+        # ------------------------------------------------------------
+        user_detail = None
+        try:
+            user_record_resp = (
+                supabase_service_role_client()
+                .table("users")
+                .select("*")
+                .eq("id", user.id)
+                .single()
+                .execute()
+            )
+            if user_record_resp and user_record_resp.data:
+                usr = user_record_resp.data
+                user_detail = {
+                    "firstname": usr.get("firstname"),
+                    "lastname": usr.get("lastname"),
+                    "specialty": usr.get("specialty"),
+                    "role": usr.get("role"),
+                    "id": usr.get("id"),
+                }
+        except Exception as e:
+            print(f"Error fetching user details: {str(e)}")
+
+        role = (user.user_metadata or {}).get("role") or (user_detail.get("role") if user_detail else None)
+
+        return (
+            jsonify(
+                {
+                    "status": "success",
+                    "user": {
+                        "id": user.id,
+                        "email": user.email,
+                        "role": role,
+                        "metadata": user.user_metadata,
+                    },
+                    "user_detail": user_detail,
+                }
+            ),
+            200,
+        )
+
+    except Exception as e:
+        return jsonify({"status": "error", "message": "Failed to fetch session", "details": str(e)}), 500
