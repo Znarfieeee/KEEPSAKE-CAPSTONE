@@ -47,15 +47,9 @@ const AccountPlaceholder = () => {
                                 </h1>
                                 {userDetail?.specialty && (
                                     <p className="text-sm text-gray-500 capitalize">
-                                        {user?.role === "SystemAdmin" ||
-                                        user?.role === "admin"
-                                            ? "Admin"
+                                        {user?.role === "admin"
+                                            ? "System Administrator"
                                             : userDetail?.specialty}
-                                    </p>
-                                )}
-                                {user?.email && (
-                                    <p className="text-sm text-gray-500">
-                                        {user.email}
                                     </p>
                                 )}
                                 {user?.role && (
@@ -67,14 +61,14 @@ const AccountPlaceholder = () => {
                             <Menu.Separator />
                             <Menu.Item
                                 value="settings"
-                                className="bg-white"
+                                className="bg-white cursor-pointer"
                                 onClick={() => navigate("/admin/settings")}>
                                 <BiCog className="text-xl" />
                                 Settings
                             </Menu.Item>
                             <Menu.Item
                                 value="logout"
-                                className="bg-white"
+                                className="bg-white cursor-pointer"
                                 onClick={handleLogout}>
                                 <BiLogOut className="text-xl" />
                                 Logout

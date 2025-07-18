@@ -1,0 +1,437 @@
+-- Keepsake Healthcare Database Schema
+-- Optimized for Supabase with proper constraints and indexes
+
+-- Enable UUID extension (required for Supabase)
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+-- Create tables in dependency order
+
+-- 1. Users table (depends on auth.users from Supabase Auth)
+CREATE TABLE public.users (
+    user_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    email VARCHAR(255) NOT NULL UNIQUE,
+    password TEXT NOT NULL,
+    firstname VARCHAR(100) NOT NULL,
+    lastname VARCHAR(100) NOT NULL,
+    role VARCHAR(50) NOT NULL CHECK (role IN ('doctor', 'nurse', 'admin', 'parent', 'guardian')),
+    specialty VARCHAR(100),
+    license_number VARCHAR(50),
+    phone_number VARCHAR(20),
+    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+    is_active BOOLEAN DEFAULT false,
+    is_subscribed BOOLEAN DEFAULT false
+);
+
+-- 2. Healthcare Facilities
+CREATE TABLE public.healthcare_facilities (
+    facility_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    facility_name VARCHAR(255) NOT NULL,
+    address TEXT NOT NULL,
+    city VARCHAR(100) NOT NULL,
+    zip_code VARCHAR(20) NOT NULL, -- Fixed typo: zip_cide -> zip_code
+    contact_number VARCHAR(20) NOT NULL,
+    email VARCHAR(255) NOT NULL,
+    website VARCHAR(255),
+    subscription_status VARCHAR(50) DEFAULT 'active' CHECK (subscription_status IN ('active', 'inactive', 'suspended')),
+    subscription_expires DATE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    created_by UUID NOT NULL,
+    CONSTRAINT healthcare_facilities_created_by_fkey FOREIGN KEY (created_by) REFERENCES public.users(user_id)
+);
+
+-- 3. Patients
+CREATE TABLE public.patients (
+    patient_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    firstname VARCHAR(100) NOT NULL,
+    lastname VARCHAR(100) NOT NULL,
+    date_of_birth DATE NOT NULL,
+    gender VARCHAR(20) NOT NULL CHECK (gender IN ('male', 'female', 'other')),
+    birth_weight DECIMAL(5,2), -- More precise than real
+    birth_height DECIMAL(5,2), -- More precise than real
+    bloodtype VARCHAR(10),
+    gestation_weeks SMALLINT CHECK (gestation_weeks > 0 AND gestation_weeks <= 50),
+    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    is_active BOOLEAN NOT NULL DEFAULT true
+);
+
+-- 4. Facility Users (Junction table)
+CREATE TABLE public.facility_users (
+    facility_id UUID NOT NULL,
+    user_id UUID NOT NULL,
+    role VARCHAR(50) NOT NULL CHECK (role IN ('doctor', 'nurse', 'admin', 'staff')),
+    start_date DATE DEFAULT CURRENT_DATE,
+    end_date DATE,
+    PRIMARY KEY (facility_id, user_id),
+    CONSTRAINT facility_users_facility_id_fkey FOREIGN KEY (facility_id) REFERENCES public.healthcare_facilities(facility_id) ON DELETE CASCADE,
+    CONSTRAINT facility_users_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(user_id) ON DELETE CASCADE,
+    CONSTRAINT valid_date_range CHECK (end_date IS NULL OR end_date >= start_date)
+);
+
+-- 5. Patient Facility Assignment
+CREATE TABLE public.patient_facility (
+    pf_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    patient_id UUID NOT NULL,
+    facility_id UUID NOT NULL,
+    assigned_by UUID NOT NULL,
+    assigned_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    notes TEXT,
+    is_active BOOLEAN DEFAULT true,
+    CONSTRAINT patient_facility_facility_id_fkey FOREIGN KEY (facility_id) REFERENCES public.healthcare_facilities(facility_id),
+    CONSTRAINT patient_facility_patient_id_fkey FOREIGN KEY (patient_id) REFERENCES public.patients(patient_id),
+    CONSTRAINT patient_facility_assigned_by_fkey FOREIGN KEY (assigned_by) REFERENCES public.users(user_id),
+    CONSTRAINT unique_active_patient_facility UNIQUE (patient_id, facility_id) -- Removed conflicting UNIQUE constraints
+);
+
+-- 6. Parent Access
+CREATE TABLE public.parent_access (
+    access_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    patient_id UUID NOT NULL,
+    user_id UUID NOT NULL,
+    relationship VARCHAR(50) CHECK (relationship IN ('parent', 'guardian', 'caregiver', 'family_member')),
+    granted_by UUID,
+    granted_at DATE DEFAULT CURRENT_DATE,
+    revoked_at DATE,
+    is_active BOOLEAN NOT NULL DEFAULT true,
+    CONSTRAINT parent_access_patient_id_fkey FOREIGN KEY (patient_id) REFERENCES public.patients(patient_id),
+    CONSTRAINT parent_access_granted_by_fkey FOREIGN KEY (granted_by) REFERENCES public.users(user_id),
+    CONSTRAINT parent_access_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(user_id),
+    CONSTRAINT valid_access_dates CHECK (revoked_at IS NULL OR revoked_at >= granted_at)
+);
+
+-- 7. Medical Visits
+CREATE TABLE public.medical_visits (
+    visit_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    patient_id UUID NOT NULL,
+    facility_id UUID NOT NULL,
+    doctor_id UUID NOT NULL,
+    visit_date DATE NOT NULL,
+    visit_type TEXT NOT NULL,
+    diagnosis TEXT,
+    treatment_plan TEXT,
+    follow_up_date TIMESTAMP WITH TIME ZONE,
+    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+    created_by UUID NOT NULL,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_by UUID,
+    CONSTRAINT medical_visits_patient_id_fkey FOREIGN KEY (patient_id) REFERENCES public.patients(patient_id),
+    CONSTRAINT medical_visits_facility_id_fkey FOREIGN KEY (facility_id) REFERENCES public.healthcare_facilities(facility_id),
+    CONSTRAINT medical_visits_doctor_id_fkey FOREIGN KEY (doctor_id) REFERENCES public.users(user_id),
+    CONSTRAINT medical_visits_created_by_fkey FOREIGN KEY (created_by) REFERENCES public.users(user_id),
+    CONSTRAINT medical_visits_updated_by_fkey FOREIGN KEY (updated_by) REFERENCES public.users(user_id)
+);
+
+-- 8. Appointments
+CREATE TABLE public.appointments (
+    appointment_id BIGSERIAL PRIMARY KEY,
+    patient_id UUID NOT NULL,
+    facility_id UUID NOT NULL,
+    doctor_id UUID NOT NULL,
+    scheduled_by UUID NOT NULL,
+    appointment_date TIMESTAMP WITH TIME ZONE NOT NULL,
+    status VARCHAR(50) DEFAULT 'scheduled' CHECK (status IN ('scheduled', 'confirmed', 'cancelled', 'completed', 'no_show')),
+    reason TEXT,
+    notes TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    CONSTRAINT appointments_doctor_id_fkey FOREIGN KEY (doctor_id) REFERENCES public.users(user_id),
+    CONSTRAINT appointments_scheduled_by_fkey FOREIGN KEY (scheduled_by) REFERENCES public.users(user_id),
+    CONSTRAINT appointments_patient_id_fkey FOREIGN KEY (patient_id) REFERENCES public.patients(patient_id),
+    CONSTRAINT appointments_facility_id_fkey FOREIGN KEY (facility_id) REFERENCES public.healthcare_facilities(facility_id)
+);
+
+-- 9. Allergies
+CREATE TABLE public.allergies (
+    allergy_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    patient_id UUID NOT NULL,
+    allergen VARCHAR(255),
+    reaction_type VARCHAR(100),
+    severity VARCHAR(50) CHECK (severity IN ('mild', 'moderate', 'severe', 'life_threatening')),
+    date_identified DATE,
+    notes TEXT,
+    recorded_by UUID,
+    recorded_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    CONSTRAINT allergies_patient_id_fkey FOREIGN KEY (patient_id) REFERENCES public.patients(patient_id),
+    CONSTRAINT allergies_recorded_by_fkey FOREIGN KEY (recorded_by) REFERENCES public.users(user_id)
+);
+
+-- 10. Anthropometric Measurements
+CREATE TABLE public.anthropometric_measurements (
+    am_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    patient_id UUID NOT NULL,
+    weight DECIMAL(5,2), -- More precise than real
+    height DECIMAL(5,2), -- More precise than real
+    head_circumference DECIMAL(5,2), -- Renamed from head_cc for clarity
+    chest_circumference DECIMAL(5,2), -- Renamed from chest_cc for clarity
+    abdominal_circumference DECIMAL(5,2), -- Renamed from abdominal for clarity
+    measurement_date DATE DEFAULT CURRENT_DATE,
+    recorded_by UUID,
+    recorded_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    CONSTRAINT anthropometric_measurements_patient_id_fkey FOREIGN KEY (patient_id) REFERENCES public.patients(patient_id),
+    CONSTRAINT anthropometric_measurements_recorded_by_fkey FOREIGN KEY (recorded_by) REFERENCES public.users(user_id)
+);
+
+-- 11. Delivery Record
+CREATE TABLE public.delivery_record (
+    delivery_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    patient_id UUID,
+    type_of_delivery VARCHAR(100),
+    apgar_score DECIMAL(3,1) CHECK (apgar_score >= 0 AND apgar_score <= 10), -- Renamed from APGAR_SCORE
+    mother_blood_type VARCHAR(10), -- Renamed from mother_bt
+    father_blood_type VARCHAR(10), -- Renamed from father_bt
+    patient_blood_type VARCHAR(10), -- Renamed from patient_bt
+    distinguishable_marks TEXT,
+    vitamin_k_date DATE, -- Renamed from vit_k_date
+    vitamin_k_location VARCHAR(100), -- Renamed from vit_k_loc
+    hepatitis_b_date DATE, -- Renamed from hep_b_date
+    hepatitis_b_location VARCHAR(100), -- Renamed from hep_b_loc
+    bcg_vaccination_date DATE, -- Renamed from bcg_vax_date
+    bcg_vaccination_location VARCHAR(100), -- Renamed from bcg_vax_loc
+    other_medications TEXT,
+    discharge_diagnosis TEXT,
+    follow_up_visit_date DATE, -- Renamed from follow_up_visit
+    follow_up_visit_site VARCHAR(255),
+    obstetrician UUID,
+    pediatrician UUID,
+    CONSTRAINT delivery_record_patient_id_fkey FOREIGN KEY (patient_id) REFERENCES public.patients(patient_id),
+    CONSTRAINT delivery_record_obstetrician_fkey FOREIGN KEY (obstetrician) REFERENCES public.users(user_id),
+    CONSTRAINT delivery_record_pediatrician_fkey FOREIGN KEY (pediatrician) REFERENCES public.users(user_id)
+);
+
+-- 12. Growth Milestones
+CREATE TABLE public.growth_milestones (
+    milestone_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    patient_id UUID NOT NULL,
+    milestone_type VARCHAR(100) NOT NULL,
+    milestone_date DATE NOT NULL,
+    description TEXT,
+    notes TEXT,
+    recorded_by UUID NOT NULL,
+    recorded_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+    CONSTRAINT growth_milestones_patient_id_fkey FOREIGN KEY (patient_id) REFERENCES public.patients(patient_id),
+    CONSTRAINT growth_milestones_recorded_by_fkey FOREIGN KEY (recorded_by) REFERENCES public.users(user_id)
+);
+
+-- 13. Screening Tests
+CREATE TABLE public.screening_tests (
+    st_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    patient_id UUID NOT NULL,
+    ens_date DATE,
+    ens_remarks BOOLEAN,
+    nhs_date DATE,
+    nhs_right_ear BOOLEAN, -- Renamed from nhs_r_ear
+    nhs_left_ear BOOLEAN, -- Renamed from nhs_l_ear
+    pos_date DATE,
+    pos_for_cchd_right BOOLEAN, -- Renamed from pos_for_cchd_r
+    pos_for_cchd_left BOOLEAN, -- Renamed from pos_for_cchd_l
+    ror_date DATE,
+    ror_remarks VARCHAR(255), -- Fixed typo: ror_remakrs -> ror_remarks
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    CONSTRAINT screening_tests_patient_id_fkey FOREIGN KEY (patient_id) REFERENCES public.patients(patient_id)
+);
+
+-- 14. Vaccinations
+CREATE TABLE public.vaccinations (
+    vax_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    patient_id UUID NOT NULL,
+    visit_id UUID,
+    vaccine_name VARCHAR(255), -- Renamed from vax_name
+    dose_number SMALLINT CHECK (dose_number > 0),
+    administered_date TIMESTAMP WITH TIME ZONE,
+    administered_by UUID,
+    manufacturer VARCHAR(255),
+    lot_number VARCHAR(100),
+    administration_site VARCHAR(100),
+    next_dose_due DATE,
+    notes TEXT,
+    recorded_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    CONSTRAINT vaccinations_administered_by_fkey FOREIGN KEY (administered_by) REFERENCES public.users(user_id),
+    CONSTRAINT vaccinations_patient_id_fkey FOREIGN KEY (patient_id) REFERENCES public.patients(patient_id),
+    CONSTRAINT vaccinations_visit_id_fkey FOREIGN KEY (visit_id) REFERENCES public.medical_visits(visit_id)
+);
+
+-- 15. Invite Tokens
+CREATE TABLE public.invite_tokens (
+    inv_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    email VARCHAR(255) NOT NULL,
+    child_id UUID NOT NULL,
+    token TEXT NOT NULL UNIQUE,
+    expires_at TIMESTAMP WITH TIME ZONE NOT NULL,
+    created_by UUID NOT NULL,
+    consumed_at TIMESTAMP WITH TIME ZONE, -- Fixed typo: consumbed_at -> consumed_at
+    CONSTRAINT invite_tokens_created_by_fkey FOREIGN KEY (created_by) REFERENCES public.users(user_id),
+    CONSTRAINT invite_tokens_child_id_fkey FOREIGN KEY (child_id) REFERENCES public.patients(patient_id),
+    CONSTRAINT valid_expiry CHECK (expires_at > NOW())
+);
+
+-- 16. QR Codes
+CREATE TABLE public.qr_codes (
+    qr_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    reference_type VARCHAR(50) NOT NULL CHECK (reference_type IN ('patient', 'visit', 'appointment', 'vaccination')),
+    reference_id UUID NOT NULL,
+    generated_by UUID,
+    generated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    expires_at TIMESTAMP WITH TIME ZONE,
+    access_count INTEGER DEFAULT 0,
+    last_accessed_at TIMESTAMP WITH TIME ZONE,
+    is_active BOOLEAN DEFAULT true,
+    CONSTRAINT qr_codes_generated_by_fkey FOREIGN KEY (generated_by) REFERENCES public.users(user_id),
+    CONSTRAINT valid_qr_expiry CHECK (expires_at IS NULL OR expires_at > generated_at)
+);
+
+-- 17. Audit Logs
+CREATE TABLE public.audit_logs (
+    log_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id UUID NOT NULL,
+    action_type VARCHAR(50) NOT NULL CHECK (action_type IN ('CREATE', 'UPDATE', 'DELETE', 'VIEW')),
+    table_name VARCHAR(100) NOT NULL,
+    record_id UUID NOT NULL, -- Renamed from recorded_id
+    patient_id UUID NOT NULL,
+    action_timestamp TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+    ip_address INET, -- Changed from VARCHAR to INET for better IP storage
+    old_values JSONB,
+    new_values JSONB,
+    CONSTRAINT audit_logs_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(user_id),
+    CONSTRAINT audit_logs_patient_id_fkey FOREIGN KEY (patient_id) REFERENCES public.patients(patient_id)
+);
+
+-- CREATE INDEXES FOR PERFORMANCE OPTIMIZATION
+
+-- Users indexes
+CREATE INDEX idx_users_email ON public.users(email);
+CREATE INDEX idx_users_role ON public.users(role);
+CREATE INDEX idx_users_active ON public.users(is_active);
+
+-- Healthcare facilities indexes
+CREATE INDEX idx_facilities_city ON public.healthcare_facilities(city);
+CREATE INDEX idx_facilities_subscription ON public.healthcare_facilities(subscription_status);
+
+-- Patients indexes
+CREATE INDEX idx_patients_name ON public.patients(lastname, firstname);
+CREATE INDEX idx_patients_dob ON public.patients(date_of_birth);
+CREATE INDEX idx_patients_active ON public.patients(is_active);
+
+-- Medical visits indexes
+CREATE INDEX idx_visits_patient ON public.medical_visits(patient_id);
+CREATE INDEX idx_visits_doctor ON public.medical_visits(doctor_id);
+CREATE INDEX idx_visits_facility ON public.medical_visits(facility_id);
+CREATE INDEX idx_visits_date ON public.medical_visits(visit_date);
+CREATE INDEX idx_visits_created_at ON public.medical_visits(created_at);
+
+-- Appointments indexes
+CREATE INDEX idx_appointments_patient ON public.appointments(patient_id);
+CREATE INDEX idx_appointments_doctor ON public.appointments(doctor_id);
+CREATE INDEX idx_appointments_date ON public.appointments(appointment_date);
+CREATE INDEX idx_appointments_status ON public.appointments(status);
+
+-- Allergies indexes
+CREATE INDEX idx_allergies_patient ON public.allergies(patient_id);
+CREATE INDEX idx_allergies_severity ON public.allergies(severity);
+
+-- Anthropometric measurements indexes
+CREATE INDEX idx_measurements_patient ON public.anthropometric_measurements(patient_id);
+CREATE INDEX idx_measurements_date ON public.anthropometric_measurements(measurement_date);
+
+-- Vaccinations indexes
+CREATE INDEX idx_vaccinations_patient ON public.vaccinations(patient_id);
+CREATE INDEX idx_vaccinations_visit ON public.vaccinations(visit_id);
+CREATE INDEX idx_vaccinations_date ON public.vaccinations(administered_date);
+CREATE INDEX idx_vaccinations_next_due ON public.vaccinations(next_dose_due);
+
+-- Growth milestones indexes
+CREATE INDEX idx_milestones_patient ON public.growth_milestones(patient_id);
+CREATE INDEX idx_milestones_date ON public.growth_milestones(milestone_date);
+CREATE INDEX idx_milestones_type ON public.growth_milestones(milestone_type);
+
+-- Screening tests indexes
+CREATE INDEX idx_screening_patient ON public.screening_tests(patient_id);
+
+-- Parent access indexes
+CREATE INDEX idx_parent_access_patient ON public.parent_access(patient_id);
+CREATE INDEX idx_parent_access_user ON public.parent_access(user_id);
+CREATE INDEX idx_parent_access_active ON public.parent_access(is_active);
+
+-- Audit logs indexes
+CREATE INDEX idx_audit_logs_user ON public.audit_logs(user_id);
+CREATE INDEX idx_audit_logs_patient ON public.audit_logs(patient_id);
+CREATE INDEX idx_audit_logs_timestamp ON public.audit_logs(action_timestamp);
+CREATE INDEX idx_audit_logs_table ON public.audit_logs(table_name);
+
+-- QR codes indexes
+CREATE INDEX idx_qr_codes_reference ON public.qr_codes(reference_type, reference_id);
+CREATE INDEX idx_qr_codes_active ON public.qr_codes(is_active);
+
+-- Invite tokens indexes
+CREATE INDEX idx_invite_tokens_email ON public.invite_tokens(email);
+CREATE INDEX idx_invite_tokens_expires ON public.invite_tokens(expires_at);
+CREATE INDEX idx_invite_tokens_child ON public.invite_tokens(child_id);
+
+-- Delivery record indexes
+CREATE INDEX idx_delivery_patient ON public.delivery_record(patient_id);
+
+-- TRIGGERS FOR AUTOMATIC TIMESTAMP UPDATES
+
+-- Function to update timestamps
+CREATE OR REPLACE FUNCTION update_updated_at_column()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.updated_at = NOW();
+    RETURN NEW;
+END;
+$$ language 'plpgsql';
+
+-- Apply triggers to tables with updated_at columns
+CREATE TRIGGER update_users_updated_at BEFORE UPDATE ON public.users
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+CREATE TRIGGER update_patients_updated_at BEFORE UPDATE ON public.patients
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+CREATE TRIGGER update_appointments_updated_at BEFORE UPDATE ON public.appointments
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+CREATE TRIGGER update_medical_visits_updated_at BEFORE UPDATE ON public.medical_visits
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+-- ENABLE ROW LEVEL SECURITY (RLS) - Important for Supabase
+ALTER TABLE public.users ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.patients ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.medical_visits ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.appointments ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.allergies ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.vaccinations ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.parent_access ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.audit_logs ENABLE ROW LEVEL SECURITY;
+
+-- BASIC RLS POLICIES (You'll need to customize these based on your app's requirements)
+-- Example: Users can only see their own data
+CREATE POLICY "Users can view own profile" ON public.users
+    FOR SELECT USING (auth.uid() = user_id);
+
+-- Example: Healthcare providers can view patients at their facilities
+CREATE POLICY "Healthcare providers can view facility patients" ON public.patients
+    FOR SELECT USING (
+        EXISTS (
+            SELECT 1 FROM public.facility_users fu
+            WHERE fu.user_id = auth.uid()
+            AND fu.facility_id IN (
+                SELECT pf.facility_id FROM public.patient_facility pf
+                WHERE pf.patient_id = patients.patient_id
+            )
+        )
+    );
+
+-- COMMENTS FOR DOCUMENTATION
+COMMENT ON TABLE public.users IS 'System users including healthcare providers and parents/guardians';
+COMMENT ON TABLE public.patients IS 'Patient records for children in the healthcare system';
+COMMENT ON TABLE public.medical_visits IS 'Medical visit records and consultations';
+COMMENT ON TABLE public.appointments IS 'Scheduled appointments between patients and healthcare providers';
+COMMENT ON TABLE public.allergies IS 'Patient allergy information';
+COMMENT ON TABLE public.vaccinations IS 'Vaccination records and schedules';
+COMMENT ON TABLE public.audit_logs IS 'Audit trail for all system actions';
+
+-- SAMPLE DATA INSERTION (Optional - for testing)
+-- INSERT INTO public.users (email, password, firstname, lastname, role, is_active)
+-- VALUES ('admin@example.com', 'hashed_password', 'Admin', 'User', 'admin', true);
+
+COMMIT;

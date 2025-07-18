@@ -34,3 +34,14 @@ export const refresh = async () => {
     )
     return response.data
 }
+
+// ------------------------------------------------------------
+// Fetch the currently authenticated user using cookie-based session
+// ------------------------------------------------------------
+export const getSession = async () => {
+    const response = await axios.get(
+        `${backendConnection()}/session`,
+        axiosConfig
+    )
+    return response.data
+}
