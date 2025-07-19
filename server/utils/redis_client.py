@@ -1,6 +1,5 @@
-import os
+from config.settings import settings
 import redis
-
 
 def get_redis_client(db: int = 0):
     """Return a configured Redis client.
@@ -15,11 +14,11 @@ def get_redis_client(db: int = 0):
     logical Redis database (e.g. 0 for general use, 1 for sessions).
     """
     return redis.Redis(
-        host=os.environ.get("REDIS_HOST", "localhost"),
-        port=int(os.environ.get("REDIS_PORT", 6379)),
+        host=settings.REDIS_HOST,
+        port=settings.REDIS_PORT,
         db=db,
         decode_responses=True,
-        ssl=os.environ.get("REDIS_SSL", "false").lower() == "true",
+        ssl=settings.REDIS_SSL,
     )
 
 

@@ -8,6 +8,7 @@ import os
 import logging
 from flask_session import Session
 from utils.redis_client import get_redis_client
+from utils.audit_logger import configure_audit_logger
 
 app = Flask("keepsake")
 
@@ -51,14 +52,8 @@ CORS(
 
 # Configure logging for HIPAA audit trail
 if not app.debug:
-    # Production logging setup
-    file_handler = logging.FileHandler('logs/keepsake_audit.log')
-    file_handler.setFormatter(logging.Formatter(
-        '%(asctime)s %(levelname)s: %(message)s [in %(pathname)s:%(lineno)d]'
-    ))
-    file_handler.setLevel(logging.INFO)
-    app.logger.addHandler(file_handler)
-    app.logger.setLevel(logging.INFO)
+    # Centralised audit logger setup (attaches handlers to app.logger)
+    configure_audit_logger(attach_to_logger=app.logger)
     app.logger.info('Keepsake medical app startup')
 
 # Health check endpoint
