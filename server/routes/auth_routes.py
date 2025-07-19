@@ -1,17 +1,16 @@
 from flask import Blueprint, request, jsonify
 from config.settings import supabase, supabase_service_role_client
 import datetime
+import redis, json, logging
 from gotrue.errors import AuthApiError
+from functools import wraps
 
-# ------------------------------------------------------------------
-# Custom helpers & constants
-# ------------------------------------------------------------------
 # Import token verification helper
 from utils.token_utils import verify_supabase_jwt, SupabaseJWTError
 
 # Use project-specific cookie names instead of the Supabase defaults
-ACCESS_COOKIE = "sb-access-token"      # short-lived JWT
-REFRESH_COOKIE = "sb-refresh-token"    # long-lived refresh token
+ACCESS_COOKIE = "keepsake_session"      # short-lived JWT
+REFRESH_COOKIE = "keepsake_session"    # long-lived refresh token
 
 auth_bp = Blueprint('auth', __name__)
 
@@ -157,14 +156,6 @@ def login():
         email = data.get('email')
         password = data.get('password')
 
-        
-        # ------------------------------------------------------------
-        # Fetch the full user record from the USERS table using the
-        # service-role client. Using the elevated client avoids RLS
-        # errors (code 42501).
-        # ------------------------------------------------------------
- 
-        user_detail = None  # Default – will remain None if query fails
         try:
             # Use service role client to bypass RLS
             sr_client = supabase_service_role_client().auth.admin

@@ -1,12 +1,13 @@
 {
     "cSpell.words": [
+        "dotenv",
         "gensalt",
         "hashpw",
         "jsonify",
+        "levelname",
         "pediapro",
         "supabase",
-        "vite",
-        "dotenv"
+        "vite"
     ],
     "postman.settings.dotenv-detection-notification-visibility": false
 }

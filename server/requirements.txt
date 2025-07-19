@@ -1,0 +1,19 @@
+# Existing dependencies
+flask
+flask-cors
+supabase
+python-dotenv
+gotrue
+
+# Redis session management
+redis>=4.0.0
+flask-session
+
+# JWT token verification (already in your utils)
+PyJWT>=2.0.0
+cryptography
+requests
+
+# Additional security and logging
+werkzeug>=2.0.0
+gunicorn  # For production deployment
