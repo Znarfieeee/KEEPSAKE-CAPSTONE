@@ -1,4 +1,5 @@
 import { createBrowserRouter, RouterProvider, Outlet } from "react-router-dom"
+import ProtectedRoute from "./components/ProtectedRoute"
 import { AuthProvider } from "./context/AuthContext"
 
 // Pages
@@ -33,7 +34,11 @@ function App() {
                 },
                 {
                     path: "/admin",
-                    element: <AdminLayout />,
+                    element: (
+                        <ProtectedRoute requiredRole="admin">
+                            <AdminLayout />
+                        </ProtectedRoute>
+                    ),
                     children: [
                         {
                             index: true,

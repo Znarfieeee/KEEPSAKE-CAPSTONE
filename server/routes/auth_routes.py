@@ -3,6 +3,16 @@ from config.settings import supabase, supabase_service_role_client
 import datetime
 from gotrue.errors import AuthApiError
 
+# ------------------------------------------------------------------
+# Custom helpers & constants
+# ------------------------------------------------------------------
+# Import token verification helper
+from utils.token_utils import verify_supabase_jwt, SupabaseJWTError
+
+# Use project-specific cookie names instead of the Supabase defaults
+ACCESS_COOKIE = "sb-access-token"      # short-lived JWT
+REFRESH_COOKIE = "sb-refresh-token"    # long-lived refresh token
+
 auth_bp = Blueprint('auth', __name__)
 
 @auth_bp.route('/add_user', methods=['POST'])
@@ -98,7 +108,7 @@ def add_user():
             500,
         )
 
-# Invite a new user to the platform via email
+# Invite new user to the platform via email
 @auth_bp.route('/create_invite', methods=['POST'])
 def create_invite():
     """Create an invitation for a new user using Supabase's invite system"""
@@ -225,23 +235,27 @@ def login():
                 auth_response.session.expires_at
             )
 
+            # Decide whether to mark cookies as "secure" (HTTPS only)
+            secure_cookie = request.is_secure  # False on http://localhost
+
+            # Access token (short-lived)
             response.set_cookie(
-                "sb-access-token",
+                ACCESS_COOKIE,
                 auth_response.session.access_token,
                 httponly=True,
-                secure=True,
-                samesite="Strict",
+                secure=secure_cookie,
+                samesite="Lax",
                 expires=access_expires,
                 path="/",
             )
 
-            # Refresh token is long-lived (1 week sample)
+            # Refresh token (long-lived)
             response.set_cookie(
-                "sb-refresh-token",
+                REFRESH_COOKIE,
                 auth_response.session.refresh_token,
                 httponly=True,
-                secure=True,
-                samesite="Strict",
+                secure=secure_cookie,
+                samesite="Lax",
                 max_age=60 * 60 * 24 * 7,
                 path="/",
             )
@@ -271,17 +285,18 @@ def logout():
             "message": "Logged out successfully",
         })
         
+        secure_cookie = request.is_secure
         response.delete_cookie(
-            "sb-access-token",
+            ACCESS_COOKIE,
             path="/",
-            secure=True,
-            samesite="Strict",
+            secure=secure_cookie,
+            samesite="Lax",
         )
         response.delete_cookie(
-            "sb-refresh-token",
+            REFRESH_COOKIE,
             path="/",
-            secure=True,
-            samesite="Strict",
+            secure=secure_cookie,
+            samesite="Lax",
         )
 
         return response, 200
@@ -296,12 +311,21 @@ def logout():
 def get_session():
     """Return the currently authenticated user if a valid cookie-based session exists."""
     try:
-        token = request.cookies.get("sb-access-token")
+        token = request.cookies.get(ACCESS_COOKIE)
+        print(token)
         if not token:
             return jsonify({"status": "error", "message": "No active session"}), 401
 
-        # Validate / decode the JWT with Supabase
-        user_resp = supabase.auth.get_user(token)
+        # First, verify the token signature locally for quick fail-fast.
+        try:
+            claims = verify_supabase_jwt(token)
+        except SupabaseJWTError as e:
+            return jsonify({"status": "error", "message": str(e)}), 401
+        
+        sr_client = supabase_service_role_client()
+
+        # Retrieve latest user info from Supabase (optional but gives metadata)
+        user_resp = sr_client.auth.get_user(token)
         if user_resp.user is None:
             return jsonify({"status": "error", "message": "Invalid session"}), 401
 
@@ -352,3 +376,58 @@ def get_session():
 
     except Exception as e:
         return jsonify({"status": "error", "message": "Failed to fetch session", "details": str(e)}), 500
+
+
+# ------------------------------------------------------------------
+# Token refresh endpoint – uses the refresh token cookie to mint new JWTs
+# ------------------------------------------------------------------
+
+
+@auth_bp.route('/token/refresh', methods=['POST'])
+def refresh_token():
+    """Issue a new access token using the refresh token stored in the cookie."""
+    try:
+        refresh_tok = request.cookies.get(REFRESH_COOKIE)
+        if not refresh_tok:
+            return jsonify({"status": "error", "message": "No refresh token"}), 401
+
+        # Refresh the session with Supabase
+        try:
+            refreshed = supabase.auth.refresh_session(refresh_tok)
+        except Exception as exc:
+            return jsonify({"status": "error", "message": f"Failed to refresh session: {exc}"}), 401
+
+        # Generate response and set the new cookies
+        response = jsonify({
+            "status": "success",
+            "message": "Session refreshed",
+            "expires_at": refreshed.session.expires_at,
+        })
+
+        access_expires = datetime.datetime.utcfromtimestamp(refreshed.session.expires_at)
+        secure_cookie = request.is_secure
+
+        response.set_cookie(
+            ACCESS_COOKIE,
+            refreshed.session.access_token,
+            httponly=True,
+            secure=secure_cookie,
+            samesite="Lax",
+            expires=access_expires,
+            path="/",
+        )
+
+        response.set_cookie(
+            REFRESH_COOKIE,
+            refreshed.session.refresh_token,
+            httponly=True,
+            secure=secure_cookie,
+            samesite="Lax",
+            max_age=60 * 60 * 24 * 7,
+            path="/",
+        )
+
+        return response, 200
+
+    except Exception as e:
+        return jsonify({"status": "error", "message": "Unexpected error during refresh", "details": str(e)}), 500

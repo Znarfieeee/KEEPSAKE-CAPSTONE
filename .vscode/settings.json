@@ -7,5 +7,6 @@
         "supabase",
         "vite",
         "dotenv"
-    ]
+    ],
+    "postman.settings.dotenv-detection-notification-visibility": false
 }

@@ -59,6 +59,7 @@ export const AuthProvider = ({ children }) => {
                 if (res.status === "success") {
                     setUser(res.user)
                     setUserDetail(res.user_detail)
+                    console.log("User detail: ", res.user_detail)
                 }
                 // eslint-disable-next-line no-unused-vars
             } catch (_err) {

@@ -36,7 +36,6 @@ def supabase_service_role_client() -> "supabase_py.Client":
 
 try:        
     supabase = supabase_anon_client()
-    
     if supabase:
         print("Successfully connected to supabase!")
     else:
