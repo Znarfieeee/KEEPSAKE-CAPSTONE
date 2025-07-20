@@ -6,6 +6,8 @@ from flask_cors import CORS
 from datetime import timedelta
 import os
 import logging
+import sys
+import traceback
 from flask_session import Session
 from utils.redis_client import get_redis_client
 from utils.audit_logger import configure_audit_logger
@@ -18,7 +20,7 @@ app.register_blueprint(auth_bp)
 app.register_blueprint(facility_bp)
 
 # Redis session configuration (DB 1 reserved for web sessions)
-redis_client = get_redis_client(db=1)
+redis_client = get_redis_client()
 
 # HIPAA/GDPR compliant session configuration
 app.config.update(
@@ -78,6 +80,31 @@ def health_check():
 def landing_page():
     return jsonify({"message": "Success", "status": "success"}), 200
 
+# Add this right after your imports in main.py
+def handle_startup_errors():
+    """Check all critical dependencies before starting"""
+    errors = []
+    print("Checking startup errors...")
+    
+    # Check Redis connection
+    try:
+        ping = redis_client.ping()
+        if ping:
+            print("✅ Redis connection successful")
+        else:
+            errors.append("❌ Redis connection failed")
+            
+    except Exception as e:
+        errors.append(f"❌ Redis connection failed: {str(e)}")
+    
+    if errors:
+        print("🚨 Startup errors detected:")
+        for error in errors:
+            print(f"  {error}")
+        sys.exit(1)
+    
+    print("🚀 All systems ready!")
+
 # Security headers middleware
 @app.after_request
 def add_security_headers(response):
@@ -94,4 +121,5 @@ def add_security_headers(response):
     return response
 
 if __name__ == "__main__":
-    app.run(debug=True, use_reloader=False)
+    handle_startup_errors()
+    app.run(debug=True)
