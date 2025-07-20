@@ -1,6 +1,7 @@
-import logging
-import os
+import logging, os, json
 from typing import Optional
+from functools import wraps
+from flask import request, current_app
 
 
 DEFAULT_LOG_FORMAT = '%(asctime)s %(levelname)s: %(message)s [in %(pathname)s:%(lineno)d]'
@@ -50,4 +51,24 @@ def configure_audit_logger(logfile: str = DEFAULT_LOGFILE_PATH,
     logger.addHandler(file_handler)
     logger.addHandler(stream_handler)
 
-    return logger 
+    return logger
+
+def audit_access(action):
+    """Decorator for HIPAA audit logging"""
+    def decorator(f):
+        @wraps(f)
+        def decorated(*args, **kwargs):
+            user_id = getattr(request, 'current_user', {}).get('id', 'anonymous')
+            patient_id = request.json.get('patient_id') if request.json else request.args.get('patient_id')
+            
+            # Log access attempt
+            current_app.logger.info(f"AUDIT: User {user_id} attempted {action} on patient {patient_id} from IP {request.remote_addr}")
+            
+            result = f(*args, **kwargs)
+            
+            # Log successful access
+            current_app.logger.info(f"AUDIT: User {user_id} successfully performed {action} on patient {patient_id}")
+            
+            return result
+        return decorated
+    return decorator
