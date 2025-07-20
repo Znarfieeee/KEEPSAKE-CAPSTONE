@@ -84,7 +84,7 @@ def landing_page():
 def handle_startup_errors():
     """Check all critical dependencies before starting"""
     errors = []
-    print("Checking startup errors")
+    print("Checking startup errors...")
     
     # Check Redis connection
     try:
