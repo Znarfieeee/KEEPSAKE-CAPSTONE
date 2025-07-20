@@ -1,17 +1,22 @@
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request, jsonify, session, current_app
 from config.settings import supabase, supabase_service_role_client
 import datetime
+import redis, json, logging
 from gotrue.errors import AuthApiError
+from functools import wraps
 
-# ------------------------------------------------------------------
-# Custom helpers & constants
-# ------------------------------------------------------------------
-# Import token verification helper
+from utils.sessions import create_session_id, store_session_data, get_session_data, update_session_activity
+from utils.redis_client import redis_client
+from utils.access_control import require_auth, require_role
+from utils.audit_logger import audit_access
 from utils.token_utils import verify_supabase_jwt, SupabaseJWTError
 
 # Use project-specific cookie names instead of the Supabase defaults
-ACCESS_COOKIE = "sb-access-token"      # short-lived JWT
-REFRESH_COOKIE = "sb-refresh-token"    # long-lived refresh token
+ACCESS_COOKIE = "keepsake_session"      # short-lived JWT
+REFRESH_COOKIE = "keepsake_session"    # long-lived refresh token
+SESSION_PREFIX = "keepsake_session:"
+CACHE_PREFIX = "patient_cache:"
+SESSION_TIMEOUT = 1800 #30 minutes
 
 auth_bp = Blueprint('auth', __name__)
 
@@ -157,96 +162,63 @@ def login():
         email = data.get('email')
         password = data.get('password')
 
-        
-        # ------------------------------------------------------------
-        # Fetch the full user record from the USERS table using the
-        # service-role client. Using the elevated client avoids RLS
-        # errors (code 42501).
-        # ------------------------------------------------------------
- 
-        user_detail = None  # Default – will remain None if query fails
-        try:
-            # Use service role client to bypass RLS
-            sr_client = supabase_service_role_client().auth.admin
- 
-            user_record_resp = (
-                supabase_service_role_client()
-                .table("users")
-                .select("*")
-                .eq("email", email)
-                .single()
-                .execute()
-            )
- 
-            if user_record_resp and user_record_resp.data:
-                # We expect only one record per e-mail. Grab the first.
-                user_record = user_record_resp.data
- 
-                # Build a camel-cased payload that is easier to consume on
-                # the frontend (AccountPlaceholder expects these keys).
-                user_detail = {
-                    "firstname": user_record.get("firstname"),
-                    "lastname": user_record.get("lastname"),
-                    "specialty": user_record.get("specialty"),
-                    "role": user_record.get("role"),
-                    "id": user_record.get("id") or user_record.get("id"),
-                }
- 
-            # Extract role for downstream logic if available
-            user_role = user_detail.get("role") if user_detail else None
- 
-        except Exception as e:
-            # In case of any error (e.g., table doesn't exist), fall back to None.
-            print(f"Error fetching user details: {str(e)}")
-            user_role = None
-            user_detail = None
-
-        # Attempt to sign in
+        # Authenticate with Supabase
         try:
             auth_response = supabase.auth.sign_in_with_password({
                 "email": email,
                 "password": password,
             })
+            
+            user_metadata = auth_response.user.user_metadata or {}
 
-            # ------------------------------------------------------------
-            # Build the JSON payload
-            # ------------------------------------------------------------
-            # Prefer a `role` stored in user_metadata; fall back to the value
-            # fetched from the `USERS` table if present.
-            metadata_role = (auth_response.user.user_metadata or {}).get("role")
-            role = metadata_role or user_role
+            user_data = {
+                'id': auth_response.user.id,
+                'email': auth_response.user.email,
+                'role': user_metadata.get('role'),
+                'firstname': user_metadata.get('firstname', ''),
+                'lastname': user_metadata.get('lastname', ''),
+                'specialty': user_metadata.get('specialty', ''),
+                'license_number': user_metadata.get('license_number', ''),
+                'phone_number': user_metadata.get('phone_number', ''),
+            }
+            
+            supabase_tokens = {
+                'access_token': auth_response.session.access_token,
+                'refresh_token': auth_response.session.refresh_token,
+                'expires_at': auth_response.session.expires_at,
+            }
+            
+            #Create session in Redis
+            session_id = create_session_id()
+            store_session_data(session_id, user_data, supabase_tokens)
+            
+            current_app.logger.info(f"AUDIT: User {email} logged in from IP {request.remote_addr} - Session: {session_id}")                        
             
             response = jsonify(
                 {
                     "status": "success",
                     "message": "Login successful!",
-                    "user": {
-                        "id": auth_response.user.id,
-                        "email": auth_response.user.email,
-                        "role": role,
-                        "metadata": auth_response.user.user_metadata,
-                    },
-                    "user_detail": user_detail,
+                    "user": user_data,
+                    "user_detail": user_data,  # kept for backward compatibility
                     "expires_at": auth_response.session.expires_at,
                 }
             )
-            
+            print(response)
+
+            # Set cookies
+            secure_cookie = request.is_secure
             access_expires = datetime.datetime.utcfromtimestamp(
                 auth_response.session.expires_at
             )
-
-            # Decide whether to mark cookies as "secure" (HTTPS only)
-            secure_cookie = request.is_secure  # False on http://localhost
-
-            # Access token (short-lived)
+            
             response.set_cookie(
-                ACCESS_COOKIE,
-                auth_response.session.access_token,
-                httponly=True,
-                secure=secure_cookie,
-                samesite="Lax",
-                expires=access_expires,
-                path="/",
+                'session_id',
+                session_id,
+                httponly = True,
+                secure = secure_cookie,
+                samesite = "Lax",
+                max_age = SESSION_TIMEOUT,
+                path = "/",
             )
 
             # Refresh token (long-lived)
@@ -256,20 +228,21 @@ def login():
                 httponly=True,
                 secure=secure_cookie,
                 samesite="Lax",
-                max_age=60 * 60 * 24 * 7,
+                max_age=SESSION_TIMEOUT,
                 path="/",
             )
 
             return response, 200
 
         except AuthApiError as auth_error:
-            # Handle specific Supabase auth errors
+            current_app.logger.error(f"AUDIT: Login failed for user {email} from IP {request.remote_addr} - Error: {str(auth_error)}")
             return jsonify({
                 "status": "error",
                 "message": str(auth_error)
             }), 401
 
     except Exception as e:
+        current_app.logger.error(f"AUDIT: Login failed for user {email} from IP {request.remote_addr} - Error: {str(e)}")
         return jsonify({
             "status": "error",
             "message": "An error occurred during login",
@@ -278,156 +251,123 @@ def login():
 
 
 @auth_bp.route('/logout', methods=['POST'])
+@require_auth
 def logout():
     try:
+        session_id = request.cookies.get('session_id')
+        user_id = request.current_user.get('id')
+        
+        # Remove session from Redis
+        if session_id:
+            redis_client.delete(f"{SESSION_PREFIX}{session_id}")
+        
+        # Clear cached patient data for this current user
+        pattern = f"{CACHE_PREFIX}{user_id}*"
+        cached_keys = redis_client.keys(pattern)
+        if cached_keys:
+            redis_client.delete(*cached_keys)
+        
+        current_app.logger.info(f"AUDIT: User {user_id} logged out from IP {request.remote_addr}")
+        
         response = jsonify({
             "status": "success",
             "message": "Logged out successfully",
         })
         
+        # Clear session cookie
         secure_cookie = request.is_secure
         response.delete_cookie(
-            ACCESS_COOKIE,
+            'session_id',
             path="/",
             secure=secure_cookie,
             samesite="Lax",
         )
         response.delete_cookie(
-            REFRESH_COOKIE,
+            'keepsake_session',
             path="/",
             secure=secure_cookie,
             samesite="Lax",
         )
 
         return response, 200
+    
     except Exception as e:
+        current_app.logger.error(f"AUDIT: Logout failed for user {user_id} from IP {request.remote_addr} - Error: {str(e)}")
         return jsonify({
             "status": "error",
             "message": "Error during logout",
             "details": str(e)
         }), 500
-
+        
 @auth_bp.route('/session', methods=['GET'])
 def get_session():
-    """Return the currently authenticated user if a valid cookie-based session exists."""
+    """Get the current user's Redis session data"""
     try:
-        token = request.cookies.get(ACCESS_COOKIE)
-        print(token)
-        if not token:
-            return jsonify({"status": "error", "message": "No active session"}), 401
-
-        # First, verify the token signature locally for quick fail-fast.
-        try:
-            claims = verify_supabase_jwt(token)
-        except SupabaseJWTError as e:
-            return jsonify({"status": "error", "message": str(e)}), 401
+        session_id = request.cookies.get('session_id')
+        if not session_id:
+            return jsonify({
+                "status": "error",
+                "message": "No session found"
+            }), 401
         
-        sr_client = supabase_service_role_client()
+        session_data = get_session_data(session_id)
+        if not session_data:
+            return jsonify({
+                "status": "error", 
+                "message": "Session expired"
+            }), 401
+            
+        update_session_activity(session_id)
+        
+        # Return user data from session
+        user_data = {
+            "id": session_data.get("user_id"),
+            "email": session_data.get("email"),
+            "role": session_data.get("role"),
+            "firstname": session_data.get("firstname"),
+            "lastname": session_data.get("lastname"),
+            "specialty": session_data.get("specialty"),
+        }
 
-        # Retrieve latest user info from Supabase (optional but gives metadata)
-        user_resp = sr_client.auth.get_user(token)
-        if user_resp.user is None:
-            return jsonify({"status": "error", "message": "Invalid session"}), 401
-
-        user = user_resp.user
-
-        # ------------------------------------------------------------
-        # Optionally enrich with additional details from the USERS table
-        # ------------------------------------------------------------
-        user_detail = None
-        try:
-            user_record_resp = (
-                supabase_service_role_client()
-                .table("users")
-                .select("*")
-                .eq("id", user.id)
-                .single()
-                .execute()
-            )
-            if user_record_resp and user_record_resp.data:
-                usr = user_record_resp.data
-                user_detail = {
-                    "firstname": usr.get("firstname"),
-                    "lastname": usr.get("lastname"),
-                    "specialty": usr.get("specialty"),
-                    "role": usr.get("role"),
-                    "id": usr.get("id"),
-                }
-        except Exception as e:
-            print(f"Error fetching user details: {str(e)}")
-
-        role = (user.user_metadata or {}).get("role") or (user_detail.get("role") if user_detail else None)
-
-        return (
-            jsonify(
-                {
-                    "status": "success",
-                    "user": {
-                        "id": user.id,
-                        "email": user.email,
-                        "role": role,
-                        "metadata": user.user_metadata,
-                    },
-                    "user_detail": user_detail,
-                }
-            ),
-            200,
-        )
-
-    except Exception as e:
-        return jsonify({"status": "error", "message": "Failed to fetch session", "details": str(e)}), 500
-
-
-# ------------------------------------------------------------------
-# Token refresh endpoint – uses the refresh token cookie to mint new JWTs
-# ------------------------------------------------------------------
-
-
-@auth_bp.route('/token/refresh', methods=['POST'])
-def refresh_token():
-    """Issue a new access token using the refresh token stored in the cookie."""
-    try:
-        refresh_tok = request.cookies.get(REFRESH_COOKIE)
-        if not refresh_tok:
-            return jsonify({"status": "error", "message": "No refresh token"}), 401
-
-        # Refresh the session with Supabase
-        try:
-            refreshed = supabase.auth.refresh_session(refresh_tok)
-        except Exception as exc:
-            return jsonify({"status": "error", "message": f"Failed to refresh session: {exc}"}), 401
-
-        # Generate response and set the new cookies
-        response = jsonify({
+        return jsonify({
             "status": "success",
-            "message": "Session refreshed",
-            "expires_at": refreshed.session.expires_at,
-        })
-
-        access_expires = datetime.datetime.utcfromtimestamp(refreshed.session.expires_at)
-        secure_cookie = request.is_secure
-
-        response.set_cookie(
-            ACCESS_COOKIE,
-            refreshed.session.access_token,
-            httponly=True,
-            secure=secure_cookie,
-            samesite="Lax",
-            expires=access_expires,
-            path="/",
-        )
-
-        response.set_cookie(
-            REFRESH_COOKIE,
-            refreshed.session.refresh_token,
-            httponly=True,
-            secure=secure_cookie,
-            samesite="Lax",
-            max_age=60 * 60 * 24 * 7,
-            path="/",
-        )
-
-        return response, 200
-
+            "message": "Session data retrieved",
+            "session": session_data
+        }), 200
     except Exception as e:
-        return jsonify({"status": "error", "message": "Unexpected error during refresh", "details": str(e)}), 500
+        return jsonify({
+            "status": "error", 
+            "message": "Failed to fetch session data", 
+            "details": str(e)}), 500
+
+# Session management endpoints
+@auth_bp.route('/admin/sessions', methods=['GET'])
+@require_auth
+@require_role('admin')
+def list_active_sessions():
+    """List all active sessions (admin only)"""
+    try:
+        pattern = f"{SESSION_PREFIX}*"
+        session_keys = redis_client.keys(pattern)
+        
+        active_sessions = []
+        for key in session_keys:
+            session_data = redis_client.get(key)
+            if session_data:
+                data = json.loads(session_data)
+                active_sessions.append({
+                    'session_id': key.replace(SESSION_PREFIX, ''),
+                    'user_id': data.get('user_id'),
+                    'email': data.get('email'),
+                    'role': data.get('role'),
+                    'created_at': data.get('created_at'),
+                    'last_activity': data.get('last_activity')
+                })
+        
+        return jsonify({
+            "active_sessions": active_sessions,
+            "count": len(active_sessions)
+        })
+        
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
