@@ -9,7 +9,7 @@ def create_session_id():
     import secrets
     return secrets.token_urlsafe(32)
 
-def store_session_data(session_id, user_data, supabase_tokens):
+def store_session_data(session_id, user_data):
     """Store session data in Redis with expiration"""
     session_data = {
         'user_id': user_data.get('id'),
@@ -18,9 +18,9 @@ def store_session_data(session_id, user_data, supabase_tokens):
         'firstname': user_data.get('firstname'),
         'lastname': user_data.get('lastname'),
         'specialty': user_data.get('specialty'),
-        'access_token': supabase_tokens.get('access_token'),
-        'refresh_token': supabase_tokens.get('refresh_token'),
-        'expires_at': supabase_tokens.get('expires_at'),
+        'access_token': user_data.get('access_token'),
+        'refresh_token': user_data.get('refresh_token'),
+        'expires_at': user_data.get('expires_at'),
         'created_at': datetime.datetime.utcnow().isoformat(),
         'last_activity': datetime.datetime.utcnow().isoformat()
     }
@@ -59,3 +59,24 @@ def update_session_activity(session_id):
             SESSION_TIMEOUT,
             json.dumps(session_data)
         )
+
+def update_session_tokens(session_id, token_data):
+    """Update access/refresh tokens and expiry for an existing session in Redis."""
+    session_data = get_session_data(session_id)
+    if not session_data:
+        return False  # Session does not exist
+
+    # Merge new token fields
+    session_data.update({
+        "access_token": token_data.get("access_token"),
+        "refresh_token": token_data.get("refresh_token"),
+        "expires_at": token_data.get("expires_at"),
+        "last_activity": datetime.datetime.utcnow().isoformat(),
+    })
+
+    redis_client.setex(
+        f"{SESSION_PREFIX}{session_id}",
+        SESSION_TIMEOUT,
+        json.dumps(session_data)
+    )
+    return True

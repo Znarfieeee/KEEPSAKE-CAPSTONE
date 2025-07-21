@@ -5,7 +5,7 @@ import redis, json, logging
 from gotrue.errors import AuthApiError
 from functools import wraps
 
-from utils.sessions import create_session_id, store_session_data, get_session_data, update_session_activity
+from utils.sessions import create_session_id, store_session_data, get_session_data, update_session_activity, update_session_tokens
 from utils.redis_client import redis_client
 from utils.access_control import require_auth, require_role
 from utils.audit_logger import audit_access
@@ -17,6 +17,7 @@ REFRESH_COOKIE = "keepsake_session"    # long-lived refresh token
 SESSION_PREFIX = "keepsake_session:"
 CACHE_PREFIX = "patient_cache:"
 SESSION_TIMEOUT = 1800 #30 minutes
+REFRESH_TOKEN_TIMEOUT = 7 * 24 * 60 * 60  # 7 days
 
 auth_bp = Blueprint('auth', __name__)
 
@@ -190,16 +191,24 @@ def login():
             
             #Create session in Redis
             session_id = create_session_id()
-            store_session_data(session_id, user_data, supabase_tokens)
             
-            current_app.logger.info(f"AUDIT: User {email} logged in from IP {request.remote_addr} - Session: {session_id}")                        
+            # Prepare complete session data
+            session_data = {
+                "user_id": auth_response.user.id,
+                **user_data,  # Include all user data
+                **supabase_tokens  # Include tokens
+            }
+            
+            store_session_data(session_id, session_data)  # tokens already included in session_data
+            
+            current_app.logger.info(f"AUDIT: User {email} logged in from IP {request.remote_addr} - Session: {session_id}")
+            print(f"Debug - Stored session data: {session_data}")
             
             response = jsonify(
                 {
                     "status": "success",
                     "message": "Login successful!",
                     "user": user_data,
-                    "user_detail": user_data,  # kept for backward compatibility
                     "expires_at": auth_response.session.expires_at,
                 }
             )
@@ -207,18 +216,16 @@ def login():
 
             # Set cookies
             secure_cookie = request.is_secure
-            access_expires = datetime.datetime.utcfromtimestamp(
-                auth_response.session.expires_at
-            )
-            
+            cookie_samesite = "None" if secure_cookie else "Lax"
+
             response.set_cookie(
                 'session_id',
                 session_id,
-                httponly = True,
-                secure = secure_cookie,
-                samesite = "Lax",
-                max_age = SESSION_TIMEOUT,
-                path = "/",
+                httponly=True,
+                secure=secure_cookie,
+                samesite=cookie_samesite,
+                max_age=SESSION_TIMEOUT,
+                path="/",
             )
 
             # Refresh token (long-lived)
@@ -227,8 +234,8 @@ def login():
                 auth_response.session.refresh_token,
                 httponly=True,
                 secure=secure_cookie,
-                samesite="Lax",
-                max_age=SESSION_TIMEOUT,
+                samesite=cookie_samesite,
+                max_age=REFRESH_TOKEN_TIMEOUT,
                 path="/",
             )
 
@@ -304,6 +311,7 @@ def get_session():
     """Get the current user's Redis session data"""
     try:
         session_id = request.cookies.get('session_id')
+        print(session_id)
         if not session_id:
             return jsonify({
                 "status": "error",
@@ -311,6 +319,7 @@ def get_session():
             }), 401
         
         session_data = get_session_data(session_id)
+        print(session_data)
         if not session_data:
             return jsonify({
                 "status": "error", 
@@ -327,18 +336,118 @@ def get_session():
             "firstname": session_data.get("firstname"),
             "lastname": session_data.get("lastname"),
             "specialty": session_data.get("specialty"),
+            "license_number": session_data.get("license_number"),
+            "phone_number": session_data.get("phone_number")
         }
-
+        print(f"Debug - Session data from Redis: {session_data}")
+        print(f"Debug - Constructed user data: {user_data}")
+        
         return jsonify({
             "status": "success",
             "message": "Session data retrieved",
-            "session": session_data
+            "user": user_data
         }), 200
     except Exception as e:
         return jsonify({
             "status": "error", 
             "message": "Failed to fetch session data", 
             "details": str(e)}), 500
+
+
+# Token refresh endpoint
+@auth_bp.route('/token/refresh', methods=['POST'])
+def refresh_token():
+    """Refresh the user's session token"""
+    try:
+        # Get the current session ID
+        session_id = request.cookies.get('session_id')
+        refresh_token = request.cookies.get(REFRESH_COOKIE)
+        
+        if not session_id or not refresh_token:
+            return jsonify({
+                "status": "error",
+                "message": "No valid session found"
+            }), 401
+            
+        try:
+            # Get the existing session data
+            session_data = get_session_data(session_id)
+            if not session_data:
+                return jsonify({
+                    "status": "error",
+                    "message": "Session expired"
+                }), 401
+                
+            print(f"Debug - Attempting to refresh with token: {refresh_token}")
+            
+            # Create a new session with the refresh token
+            auth_response = supabase.auth.refresh_session({
+                "refresh_token": refresh_token
+            })
+            
+            if not auth_response or not auth_response.session:
+                print("Debug - Failed to get new session from Supabase")
+                return jsonify({
+                    "status": "error",
+                    "message": "Failed to refresh session"
+                }), 401
+                
+            print(f"Debug - Got new session from Supabase: {auth_response.session.access_token[:20]}...")
+                
+            # Update the tokens in Redis
+            supabase_tokens = {
+                'access_token': auth_response.session.access_token,
+                'refresh_token': auth_response.session.refresh_token,
+                'expires_at': auth_response.session.expires_at,
+            }
+            
+            # Update session with new tokens
+            update_session_tokens(session_id, supabase_tokens)
+            
+            response = jsonify({
+                "status": "success",
+                "message": "Session refreshed successfully",
+                "user": session_data,
+                "expires_at": auth_response.session.expires_at
+            })
+            
+            # Update cookies
+            secure_cookie = request.is_secure
+            cookie_samesite = "None" if secure_cookie else "Lax"
+            # Set both cookies with consistent settings
+            for cookie_name, cookie_value in [
+                ('session_id', session_id),
+                (REFRESH_COOKIE, auth_response.session.refresh_token)
+            ]:
+                response.set_cookie(
+                    cookie_name,
+                    cookie_value,
+                    httponly=True,
+                    secure=secure_cookie,
+                    samesite=cookie_samesite,
+                    max_age=SESSION_TIMEOUT,
+                    path="/",
+                    domain=None  # Let browser set automatically
+                )
+            print(f"Debug - Set cookies: session_id and {REFRESH_COOKIE}")
+            
+            return response, 200
+            
+        except AuthApiError as auth_error:
+            current_app.logger.error(f"AUDIT: Token refresh failed - Error: {str(auth_error)}")
+            return jsonify({
+                "status": "error",
+                "message": str(auth_error)
+            }), 401
+            
+    except Exception as e:
+        current_app.logger.error(f"AUDIT: Token refresh failed - Error: {str(e)}")
+        return jsonify({
+            "status": "error",
+            "message": "Failed to refresh token",
+            "details": str(e)
+        }), 500
+
 
 # Session management endpoints
 @auth_bp.route('/admin/sessions', methods=['GET'])
