@@ -159,6 +159,33 @@ def create_invite():
 @auth_bp.route('/login', methods=['POST'])
 def login():
     try:
+        # check first if there is an existing session
+        session_id = request.cookies.get('session_id')
+        if session_id:
+            existing_session = get_session_data(session_id)
+            if existing_session:
+                update_session_activity(session_id)
+                user_data = {
+                    'id': existing_session.get('user_id'),
+                    'email': existing_session.get('email'),
+                    'role': existing_session.get('role'),
+                    'firstname': existing_session.get('firstname'),
+                    'lastname': existing_session.get('lastname'),
+                    'specialty': existing_session.get('specialty'),
+                    'license_number': existing_session.get('license_number'),
+                    'phone_number': existing_session.get('phone_number'),
+                }
+                
+                current_app.logger.info(f"AUDIT: User {existing_session.get('email')} reused existing session from IP {request.remote_addr}")
+                
+                return jsonify({
+                    "status": "success",
+                    "message": "Already logged in with existing session",
+                    "user": user_data,
+                    "expires_at": existing_session.get('expires_at'),
+                }), 200
+        
+        # if no existing session, proceed with login
         data = request.json
         email = data.get('email')
         password = data.get('password')
@@ -199,10 +226,9 @@ def login():
                 **supabase_tokens  # Include tokens
             }
             
-            store_session_data(session_id, session_data)  # tokens already included in session_data
+            store_session_data(session_id, session_data)
             
             current_app.logger.info(f"AUDIT: User {email} logged in from IP {request.remote_addr} - Session: {session_id}")
-            print(f"Debug - Stored session data: {session_data}")
             
             response = jsonify(
                 {
@@ -212,7 +238,6 @@ def login():
                     "expires_at": auth_response.session.expires_at,
                 }
             )
-            print(response)
 
             # Set cookies
             secure_cookie = request.is_secure
