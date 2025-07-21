@@ -35,13 +35,30 @@ export const refresh = async () => {
     return response.data
 }
 
-// ------------------------------------------------------------
-// Fetch the currently authenticated user using cookie-based session
-// ------------------------------------------------------------
 export const getSession = async () => {
-    const response = await axios.get(
-        `${backendConnection()}/session`,
-        axiosConfig
-    )
-    return response.data
+    try {
+        const response = await axios.get(
+            `${backendConnection()}/session`,
+            axiosConfig
+        )
+        return response.data
+    } catch (error) {
+        if (error.response?.status === 401) {
+            try {
+                // Try to refresh the token
+                await refresh()
+                // If refresh succeeds, retry the session request
+                const retryResponse = await axios.get(
+                    `${backendConnection()}/session`,
+                    axiosConfig
+                )
+                return retryResponse.data
+            } catch (refreshError) {
+                console.error("Token refresh failed", refreshError)
+                // If refresh fails, throw a specific error
+                throw new Error("Session expired. Please login again.")
+            }
+        }
+        throw error
+    }
 }

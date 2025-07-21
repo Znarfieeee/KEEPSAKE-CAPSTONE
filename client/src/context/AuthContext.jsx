@@ -7,7 +7,6 @@ import { showToast } from "../util/alertHelper"
 export const AuthProvider = ({ children }) => {
     const [user, setUser] = useState(null)
     const [loading, setLoading] = useState(true) // Start as true until we check existing session
-    const [userDetail, setUserDetail] = useState(null) // New state for user detail
 
     const navigate = useNavigate()
 
@@ -16,15 +15,18 @@ export const AuthProvider = ({ children }) => {
         try {
             const response = await login(email, password)
 
-            showToast("success", "Login successful")
-            setUser(response.user)
-            setUserDetail(response.user_detail) // Save full user record
-            setLoading(false)
+            if (response.status === "success") {
+                showToast("success", "Login successful")
+                setUser(response.user)
+            } else {
+                throw new Error(response.message || "Login failed")
+            }
             return response
         } catch (err) {
-            showToast("error", "Login failed")
-            setLoading(false) // Reset loading on error
-            throw err // Re-throw the error to be handled by the login component
+            showToast("error", err.message || "Login failed")
+            throw err
+        } finally {
+            setLoading(false)
         }
     }
 
@@ -47,35 +49,29 @@ export const AuthProvider = ({ children }) => {
         alert("Button clicked")
     }
 
-    // Additional utility method can be added later to refresh userDetail if needed.
-
-    /* ------------------------------------------------------------------
-     * On initial mount, attempt to restore session from server cookies
-     * ------------------------------------------------------------------*/
     useEffect(() => {
         const fetchSession = async () => {
             try {
                 const res = await getSession()
-                if (res.status === "success") {
+                if (res.status === "success" && res.user) {
                     setUser(res.user)
-                    setUserDetail(res.user_detail)
-                    console.log("User detail: ", res.user_detail)
                 }
-                // eslint-disable-next-line no-unused-vars
-            } catch (_err) {
-                // No active session or failed request – silently ignore
+            } catch (err) {
+                // Clear user state if session is expired
+                if (err.message === "Session expired. Please login again.") {
+                    setUser(null)
+                    // Optionally redirect to login page
+                    navigate("/login")
+                }
+                console.debug("Session error:", err.message)
             } finally {
                 setLoading(false)
             }
         }
 
         fetchSession()
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [])
+    }, [navigate])
 
-    /* ------------------------------------------------------------------
-     * Navigate based on the authenticated user's role
-     * ------------------------------------------------------------------*/
     useEffect(() => {
         if (!loading && user?.role) {
             switch (user.role) {
@@ -102,8 +98,6 @@ export const AuthProvider = ({ children }) => {
             value={{
                 user,
                 setUser,
-                userDetail,
-                setUserDetail,
                 signIn,
                 signOut,
                 loading,
