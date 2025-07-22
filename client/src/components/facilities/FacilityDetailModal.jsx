@@ -19,19 +19,23 @@ const FacilityDetailModal = ({ open, facility, onClose, onAuditLogs }) => {
                         </h2>
                         <StatusBadge status={facility.status} />
                     </div>
-                    <Button variant="outline" size="icon" onClick={onClose}>
-                        ✕
-                    </Button>
+                    <button
+                        className="text-xl text-black cursor-pointer hover:text-red-500"
+                        onClick={onClose}>
+                        {" "}
+                        X
+                    </button>
                 </div>
 
                 {/* Basic info */}
                 <div>
                     <h3 className="font-medium mb-2">Basic Info</h3>
                     <ul className="text-sm space-y-1">
-                        <li>ID: {facility.id}</li>
                         <li>Type: {facility.type}</li>
                         <li>Location: {facility.location}</li>
                         <li>Contact: {facility.contact}</li>
+                        <li>Email: {facility.email}</li>
+                        <li>Website: {facility.website}</li>
                     </ul>
                 </div>
 
@@ -56,9 +60,6 @@ const FacilityDetailModal = ({ open, facility, onClose, onAuditLogs }) => {
                         size="sm"
                         onClick={() => onAuditLogs(facility)}>
                         View Logs
-                    </Button>
-                    <Button variant="outline" size="sm" onClick={onClose}>
-                        Close
                     </Button>
                 </div>
             </div>

@@ -7,6 +7,7 @@ import FacilityDetailModal from "../../components/facilities/FacilityDetailModal
 import { useAuth } from "../../context/auth"
 import { showToast } from "../../util/alertHelper"
 import { getFacilities, createFacility } from "../../api/facility"
+import Unauthorized from "../../components/Unauthorized"
 
 const FacilitiesRegistry = () => {
     const { user } = useAuth()
@@ -16,6 +17,7 @@ const FacilitiesRegistry = () => {
     const [search, setSearch] = useState("")
     const [statusFilter, setStatusFilter] = useState("")
     const [typeFilter, setTypeFilter] = useState("")
+    const [planFilter, setPlanFilter] = useState("")
     const [page, setPage] = useState(1)
     const [itemsPerPage, setItemsPerPage] = useState(10)
 
@@ -24,18 +26,20 @@ const FacilitiesRegistry = () => {
     const [showDetail, setShowDetail] = useState(false)
     const [detailFacility, setDetailFacility] = useState(null)
 
-    // Helper to normalise facility records coming from API
+    // Helper to normalize facility records coming from API
     const formatFacility = raw => ({
         id: raw.facility_id,
         name: raw.facility_name,
-        location: raw.city || "—",
-        type: raw.type || "clinic", // default until field is available
-        plan: raw.subscription_status,
+        location: raw.address + ", " + raw.city + ", " + raw.zip_code,
+        type: raw.type,
+        plan: raw.plan,
         expiry: raw.subscription_expires,
         admin: raw.admin || raw.email || "—",
         status:
             raw.subscription_status === "suspended" ? "suspended" : "active",
         contact: raw.contact_number,
+        email: raw.email,
+        website: raw.website,
     })
 
     useEffect(() => {
@@ -68,18 +72,15 @@ const FacilitiesRegistry = () => {
             const matchesStatus = statusFilter
                 ? f.status === statusFilter
                 : true
+            const matchesPlan = planFilter ? f.plan === planFilter : true
             const matchesType = typeFilter ? f.type === typeFilter : true
-            return matchesSearch && matchesStatus && matchesType
+            return matchesSearch && matchesStatus && matchesPlan && matchesType
         })
-    }, [facilities, search, statusFilter, typeFilter])
+    }, [facilities, search, statusFilter, typeFilter, planFilter])
 
     // Role-based guard
     if (user.role !== "SystemAdmin" && user.role !== "admin") {
-        return (
-            <div className="p-6 text-red-600 dark:text-red-400">
-                You are not authorized to view this page.
-            </div>
-        )
+        return <Unauthorized />
     }
 
     const handleView = facility => {
@@ -199,6 +200,11 @@ const FacilitiesRegistry = () => {
                 typeFilter={typeFilter}
                 onTypeChange={val => {
                     setTypeFilter(val)
+                    setPage(1)
+                }}
+                planFilter={planFilter}
+                onPlanChange={val => {
+                    setPlanFilter(val)
                     setPage(1)
                 }}
             />

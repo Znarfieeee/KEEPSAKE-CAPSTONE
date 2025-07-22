@@ -35,8 +35,8 @@ const FacilityTable = ({
                 <thead className="border-b text-xs uppercase text-muted-foreground">
                     <tr className="text-left">
                         <th className="py-3 px-2">Facility Name</th>
-                        <th className="py-3 px-2">ID</th>
-                        <th className="py-3 px-2">Location</th>
+                        <th className="py-3 px-2">Address</th>
+                        <th className="py-3 px-2">Plan</th>
                         <th className="py-3 px-2">Type</th>
                         <th className="py-3 px-2">Subscription Expiry</th>
                         <th className="py-3 px-2">Assigned Admin</th>
@@ -53,10 +53,10 @@ const FacilityTable = ({
                                 {facility.name}
                             </td>
                             <td className="p-2 whitespace-nowrap">
-                                {facility.id}
-                            </td>
-                            <td className="p-2 whitespace-nowrap">
                                 {facility.location}
+                            </td>
+                            <td className="p-2 whitespace-nowrap capitalize">
+                                {facility.plan}
                             </td>
                             <td className="p-2 whitespace-nowrap capitalize">
                                 {facility.type}

@@ -38,33 +38,32 @@ def list_facilities():
 # Create facility -----------------------------------------------------------
 @facility_bp.route('/facilities', methods=['POST'])
 @require_auth
-@require_role('admin', 'facility_admin')
+@require_role('admin')
 def create_facility():
     """Create a new facility record in Supabase."""
     try:
         data = request.json or {}
 
-        # Basic validation – facility_name & email are minimally required
-        if not data.get('facility_name') or not data.get('email'):
+        # Basic validation – facility_name is minimally required
+        if not data.get('facility_name'):
             return jsonify({
                 "status": "error",
-                "message": "'facility_name' and 'email' are required fields",
+                "message": "Facility name is required!",
             }), 400
 
         created_by = (getattr(request, 'current_user', {}) or {}).get('id')
 
         payload = {
             "facility_name": data.get("facility_name"),
-            "address": data.get("address") or "N/A",
-            "city": data.get("city") or "N/A",
-            "zip_code": data.get("zip_code") or "N/A",
-            "contact_number": data.get("contact_number") or "N/A",
+            "address": data.get("address"),
+            "city": data.get("city"),
+            "zip_code": data.get("zip_code"),
+            "contact_number": data.get("contact_number"),
             "email": data.get("email"),
-            "website": data.get("website"),
+            "website": data.get("website") or "N/A",
             "subscription_status": data.get("subscription_status") or "active",
             "subscription_expires": data.get("subscription_expires"),
             "created_by": created_by,
-            "created_at": datetime.utcnow().isoformat(),
         }
 
         resp = supabase.table('healthcare_facilities').insert(payload).execute()

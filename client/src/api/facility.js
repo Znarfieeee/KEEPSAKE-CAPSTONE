@@ -16,6 +16,14 @@ export const getFacilities = async () => {
     return response.data
 }
 
+export const getFacilityById = async facilityId => {
+    const response = await axios.get(
+        `${backendConnection()}/facilities/${facilityId}`,
+        axiosConfig
+    )
+    return response.data
+}
+
 export const createFacility = async facilityData => {
     const response = await axios.post(
         `${backendConnection()}/facilities`,
@@ -27,5 +35,6 @@ export const createFacility = async facilityData => {
 
 export default {
     getFacilities,
+    getFacilityById,
     createFacility,
 }

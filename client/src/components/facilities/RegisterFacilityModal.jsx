@@ -15,9 +15,10 @@ const initialForm = {
     address: "",
     city: "",
     zip_code: "",
-    type: "clinic", // Optional UI-only field
+    type: "clinic",
     contact: "",
     adminEmail: "",
+    website: "",
     plan: "standard",
     expiry: "",
 }
@@ -213,6 +214,25 @@ const RegisterFacilityModal = ({ open, onClose, onSubmit }) => {
                                 <p className="text-xs text-muted-foreground mt-1">
                                     You can invite a new admin by email or
                                     assign an existing user later.
+                                </p>
+                            </div>
+                            <div className="flex flex-col form-control">
+                                <label className="block text-sm font-medium">
+                                    Website
+                                </label>
+                                <input
+                                    type="text"
+                                    value={form.website}
+                                    onChange={e =>
+                                        setForm({
+                                            ...form,
+                                            website: e.target.value,
+                                        })
+                                    }
+                                    placeholder="https://example.com"
+                                />
+                                <p className="text-xs text-muted-foreground mt-1">
+                                    You can leave blank if not applicable.
                                 </p>
                             </div>
                         </div>
