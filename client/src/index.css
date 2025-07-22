@@ -6,7 +6,7 @@
     /*Custom color specified for KEEPSAKE  */
     --color-primary: #0082a6;
     --color-secondary: #c4dee3;
-    --color-tertiary: #86b9c7;
+    --color-accent: #86b9c7;
     --color-white: #fffafa;
     --color-black: #3f3f3f;
 
@@ -112,6 +112,21 @@ hr {
 
 .form-control input:focus,
 .form-control input:valid {
+    outline: 0;
+    border-bottom: 2px #c4dee3 solid;
+}
+
+.form-control select {
+    background-color: transparent;
+    border: 0;
+    border-bottom: 0px #fffafa;
+    width: 100%;
+    padding: 8px 12px;
+    font-size: 14px;
+}
+
+.form-control select:focus,
+.form-control select:valid {
     outline: 0;
     border-bottom: 2px #c4dee3 solid;
 }

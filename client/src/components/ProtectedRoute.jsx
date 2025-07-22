@@ -13,7 +13,7 @@ import Loader from "./ui/Loader"
  * @param {string} [props.requiredRole] Optional role required to access this route (e.g., "Admin")
  */
 const ProtectedRoute = ({ children, requiredRole }) => {
-    const { user, loading, role } = useAuth()
+    const { user, loading, isAuthenticated } = useAuth()
     const location = useLocation()
 
     // Show loading state while checking authentication
@@ -21,15 +21,11 @@ const ProtectedRoute = ({ children, requiredRole }) => {
         return <Loader />
     }
 
-    // Once loading is complete, we can determine if user is authenticated
-    // If not authenticated, redirect to login
-    if (!loading && !user) {
+    if (!isAuthenticated) {
         return <Navigate to="/login" state={{ from: location }} replace />
     }
 
-    // Check role-based access if requiredRole is specified
-    if (requiredRole && role !== requiredRole) {
-        // Show access denied message for insufficient privileges
+    if (requiredRole && user?.role !== requiredRole) {
         return (
             <div className="flex flex-col items-center justify-center min-h-screen bg-gray-100 p-4">
                 <div className="bg-white p-8 rounded-lg shadow-md max-w-md w-full text-center">

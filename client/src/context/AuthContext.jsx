@@ -1,27 +1,68 @@
 import React, { useState, useEffect } from "react"
 import { useNavigate } from "react-router-dom"
-import { login, logout, getSession } from "../api/auth"
+import {
+    login,
+    logout,
+    getSession,
+    refreshSession as refreshToken,
+} from "../api/auth"
 import { AuthContext } from "./auth"
 import { showToast } from "../util/alertHelper"
 
 export const AuthProvider = ({ children }) => {
     const [user, setUser] = useState(null)
-    const [loading, setLoading] = useState(true) // Start as true until we check existing session
-
+    const [loading, setLoading] = useState(true)
+    const [isAuthenticated, setIsAuthenticated] = useState(false)
     const navigate = useNavigate()
 
-    const signIn = async (email, password) => {
-        setLoading(true)
+    const checkExistingSession = async () => {
         try {
+            const data = await getSession()
+            if (data.status === "success") {
+                setUser(data.user)
+                setIsAuthenticated(true)
+                return true
+            }
+            return false
+        } catch (err) {
+            console.error("Session check failed:", err)
+            return false
+        }
+    }
+
+    const runRefreshSession = async () => {
+        try {
+            const data = await refreshToken()
+            if (data.status === "success") {
+                setUser(data.user)
+                setIsAuthenticated(true)
+                return true
+            }
+            return false
+        } catch (err) {
+            console.error("Token refresh failed:", err)
+            return false
+        }
+    }
+
+    const signIn = async (email, password) => {
+        try {
+            const hasExistingSession = await checkExistingSession()
+            if (hasExistingSession) {
+                return { success: true, message: "Already logged in" }
+            }
+
             const response = await login(email, password)
 
             if (response.status === "success") {
                 showToast("success", "Login successful")
                 setUser(response.user)
+                setIsAuthenticated(true)
+
+                return response
             } else {
                 throw new Error(response.message || "Login failed")
             }
-            return response
         } catch (err) {
             showToast("error", err.message || "Login failed")
             throw err
@@ -31,17 +72,16 @@ export const AuthProvider = ({ children }) => {
     }
 
     const signOut = async () => {
-        setLoading(true)
-        setUser(null)
-
         try {
-            await logout() // Added await here
+            await logout()
             showToast("success", "Logout successful")
         } catch (err) {
             console.error("There is an error: ", err)
             showToast("error", "Logout failed")
         } finally {
             setLoading(false)
+            setUser(null)
+            setIsAuthenticated(false)
         }
     }
 
@@ -50,18 +90,22 @@ export const AuthProvider = ({ children }) => {
     }
 
     useEffect(() => {
-        const fetchSession = async () => {
+        const initializeAuth = async () => {
             try {
-                const res = await getSession()
-                if (res.status === "success" && res.user) {
-                    setUser(res.user)
+                setLoading(true)
+
+                const hasValidSession = await checkExistingSession()
+                if (!hasValidSession) {
+                    const refreshedSession = await runRefreshSession()
+                    if (!refreshedSession) {
+                        setUser(null)
+                        setIsAuthenticated(false)
+                    }
                 }
+                setLoading(false)
             } catch (err) {
-                // Clear user state if session is expired
                 if (err.message === "Session expired. Please login again.") {
                     setUser(null)
-                    // Optionally redirect to login page
-                    navigate("/login")
                 }
                 console.debug("Session error:", err.message)
             } finally {
@@ -69,8 +113,18 @@ export const AuthProvider = ({ children }) => {
             }
         }
 
-        fetchSession()
-    }, [navigate])
+        initializeAuth()
+    }, [])
+
+    useEffect(() => {
+        if (!isAuthenticated) return
+
+        const refreshInterval = setInterval(async () => {
+            await runRefreshSession()
+        }, 25 * 60 * 1000)
+
+        return () => clearInterval(refreshInterval)
+    }, [isAuthenticated])
 
     useEffect(() => {
         if (!loading && user?.role) {
@@ -97,11 +151,12 @@ export const AuthProvider = ({ children }) => {
         <AuthContext.Provider
             value={{
                 user,
-                setUser,
+                isAuthenticated,
                 signIn,
                 signOut,
                 loading,
-                role: user?.role,
+                checkExistingSession,
+                refreshSession: refreshToken,
                 btnClicked,
             }}>
             {children}

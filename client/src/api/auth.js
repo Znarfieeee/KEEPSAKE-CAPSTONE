@@ -26,7 +26,7 @@ export const logout = async () => {
     return response.data
 }
 
-export const refresh = async () => {
+export const refreshSession = async () => {
     const response = await axios.post(
         `${backendConnection()}/token/refresh`,
         {},
@@ -43,11 +43,10 @@ export const getSession = async () => {
         )
         return response.data
     } catch (error) {
+        // Attempt silent refresh once on 401
         if (error.response?.status === 401) {
             try {
-                // Try to refresh the token
-                await refresh()
-                // If refresh succeeds, retry the session request
+                await refreshSession()
                 const retryResponse = await axios.get(
                     `${backendConnection()}/session`,
                     axiosConfig
@@ -55,10 +54,17 @@ export const getSession = async () => {
                 return retryResponse.data
             } catch (refreshError) {
                 console.error("Token refresh failed", refreshError)
-                // If refresh fails, throw a specific error
                 throw new Error("Session expired. Please login again.")
             }
         }
         throw error
     }
+}
+
+export const checkSession = async () => {
+    const response = await axios.get(
+        `${backendConnection()}/session`,
+        axiosConfig
+    )
+    return response.data
 }

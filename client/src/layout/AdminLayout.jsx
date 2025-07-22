@@ -1,6 +1,7 @@
 import { AiOutlineTool } from "react-icons/ai"
 import { BiCog } from "react-icons/bi"
 import React, { useState } from "react"
+import Breadcrumbs from "../components/ui/Breadcrumbs"
 import { Outlet, Link } from "react-router-dom"
 
 // UI Components
@@ -145,6 +146,7 @@ function AdminLayout() {
             {/* Main Content */}
             <main className="pt-16 min-h-screen">
                 <div className="p-6">
+                    <Breadcrumbs />
                     <Outlet />
                 </div>
             </main>

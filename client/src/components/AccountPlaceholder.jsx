@@ -9,7 +9,7 @@ import { BiCog } from "react-icons/bi"
 import { Avatar, Menu, Portal } from "@chakra-ui/react"
 
 const AccountPlaceholder = () => {
-    const { signOut, user, userDetail } = useAuth()
+    const { signOut, user } = useAuth()
     const navigate = useNavigate()
 
     const handleLogout = async () => {
@@ -37,19 +37,15 @@ const AccountPlaceholder = () => {
                         <Menu.Content className="flex flex-col gap-2">
                             <span className="px-3 flex flex-col gap-0.5">
                                 <h1>
-                                    {`${userDetail?.firstname || ""} ${
-                                        userDetail?.lastname || ""
-                                    }`.trim() ||
-                                        user?.metadata?.full_name ||
-                                        user?.metadata?.name ||
-                                        user?.email ||
-                                        "User"}
+                                    {`${user?.firstname || ""} ${
+                                        user?.lastname || ""
+                                    }`}
                                 </h1>
-                                {userDetail?.specialty && (
+                                {user?.specialty && (
                                     <p className="text-sm text-gray-500 capitalize">
                                         {user?.role === "admin"
                                             ? "System Administrator"
-                                            : userDetail?.specialty}
+                                            : user?.specialty}
                                     </p>
                                 )}
                                 {user?.role && (

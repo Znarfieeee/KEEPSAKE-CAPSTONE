@@ -1,76 +1,89 @@
-import React, { useEffect, useMemo, useState } from "react"
+import React, { useEffect, useMemo, useState, lazy, Suspense } from "react"
 import FacilityRegistryHeader from "../../components/facilities/FacilityRegistryHeader"
 import FacilityFilters from "../../components/facilities/FacilityFilters"
 import FacilityTable from "../../components/facilities/FacilityTable"
-import RegisterFacilityModal from "../../components/facilities/RegisterFacilityModal"
-import FacilityDetailModal from "../../components/facilities/FacilityDetailModal"
+
+// Lazy-loaded components (modals are heavy and used conditionally)
+const RegisterFacilityModal = lazy(() =>
+    import("../../components/facilities/RegisterFacilityModal")
+)
+const FacilityDetailModal = lazy(() =>
+    import("../../components/facilities/FacilityDetailModal")
+)
 import { useAuth } from "../../context/auth"
 import { showToast } from "../../util/alertHelper"
-
-// Placeholder data – replace with Supabase fetch
-const dummyFacilities = [
-    {
-        id: "FAC-001",
-        name: "St. Mary's Hospital",
-        location: "Cebu City",
-        type: "hospital",
-        plan: "premium",
-        expiry: "2025-12-31",
-        admin: "chad@maryhospital.com",
-        status: "active",
-        contact: "(032) 555-1234",
-    },
-    {
-        id: "FAC-002",
-        name: "HealthFirst Clinic",
-        location: "Makati",
-        type: "clinic",
-        plan: "standard",
-        expiry: "2024-03-15",
-        admin: "rolly@healthfirstclinic.com",
-        status: "pending",
-        contact: "(02) 888-5678",
-    },
-    {
-        id: "FAC-003",
-        name: "Sunrise BHS",
-        location: "Davao",
-        type: "bhs",
-        plan: "enterprise",
-        expiry: "2026-01-10",
-        admin: "eldrin@sunrisebhs.com",
-        status: "suspended",
-        contact: "(082) 333-9999",
-    },
-]
+import { getFacilities } from "../../api/facility"
+import Unauthorized from "../../components/Unauthorized"
 
 const FacilitiesRegistry = () => {
-    const { role } = useAuth()
+    const { user } = useAuth()
     const [facilities, setFacilities] = useState([])
+    // Loading state for initial data fetch
+    const [loading, setLoading] = useState(true)
 
     // UI state
     const [search, setSearch] = useState("")
     const [statusFilter, setStatusFilter] = useState("")
     const [typeFilter, setTypeFilter] = useState("")
+    const [planFilter, setPlanFilter] = useState("")
     const [page, setPage] = useState(1)
     const [itemsPerPage, setItemsPerPage] = useState(10)
 
-    // Modals
+    // Modals state
     const [showRegister, setShowRegister] = useState(false)
     const [showDetail, setShowDetail] = useState(false)
     const [detailFacility, setDetailFacility] = useState(null)
 
-    /* ------------------------------------------------------------
-     * Fetch facilities – using dummy for now
-     * ----------------------------------------------------------*/
+    // Helper to normalize facility records coming from API
+    const formatFacility = raw => ({
+        id: raw.facility_id,
+        name: raw.facility_name,
+        location: raw.address + ", " + raw.city + ", " + raw.zip_code,
+        type: raw.type,
+        plan: raw.plan,
+        expiry: raw.subscription_expires,
+        admin: raw.admin || raw.email || "—",
+        status:
+            raw.subscription_status === "suspended" ? "suspended" : "active",
+        contact: raw.contact_number,
+        email: raw.email,
+        website: raw.website,
+    })
+
     useEffect(() => {
-        // Replace with Supabase fetch
-        setFacilities(dummyFacilities)
+        const fetchData = async () => {
+            try {
+                setLoading(true)
+                const res = await getFacilities()
+                if (res.status === "success") {
+                    setFacilities(res.data.map(formatFacility))
+                } else {
+                    showToast(
+                        "error",
+                        res.message || "Failed to load facilities"
+                    )
+                }
+            } catch (err) {
+                console.error(err)
+                showToast("error", "Failed to load facilities")
+            } finally {
+                setLoading(false)
+            }
+        }
+        fetchData()
     }, [])
 
-    /* ------------------------------------------------------------
-     * Filter & search logic (memoised)
-     * ----------------------------------------------------------*/
+    // Listen for facility-created event from modal to append to list
+    useEffect(() => {
+        const handler = e => {
+            if (e.detail) {
+                setFacilities(prev => [...prev, formatFacility(e.detail)])
+            }
+        }
+        window.addEventListener("facility-created", handler)
+        return () => window.removeEventListener("facility-created", handler)
+    }, [])
+
     const filteredFacilities = useMemo(() => {
         return facilities.filter(f => {
             const matchesSearch = search
@@ -81,23 +94,17 @@ const FacilitiesRegistry = () => {
             const matchesStatus = statusFilter
                 ? f.status === statusFilter
                 : true
+            const matchesPlan = planFilter ? f.plan === planFilter : true
             const matchesType = typeFilter ? f.type === typeFilter : true
-            return matchesSearch && matchesStatus && matchesType
+            return matchesSearch && matchesStatus && matchesPlan && matchesType
         })
-    }, [facilities, search, statusFilter, typeFilter])
+    }, [facilities, search, statusFilter, typeFilter, planFilter])
 
     // Role-based guard
-    if (role !== "SystemAdmin" && role !== "admin") {
-        return (
-            <div className="p-6 text-red-600 dark:text-red-400">
-                You are not authorized to view this page.
-            </div>
-        )
+    if (user.role !== "SystemAdmin" && user.role !== "admin") {
+        return <Unauthorized />
     }
 
-    /* ------------------------------------------------------------
-     * Action handlers
-     * ----------------------------------------------------------*/
     const handleView = facility => {
         setDetailFacility(facility)
         setShowDetail(true)
@@ -130,16 +137,6 @@ const FacilitiesRegistry = () => {
             setFacilities(prev => prev.filter(f => f.id !== facility.id))
             showToast("success", "Facility deleted")
         }
-    }
-
-    const handleRegisterSubmit = newFacility => {
-        const newEntry = {
-            ...newFacility,
-            id: `FAC-${String(facilities.length + 1).padStart(3, "0")}`,
-            location: "—",
-            status: "pending",
-        }
-        setFacilities(prev => [...prev, newEntry])
     }
 
     const handleExportCSV = () => {
@@ -201,10 +198,16 @@ const FacilitiesRegistry = () => {
                     setTypeFilter(val)
                     setPage(1)
                 }}
+                planFilter={planFilter}
+                onPlanChange={val => {
+                    setPlanFilter(val)
+                    setPage(1)
+                }}
             />
 
             <FacilityTable
                 facilities={filteredFacilities}
+                loading={loading}
                 page={page}
                 setPage={setPage}
                 itemsPerPage={itemsPerPage}
@@ -215,18 +218,23 @@ const FacilitiesRegistry = () => {
                 onDelete={handleDelete}
             />
 
-            {/* Modals */}
-            <RegisterFacilityModal
-                open={showRegister}
-                onClose={() => setShowRegister(false)}
-                onSubmit={handleRegisterSubmit}
-            />
-            <FacilityDetailModal
-                open={showDetail}
-                facility={detailFacility}
-                onClose={() => setShowDetail(false)}
-                onAuditLogs={handleAuditLogs}
-            />
+            {/* Modals – lazily loaded */}
+            <Suspense fallback={null}>
+                {showRegister && (
+                    <RegisterFacilityModal
+                        open={showRegister}
+                        onClose={() => setShowRegister(false)}
+                    />
+                )}
+                {showDetail && (
+                    <FacilityDetailModal
+                        open={showDetail}
+                        facility={detailFacility}
+                        onClose={() => setShowDetail(false)}
+                        onAuditLogs={handleAuditLogs}
+                    />
+                )}
+            </Suspense>
         </div>
     )
 }

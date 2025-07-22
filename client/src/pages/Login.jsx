@@ -19,18 +19,24 @@ import {
 const Login = () => {
     const emailRef = useRef()
     const passwordRef = useRef()
-    const { signIn, loading } = useAuth()
+    const { signIn } = useAuth()
+    const [isLoading, setIsLoading] = useState(false)
     const [formError, setFormError] = useState(null)
 
     async function handleSubmit(e) {
         e.preventDefault()
+        setFormError("")
+        setIsLoading(true)
+
         const email = emailRef.current.value
         const password = passwordRef.current.value
         try {
             await signIn(email, password)
-            // Navigation happens in AuthProvider redirect effect
+            setIsLoading(false)
         } catch (err) {
             setFormError(err.message || "Login failed")
+        } finally {
+            setIsLoading(false)
         }
     }
 
@@ -110,7 +116,7 @@ const Login = () => {
                             id="btn"
                             className="flex justify-center items-center">
                             <LoadingButton
-                                isLoading={loading}
+                                isLoading={isLoading}
                                 onClick={handleSubmit}
                                 className="w-[90%] mt-6 bg-primary text-white"
                                 loadingText="Signing in..."
