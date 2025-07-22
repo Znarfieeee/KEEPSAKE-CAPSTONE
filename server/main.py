@@ -10,6 +10,7 @@ import sys
 import traceback
 from flask_session import Session
 from utils.redis_client import get_redis_client
+from config.settings import supabase_anon_client
 from utils.audit_logger import configure_audit_logger
 
 app = Flask("keepsake")
@@ -89,13 +90,19 @@ def handle_startup_errors():
     # Check Redis connection
     try:
         ping = redis_client.ping()
+        supabase = supabase_anon_client()
         if ping:
             print("✅ Redis connection successful")
         else:
             errors.append("❌ Redis connection failed")
             
+        if supabase:
+            print("✅ Supabase connection successful")
+        else:
+            errors.append("❌ Supabase connection failed")
+            
     except Exception as e:
-        errors.append(f"❌ Redis connection failed: {str(e)}")
+        errors.append(f"❌ Connections failed!: {str(e)}")
     
     if errors:
         print("🚨 Startup errors detected:")

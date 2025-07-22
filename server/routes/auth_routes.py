@@ -236,6 +236,7 @@ def login():
                     "message": "Login successful!",
                     "user": user_data,
                     "expires_at": auth_response.session.expires_at,
+                    "session_id": session_id,
                 }
             )
 
@@ -336,7 +337,7 @@ def get_session():
     """Get the current user's Redis session data"""
     try:
         session_id = request.cookies.get('session_id')
-        print(session_id)
+
         if not session_id:
             return jsonify({
                 "status": "error",
@@ -344,7 +345,7 @@ def get_session():
             }), 401
         
         session_data = get_session_data(session_id)
-        print(session_data)
+
         if not session_data:
             return jsonify({
                 "status": "error", 
@@ -364,9 +365,7 @@ def get_session():
             "license_number": session_data.get("license_number"),
             "phone_number": session_data.get("phone_number")
         }
-        print(f"Debug - Session data from Redis: {session_data}")
-        print(f"Debug - Constructed user data: {user_data}")
-        
+
         return jsonify({
             "status": "success",
             "message": "Session data retrieved",

@@ -1,6 +1,11 @@
 import React, { useState, useEffect } from "react"
 import { useNavigate } from "react-router-dom"
-import { login, logout, getSession } from "../api/auth"
+import {
+    login,
+    logout,
+    getSession,
+    refreshSession as refreshToken,
+} from "../api/auth"
 import { AuthContext } from "./auth"
 import { showToast } from "../util/alertHelper"
 
@@ -12,36 +17,30 @@ export const AuthProvider = ({ children }) => {
 
     const checkExistingSession = async () => {
         try {
-            const response = await getSession()
-            if (response.ok) {
-                const data = await response.json()
-                if (data.status === "success") {
-                    setUser(data.user)
-                    setIsAuthenticated(true)
-                    return true
-                }
+            const data = await getSession()
+            if (data.status === "success") {
+                setUser(data.user)
+                setIsAuthenticated(true)
+                return true
             }
             return false
         } catch (err) {
-            console.error("Session check failed: ", err)
+            console.error("Session check failed:", err)
             return false
         }
     }
 
-    const refreshSession = async () => {
+    const runRefreshSession = async () => {
         try {
-            const response = await refreshSession()
-            if (response.ok) {
-                const data = await response.json()
-                if (data.status === "success") {
-                    setUser(data.user)
-                    setIsAuthenticated(true)
-                    return true
-                }
+            const data = await refreshToken()
+            if (data.status === "success") {
+                setUser(data.user)
+                setIsAuthenticated(true)
+                return true
             }
             return false
         } catch (err) {
-            console.error("Token refresh failed: ", err)
+            console.error("Token refresh failed:", err)
             return false
         }
     }
@@ -97,7 +96,7 @@ export const AuthProvider = ({ children }) => {
 
                 const hasValidSession = await checkExistingSession()
                 if (!hasValidSession) {
-                    const refreshedSession = await refreshSession()
+                    const refreshedSession = await runRefreshSession()
                     if (!refreshedSession) {
                         setUser(null)
                         setIsAuthenticated(false)
@@ -121,7 +120,7 @@ export const AuthProvider = ({ children }) => {
         if (!isAuthenticated) return
 
         const refreshInterval = setInterval(async () => {
-            await refreshSession()
+            await runRefreshSession()
         }, 25 * 60 * 1000)
 
         return () => clearInterval(refreshInterval)
@@ -157,7 +156,7 @@ export const AuthProvider = ({ children }) => {
                 signOut,
                 loading,
                 checkExistingSession,
-                refreshSession,
+                refreshSession: refreshToken,
                 btnClicked,
             }}>
             {children}

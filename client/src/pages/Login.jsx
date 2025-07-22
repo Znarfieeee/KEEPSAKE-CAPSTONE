@@ -20,17 +20,23 @@ const Login = () => {
     const emailRef = useRef()
     const passwordRef = useRef()
     const { signIn, loading } = useAuth()
+    const [isLoading, setIsLoading] = useState(false)
     const [formError, setFormError] = useState(null)
 
     async function handleSubmit(e) {
         e.preventDefault()
+        setFormError("")
+        setIsLoading(true)
+
         const email = emailRef.current.value
         const password = passwordRef.current.value
         try {
             await signIn(email, password)
-            // Navigation happens in AuthProvider redirect effect
+            setIsLoading(false)
         } catch (err) {
             setFormError(err.message || "Login failed")
+        } finally {
+            setIsLoading(false)
         }
     }
 
