@@ -1,17 +1,25 @@
-import React, { useEffect, useMemo, useState } from "react"
+import React, { useEffect, useMemo, useState, lazy, Suspense } from "react"
 import FacilityRegistryHeader from "../../components/facilities/FacilityRegistryHeader"
 import FacilityFilters from "../../components/facilities/FacilityFilters"
 import FacilityTable from "../../components/facilities/FacilityTable"
-import RegisterFacilityModal from "../../components/facilities/RegisterFacilityModal"
-import FacilityDetailModal from "../../components/facilities/FacilityDetailModal"
+
+// Lazy-loaded components (modals are heavy and used conditionally)
+const RegisterFacilityModal = lazy(() =>
+    import("../../components/facilities/RegisterFacilityModal")
+)
+const FacilityDetailModal = lazy(() =>
+    import("../../components/facilities/FacilityDetailModal")
+)
 import { useAuth } from "../../context/auth"
 import { showToast } from "../../util/alertHelper"
-import { getFacilities, createFacility } from "../../api/facility"
+import { getFacilities } from "../../api/facility"
 import Unauthorized from "../../components/Unauthorized"
 
 const FacilitiesRegistry = () => {
     const { user } = useAuth()
     const [facilities, setFacilities] = useState([])
+    // Loading state for initial data fetch
+    const [loading, setLoading] = useState(true)
 
     // UI state
     const [search, setSearch] = useState("")
@@ -21,7 +29,7 @@ const FacilitiesRegistry = () => {
     const [page, setPage] = useState(1)
     const [itemsPerPage, setItemsPerPage] = useState(10)
 
-    // Modals
+    // Modals state
     const [showRegister, setShowRegister] = useState(false)
     const [showDetail, setShowDetail] = useState(false)
     const [detailFacility, setDetailFacility] = useState(null)
@@ -45,6 +53,7 @@ const FacilitiesRegistry = () => {
     useEffect(() => {
         const fetchData = async () => {
             try {
+                setLoading(true)
                 const res = await getFacilities()
                 if (res.status === "success") {
                     setFacilities(res.data.map(formatFacility))
@@ -57,9 +66,22 @@ const FacilitiesRegistry = () => {
             } catch (err) {
                 console.error(err)
                 showToast("error", "Failed to load facilities")
+            } finally {
+                setLoading(false)
             }
         }
         fetchData()
+    }, [])
+
+    // Listen for facility-created event from modal to append to list
+    useEffect(() => {
+        const handler = e => {
+            if (e.detail) {
+                setFacilities(prev => [...prev, formatFacility(e.detail)])
+            }
+        }
+        window.addEventListener("facility-created", handler)
+        return () => window.removeEventListener("facility-created", handler)
     }, [])
 
     const filteredFacilities = useMemo(() => {
@@ -114,32 +136,6 @@ const FacilitiesRegistry = () => {
         if (window.confirm(`Delete facility ${facility.name}?`)) {
             setFacilities(prev => prev.filter(f => f.id !== facility.id))
             showToast("success", "Facility deleted")
-        }
-    }
-
-    const handleRegisterSubmit = async newFacility => {
-        try {
-            const res = await createFacility({
-                facility_name: newFacility.name,
-                contact_number: newFacility.contact,
-                email: newFacility.adminEmail,
-                subscription_status: newFacility.plan,
-                subscription_expires: newFacility.expiry,
-                // Provide placeholders for now – these fields are NOT NULL in DB
-                address: newFacility.address || "N/A",
-                city: newFacility.city || "N/A",
-                zip_code: newFacility.zip_code || "N/A",
-            })
-
-            if (res.status === "success") {
-                setFacilities(prev => [...prev, formatFacility(res.data)])
-                showToast("success", "Facility registered")
-            } else {
-                showToast("error", res.message || "Failed to register facility")
-            }
-        } catch (err) {
-            console.error(err)
-            showToast("error", "Failed to register facility")
         }
     }
 
@@ -211,6 +207,7 @@ const FacilitiesRegistry = () => {
 
             <FacilityTable
                 facilities={filteredFacilities}
+                loading={loading}
                 page={page}
                 setPage={setPage}
                 itemsPerPage={itemsPerPage}
@@ -221,18 +218,23 @@ const FacilitiesRegistry = () => {
                 onDelete={handleDelete}
             />
 
-            {/* Modals */}
-            <RegisterFacilityModal
-                open={showRegister}
-                onClose={() => setShowRegister(false)}
-                onSubmit={handleRegisterSubmit}
-            />
-            <FacilityDetailModal
-                open={showDetail}
-                facility={detailFacility}
-                onClose={() => setShowDetail(false)}
-                onAuditLogs={handleAuditLogs}
-            />
+            {/* Modals – lazily loaded */}
+            <Suspense fallback={null}>
+                {showRegister && (
+                    <RegisterFacilityModal
+                        open={showRegister}
+                        onClose={() => setShowRegister(false)}
+                    />
+                )}
+                {showDetail && (
+                    <FacilityDetailModal
+                        open={showDetail}
+                        facility={detailFacility}
+                        onClose={() => setShowDetail(false)}
+                        onAuditLogs={handleAuditLogs}
+                    />
+                )}
+            </Suspense>
         </div>
     )
 }

@@ -4,28 +4,46 @@ from config.settings import supabase
 from gotrue.errors import AuthApiError
 from utils.access_control import require_auth, require_role
 import jwt
+import json
+from utils.redis_client import redis_client
 
 facility_bp = Blueprint('facility', __name__)
 
 # List facilities -----------------------------------------------------------
 @facility_bp.route('/facilities', methods=['GET'])
 @require_auth
-@require_role('admin', 'facility_admin')
+@require_role('admin', 'facility_admin', 'systemadmin')
 def list_facilities():
     """Return all healthcare facilities visible to the current user."""
     try:
+        cache_key = "healthcare_facilities:all"
+        cached = redis_client.get(cache_key)
+        cached_data = json.loads(cached) if cached else None
+
+        # Fetch from Supabase
         resp = supabase.table('healthcare_facilities').select('*').execute()
 
         if getattr(resp, 'error', None):
             return jsonify({
-                "status": "error",
+                "status": "error", 
                 "message": "Failed to fetch facilities",
                 "details": resp.error.message if resp.error else "Unknown",
             }), 400
 
+        # Store fresh copy in Redis (10-minute TTL)
+        redis_client.setex(cache_key, 600, json.dumps(resp.data))
+        
+        if cached_data:
+            return jsonify({
+                "status": "success",
+                "data": cached_data,
+                "cached": True,
+            }), 200
+
         return jsonify({
             "status": "success",
             "data": resp.data,
+            "cached": False,
         }), 200
 
     except Exception as e:
@@ -38,7 +56,7 @@ def list_facilities():
 # Create facility -----------------------------------------------------------
 @facility_bp.route('/facilities', methods=['POST'])
 @require_auth
-@require_role('admin')
+@require_role('admin', 'systemadmin')
 def create_facility():
     """Create a new facility record in Supabase."""
     try:
@@ -63,6 +81,8 @@ def create_facility():
             "website": data.get("website") or "N/A",
             "subscription_status": data.get("subscription_status") or "active",
             "subscription_expires": data.get("subscription_expires"),
+            "plan": data.get("plan"),
+            "type": data.get("type"),
             "created_by": created_by,
         }
 
@@ -74,6 +94,9 @@ def create_facility():
                 "message": "Failed to create facility",
                 "details": resp.error.message if resp.error else "Unknown",
             }), 400
+
+        # Invalidate cached list so subsequent GET reflects the new record
+        redis_client.delete("healthcare_facilities:all")
 
         return jsonify({
             "status": "success",

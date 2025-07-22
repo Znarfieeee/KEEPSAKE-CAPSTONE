@@ -297,6 +297,19 @@ def logout():
         # Clear cached patient data for this current user
         pattern = f"{CACHE_PREFIX}{user_id}*"
         cached_keys = redis_client.keys(pattern)
+        
+        if cached_keys:
+            redis_client.delete(*cached_keys)
+        
+        current_app.logger.info(f"AUDIT: User {user_id} logged out from IP {request.remote_addr}")
+        
+        # Remove session from Redis
+        if session_id:
+            redis_client.delete(f"{SESSION_PREFIX}{session_id}")
+        
+        # Clear cached patient data for this current user
+        pattern = f"{CACHE_PREFIX}{user_id}*"
+        cached_keys = redis_client.keys(pattern)
         if cached_keys:
             redis_client.delete(*cached_keys)
         
