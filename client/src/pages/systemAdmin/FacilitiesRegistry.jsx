@@ -6,46 +6,10 @@ import RegisterFacilityModal from "../../components/facilities/RegisterFacilityM
 import FacilityDetailModal from "../../components/facilities/FacilityDetailModal"
 import { useAuth } from "../../context/auth"
 import { showToast } from "../../util/alertHelper"
-
-// Placeholder data – replace with Supabase fetch
-const dummyFacilities = [
-    {
-        id: "FAC-001",
-        name: "St. Mary's Hospital",
-        location: "Cebu City",
-        type: "hospital",
-        plan: "premium",
-        expiry: "2025-12-31",
-        admin: "chad@maryhospital.com",
-        status: "active",
-        contact: "(032) 555-1234",
-    },
-    {
-        id: "FAC-002",
-        name: "HealthFirst Clinic",
-        location: "Makati",
-        type: "clinic",
-        plan: "standard",
-        expiry: "2024-03-15",
-        admin: "rolly@healthfirstclinic.com",
-        status: "pending",
-        contact: "(02) 888-5678",
-    },
-    {
-        id: "FAC-003",
-        name: "Sunrise BHS",
-        location: "Davao",
-        type: "bhs",
-        plan: "enterprise",
-        expiry: "2026-01-10",
-        admin: "eldrin@sunrisebhs.com",
-        status: "suspended",
-        contact: "(082) 333-9999",
-    },
-]
+import { getFacilities, createFacility } from "../../api/facility"
 
 const FacilitiesRegistry = () => {
-    const { role } = useAuth()
+    const { user } = useAuth()
     const [facilities, setFacilities] = useState([])
 
     // UI state
@@ -60,17 +24,40 @@ const FacilitiesRegistry = () => {
     const [showDetail, setShowDetail] = useState(false)
     const [detailFacility, setDetailFacility] = useState(null)
 
-    /* ------------------------------------------------------------
-     * Fetch facilities – using dummy for now
-     * ----------------------------------------------------------*/
+    // Helper to normalise facility records coming from API
+    const formatFacility = raw => ({
+        id: raw.facility_id,
+        name: raw.facility_name,
+        location: raw.city || "—",
+        type: raw.type || "clinic", // default until field is available
+        plan: raw.subscription_status,
+        expiry: raw.subscription_expires,
+        admin: raw.admin || raw.email || "—",
+        status:
+            raw.subscription_status === "suspended" ? "suspended" : "active",
+        contact: raw.contact_number,
+    })
+
     useEffect(() => {
-        // Replace with Supabase fetch
-        setFacilities(dummyFacilities)
+        const fetchData = async () => {
+            try {
+                const res = await getFacilities()
+                if (res.status === "success") {
+                    setFacilities(res.data.map(formatFacility))
+                } else {
+                    showToast(
+                        "error",
+                        res.message || "Failed to load facilities"
+                    )
+                }
+            } catch (err) {
+                console.error(err)
+                showToast("error", "Failed to load facilities")
+            }
+        }
+        fetchData()
     }, [])
 
-    /* ------------------------------------------------------------
-     * Filter & search logic (memoised)
-     * ----------------------------------------------------------*/
     const filteredFacilities = useMemo(() => {
         return facilities.filter(f => {
             const matchesSearch = search
@@ -87,7 +74,7 @@ const FacilitiesRegistry = () => {
     }, [facilities, search, statusFilter, typeFilter])
 
     // Role-based guard
-    if (role !== "SystemAdmin" && role !== "admin") {
+    if (user.role !== "SystemAdmin" && user.role !== "admin") {
         return (
             <div className="p-6 text-red-600 dark:text-red-400">
                 You are not authorized to view this page.
@@ -95,9 +82,6 @@ const FacilitiesRegistry = () => {
         )
     }
 
-    /* ------------------------------------------------------------
-     * Action handlers
-     * ----------------------------------------------------------*/
     const handleView = facility => {
         setDetailFacility(facility)
         setShowDetail(true)
@@ -132,14 +116,30 @@ const FacilitiesRegistry = () => {
         }
     }
 
-    const handleRegisterSubmit = newFacility => {
-        const newEntry = {
-            ...newFacility,
-            id: `FAC-${String(facilities.length + 1).padStart(3, "0")}`,
-            location: "—",
-            status: "pending",
+    const handleRegisterSubmit = async newFacility => {
+        try {
+            const res = await createFacility({
+                facility_name: newFacility.name,
+                contact_number: newFacility.contact,
+                email: newFacility.adminEmail,
+                subscription_status: newFacility.plan,
+                subscription_expires: newFacility.expiry,
+                // Provide placeholders for now – these fields are NOT NULL in DB
+                address: newFacility.address || "N/A",
+                city: newFacility.city || "N/A",
+                zip_code: newFacility.zip_code || "N/A",
+            })
+
+            if (res.status === "success") {
+                setFacilities(prev => [...prev, formatFacility(res.data)])
+                showToast("success", "Facility registered")
+            } else {
+                showToast("error", res.message || "Failed to register facility")
+            }
+        } catch (err) {
+            console.error(err)
+            showToast("error", "Failed to register facility")
         }
-        setFacilities(prev => [...prev, newEntry])
     }
 
     const handleExportCSV = () => {

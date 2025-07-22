@@ -1,10 +1,13 @@
 import React, { useState } from "react"
 import { Button } from "../ui/Button"
-import { showToast } from "../../util/alertHelper"
+import LoadingButton from "../ui/LoadingButton"
 
 const initialForm = {
     name: "",
-    type: "clinic",
+    address: "",
+    city: "",
+    zip_code: "",
+    type: "clinic", // Optional UI-only field
     contact: "",
     adminEmail: "",
     plan: "standard",
@@ -16,6 +19,7 @@ const steps = ["Facility Info", "Assign Admin", "Plan & Expiry", "Review"]
 const RegisterFacilityModal = ({ open, onClose, onSubmit }) => {
     const [form, setForm] = useState(initialForm)
     const [step, setStep] = useState(0)
+    const [loading, setLoading] = useState(false)
 
     const next = () => setStep(s => Math.min(steps.length - 1, s + 1))
     const prev = () => setStep(s => Math.max(0, s - 1))
@@ -25,11 +29,16 @@ const RegisterFacilityModal = ({ open, onClose, onSubmit }) => {
         setStep(0)
     }
 
-    const handleSubmit = () => {
-        onSubmit(form)
-        showToast("success", "Facility registered")
-        reset()
-        onClose()
+    const handleSubmit = async () => {
+        try {
+            setLoading(true)
+            await onSubmit(form)
+            // Parent component handles toasts
+            reset()
+            onClose()
+        } finally {
+            setLoading(false)
+        }
     }
 
     if (!open) return null
@@ -51,6 +60,7 @@ const RegisterFacilityModal = ({ open, onClose, onSubmit }) => {
                 {/* Step content */}
                 {step === 0 && (
                     <div className="space-y-3">
+                        {/* Facility Name */}
                         <div>
                             <label className="block text-sm font-medium">
                                 Facility Name
@@ -64,24 +74,65 @@ const RegisterFacilityModal = ({ open, onClose, onSubmit }) => {
                                 className="w-full border rounded-md px-3 py-2 mt-1 text-sm focus:outline-none focus:ring-2 focus:ring-ring dark:bg-input/30 dark:border-input"
                             />
                         </div>
+
+                        {/* Address */}
                         <div>
                             <label className="block text-sm font-medium">
-                                Type
+                                Address
                             </label>
-                            <select
-                                value={form.type}
+                            <input
+                                type="text"
+                                value={form.address}
                                 onChange={e =>
-                                    setForm({ ...form, type: e.target.value })
+                                    setForm({
+                                        ...form,
+                                        address: e.target.value,
+                                    })
                                 }
-                                className="w-full border rounded-md px-3 py-2 mt-1 text-sm focus:outline-none focus:ring-2 focus:ring-ring dark:bg-input/30 dark:border-input">
-                                <option value="clinic">Clinic</option>
-                                <option value="hospital">Hospital</option>
-                                <option value="bhs">BHS</option>
-                            </select>
+                                className="w-full border rounded-md px-3 py-2 mt-1 text-sm focus:outline-none focus:ring-2 focus:ring-ring dark:bg-input/30 dark:border-input"
+                            />
                         </div>
+
+                        {/* City & Zip */}
+                        <div className="flex gap-2">
+                            <div className="flex-1">
+                                <label className="block text-sm font-medium">
+                                    City
+                                </label>
+                                <input
+                                    type="text"
+                                    value={form.city}
+                                    onChange={e =>
+                                        setForm({
+                                            ...form,
+                                            city: e.target.value,
+                                        })
+                                    }
+                                    className="w-full border rounded-md px-3 py-2 mt-1 text-sm focus:outline-none focus:ring-2 focus:ring-ring dark:bg-input/30 dark:border-input"
+                                />
+                            </div>
+                            <div className="w-36">
+                                <label className="block text-sm font-medium">
+                                    Zip Code
+                                </label>
+                                <input
+                                    type="text"
+                                    value={form.zip_code}
+                                    onChange={e =>
+                                        setForm({
+                                            ...form,
+                                            zip_code: e.target.value,
+                                        })
+                                    }
+                                    className="w-full border rounded-md px-3 py-2 mt-1 text-sm focus:outline-none focus:ring-2 focus:ring-ring dark:bg-input/30 dark:border-input"
+                                />
+                            </div>
+                        </div>
+
+                        {/* Contact */}
                         <div>
                             <label className="block text-sm font-medium">
-                                Contact Info
+                                Contact Number
                             </label>
                             <input
                                 type="text"
@@ -203,9 +254,13 @@ const RegisterFacilityModal = ({ open, onClose, onSubmit }) => {
                             </Button>
                         )}
                         {step === steps.length - 1 && (
-                            <Button size="sm" onClick={handleSubmit}>
+                            <LoadingButton
+                                size="sm"
+                                type="button"
+                                onClick={handleSubmit}
+                                isLoading={loading}>
                                 Submit
-                            </Button>
+                            </LoadingButton>
                         )}
                     </div>
                 </div>

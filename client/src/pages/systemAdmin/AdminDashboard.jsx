@@ -1,5 +1,4 @@
-import React, { useEffect } from "react"
-import { getSession } from "../../api/auth"
+import React from "react"
 import TotalFacilities from "../../components/sysAdmin_dashboard/TotalFacilities"
 import ActiveUsers from "../../components/sysAdmin_dashboard/ActiveUsers"
 import SystemHealth from "../../components/sysAdmin_dashboard/SystemHealth"
@@ -11,27 +10,8 @@ import ParentSubscriptions from "../../components/sysAdmin_dashboard/ParentSubsc
 import RevenueSources from "../../components/sysAdmin_dashboard/RevenueSources"
 
 const AdminDashboard = () => {
-    // Use shared auth API util which already sends cookies (withCredentials)
-    const handleSession = async () => {
-        try {
-            const data = await getSession()
-            console.log("Session:", data)
-        } catch (err) {
-            console.error("Failed to fetch session", err)
-        }
-    }
-
-    useEffect(() => {
-        handleSession()
-    }, [])
-
     return (
         <div className="p-6">
-            <button
-                onClick={handleSession}
-                className="bg-blue-500 text-white p-2 rounded-md">
-                Check Session
-            </button>
             <div className="grid grid-cols-12 grid-rows-6 gap-4">
                 {/* Top stats */}
                 <div className="col-span-3 row-span-1">
