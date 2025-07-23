@@ -1,11 +1,12 @@
 from flask import Blueprint, request, jsonify
 from datetime import datetime
-from config.settings import supabase
+from config.settings import supabase, supabase_service_role_client
 from gotrue.errors import AuthApiError
 from utils.access_control import require_auth, require_role
 import jwt
 import json
 from utils.redis_client import redis_client
+from utils.gen_password import generate_password
 
 facility_bp = Blueprint('facility', __name__)
 
@@ -149,34 +150,113 @@ def get_facility_by_id(facility_id):
         }), 500
 
 
-# Wala pa nahuman
-@facility_bp.route('/add_facility_user', methods=['POST'])
-def add_facility_user():
-    try:
-        data = request.json
+@facility_bp.route('/facilities/<int:facility_id>/users', methods=['POST'])
+@require_auth
+@require_role('facility_admin')
+def create_facility_user(facility_id):
+    """Create a new user and assign them to the facility for a specific facility"""
+    data = request.json
+    current_user = request.current_user
+    
+    email = data.get('email')
+    password = generate_password()
+    firstname = data.get('firstname')
+    lastname = data.get('lastname')
+    role = data.get('role')
+    specialty = data.get('specialty')
+    license_number = data.get('license_number')
+    phone_number = data.get('phone_number')
+    start_date = data.get('start_date')
+    
+    # Validation
+    required_fields = ['email', 'password', 'firstname', 'lastname', 'role', 'phone_number']
+    if not all(data.get(field) for field in required_fields):
+        return jsonify({
+            "status": "error",
+            "message": f"Missing required fields: {', '.join(required_fields)}"
+        }), 400
         
-        # After successful facility creation, create a FACILITY_USERS entry for the admin
-        # current_user_id = sb.auth.get_user().user.id if sb.auth.get_user() else None
-        # if current_user_id:
-        #     facility_user_insert = sb.table('FACILITY_USERS').insert({
-        #         'FACILITY_ID': new_facility['FACILITY_ID'],
-        #         'USER_ID': current_user_id,
-        #         'ROLE': 'admin',
-        #         'START_DATE': datetime.utcnow().date().isoformat()
-        #     }).execute()
-
-        #     if facility_user_insert.get('error'):
-        #         # Log this error but don't fail the request since facility was created
-        #         print(f"Warning: Failed to create facility_user record: {facility_user_insert['error']}")
+    try:
+        # Check if user exits
+        check_user = supabase.table('users').select('*').eq('email', email).single().execute()
+        if check_user.data:
+            return jsonify({
+                "status": "error",
+                "message": "User already exists"
+            }), 400
+            
+        # Create user in Supabase Auth
+        signup_resp = supabase_service_role_client().auth.admin.create_user({
+            "email": email,
+            "password": password,
+            "email_confirm": True,
+            "user_metadata": {
+                "firstname": firstname,
+                "lastname": lastname,
+                "role": role,
+                "specialty": specialty,
+                "license_number": license_number,
+                "phone_number": phone_number,
+                "facility_id": facility_id,
+                "created_by": current_user.get('id')
+            }
+        })
+        
+        # The user will be automatically added into public.users because of trigger function
+        
+        if signup_resp.user is None:
+            return jsonify({
+                "status": "error",
+                "message": "Failed to create user"
+            }), 400
+        
+        # Get the user_id
+        user_id = signup_resp.user.id
+        
+        # Link user to facility
+        facility_user_payload = {
+            'facility_id': facility_id,
+            'user_id': user_id,
+            'role': role,
+            'start_date': start_date
+        }
+        
+        facility_user_result = supabase.table('facility_users').insert(facility_user_payload).execute()
+        
+        if getattr(facility_user_result, 'error', None):
+            return jsonify({
+                "status": "error",
+                "message": "Failed to link user to facility"
+            }), 400
+        
+        # Audit log
+        audit_log(
+            user_id=current_user['id'],
+                action_type='CREATE',
+                table_name='facility_users',
+                record_id=user_id,
+                patient_id=None,  # Not patient-specific
+                new_values={
+                    'facility_id': facility_id,
+                    'user_id': user_id,
+                    'role': role,
+                    'created_by': current_user['id']
+                }
+        )
         
         return jsonify({
             "status": "success",
-            "message": "Facility user added successfully"
+            "message": "Facility user created successfully!",
             }), 201
-    except Exception as e:
+    
+    except AuthApiError as auth_error:
         return jsonify({
             "status": "error",
-            "message": f"Error adding facility user: {str(e)}",
-            "details": str(e)
+            "message": f"Authentication error: {str(auth_error)}"
+        }), 400
+    except Exception as e:
+        current_app.logger.error(f"Failed to create facility user: {str(e)}")
+        return jsonify({
+            "status": "error",
+            "message": f"Failed to create facility user: {str(e)}"
         }), 500
-        
