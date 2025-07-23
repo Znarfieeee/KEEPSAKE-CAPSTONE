@@ -1,5 +1,5 @@
 from flask import Blueprint, request, jsonify, session, current_app
-from config.settings import supabase, supabase_service_role_client
+from config.settings import supabase, supabase_service_role_client, supabase_anon_client
 import datetime
 import redis, json, logging
 from gotrue.errors import AuthApiError
@@ -518,52 +518,115 @@ def list_active_sessions():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
     
-@auth_bp.route('/add_facility_user', methods=['POST'])
+# Assign facility admin to facility
+@auth_bp.route('/admin/<facility_id>/add_facility_admin', methods=['POST'])
 @require_auth
-@require_role('facility_admin')
-def add_facility_user():
-    """Add a new facility user"""
-    data = request.json
+@require_role('admin')
+def add_facility_admin(facility_id):
+    data = request.json or {}
+    current_user = request.current_user
+    
     email = data.get('email')
-    role = data.get('role')
-    facility_id = data.get('facility_id')
+    role = data.get('role', 'facility_admin')
+    start_date = data.get('start_date') # Optional, default current date naa sa stored procedure
+    end_date = data.get('end_date') # Optional rani, if NULL—means permanent
     
     try:
-        # Create the user in Supabase Auth with optional user metadata
-        signup_resp = supabase.auth.sign_up(
-            {
-                "email": email,
-                "password": password,
-                "options": {
-                    "data": {
-                        "role": role,
-                        "facility_id": facility_id,
-                    }
-                },
-            }
-        )
-
-        if signup_resp.user is None:
+        current_app.logger.info(f"AUDIT: Admin {current_user.get('email')} attempting to assign {email} to facility {facility_id} as {role}")
+        # Fetch the user_id from the users table in Supabase by email
+        user_resp = supabase.table('users').select('*').eq('email', email).execute()
+        
+        if not user_resp.data:
             return jsonify({
-                "status": "pending",
-                "message": "Signup successful. Please confirm your email to activate your account.",
-            }), 202
-
-        user_id = signup_resp.user.id
-
+                "status": "error",
+                "message": f"User with email {email} not found"
+            }), 404
+            
+        user_data = user_resp.data[0]
+        user_id = user_data['user_id']
+        
+        if not user_data.get('is_active', False):
+            return jsonify({
+                "status": "error",
+                "message": f"User {email} is not active."
+            })
+        current_app.logger.info(f"Found user: {user_id} ({email})")
+        current_app.logger.info(f"Assigning user {user_id} to facility {facility_id} as {role}")
+        
+        # Verify facility exists and is active
+        facility_resp = supabase.table('healthcare_facilities').select('facility_id, facility_name, subscription_status').eq('facility_id', facility_id).execute()
+        
+        if not facility_resp.data:
+            return jsonify({
+                "status": "error",
+                "message": f"Facility with ID {facility_id} not found"
+            }), 404
+            
+        facility_data = facility_resp.data[0]
+        if facility_data.get('subscription_status') != 'active':
+            return jsonify({
+                "status": "error",
+                "message": f"Facility {facility_data.get('facility_name')} is not active"
+            }), 400
+            
+        # Prepare parameters for the stored procedure
+        proc_params = {
+            'p_facility_id': facility_id,
+            'p_user_id': user_id,
+            'p_role': role,
+            'p_assigned_by': current_user.get('id')
+        }
+        # Add optional parameters if provided
+        if start_date:
+            proc_params['p_start_date'] = start_date
+        if end_date:
+            proc_params['p_end_date'] = end_date
+            
+        assign_response = supabase_service_role_client().rpc('assign_user_to_facility', proc_params).execute()
+        
+        if assign_response.data:
+            # The stored procedure returns a table with success, message, and facility_user_record
+            result = assign_response.data[0] if assign_response.data else {}
+            
+            if result.get('success'):
+                current_app.logger.info(f"AUDIT: Successfully assigned {email} to facility {facility_id} as {role} by admin {current_user.get('email')}")
+                
+                return jsonify({
+                    "status": "success",
+                    "message": result.get('message', 'User assigned to facility successfully'),
+                    "assignment_details": result.get('facility_user_record')
+                }), 200
+            else:
+                current_app.logger.error(f"AUDIT: Failed to assign {email} to facility {facility_id}: {result.get('message')}")
+                
+                return jsonify({
+                    "status": "error",
+                    "message": result.get('message', 'Failed to assign user to facility')
+                }), 400
+        else:
+            # Check if there was an error in the response
+            if assign_response.error:
+                current_app.logger.error(f"AUDIT: Supabase error assigning {email} to facility {facility_id}: {assign_response.error}")
+                
+                return jsonify({
+                    "status": "error",
+                    "message": f"Database error: {assign_response.error}"
+                }), 500
+            else:
+                return jsonify({
+                    "status": "error",
+                    "message": "No response from assignment procedure"
+                }), 500
+            
+        
         return jsonify({
             "status": "success",
-            "message": "User created successfully.",
-            "user": {
-                "id": user_id,
-                "email": email,
-                "role": role,
-                "facility_id": facility_id,
-            }
-        }), 201
+            "message": "User assigned to facility successfully"
+        }), 200
 
     except Exception as e:
+        current_app.logger.error(f"AUDIT: Exception in add_facility_admin for facility {facility_id}: {str(e)}")
         return jsonify({
             "status": "error",
-            "message": f"Failed to create user: {str(e)}"
+            "message": f"Failed to assign user: {str(e)}"
         }), 500
