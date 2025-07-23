@@ -178,7 +178,7 @@ const FacilitiesRegistry = () => {
 
     /* ------------------------------------------------------------ */
     return (
-        <div className="p-6 space-y-6">
+        <div className="p-6 px-20 space-y-6">
             <FacilityRegistryHeader
                 onOpenRegister={() => setShowRegister(true)}
                 onExportCSV={handleExportCSV}

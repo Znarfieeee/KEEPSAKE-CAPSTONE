@@ -30,7 +30,7 @@ function Breadcrumbs() {
     let pathAcc = ""
 
     return (
-        <Breadcrumb className="mb-4 text-sm text-gray-400">
+        <Breadcrumb className="mb-4 ml-10 text-sm text-gray-400">
             <BreadcrumbList>
                 {segments.map((seg, idx) => {
                     pathAcc += `/${seg}`

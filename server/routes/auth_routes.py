@@ -517,3 +517,53 @@ def list_active_sessions():
         
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+    
+@auth_bp.route('/add_facility_user', methods=['POST'])
+@require_auth
+@require_role('facility_admin')
+def add_facility_user():
+    """Add a new facility user"""
+    data = request.json
+    email = data.get('email')
+    role = data.get('role')
+    facility_id = data.get('facility_id')
+    
+    try:
+        # Create the user in Supabase Auth with optional user metadata
+        signup_resp = supabase.auth.sign_up(
+            {
+                "email": email,
+                "password": password,
+                "options": {
+                    "data": {
+                        "role": role,
+                        "facility_id": facility_id,
+                    }
+                },
+            }
+        )
+
+        if signup_resp.user is None:
+            return jsonify({
+                "status": "pending",
+                "message": "Signup successful. Please confirm your email to activate your account.",
+            }), 202
+
+        user_id = signup_resp.user.id
+
+        return jsonify({
+            "status": "success",
+            "message": "User created successfully.",
+            "user": {
+                "id": user_id,
+                "email": email,
+                "role": role,
+                "facility_id": facility_id,
+            }
+        }), 201
+
+    except Exception as e:
+        return jsonify({
+            "status": "error",
+            "message": f"Failed to create user: {str(e)}"
+        }), 500
