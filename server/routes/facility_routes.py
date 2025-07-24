@@ -281,16 +281,7 @@ def update_facility_user(facility_id, user_id):
             if facility_update_result.get('error'):
                 raise Exception(f"Failed to update facility role: {facility_update_result['error']}")
         
-        # Audit log
-        audit_log(
-            user_id=current_user['id'],
-            action_type='UPDATE',
-            table_name='facility_users',
-            record_id=user_id,
-            patient_id=None,
-            old_values=current_data,
-            new_values=data
-        )
+        # Audit logging is handled automatically by the database trigger
         
         return jsonify({
             "status": "success",
@@ -358,21 +349,7 @@ def remove_facility_user(facility_id, user_id):
                 .eq('user_id', user_id)\
                 .execute()
         
-        # Audit log
-        audit_log(
-            user_id=current_user['id'],
-            action_type='DELETE',
-            table_name='facility_users',
-            record_id=user_id,
-            patient_id=None,
-            new_values={
-                'facility_id': facility_id,
-                'user_id': user_id,
-                'end_date': end_date,
-                'reason': reason,
-                'removed_by': current_user['id']
-            }
-        )
+        # Audit logging is handled automatically by the database trigger
         
         return jsonify({
             "status": "success",
@@ -536,15 +513,7 @@ def assign_patient_to_facility(facility_id):
         if assignment_result.get('error'):
             raise Exception(f"Failed to assign patient: {assignment_result['error']}")
         
-        # Audit log
-        audit_log(
-            user_id=current_user['id'],
-            action_type='CREATE',
-            table_name='patient_facility',
-            record_id=assignment_result.data[0]['pf_id'],
-            patient_id=patient_id,
-            new_values=assignment_record
-        )
+        # Audit logging is handled automatically by the database trigger
         
         return jsonify({
             "status": "success",
