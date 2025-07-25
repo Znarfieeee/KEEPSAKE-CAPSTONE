@@ -58,6 +58,7 @@ export const AuthProvider = ({ children }) => {
                 showToast("success", "Login successful")
                 setUser(response.user)
                 setIsAuthenticated(true)
+                navigateOnLogin(response.user.role) // Only navigate on actual login
 
                 return response
             } else {
@@ -126,26 +127,25 @@ export const AuthProvider = ({ children }) => {
         return () => clearInterval(refreshInterval)
     }, [isAuthenticated])
 
-    useEffect(() => {
-        if (!loading && user?.role) {
-            switch (user.role) {
-                case "admin":
-                    navigate("/admin")
-                    break
-                case "Pediapro":
-                    navigate("/pediapro")
-                    break
-                case "Keepsaker":
-                    navigate("/keepsaker")
-                    break
-                case "VitalCustodian":
-                    navigate("/vital_custodian")
-                    break
-                default:
-                    navigate("/")
-            }
+    // Only navigate on initial login, not on refresh
+    const navigateOnLogin = role => {
+        switch (role) {
+            case "admin":
+                navigate("/admin")
+                break
+            case "Pediapro":
+                navigate("/pediapro")
+                break
+            case "Keepsaker":
+                navigate("/keepsaker")
+                break
+            case "VitalCustodian":
+                navigate("/vital_custodian")
+                break
+            default:
+                navigate("/")
         }
-    }, [loading, user, navigate])
+    }
 
     return (
         <AuthContext.Provider
