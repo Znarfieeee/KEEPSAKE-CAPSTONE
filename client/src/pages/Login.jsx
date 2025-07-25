@@ -1,6 +1,7 @@
 import React, { useRef, useState } from "react"
 import { Link } from "react-router-dom"
 import { useAuth } from "../context/auth"
+import { sanitizeInput } from "../util/sanitize"
 
 // Images
 import LOGO from "../assets/logo1.png"
@@ -28,8 +29,8 @@ const Login = () => {
         setFormError("")
         setIsLoading(true)
 
-        const email = emailRef.current.value
-        const password = passwordRef.current.value
+        const email = sanitizeInput(emailRef.current.value)
+        const password = sanitizeInput(passwordRef.current.value)
         try {
             await signIn(email, password)
             setIsLoading(false)

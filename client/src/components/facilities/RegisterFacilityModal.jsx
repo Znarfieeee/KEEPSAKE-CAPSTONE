@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react"
 import { createFacility } from "../../api/facility"
+import { sanitizeObject } from "../../util/sanitize"
 
 // UI Components
 import { showToast } from "../../util/alertHelper"
@@ -55,9 +56,9 @@ const RegisterFacilityModal = ({ open, onClose }) => {
     const handleSubmit = async () => {
         try {
             setLoading(true)
-            const payload = {
+            const payload = sanitizeObject({
                 ...form,
-            }
+            })
             const res = await createFacility(payload)
 
             if (res.status === "success") {
