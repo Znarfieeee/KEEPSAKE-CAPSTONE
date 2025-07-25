@@ -129,7 +129,7 @@ def create_invite():
             'email': email,
             'child_id': child_id,
             'token': None,  # Supabase will handle the actual invite token
-            'expires_at': datetime.datetime.utcnow() + datetime.timedelta(days=7),
+            'expires_at': datetime.utcnow() + datetime.timedelta(days=7),
             'created_by': created_by,
             'role': role
         }).execute()
@@ -159,7 +159,7 @@ def create_invite():
 @auth_bp.route('/login', methods=['POST'])
 def login():
     try:
-        # check first if there is an existing session
+        # Check for existing session first
         session_id = request.cookies.get('session_id')
         if session_id:
             existing_session = get_session_data(session_id)
@@ -184,21 +184,42 @@ def login():
                     "user": user_data,
                     "expires_at": existing_session.get('expires_at'),
                 }), 200
-        
-        # if no existing session, proceed with login
-        data = request.json
+
+        # Get login credentials
+        data = request.json or {}
         email = data.get('email')
         password = data.get('password')
 
-        # Authenticate with Supabase
+        if not email or not password:
+            return jsonify({
+                "status": "error",
+                "message": "Email and password are required"
+            }), 400
+
+        current_app.logger.info(f"Attempting login for email: {email}")
+        
         try:
+            # Use the correct client object (not function call!)
             auth_response = supabase.auth.sign_in_with_password({
                 "email": email,
                 "password": password,
             })
             
+            if not auth_response or not auth_response.user:
+                current_app.logger.error(f"AUDIT: No user returned from Supabase for {email}")
+                return jsonify({
+                    "status": "error",
+                    "message": "Invalid email or password"
+                }), 401
+                
+            if not auth_response.session:
+                current_app.logger.error(f"AUDIT: No session returned from Supabase for {email}")
+                return jsonify({
+                    "status": "error",
+                    "message": "Authentication failed - no session"
+                }), 401
+            
             user_metadata = auth_response.user.user_metadata or {}
-
             user_data = {
                 'id': auth_response.user.id,
                 'email': auth_response.user.email,
@@ -216,29 +237,25 @@ def login():
                 'expires_at': auth_response.session.expires_at,
             }
             
-            #Create session in Redis
+            # Create session in Redis
             session_id = create_session_id()
-            
-            # Prepare complete session data
             session_data = {
                 "user_id": auth_response.user.id,
-                **user_data,  # Include all user data
-                **supabase_tokens  # Include tokens
+                **user_data,
+                **supabase_tokens
             }
             
             store_session_data(session_id, session_data)
             
-            current_app.logger.info(f"AUDIT: User {email} logged in from IP {request.remote_addr} - Session: {session_id}")
+            current_app.logger.info(f"AUDIT: User {email} logged in successfully from IP {request.remote_addr} - Session: {session_id}")
             
-            response = jsonify(
-                {
-                    "status": "success",
-                    "message": "Login successful!",
-                    "user": user_data,
-                    "expires_at": auth_response.session.expires_at,
-                    "session_id": session_id,
-                }
-            )
+            response = jsonify({
+                "status": "success",
+                "message": "Login successful!",
+                "user": user_data,
+                "expires_at": auth_response.session.expires_at,
+                "session_id": session_id,
+            })
 
             # Set cookies
             secure_cookie = request.is_secure
@@ -254,7 +271,6 @@ def login():
                 path="/",
             )
 
-            # Refresh token (long-lived)
             response.set_cookie(
                 REFRESH_COOKIE,
                 auth_response.session.refresh_token,
@@ -268,18 +284,24 @@ def login():
             return response, 200
 
         except AuthApiError as auth_error:
-            current_app.logger.error(f"AUDIT: Login failed for user {email} from IP {request.remote_addr} - Error: {str(auth_error)}")
+            current_app.logger.error(f"AUDIT: Supabase AuthApiError for {email} from IP {request.remote_addr} - Error: {str(auth_error)}")
             return jsonify({
                 "status": "error",
-                "message": str(auth_error)
+                "message": f"Authentication failed: {str(auth_error)}"
             }), 401
+            
+        except Exception as supabase_error:
+            current_app.logger.error(f"AUDIT: Supabase connection error for {email} from IP {request.remote_addr} - Error: {str(supabase_error)}")
+            return jsonify({
+                "status": "error",
+                "message": "Authentication service temporarily unavailable"
+            }), 503
 
     except Exception as e:
-        current_app.logger.error(f"AUDIT: Login failed for user {email} from IP {request.remote_addr} - Error: {str(e)}")
+        current_app.logger.error(f"AUDIT: Login failed for {email if 'email' in locals() else 'unknown'} from IP {request.remote_addr} - Error: {str(e)}")
         return jsonify({
             "status": "error",
-            "message": "An error occurred during login",
-            "details": str(e)
+            "message": "An unexpected error occurred during login"
         }), 500
 
 

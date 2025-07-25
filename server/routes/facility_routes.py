@@ -13,7 +13,7 @@ facility_bp = Blueprint('facility', __name__)
 # List facilities -----------------------------------------------------------
 @facility_bp.route('/facilities', methods=['GET'])
 @require_auth
-@require_role('admin', 'facility_admin', 'systemadmin')
+@require_role('admin')
 def list_facilities():
     """Return all healthcare facilities visible to the current user."""
     try:
@@ -57,7 +57,7 @@ def list_facilities():
 # Create facility -----------------------------------------------------------
 @facility_bp.route('/facilities', methods=['POST'])
 @require_auth
-@require_role('admin', 'systemadmin')
+@require_role('admin')
 def create_facility():
     """Create a new facility record in Supabase."""
     try:
@@ -152,7 +152,7 @@ def get_facility_by_id(facility_id):
 # Fetching all users for a specific facility
 @facility_bp.route('/facilities/<facility_id>/users', methods=['GET'])
 @require_auth
-@require_role(['admin', 'facility_admin', 'doctor', 'nurse'])
+@require_role('admin', 'facility_admin', 'pediapro', 'vital_custodian')
 def get_facility_users(facility_id):
     """
     Get all users for a specific facility
@@ -217,7 +217,7 @@ def get_facility_users(facility_id):
 # Update a facility_user's or role
 @facility_bp.route('/facilities/<facility_id>/users/<user_id>', methods=['PUT'])
 @require_auth
-@require_role(['admin', 'facility_admin'])
+@require_role('admin', 'facility_admin')
 def update_facility_user(facility_id, user_id):
     """
     Update a facility user's information or role
@@ -251,7 +251,7 @@ def update_facility_user(facility_id, user_id):
                 user_updates[field] = data[field]
         
         if user_updates:
-            user_updates['updated_at'] = datetime.datetime.utcnow().isoformat()
+            user_updates['updated_at'] = datetime.utcnow().isoformat()
             
             user_update_result = supabase.table('users')\
                 .update(user_updates)\
@@ -298,7 +298,7 @@ def update_facility_user(facility_id, user_id):
 # Soft delete a user from a facility by setting end_date
 @facility_bp.route('/facilities/<facility_id>/users/<user_id>', methods=['DELETE'])
 @require_auth
-@require_role(['admin', 'facility_admin'])
+@require_role('admin', 'facility_admin')
 def remove_facility_user(facility_id, user_id):
     """
     Remove a user from a facility (soft delete by setting end_date)
@@ -368,7 +368,7 @@ def remove_facility_user(facility_id, user_id):
 # Inviting user into the facility
 @facility_bp.route('/facilities/<facility_id>/invite', methods=['POST'])
 @require_auth
-@require_role(['admin', 'facility_admin'])
+@require_role('admin', 'facility_admin')
 def invite_facility_user(facility_id):
     """
     Send an invitation to join a facility
@@ -452,7 +452,7 @@ def invite_facility_user(facility_id):
 # Assign a patient to the facility
 @facility_bp.route('/facilities/<facility_id>/patients', methods=['POST'])
 @require_auth
-@require_role(['admin', 'facility_admin', 'doctor'])
+@require_role('admin', 'facility_admin', 'pediapro')
 def assign_patient_to_facility(facility_id):
     """
     Assign a patient to the facility
