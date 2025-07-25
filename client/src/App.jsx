@@ -9,8 +9,10 @@ import NotFound from "./pages/NotFound"
 
 import AdminDashboard from "./pages/systemAdmin/AdminDashboard"
 import FacilitiesRegistry from "./pages/systemAdmin/FacilitiesRegistry"
+import FacilityAdminDashboard from "./pages/facilityAdmin/FacilityAdminDashboard"
 
 import AdminLayout from "./layout/AdminLayout"
+import FacilityAdminLayout from "./layout/FacilityAdminLayout"
 import Layout from "./layout/PediaproLayout"
 
 const AuthWrapper = () => (
@@ -47,6 +49,20 @@ function App() {
                         {
                             path: "facilities",
                             element: <FacilitiesRegistry />,
+                        },
+                    ],
+                },
+                {
+                    path: "/facility_admin",
+                    element: (
+                        <ProtectedRoute requiredRole="facility_admin">
+                            <FacilityAdminLayout />
+                        </ProtectedRoute>
+                    ),
+                    children: [
+                        {
+                            index: true,
+                            element: <FacilityAdminDashboard />,
                         },
                     ],
                 },

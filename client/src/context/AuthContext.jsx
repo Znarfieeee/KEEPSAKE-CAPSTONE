@@ -142,6 +142,9 @@ export const AuthProvider = ({ children }) => {
             case "VitalCustodian":
                 navigate("/vital_custodian")
                 break
+            case "facility_admin":
+                navigate("/facility_admin")
+                break
             default:
                 navigate("/")
         }

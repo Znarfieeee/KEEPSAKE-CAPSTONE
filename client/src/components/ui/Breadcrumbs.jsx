@@ -9,9 +9,16 @@ import {
     BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb"
 
+// Adjust lang ang labels sa breadcrumbs base sa url address naka indicate
 const SEGMENT_LABELS = {
     "": "Home",
+    // Role-based dashboard labels
     admin: "Dashboard",
+    facility_admin: "Dashboard",
+    pediapro: "Dashboard",
+    keepsaker: "Dashboard",
+    vital_custodian: "Dashboard",
+    // Feature-specific labels
     facilities: "Facilities Registry",
     sub_billing: "Subscription & Billing",
     tokinv_system: "Token & Invite System",
@@ -19,6 +26,7 @@ const SEGMENT_LABELS = {
     api_webhooks: "API & Webhooks",
     system_config: "System Configuration",
     maintenance_mode: "Maintenance Mode",
+    users: "User Management",
 }
 
 function Breadcrumbs() {

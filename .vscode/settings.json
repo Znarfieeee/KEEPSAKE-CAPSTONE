@@ -4,6 +4,7 @@
         "gensalt",
         "hashpw",
         "jsonify",
+        "keepsaker",
         "levelname",
         "pediapro",
         "supabase",

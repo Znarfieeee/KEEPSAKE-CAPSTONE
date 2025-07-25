@@ -50,7 +50,9 @@ const AccountPlaceholder = () => {
                                 )}
                                 {user?.role && (
                                     <p className="text-sm text-gray-500 capitalize">
-                                        {user.role}
+                                        {user?.role === "facility_admin"
+                                            ? "Facility Admin"
+                                            : user?.role}
                                     </p>
                                 )}
                             </span>

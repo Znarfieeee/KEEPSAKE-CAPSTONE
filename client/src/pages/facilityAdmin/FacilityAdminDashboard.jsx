@@ -1,5 +1,5 @@
 import React from "react"
-import { useAuth } from "../../context/auth"
+
 // Placeholder imports for modular components
 import UserTable from "../../components/facilityAdmin/UserTable"
 import SearchBar from "../../components/facilityAdmin/SearchBar"
@@ -12,17 +12,7 @@ import DeactivateUserConfirm from "../../components/facilityAdmin/DeactivateUser
 import ResetPasswordModal from "../../components/facilityAdmin/ResetPasswordModal"
 import AddUserButton from "../../components/facilityAdmin/AddUserButton"
 
-const FacilityAdminPage = () => {
-    const { user } = useAuth()
-    // Facility admin access only (placeholder logic)
-    if (!user || user.role !== "facility_admin") {
-        return (
-            <div className="p-8 text-center text-red-500">
-                Access denied. Facility admin only.
-            </div>
-        )
-    }
-
+const FacilityAdminDashboard = () => {
     // State for filters and modals (to be implemented)
 
     return (
@@ -61,4 +51,4 @@ const FacilityAdminPage = () => {
     )
 }
 
-export default FacilityAdminPage
+export default FacilityAdminDashboard
