@@ -58,15 +58,14 @@ export const AuthProvider = ({ children }) => {
                 showToast("success", "Login successful")
                 setUser(response.user)
                 setIsAuthenticated(true)
-                navigateOnLogin(response.user.role) // Only navigate on actual login
-
+                navigateOnLogin(response.user.role)
                 return response
             } else {
                 throw new Error(response.message || "Login failed")
             }
-        } catch (err) {
-            showToast("error", err.message || "Login failed")
-            throw err
+        } catch (error) {
+            showToast("error", error.message || "Login failed")
+            throw error
         } finally {
             setLoading(false)
         }

@@ -1,24 +1,25 @@
 import React, { useEffect, useMemo, useState, lazy, Suspense } from "react"
-import FacilityRegistryHeader from "../../components/sysAdmin_facilities/FacilityRegistryHeader"
-import FacilityFilters from "../../components/sysAdmin_facilities/FacilityFilters"
-import FacilityTable from "../../components/sysAdmin_facilities/FacilityTable"
+
+// Components
+import UserRegistryHeader from "../../components/sysAdmin_users/UserRegistryHeader"
+import UserFilters from "../../components/sysAdmin_users/UserFilters"
+import UserTable from "../../components/sysAdmin_users/UserTable"
 
 // Lazy-loaded components (modals are heavy and used conditionally)
-const RegisterFacilityModal = lazy(() =>
-    import("../../components/sysAdmin_facilities/RegisterFacilityModal")
+const RegisterUserModal = lazy(() =>
+    import("../../components/sysAdmin_users/RegisterUserModal")
 )
-const FacilityDetailModal = lazy(() =>
-    import("../../components/sysAdmin_facilities/FacilityDetailModal")
+const UserDetailModal = lazy(() =>
+    import("../../components/sysAdmin_users/UserDetailModal")
 )
 import { useAuth } from "../../context/auth"
 import { showToast } from "../../util/alertHelper"
-import { getFacilities } from "../../api/facility"
+import { getUsers } from "../../api/users"
 import Unauthorized from "../../components/Unauthorized"
 
-const FacilitiesRegistry = () => {
+const UsersRegistry = () => {
     const { user } = useAuth()
-    const [facilities, setFacilities] = useState([])
-    // Loading state for initial data fetch
+    const [users, setUsers] = useState([])
     const [loading, setLoading] = useState(true)
 
     // UI state
@@ -32,31 +33,30 @@ const FacilitiesRegistry = () => {
     // Modals state
     const [showRegister, setShowRegister] = useState(false)
     const [showDetail, setShowDetail] = useState(false)
-    const [detailFacility, setDetailFacility] = useState(null)
+    const [detailUser, setDetailUser] = useState(null)
 
     // Helper to normalize facility records coming from API
-    const formatFacility = raw => ({
-        id: raw.facility_id,
-        name: raw.facility_name,
-        location: raw.address + ", " + raw.city + ", " + raw.zip_code,
-        type: raw.type,
+    const formatUser = raw => ({
+        id: raw.user_id,
+        email: raw.user_email,
+        firstname: raw.user_firstname,
+        lastname: raw.user_lastname,
+        role: raw.role,
+        specialty: raw.specialty,
         plan: raw.plan,
         expiry: raw.subscription_expires,
-        admin: raw.admin || raw.email || "—",
-        status:
-            raw.subscription_status === "suspended" ? "suspended" : "active",
-        contact: raw.contact_number,
-        email: raw.email,
-        website: raw.website,
+        // admin: raw.admin || raw.email || "—",
+        status: raw.subscription_status === "suspended" ? "inactive" : "active",
+        contact: raw.phone_number,
     })
 
     useEffect(() => {
         const fetchData = async () => {
             try {
                 setLoading(true)
-                const res = await getFacilities()
+                const res = await getUsers()
                 if (res.status === "success") {
-                    setFacilities(res.data.map(formatFacility))
+                    setUsers(res.data.map(formatUser))
                 } else {
                     showToast(
                         "error",
@@ -77,88 +77,81 @@ const FacilitiesRegistry = () => {
     useEffect(() => {
         const handler = e => {
             if (e.detail) {
-                setFacilities(prev => [...prev, formatFacility(e.detail)])
+                setUsers(prev => [...prev, formatUser(e.detail)])
             }
         }
-        window.addEventListener("facility-created", handler)
-        return () => window.removeEventListener("facility-created", handler)
+        window.addEventListener("user-created", handler)
+        return () => window.removeEventListener("user-created", handler)
     }, [])
 
-    const filteredFacilities = useMemo(() => {
-        return facilities.filter(f => {
+    const filteredUsers = useMemo(() => {
+        return users.filter(u => {
             const matchesSearch = search
-                ? [f.name, f.location, f.id].some(field =>
+                ? [u.name, u.location, u.id].some(field =>
                       field.toLowerCase().includes(search.toLowerCase())
                   )
                 : true
             const matchesStatus = statusFilter
-                ? f.status === statusFilter
+                ? u.status === statusFilter
                 : true
-            const matchesPlan = planFilter ? f.plan === planFilter : true
-            const matchesType = typeFilter ? f.type === typeFilter : true
+            const matchesPlan = planFilter ? u.plan === planFilter : true
+            const matchesType = typeFilter ? u.type === typeFilter : true
             return matchesSearch && matchesStatus && matchesPlan && matchesType
         })
-    }, [facilities, search, statusFilter, typeFilter, planFilter])
+    }, [users, search, statusFilter, typeFilter, planFilter])
 
     // Role-based guard
     if (user.role !== "SystemAdmin" && user.role !== "admin") {
         return <Unauthorized />
     }
 
-    const handleView = facility => {
-        setDetailFacility(facility)
+    const handleView = user => {
+        setDetailUser(user)
         setShowDetail(true)
     }
 
-    const handleToggleStatus = facility => {
+    const handleToggleStatus = user => {
         const updatedStatus =
-            facility.status === "suspended" ? "active" : "suspended"
-        setFacilities(prev =>
-            prev.map(f =>
-                f.id === facility.id ? { ...f, status: updatedStatus } : f
+            user.status === "suspended" ? "active" : "inactive"
+        setUsers(prev =>
+            prev.map(u =>
+                u.id === user.id ? { ...u, status: updatedStatus } : u
             )
         )
         showToast(
             "success",
-            `Facility ${updatedStatus === "active" ? "activated" : "suspended"}`
+            `User ${updatedStatus === "active" ? "activated" : "inactive"}`
         )
     }
 
-    const handleAuditLogs = facility => {
+    const handleAuditLogs = user => {
         // Placeholder – navigate or open logs route
-        showToast(
-            "info",
-            `Audit logs for ${facility.name} not available in demo`
-        )
+        showToast("info", `Audit logs for ${user.name} not available in demo`)
     }
 
-    const handleDelete = facility => {
-        if (window.confirm(`Delete facility ${facility.name}?`)) {
-            setFacilities(prev => prev.filter(f => f.id !== facility.id))
-            showToast("success", "Facility deleted")
+    const handleDelete = user => {
+        if (window.confirm(`Delete user ${user.name}?`)) {
+            setUsers(prev => prev.filter(f => f.id !== user.id))
+            showToast("success", "User deleted")
         }
     }
 
     const handleExportCSV = () => {
         const headers = [
-            "Facility Name",
-            "ID",
-            "Location",
-            "Type",
+            "Full Name",
+            "Role",
             "Plan",
             "Subscription Expiry",
-            "Admin",
+            "Assigned Facility",
             "Status",
         ]
-        const rows = facilities.map(f => [
-            f.name,
-            f.id,
-            f.location,
-            f.type,
-            f.plan,
-            f.expiry,
-            f.admin,
-            f.status,
+        const rows = users.map(u => [
+            u.user_firstname + u.user_lastname,
+            u.role,
+            u.plan,
+            u.expiry,
+            // u.admin,
+            u.status,
         ])
         const csvContent = [headers, ...rows]
             .map(row => row.join(","))
@@ -167,7 +160,7 @@ const FacilitiesRegistry = () => {
         const url = URL.createObjectURL(blob)
         const link = document.createElement("a")
         link.href = url
-        link.download = "facilities.csv"
+        link.download = "users.csv"
         link.click()
         URL.revokeObjectURL(url)
     }
@@ -179,13 +172,13 @@ const FacilitiesRegistry = () => {
     /* ------------------------------------------------------------ */
     return (
         <div className="p-6 px-20 space-y-6">
-            <FacilityRegistryHeader
+            <UserRegistryHeader
                 onOpenRegister={() => setShowRegister(true)}
                 onExportCSV={handleExportCSV}
                 onOpenReports={handleReports}
             />
 
-            <FacilityFilters
+            <UserFilters
                 search={search}
                 onSearchChange={setSearch}
                 statusFilter={statusFilter}
@@ -205,8 +198,8 @@ const FacilitiesRegistry = () => {
                 }}
             />
 
-            <FacilityTable
-                facilities={filteredFacilities}
+            <UserTable
+                users={filteredUsers}
                 loading={loading}
                 page={page}
                 setPage={setPage}
@@ -221,15 +214,15 @@ const FacilitiesRegistry = () => {
             {/* Modals – lazily loaded */}
             <Suspense fallback={null}>
                 {showRegister && (
-                    <RegisterFacilityModal
+                    <RegisterUserModal
                         open={showRegister}
                         onClose={() => setShowRegister(false)}
                     />
                 )}
                 {showDetail && (
-                    <FacilityDetailModal
+                    <UserDetailModal
                         open={showDetail}
-                        facility={detailFacility}
+                        user={detailUser}
                         onClose={() => setShowDetail(false)}
                         onAuditLogs={handleAuditLogs}
                     />
@@ -239,4 +232,4 @@ const FacilitiesRegistry = () => {
     )
 }
 
-export default FacilitiesRegistry
+export default UsersRegistry

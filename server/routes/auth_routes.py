@@ -1,7 +1,7 @@
 from flask import Blueprint, request, jsonify, session, current_app
 from config.settings import supabase, supabase_service_role_client, supabase_anon_client
 import datetime
-import redis, json, logging
+import json
 from gotrue.errors import AuthApiError
 from functools import wraps
 

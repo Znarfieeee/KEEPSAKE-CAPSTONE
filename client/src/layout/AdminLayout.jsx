@@ -11,6 +11,7 @@ import { TbActivityHeartbeat } from "react-icons/tb"
 import { BsBuilding } from "react-icons/bs"
 import { CgFileDocument } from "react-icons/cg"
 import { RiDashboardLine } from "react-icons/ri"
+import { Users } from "lucide-react"
 import Hamburger from "../components/ui/Hamburger"
 import AccountPlaceholder from "../components/AccountPlaceholder"
 import NotificationPlaceholder from "../components/ui/NotificationPlaceholder"
@@ -25,6 +26,11 @@ const mainSideNavLinks = [
         icon: <BsBuilding className="text-xl" />,
         title: "Facilities Registry",
         to: "/admin/facilities",
+    },
+    {
+        icon: <Users className="text-xl" />,
+        title: "Users Registry",
+        to: "/admin/users",
     },
     {
         icon: <AiOutlineCreditCard className="text-xl" />,

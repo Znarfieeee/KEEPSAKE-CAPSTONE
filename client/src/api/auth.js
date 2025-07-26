@@ -9,12 +9,41 @@ const axiosConfig = {
 }
 
 export const login = async (email, password) => {
-    const response = await axios.post(
-        `${backendConnection()}/login`,
-        { email, password },
-        axiosConfig
-    )
-    return response.data
+    try {
+        const response = await axios.post(
+            `${backendConnection()}/login`,
+            { email, password },
+            axiosConfig
+        )
+        return response.data
+    } catch (error) {
+        if (error.response) {
+            // The server responded with a status code outside of 2xx
+            const errorMessage =
+                error.response.data?.message || "Authentication failed"
+
+            if (error.response.status === 401) {
+                throw new Error(
+                    "Incorrect email or password. Please try again."
+                )
+            } else if (error.response.status === 400) {
+                throw new Error(errorMessage)
+            } else if (error.response.status === 503) {
+                throw new Error(
+                    "Service is temporarily unavailable. Please try again later."
+                )
+            }
+            throw new Error(errorMessage)
+        } else if (error.request) {
+            // The request was made but no response was received
+            throw new Error(
+                "Unable to reach the server. Please check your internet connection."
+            )
+        } else {
+            // Something happened in setting up the request
+            throw new Error("An unexpected error occurred. Please try again.")
+        }
+    }
 }
 
 export const logout = async () => {

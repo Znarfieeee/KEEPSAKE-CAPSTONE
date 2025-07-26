@@ -10,6 +10,7 @@ import NotFound from "./pages/NotFound"
 // Admin
 import AdminDashboard from "./pages/systemAdmin/AdminDashboard"
 import FacilitiesRegistry from "./pages/systemAdmin/FacilitiesRegistry"
+import UsersRegistry from "./pages/systemAdmin/UsersRegistry"
 import SubscriptionPage from "./pages/systemAdmin/SubscriptionPage"
 import TokenInvitePage from "./pages/systemAdmin/TokenInvitePage"
 import AuditLogsPage from "./pages/systemAdmin/AuditLogsPage"
@@ -58,6 +59,10 @@ function App() {
                         {
                             path: "facilities",
                             element: <FacilitiesRegistry />,
+                        },
+                        {
+                            path: "users",
+                            element: <UsersRegistry />,
                         },
                         {
                             path: "sub_billing",
