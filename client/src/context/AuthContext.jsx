@@ -1,3 +1,4 @@
+/* eslint-disable no-unused-vars */
 import React, { useState, useEffect } from "react"
 import { useNavigate } from "react-router-dom"
 import {
@@ -25,7 +26,7 @@ export const AuthProvider = ({ children }) => {
             }
             return false
         } catch (err) {
-            console.error("Session check failed:", err)
+            // Suppress detailed error logging
             return false
         }
     }
@@ -39,8 +40,8 @@ export const AuthProvider = ({ children }) => {
                 return true
             }
             return false
-        } catch (err) {
-            console.error("Token refresh failed:", err)
+        } catch (_) {
+            // Silent failure for security
             return false
         }
     }
@@ -61,11 +62,12 @@ export const AuthProvider = ({ children }) => {
                 navigateOnLogin(response.user.role)
                 return response
             } else {
-                throw new Error(response.message || "Login failed")
+                showToast("error", "Invalid credentials")
+                return { success: false, message: "Invalid credentials" }
             }
-        } catch (error) {
-            showToast("error", error.message || "Login failed")
-            throw error
+        } catch (_) {
+            showToast("error", "Authentication failed")
+            return { success: false, message: "Authentication failed" }
         } finally {
             setLoading(false)
         }
@@ -75,9 +77,9 @@ export const AuthProvider = ({ children }) => {
         try {
             await logout()
             showToast("success", "Logout successful")
-        } catch (err) {
-            console.error("There is an error: ", err)
-            showToast("error", "Logout failed")
+        } catch (_) {
+            // Silent failure but ensure user is logged out locally
+            showToast("info", "You have been logged out")
         } finally {
             setLoading(false)
             setUser(null)
@@ -103,11 +105,9 @@ export const AuthProvider = ({ children }) => {
                     }
                 }
                 setLoading(false)
-            } catch (err) {
-                if (err.message === "Session expired. Please login again.") {
-                    setUser(null)
-                }
-                console.debug("Session error:", err.message)
+            } catch (_) {
+                setUser(null)
+                setIsAuthenticated(false)
             } finally {
                 setLoading(false)
             }

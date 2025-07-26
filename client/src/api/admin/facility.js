@@ -10,7 +10,7 @@ const axiosConfig = {
 
 export const getFacilities = async () => {
     const response = await axios.get(
-        `${backendConnection()}/facilities`,
+        `${backendConnection()}/admin/facilities`,
         axiosConfig
     )
     return response.data
@@ -18,7 +18,7 @@ export const getFacilities = async () => {
 
 export const getFacilityById = async facilityId => {
     const response = await axios.get(
-        `${backendConnection()}/facilities/${facilityId}`,
+        `${backendConnection()}/admin/facilities/${facilityId}`,
         axiosConfig
     )
     return response.data
@@ -26,7 +26,7 @@ export const getFacilityById = async facilityId => {
 
 export const createFacility = async facilityData => {
     const response = await axios.post(
-        `${backendConnection()}/facilities`,
+        `${backendConnection()}/admin/facilities`,
         facilityData,
         axiosConfig
     )

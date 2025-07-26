@@ -1,3 +1,4 @@
+/* eslint-disable no-unused-vars */
 import React, { useEffect, useMemo, useState, lazy, Suspense } from "react"
 import FacilityRegistryHeader from "../../components/sysAdmin_facilities/FacilityRegistryHeader"
 import FacilityFilters from "../../components/sysAdmin_facilities/FacilityFilters"
@@ -12,7 +13,7 @@ const FacilityDetailModal = lazy(() =>
 )
 import { useAuth } from "../../context/auth"
 import { showToast } from "../../util/alertHelper"
-import { getFacilities } from "../../api/facility"
+import { getFacilities } from "../../api/admin/facility"
 import Unauthorized from "../../components/Unauthorized"
 
 const FacilitiesRegistry = () => {
@@ -64,7 +65,6 @@ const FacilitiesRegistry = () => {
                     )
                 }
             } catch (err) {
-                console.error(err)
                 showToast("error", "Failed to load facilities")
             } finally {
                 setLoading(false)

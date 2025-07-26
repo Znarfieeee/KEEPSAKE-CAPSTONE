@@ -2,6 +2,8 @@ from flask import Flask, jsonify
 from config.settings import settings_bp
 from routes.auth_routes import auth_bp
 from routes.admin_routes import admin_bp
+from routes.admin.admin_facility import facility_bp
+from routes.admin.admin_users import users_bp
 from flask_cors import CORS
 from datetime import timedelta
 import os
@@ -19,6 +21,8 @@ app = Flask("keepsake")
 app.register_blueprint(settings_bp)
 app.register_blueprint(auth_bp)
 app.register_blueprint(admin_bp)
+app.register_blueprint(facility_bp)
+app.register_blueprint(users_bp)
 
 # Redis session configuration (DB 1 reserved for web sessions)
 redis_client = get_redis_client()
@@ -55,7 +59,7 @@ CORS(
 
 # Configure logging for HIPAA audit trail
 if not app.debug:
-    # Centralised audit logger setup (attaches handlers to app.logger)
+    # Centralized audit logger setup (attaches handlers to app.logger)
     configure_audit_logger(attach_to_logger=app.logger)
     app.logger.info('Keepsake medical app startup')
 

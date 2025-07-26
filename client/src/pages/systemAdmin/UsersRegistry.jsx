@@ -14,7 +14,7 @@ const UserDetailModal = lazy(() =>
 )
 import { useAuth } from "../../context/auth"
 import { showToast } from "../../util/alertHelper"
-import { getUsers } from "../../api/users"
+import { getUsers } from "../../api/admin/users"
 import Unauthorized from "../../components/Unauthorized"
 
 const UsersRegistry = () => {

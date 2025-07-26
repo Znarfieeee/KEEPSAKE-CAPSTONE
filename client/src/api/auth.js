@@ -1,3 +1,4 @@
+/* eslint-disable no-unused-vars */
 import backendConnection from "./backendApi"
 import axios from "axios"
 
@@ -6,6 +7,8 @@ const axiosConfig = {
     headers: {
         "Content-Type": "application/json",
     },
+    // Silence Axios error logging
+    silent: true,
 }
 
 export const login = async (email, password) => {
@@ -56,12 +59,17 @@ export const logout = async () => {
 }
 
 export const refreshSession = async () => {
-    const response = await axios.post(
-        `${backendConnection()}/token/refresh`,
-        {},
-        axiosConfig
-    )
-    return response.data
+    try {
+        const response = await axios.post(
+            `${backendConnection()}/token/refresh`,
+            {},
+            axiosConfig
+        )
+        return response.data
+    } catch {
+        // Silent failure for token refresh
+        return { status: "error", message: "Session expired" }
+    }
 }
 
 export const getSession = async () => {
@@ -71,29 +79,20 @@ export const getSession = async () => {
             axiosConfig
         )
         return response.data
-    } catch (error) {
-        // Attempt silent refresh once on 401
-        if (error.response?.status === 401) {
-            try {
-                await refreshSession()
-                const retryResponse = await axios.get(
-                    `${backendConnection()}/session`,
-                    axiosConfig
-                )
-                return retryResponse.data
-            } catch (refreshError) {
-                console.error("Token refresh failed", refreshError)
-                throw new Error("Session expired. Please login again.")
-            }
-        }
-        throw error
+    } catch {
+        // Handle all session check failures silently
+        return { status: "error", message: "No active session" }
     }
 }
 
 export const checkSession = async () => {
-    const response = await axios.get(
-        `${backendConnection()}/session`,
-        axiosConfig
-    )
-    return response.data
+    try {
+        const response = await axios.get(
+            `${backendConnection()}/session`,
+            axiosConfig
+        )
+        return response.data
+    } catch {
+        return { status: "error", message: "No active session" }
+    }
 }

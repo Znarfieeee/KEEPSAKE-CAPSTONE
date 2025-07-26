@@ -10,7 +10,7 @@ const axiosConfig = {
 
 export const getUsers = async () => {
     const response = await axios.get(
-        `${backendConnection()}/users`,
+        `${backendConnection()}/admin/users`,
         axiosConfig
     )
     return response.data
@@ -18,7 +18,7 @@ export const getUsers = async () => {
 
 export const getUserById = async userId => {
     const response = await axios.get(
-        `${backendConnection()}/users/${userId}`,
+        `${backendConnection()}/admin/users/${userId}`,
         axiosConfig
     )
     return response.data
@@ -26,7 +26,7 @@ export const getUserById = async userId => {
 
 export const createUser = async userData => {
     const response = await axios.post(
-        `${backendConnection()}/users`,
+        `${backendConnection()}/admin/users`,
         userData,
         axiosConfig
     )

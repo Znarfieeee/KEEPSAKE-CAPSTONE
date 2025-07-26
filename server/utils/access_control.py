@@ -20,11 +20,11 @@ from utils.redis_client import redis_client
 # Valid roles in the system – keep this in sync with your database / Supabase metadata
 VALID_ROLES = {
     "admin",
-    "systemadmin",
     "facility_admin",
-    "pediapro",
-    "vital_custodian",
-    "keepsaker",
+    "doctor",
+    "nurse",
+    "staff",
+    "parent",
 }
 
 def _normalize_roles(roles: Iterable[str]):
