@@ -3,6 +3,7 @@
         "dotenv",
         "firstname",
         "gensalt",
+        "gotrue",
         "hashpw",
         "jsonify",
         "keepsaker",

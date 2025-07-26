@@ -1,14 +1,14 @@
 from flask import Flask, jsonify
 from config.settings import settings_bp
 from routes.auth_routes import auth_bp
-from routes.facility_routes import facility_bp
+from routes.admin_routes import admin_bp
 from flask_cors import CORS
 from datetime import timedelta
 import os
 import logging
 import sys
 import traceback
-from flask_session import Session
+from flask_session import Session # type: ignore
 from utils.redis_client import get_redis_client
 from config.settings import supabase_anon_client
 from utils.audit_logger import configure_audit_logger
@@ -18,7 +18,7 @@ app = Flask("keepsake")
 # Blueprints
 app.register_blueprint(settings_bp)
 app.register_blueprint(auth_bp)
-app.register_blueprint(facility_bp)
+app.register_blueprint(admin_bp)
 
 # Redis session configuration (DB 1 reserved for web sessions)
 redis_client = get_redis_client()

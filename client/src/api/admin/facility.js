@@ -1,4 +1,4 @@
-import backendConnection from "./backendApi"
+import backendConnection from "../backendApi"
 import axios from "axios"
 
 const axiosConfig = {

@@ -1,4 +1,4 @@
-from flask import Blueprint, request, jsonify, session, current_app
+from flask import Blueprint, request, jsonify, current_app
 from config.settings import supabase, supabase_service_role_client, supabase_anon_client
 import datetime
 import json
@@ -132,7 +132,7 @@ def create_invite():
             'expires_at': datetime.utcnow() + datetime.timedelta(days=7),
             'created_by': created_by,
             'role': role
-        }).execute()
+        }).execute() 
 
         if invite_result.get('error'):
             raise Exception(invite_result.get('error'))
