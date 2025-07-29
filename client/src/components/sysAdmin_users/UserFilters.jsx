@@ -6,6 +6,8 @@ const UserFilters = ({
     onSearchChange,
     statusFilter,
     onStatusChange,
+    typeFilter,
+    onTypeChange,
     planFilter,
     onPlanChange,
 }) => {
@@ -14,6 +16,14 @@ const UserFilters = ({
         { value: "active", label: "Active" },
         { value: "pending", label: "Pending" },
         { value: "inactive", label: "Inactive" },
+    ]
+
+    const typeOptions = [
+        { value: "", label: "All Types" },
+        { value: "SystemAdmin", label: "System Admin" },
+        { value: "FacilityAdmin", label: "Facility Admin" },
+        { value: "Physician", label: "Physician" },
+        { value: "user", label: "User" },
     ]
 
     const planOptions = [
@@ -29,20 +39,20 @@ const UserFilters = ({
                 <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-500 dark:text-gray-400" />
                 <input
                     type="text"
-                    placeholder="Search facilities..."
+                    placeholder="Search users..."
                     value={search}
                     onChange={e => onSearchChange(e.target.value)}
                     className="h-10 w-full rounded-md border border-gray-200 bg-white pl-9 pr-4 text-sm placeholder:text-gray-500 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
                 />
             </div>
             <div className="flex gap-4">
-                {/* Plan Filter */}
+                {/* Type Filter */}
                 <div>
                     <select
-                        value={planFilter}
-                        onChange={e => onPlanChange(e.target.value)}
+                        value={typeFilter}
+                        onChange={e => onTypeChange(e.target.value)}
                         className="h-10 w-full rounded-md border border-gray-200 bg-white px-3 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20">
-                        {planOptions.map(option => (
+                        {typeOptions.map(option => (
                             <option key={option.value} value={option.value}>
                                 {option.label}
                             </option>
@@ -57,6 +67,20 @@ const UserFilters = ({
                         onChange={e => onStatusChange(e.target.value)}
                         className="h-10 w-full rounded-md border border-gray-200 bg-white px-3 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20">
                         {statusOptions.map(option => (
+                            <option key={option.value} value={option.value}>
+                                {option.label}
+                            </option>
+                        ))}
+                    </select>
+                </div>
+
+                {/* Plan Filter */}
+                <div>
+                    <select
+                        value={planFilter}
+                        onChange={e => onPlanChange(e.target.value)}
+                        className="h-10 w-full rounded-md border border-gray-200 bg-white px-3 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20">
+                        {planOptions.map(option => (
                             <option key={option.value} value={option.value}>
                                 {option.label}
                             </option>

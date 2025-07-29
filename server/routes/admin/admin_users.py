@@ -1,13 +1,14 @@
 from flask import Blueprint, jsonify, request, current_app
 from utils.access_control import require_auth, require_role
-from config.settings import supabase
+from config.settings import supabase, supabase_anon_client
 from gotrue.errors import AuthApiError
 from datetime import datetime
 
-# Create blueprint for user routes
 users_bp = Blueprint('users', __name__)
 
 @users_bp.route('/admin/add_user', methods=['POST'])
+@require_auth
+@require_role('admin')
 def add_user():
     """Register a new user in Supabase Auth and mirror the data in the public.users table."""
 
@@ -93,3 +94,33 @@ def add_user():
             jsonify({"status": "error", "message": f"Failed to create user: {str(e)}"}),
             500,
         )
+
+@users_bp.route('/admin/users', methods=['GET'])
+@require_auth
+@require_role('admin')
+def get_all_users():
+    """Get all users with their roles, status, and facility assignments"""
+    try:
+        response = supabase.table('users').select('*, facility_users!facility_users_user_id_fkey(*, healthcare_facilities(facility_name))').neq('role', 'admin').execute()
+        
+        if getattr(response, 'error', None):
+            current_app.logger.error(f"Failed to fetch users: {response.error}")
+            return jsonify({
+                "status": "error",
+                "message": "Failed to fetch users"
+            }), 500
+
+        return jsonify({
+            "status": "success",
+            "data": response.data,
+            "count": len(response.data)
+        }), 200
+
+    except Exception as e:
+        current_app.logger.error(f"Error fetching users: {str(e)}")
+        return jsonify({
+            "status": "error",
+            "message": f"An error occurred while fetching users: {str(e)}"
+        }), 500
+    
+    

@@ -24,9 +24,16 @@ const initialForm = {
     role: "",
     license_number: "",
     phone_number: "",
+    facility_id: "",
+    facility_role: "",
 }
 
-const steps = ["Basic Info", "Professional Details", "Review"]
+const steps = [
+    "Basic Info",
+    "Professional Details",
+    "Facility Assignment",
+    "Review",
+]
 
 const RegisterUserModal = ({ open, onClose }) => {
     const [form, setForm] = useState(initialForm)

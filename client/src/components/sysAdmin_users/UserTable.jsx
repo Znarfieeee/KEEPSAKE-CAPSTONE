@@ -12,7 +12,7 @@ import {
 } from "lucide-react"
 
 const UserTable = ({
-    facilities = [],
+    users = [],
     page,
     setPage,
     itemsPerPage,
@@ -23,12 +23,17 @@ const UserTable = ({
     onDelete,
     loading = false,
 }) => {
-    const totalPages = Math.ceil(facilities.length / itemsPerPage) || 1
+    const totalPages = Math.ceil(users.length / itemsPerPage) || 1
     const startIdx = (page - 1) * itemsPerPage
-    const currentData = facilities.slice(startIdx, startIdx + itemsPerPage)
+    const currentData = users.slice(startIdx, startIdx + itemsPerPage)
 
     const handlePrev = () => setPage(p => Math.max(1, p - 1))
     const handleNext = () => setPage(p => Math.min(totalPages, p + 1))
+    const planClasses = {
+        freemium: "bg-green-100 text-green-700",
+        premium: "bg-blue-100 text-blue-700",
+        default: "bg-gray-100 text-gray-700",
+    }
 
     return (
         <div className="w-full overflow-x-auto">
@@ -41,7 +46,7 @@ const UserTable = ({
                         <th className="py-3 px-2">Subscription Expiry</th>
                         <th className="py-3 px-2">Assigned Facility</th>
                         <th className="py-3 px-2">Status</th>
-                        <th className="py-3 px-2">Actions</th>
+                        <th className="py-3 px-2 text-right">Actions</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -59,59 +64,56 @@ const UserTable = ({
                                   ))}
                               </tr>
                           ))
-                        : currentData.map(facility => (
+                        : currentData.map(user => (
                               <tr
-                                  key={facility.id}
+                                  key={user.id}
                                   className="border-b border-gray-200 last:border-none">
                                   <td className="p-2 whitespace-nowrap">
-                                      {facility.name}
+                                      {`${user.firstname} ${user.lastname}`}
                                   </td>
                                   <td className="p-2 whitespace-nowrap">
-                                      {facility.location.length > 30
-                                          ? `${facility.location.substring(
-                                                0,
-                                                30
-                                            )}...`
-                                          : facility.location}
+                                      {user.role}
                                   </td>
                                   <td className="p-2 whitespace-nowrap capitalize">
-                                      {facility.plan}
-                                  </td>
-                                  <td className="p-2 whitespace-nowrap capitalize">
-                                      {facility.type}
-                                  </td>
-                                  <td className="p-2 whitespace-nowrap">
-                                      {facility.expiry}
-                                  </td>
-                                  <td className="p-2 whitespace-nowrap">
-                                      {facility.admin}
+                                      <span
+                                          className={`(
+                                                      "inline-flex items-center justify-center px-2.5 py-0.5",
+                                                      "text-xs font-medium rounded-full w-24",
+                                                      planClasses[user.plan]
+                                                  )`}>
+                                          {user.plan}
+                                      </span>
                                   </td>
                                   <td className="p-2 whitespace-nowrap">
-                                      <StatusBadge status={facility.status} />
+                                      {user.subscription_expiry || "—"}
+                                  </td>
+                                  <td className="p-2 whitespace-nowrap">
+                                      {user.assigned_facility}
+                                  </td>
+                                  <td className="p-2 whitespace-nowrap">
+                                      <StatusBadge status={user.status} />
                                   </td>
                                   <td className="p-2 whitespace-nowrap">
                                       <div className="flex gap-1">
                                           <Button
                                               variant="ghost"
                                               size="icon"
-                                              onClick={() => onView(facility)}
-                                              title="View">
+                                              onClick={() => onView(user)}
+                                              title="View Details">
                                               <Eye className="size-4" />
                                           </Button>
                                           <Button
                                               variant="ghost"
                                               size="icon"
                                               onClick={() =>
-                                                  onToggleStatus(facility)
+                                                  onToggleStatus(user)
                                               }
                                               title={
-                                                  facility.status ===
-                                                  "suspended"
+                                                  user.status === "inactive"
                                                       ? "Activate"
-                                                      : "Suspend"
+                                                      : "Deactivate"
                                               }>
-                                              {facility.status ===
-                                              "suspended" ? (
+                                              {user.status === "inactive" ? (
                                                   <CheckCircle className="size-4" />
                                               ) : (
                                                   <Ban className="size-4" />
@@ -120,17 +122,15 @@ const UserTable = ({
                                           <Button
                                               variant="ghost"
                                               size="icon"
-                                              onClick={() =>
-                                                  onAuditLogs(facility)
-                                              }
-                                              title="Audit Logs">
+                                              onClick={() => onAuditLogs(user)}
+                                              title="View Audit Logs">
                                               <FileClock className="size-4" />
                                           </Button>
                                           <Button
                                               variant="ghost"
                                               size="icon"
-                                              onClick={() => onDelete(facility)}
-                                              title="Delete">
+                                              onClick={() => onDelete(user)}
+                                              title="Delete User">
                                               <Trash2 className="size-4" />
                                           </Button>
                                       </div>
@@ -158,8 +158,8 @@ const UserTable = ({
                 <div className="flex items-center gap-2 text-sm">
                     <span>
                         {startIdx + 1}-
-                        {Math.min(startIdx + itemsPerPage, facilities.length)}{" "}
-                        of {facilities.length}
+                        {Math.min(startIdx + itemsPerPage, users.length)} of{" "}
+                        {users.length}
                     </span>
                     <Button
                         size="icon"

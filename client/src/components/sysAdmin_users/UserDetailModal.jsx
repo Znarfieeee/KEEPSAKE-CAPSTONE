@@ -1,6 +1,6 @@
 import React from "react"
 import { Button } from "../ui/Button"
-import StatusBadge from "./StatusBadge"
+import StatusBadge from "./UserStatusBadge"
 
 const UserDetailModal = ({ open, user, onClose, onAuditLogs }) => {
     if (!open || !user) return null
@@ -15,15 +15,14 @@ const UserDetailModal = ({ open, user, onClose, onAuditLogs }) => {
                 <div className="flex justify-between items-start gap-4">
                     <div>
                         <h2 className="text-xl font-semibold mb-1 line-clamp-2">
-                            {user.name}
+                            {`${user.firstname} ${user.lastname}`}
                         </h2>
                         <StatusBadge status={user.status} />
                     </div>
                     <button
                         className="text-xl text-black cursor-pointer hover:text-red-500"
                         onClick={onClose}>
-                        {" "}
-                        X
+                        ×
                     </button>
                 </div>
 
@@ -31,27 +30,30 @@ const UserDetailModal = ({ open, user, onClose, onAuditLogs }) => {
                 <div>
                     <h3 className="font-medium mb-2">Basic Info</h3>
                     <ul className="text-sm space-y-1">
-                        <li>Type: {user.type}</li>
-                        <li>Location: {user.location}</li>
-                        <li>Contact: {user.contact}</li>
                         <li>Email: {user.email}</li>
-                        <li>Website: {user.website}</li>
+                        <li>Role: {user.role}</li>
+                        <li>Specialty: {user.specialty}</li>
+                        <li>License Number: {user.license_number}</li>
+                        <li>Contact: {user.contact}</li>
                     </ul>
                 </div>
 
-                {/* Subscription */}
+                {/* Facility Information */}
                 <div>
-                    <h3 className="font-medium mb-2">Subscription</h3>
+                    <h3 className="font-medium mb-2">Facility Assignment</h3>
                     <ul className="text-sm space-y-1">
-                        <li>Plan: {user.plan}</li>
-                        <li>Expiry: {user.expiry}</li>
+                        <li>Assigned Facility: {user.assigned_facility}</li>
+                        <li>Facility Role: {user.facility_role}</li>
                     </ul>
                 </div>
 
-                {/* Admin */}
+                {/* Registration Info */}
                 <div>
-                    <h3 className="font-medium mb-2">Assigned Admin</h3>
-                    <p className="text-sm">{user.admin}</p>
+                    <h3 className="font-medium mb-2">Registration Info</h3>
+                    <ul className="text-sm space-y-1">
+                        <li>Created: {user.created_at}</li>
+                        <li>Last Updated: {user.updated_at}</li>
+                    </ul>
                 </div>
 
                 <div className="flex justify-end gap-2">

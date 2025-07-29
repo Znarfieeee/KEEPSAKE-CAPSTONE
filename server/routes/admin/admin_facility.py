@@ -19,33 +19,36 @@ def list_facilities():
     try:
         cache_key = "healthcare_facilities:all"
         cached = redis_client.get(cache_key)
-        cached_data = json.loads(cached) if cached else None
 
-        # Fetch from Supabase
-        resp = supabase.table('healthcare_facilities').select('*').execute()
-
-        if getattr(resp, 'error', None):
-            return jsonify({
-                "status": "error", 
-                "message": "Failed to fetch facilities",
-                "details": resp.error.message if resp.error else "Unknown",
-            }), 400
-
-        # Store fresh copy in Redis (10-minute TTL)
-        redis_client.setex(cache_key, 600, json.dumps(resp.data))
-        
-        if cached_data:
+        # If we have cached data, return it
+        if cached:
+            cached_data = json.loads(cached)
             return jsonify({
                 "status": "success",
                 "data": cached_data,
                 "cached": True,
             }), 200
 
+        # If no cache, fetch from Supabase
+        resp = supabase.table('healthcare_facilities').select('*').execute()
+        
+        if getattr(resp, 'error', None):
+            return jsonify({
+                "status": "error", 
+                "message": "Failed to fetch facilities",
+                "details": resp.error.message if resp.error else "Unknown",
+            }), 400
+        
+        # Store fresh copy in Redis (10-minute TTL)
+        redis_client.setex(cache_key, 600, json.dumps(resp.data))
+        
         return jsonify({
             "status": "success",
             "data": resp.data,
             "cached": False,
         }), 200
+
+        
 
     except Exception as e:
         return jsonify({

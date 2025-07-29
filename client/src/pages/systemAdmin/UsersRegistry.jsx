@@ -5,6 +5,9 @@ import UserRegistryHeader from "../../components/sysAdmin_users/UserRegistryHead
 import UserFilters from "../../components/sysAdmin_users/UserFilters"
 import UserTable from "../../components/sysAdmin_users/UserTable"
 
+// Helper
+import { displayRoles } from "../../util/roleHelper"
+
 // Lazy-loaded components (modals are heavy and used conditionally)
 const RegisterUserModal = lazy(() =>
     import("../../components/sysAdmin_users/RegisterUserModal")
@@ -35,19 +38,27 @@ const UsersRegistry = () => {
     const [showDetail, setShowDetail] = useState(false)
     const [detailUser, setDetailUser] = useState(null)
 
-    // Helper to normalize facility records coming from API
+    // Helper to normalize user records coming from API
     const formatUser = raw => ({
         id: raw.user_id,
-        email: raw.user_email,
-        firstname: raw.user_firstname,
-        lastname: raw.user_lastname,
-        role: raw.role,
-        specialty: raw.specialty,
-        plan: raw.plan,
-        expiry: raw.subscription_expires,
-        // admin: raw.admin || raw.email || "—",
-        status: raw.subscription_status === "suspended" ? "inactive" : "active",
-        contact: raw.phone_number,
+        email: raw.email,
+        firstname: raw.firstname,
+        lastname: raw.lastname,
+        role: displayRoles(raw.role),
+        specialty: raw.specialty || "—",
+        license_number: raw.license_number || "627430954213",
+        contact: raw.phone_number || "—",
+        plan: raw.is_subscribed === "true" ? "Premium" : "Freemium",
+        status: raw.is_active ? "active" : "inactive",
+        created_at: new Date(raw.created_at).toLocaleDateString(),
+        updated_at: raw.updated_at
+            ? new Date(raw.updated_at).toLocaleDateString()
+            : "—",
+        // Include assigned facility information
+        assigned_facility:
+            raw.facility_users?.[0]?.healthcare_facilities?.facility_name ||
+            "Not Assigned",
+        facility_role: displayRoles(raw.facility_users?.[0]?.role),
     })
 
     useEffect(() => {
@@ -58,20 +69,17 @@ const UsersRegistry = () => {
                 if (res.status === "success") {
                     setUsers(res.data.map(formatUser))
                 } else {
-                    showToast(
-                        "error",
-                        res.message || "Failed to load facilities"
-                    )
+                    showToast("error", res.message || "Failed to load users")
                 }
             } catch (err) {
                 console.error(err)
-                showToast("error", "Failed to load facilities")
+                showToast("error", "Failed to load users")
             } finally {
                 setLoading(false)
             }
         }
         fetchData()
-    }, [])
+    }, []) // Remove the incorrect dependency
 
     // Listen for facility-created event from modal to append to list
     useEffect(() => {
@@ -87,18 +95,25 @@ const UsersRegistry = () => {
     const filteredUsers = useMemo(() => {
         return users.filter(u => {
             const matchesSearch = search
-                ? [u.name, u.location, u.id].some(field =>
-                      field.toLowerCase().includes(search.toLowerCase())
+                ? [
+                      u.firstname,
+                      u.lastname,
+                      u.email,
+                      u.specialty,
+                      u.assigned_facility,
+                  ].some(field =>
+                      String(field).toLowerCase().includes(search.toLowerCase())
                   )
                 : true
             const matchesStatus = statusFilter
                 ? u.status === statusFilter
                 : true
-            const matchesPlan = planFilter ? u.plan === planFilter : true
-            const matchesType = typeFilter ? u.type === typeFilter : true
-            return matchesSearch && matchesStatus && matchesPlan && matchesType
+            const matchesType = typeFilter
+                ? u.role.toLowerCase() === typeFilter.toLowerCase()
+                : true
+            return matchesSearch && matchesStatus && matchesType
         })
-    }, [users, search, statusFilter, typeFilter, planFilter])
+    }, [users, search, statusFilter, typeFilter])
 
     // Role-based guard
     if (user.role !== "SystemAdmin" && user.role !== "admin") {
@@ -139,19 +154,29 @@ const UsersRegistry = () => {
     const handleExportCSV = () => {
         const headers = [
             "Full Name",
+            "Email",
             "Role",
-            "Plan",
-            "Subscription Expiry",
-            "Assigned Facility",
+            "Specialty",
+            "License Number",
+            "Contact",
             "Status",
+            "Assigned Facility",
+            "Facility Role",
+            "Created At",
+            "Last Updated",
         ]
         const rows = users.map(u => [
-            u.user_firstname + u.user_lastname,
+            `${u.firstname} ${u.lastname}`,
+            u.email,
             u.role,
-            u.plan,
-            u.expiry,
-            // u.admin,
+            u.specialty,
+            u.license_number,
+            u.contact,
             u.status,
+            u.assigned_facility,
+            u.facility_role,
+            u.created_at,
+            u.updated_at,
         ])
         const csvContent = [headers, ...rows]
             .map(row => row.join(","))
