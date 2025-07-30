@@ -109,11 +109,25 @@ def get_all_users():
                 "status": "error",
                 "message": "Failed to fetch users"
             }), 500
+        
+        if response.data:
+            formatted_users = []
+            for user in response.data:
+                formatted_user = {
+                    **user,
+                    'facility_assignment': {
+                        'facility_name': user['facility_users'][0]['healthcare_facilities']['facility_name'] if user['facility_users'] else None,
+                            'facility_type': user['facility_users'][0]['healthcare_facilities']['facility_type'] if user['facility_users'] else None,
+                            'facility_role': user['facility_users'][0]['role'] if user['facility_users'] else None,
+                            'facility_id': user['facility_users'][0]['healthcare_facilities']['id'] if user['facility_users'] else None,
+                    }
+                }
+                formatted_users.append(formatted_user)
 
         return jsonify({
             "status": "success",
-            "data": response.data,
-            "count": len(response.data)
+            "data": formatted_users,
+            "count": len(formatted_users)
         }), 200
 
     except Exception as e:
@@ -122,5 +136,52 @@ def get_all_users():
             "status": "error",
             "message": f"An error occurred while fetching users: {str(e)}"
         }), 500
+
+@users_bp.route('/admin/users/<user_id>', methods=['GET'])
+@require_auth
+@require_role('admin')
+def get_user_by_id(user_id):
+    """ Get a specific user with their facility assignment.
+    Like looking up a specific employee's complete profile. """
     
+    try:
+        response = supabase.table('users').select(
+            '*, facility_users!facility_users_user_id_fkey(*, healthcare_facilities(facility_name))'
+        ).eq('user_id', user_id).execute()
+        
+        if response.data:
+            user = response.data[0]
+                
+            # # Enhanced formatting with complete facility info
+            # formatted_user = {
+            #     **user,
+            #     'facility_assignment': {
+            #         'facility_id': user['facility_users'][0]['healthcare_facilities']['id'] if user['facility_users'] else None,
+            #         'facility_name': user['facility_users'][0]['healthcare_facilities']['facility_name'] if user['facility_users'] else None,
+            #         'facility_type': user['facility_users'][0]['healthcare_facilities']['facility_type'] if user['facility_users'] else None,
+            #         'facility_address': user['facility_users'][0]['healthcare_facilities']['address'] if user['facility_users'] else None,
+            #         'facility_contact_email': user['facility_users'][0]['healthcare_facilities']['contact_email'] if user['facility_users'] else None,
+            #         'facility_contact_phone': user['facility_users'][0]['healthcare_facilities']['contact_phone'] if user['facility_users'] else None,
+            #         'facility_role': user['facility_users'][0]['role'] if user['facility_users'] else None,
+            #         'assigned_at': user['facility_users'][0]['assigned_at'] if user['facility_users'] else None,
+            #     }
+            # }
+            
+            return jsonify({
+                "status": "success",
+                "data": user
+            })
+        
+        else:
+            return jsonify({
+                "status": "error",
+                "message": "User not found."
+            }), 404
+    
+    except Exception as e:
+        current_app.logger.error(f"Error fetching user {user_id} : {str(e)}")
+        return jsonify({
+            "status": "error",
+            "message": "Failed to fetch user"
+        }), 500
     

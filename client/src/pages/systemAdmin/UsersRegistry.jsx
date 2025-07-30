@@ -1,12 +1,24 @@
-import React, { useEffect, useMemo, useState, lazy, Suspense } from "react"
+import React, {
+    useEffect,
+    useMemo,
+    useState,
+    lazy,
+    Suspense,
+    useCallback,
+} from "react"
+import { useAuth } from "../../context/auth"
+import { getUsers, getUserById } from "../../api/admin/users"
 
 // Components
 import UserRegistryHeader from "../../components/sysAdmin_users/UserRegistryHeader"
 import UserFilters from "../../components/sysAdmin_users/UserFilters"
 import UserTable from "../../components/sysAdmin_users/UserTable"
+import Unauthorized from "../../components/Unauthorized"
 
 // Helper
+import { showToast } from "../../util/alertHelper"
 import { displayRoles } from "../../util/roleHelper"
+import { subscribeToUserManagement } from "../../util/sbRealtime"
 
 // Lazy-loaded components (modals are heavy and used conditionally)
 const RegisterUserModal = lazy(() =>
@@ -15,10 +27,6 @@ const RegisterUserModal = lazy(() =>
 const UserDetailModal = lazy(() =>
     import("../../components/sysAdmin_users/UserDetailModal")
 )
-import { useAuth } from "../../context/auth"
-import { showToast } from "../../util/alertHelper"
-import { getUsers } from "../../api/admin/users"
-import Unauthorized from "../../components/Unauthorized"
 
 const UsersRegistry = () => {
     const { user } = useAuth()
@@ -39,27 +47,74 @@ const UsersRegistry = () => {
     const [detailUser, setDetailUser] = useState(null)
 
     // Helper to normalize user records coming from API
-    const formatUser = raw => ({
-        id: raw.user_id,
-        email: raw.email,
-        firstname: raw.firstname,
-        lastname: raw.lastname,
-        role: displayRoles(raw.role),
-        specialty: raw.specialty || "—",
-        license_number: raw.license_number || "627430954213",
-        contact: raw.phone_number || "—",
-        plan: raw.is_subscribed === "true" ? "Premium" : "Freemium",
-        status: raw.is_active ? "active" : "inactive",
-        created_at: new Date(raw.created_at).toLocaleDateString(),
-        updated_at: raw.updated_at
-            ? new Date(raw.updated_at).toLocaleDateString()
-            : "—",
-        // Include assigned facility information
-        assigned_facility:
-            raw.facility_users?.[0]?.healthcare_facilities?.facility_name ||
-            "Not Assigned",
-        facility_role: displayRoles(raw.facility_users?.[0]?.role),
-    })
+    const formatUser = useCallback(
+        raw => ({
+            id: raw.user_id,
+            email: raw.email,
+            firstname: raw.firstname,
+            lastname: raw.lastname,
+            role: displayRoles(raw.role),
+            specialty: raw.specialty || "—",
+            license_number: raw.license_number || "—",
+            contact: raw.phone_number || "—",
+            plan: raw.is_subscribed === "true" ? "Premium" : "Freemium",
+            status: raw.is_active ? "active" : "inactive",
+            created_at: new Date(raw.created_at).toLocaleDateString(),
+            updated_at: raw.updated_at
+                ? new Date(raw.updated_at).toLocaleDateString()
+                : "—",
+            // Enhanced facility information handling
+            assigned_facility:
+                raw.facility_assignment?.facility_name ||
+                raw.facility_users?.[0]?.healthcare_facilities?.facility_name ||
+                "Not Assigned",
+            facility_role: displayRoles(
+                raw.facility_assignment?.facility_role ||
+                    raw.facility_users?.[0]?.role ||
+                    ""
+            ),
+            facility_id:
+                raw.facility_assignment?.facility_id ||
+                raw.facility_users?.[0]?.healthcare_facilities?.id ||
+                null,
+        }),
+        []
+    )
+
+    const updateSpecificUser = useCallback(
+        async userId => {
+            try {
+                const res = await getUserById(userId)
+                if (res.status === "success") {
+                    const updatedUserData = formatUser(res.data)
+                    setUsers(prev =>
+                        prev.map(u => (u.id === userId ? updatedUserData : u))
+                    )
+                    return updatedUserData
+                }
+            } catch (err) {
+                console.error("Failed to fetch updated user data:", err)
+                return null
+            }
+        },
+        [formatUser]
+    )
+
+    const updateUserFacilityInfo = useCallback((userId, facilityInfo) => {
+        setUsers(prev =>
+            prev.map(u =>
+                u.id === userId
+                    ? {
+                          ...u,
+                          assigned_facility:
+                              facilityInfo.facility_name || "Not Assigned",
+                          facility_role: facilityInfo.facility_role || "—",
+                          facility_id: facilityInfo.facility_id || null,
+                      }
+                    : u
+            )
+        )
+    }, [])
 
     useEffect(() => {
         const fetchData = async () => {
@@ -79,7 +134,101 @@ const UsersRegistry = () => {
             }
         }
         fetchData()
-    }, []) // Remove the incorrect dependency
+
+        // Use the enhanced realtime utility with specific handlers
+        const unsubscribeRealtime = subscribeToUserManagement({
+            // Handle users table changes
+            onUserChange: payload => {
+                console.log("Users table change:", payload)
+
+                if (payload.eventType === "INSERT") {
+                    // For new users, fetch complete data including facility info
+                    updateSpecificUser(payload.new.user_id)
+                } else if (payload.eventType === "UPDATE") {
+                    // Update user data but preserve facility info if not included
+                    setUsers(prev =>
+                        prev.map(u => {
+                            if (u.id === payload.new.user_id) {
+                                const updatedUser = formatUser(payload.new)
+                                // Preserve existing facility info if new data doesn't have it
+                                return {
+                                    ...updatedUser,
+                                    assigned_facility:
+                                        payload.new.facility_assignment
+                                            ?.facility_name ||
+                                        u.assigned_facility,
+                                    facility_role:
+                                        payload.new.facility_assignment
+                                            ?.facility_role || u.facility_role,
+                                    facility_id:
+                                        payload.new.facility_assignment
+                                            ?.facility_id || u.facility_id,
+                                }
+                            }
+                            return u
+                        })
+                    )
+                } else if (payload.eventType === "DELETE") {
+                    setUsers(prev =>
+                        prev.filter(u => u.id !== payload.old.user_id)
+                    )
+                }
+            },
+
+            // Handle facility_users table changes
+            onFacilityUserChange: payload => {
+                console.log("Facility users table change:", payload)
+
+                const userId = payload.new?.user_id || payload.old?.user_id
+
+                if (payload.eventType === "INSERT") {
+                    // User assigned to facility - fetch fresh data to get facility details
+                    updateSpecificUser(userId)
+                } else if (payload.eventType === "UPDATE") {
+                    // Facility assignment updated - fetch fresh data
+                    updateSpecificUser(userId)
+                } else if (payload.eventType === "DELETE") {
+                    // User unassigned from facility - reset facility fields
+                    updateUserFacilityInfo(userId, {
+                        facility_name: "Not Assigned",
+                        facility_role: "—",
+                        facility_id: null,
+                    })
+                }
+            },
+
+            // Handle healthcare_facilities table changes (if facility names change)
+            onFacilityChange: payload => {
+                console.log("Healthcare facilities table change:", payload)
+
+                if (payload.eventType === "UPDATE") {
+                    const facilityId = payload.new.id
+                    const newFacilityName = payload.new.facility_name
+                    const oldFacilityName = payload.old.facility_name
+
+                    // Update all users assigned to this facility
+                    setUsers(prev =>
+                        prev.map(u => {
+                            if (
+                                u.facility_id === facilityId ||
+                                u.assigned_facility === oldFacilityName
+                            ) {
+                                return {
+                                    ...u,
+                                    assigned_facility: newFacilityName,
+                                }
+                            }
+                            return u
+                        })
+                    )
+                }
+            },
+        })
+
+        return () => {
+            unsubscribeRealtime()
+        }
+    }, [formatUser, updateSpecificUser, updateUserFacilityInfo])
 
     // Listen for facility-created event from modal to append to list
     useEffect(() => {
