@@ -112,23 +112,25 @@ const UserAssignFacility = ({ open, onClose, userId, user }) => {
 
     return (
         <Dialog open={open} onOpenChange={onClose}>
-            <DialogContent className="sm:max-w-[400px] border-0 shadow-sm bg-white">
+            <DialogContent className="sm:max-w-[400px] border-0 shadow-sm bg-white [&_button[data-slot=dialog-close]]:text-transparent [&_button[data-slot=dialog-close]]:p-1">
                 <DialogHeader>
-                    <DialogTitle className="text-xl font-semibold mb-4">
+                    <DialogTitle className="text-xl font-semibold">
                         Assign Facility
                     </DialogTitle>
-                    {user && (
+                    <span className="flex gap-1">
                         <p className="text-sm text-black">
-                            Assigning facility for {user.firstname}{" "}
-                            {user.lastname}
+                            Assigning facility for
                         </p>
-                    )}
+                        <p className="text-sm text-primary">
+                            {user.firstname} {user.lastname}
+                        </p>
+                    </span>
                 </DialogHeader>
 
                 <Form {...form}>
                     <form
                         onSubmit={form.handleSubmit(onSubmit)}
-                        className="space-y-4">
+                        className="space-y-4 mt-4">
                         <div className="space-y-4">
                             <div>
                                 <h3 className="text-sm font-medium mb-2">
@@ -205,7 +207,7 @@ const UserAssignFacility = ({ open, onClose, userId, user }) => {
                             </div>
                         </div>
 
-                        <DialogFooter className="w-full mt-6 flex align-bottom">
+                        <DialogFooter className="w-full mt-6 justify-between">
                             <Button
                                 type="button"
                                 variant="ghost"
@@ -217,7 +219,7 @@ const UserAssignFacility = ({ open, onClose, userId, user }) => {
                             <Button
                                 type="submit"
                                 disabled={loading}
-                                className="bg-[#0ea5e9] hover:bg-[#0ea5e9]/90 text-white px-4">
+                                className="bg-primary text-white px-4">
                                 {loading ? "Assigning..." : "Assign Facility"}
                             </Button>
                         </DialogFooter>
