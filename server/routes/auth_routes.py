@@ -135,6 +135,7 @@ def login():
                 'lastname': user_metadata.get('lastname', ''),
                 'specialty': user_metadata.get('specialty', ''),
                 'license_number': user_metadata.get('license_number', ''),
+                'subscription_expires': user_metadata.get('subscription_expires', ''),
                 'phone_number': user_metadata.get('phone_number', ''),
             }
             

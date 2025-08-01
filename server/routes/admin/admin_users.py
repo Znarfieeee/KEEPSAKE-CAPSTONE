@@ -20,6 +20,8 @@ def add_user():
     lastname = data.get("lastname")
     specialty = data.get("specialty")
     role = data.get("role")
+    plan = data.get('plan')
+    sub_expiry = data.get('subscription_expires')
     license_number = data.get("license_number")
     phone_number = data.get("phone_number")
 
@@ -47,6 +49,8 @@ def add_user():
                         "lastname": lastname,
                         "specialty": specialty,
                         "role": role,
+                        "plan": plan,
+                        "subscription_expires": sub_expiry,
                         "license_number": license_number,
                         "phone_number": phone_number,
                     }
@@ -110,24 +114,10 @@ def get_all_users():
                 "message": "Failed to fetch users"
             }), 500
         
-        if response.data:
-            formatted_users = []
-            for user in response.data:
-                formatted_user = {
-                    **user,
-                    'facility_assignment': {
-                        'facility_name': user['facility_users'][0]['healthcare_facilities']['facility_name'] if user['facility_users'] else None,
-                            'facility_type': user['facility_users'][0]['healthcare_facilities']['facility_type'] if user['facility_users'] else None,
-                            'facility_role': user['facility_users'][0]['role'] if user['facility_users'] else None,
-                            'facility_id': user['facility_users'][0]['healthcare_facilities']['id'] if user['facility_users'] else None,
-                    }
-                }
-                formatted_users.append(formatted_user)
-
         return jsonify({
             "status": "success",
-            "data": formatted_users,
-            "count": len(formatted_users)
+            "data": response.data,
+            "count": len(response.data)
         }), 200
 
     except Exception as e:
@@ -152,21 +142,6 @@ def get_user_by_id(user_id):
         if response.data:
             user = response.data[0]
                 
-            # # Enhanced formatting with complete facility info
-            # formatted_user = {
-            #     **user,
-            #     'facility_assignment': {
-            #         'facility_id': user['facility_users'][0]['healthcare_facilities']['id'] if user['facility_users'] else None,
-            #         'facility_name': user['facility_users'][0]['healthcare_facilities']['facility_name'] if user['facility_users'] else None,
-            #         'facility_type': user['facility_users'][0]['healthcare_facilities']['facility_type'] if user['facility_users'] else None,
-            #         'facility_address': user['facility_users'][0]['healthcare_facilities']['address'] if user['facility_users'] else None,
-            #         'facility_contact_email': user['facility_users'][0]['healthcare_facilities']['contact_email'] if user['facility_users'] else None,
-            #         'facility_contact_phone': user['facility_users'][0]['healthcare_facilities']['contact_phone'] if user['facility_users'] else None,
-            #         'facility_role': user['facility_users'][0]['role'] if user['facility_users'] else None,
-            #         'assigned_at': user['facility_users'][0]['assigned_at'] if user['facility_users'] else None,
-            #     }
-            # }
-            
             return jsonify({
                 "status": "success",
                 "data": user

@@ -1,4 +1,4 @@
-from flask import Flask, jsonify
+from flask import Flask, jsonify, request, make_response
 from config.settings import settings_bp
 from routes.auth_routes import auth_bp
 from routes.admin_routes import admin_bp
@@ -50,12 +50,24 @@ Session(app)
 allowed_origins = [
     "http://localhost:5173",
     "http://127.0.0.1:5173",
+    "http://localhost:5000",
+    "http://127.0.0.1:5000"
 ]
 CORS(
     app,
     resources={r"/*": {"origins": allowed_origins}},
     supports_credentials=True,
 )
+
+@app.before_request
+def handle_preflight():
+    if request.method == "OPTIONS":
+        response = make_response()
+        response.headers.add("Access-Control-Allow-Credentials", "true")
+        response.headers.add("Access-Control-Allow-Headers", "Content-Type,Authorization")
+        response.headers.add("Access-Control-Allow-Methods", "GET,PUT,POST,DELETE,OPTIONS")
+        response.headers.add("Access-Control-Allow-Origin", request.headers.get("Origin", "*"))
+        return response
 
 # Configure logging for HIPAA audit trail
 if not app.debug:

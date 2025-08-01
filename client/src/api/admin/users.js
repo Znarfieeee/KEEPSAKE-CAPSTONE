@@ -26,7 +26,7 @@ export const getUserById = async userId => {
 
 export const createUser = async userData => {
     const response = await axios.post(
-        `${backendConnection()}/admin/users`,
+        `${backendConnection()}/admin/add_user`,
         userData,
         axiosConfig
     )

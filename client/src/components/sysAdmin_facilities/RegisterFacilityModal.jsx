@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from "react"
-import { createFacility } from "../../api/facility"
+import React, { useState } from "react"
+import { createFacility } from "../../api/admin/facility"
 import { sanitizeObject } from "../../util/sanitize"
 
 // UI Components
@@ -37,12 +37,6 @@ const RegisterFacilityModal = ({ open, onClose }) => {
     const [isConfirmed, setIsConfirmed] = useState(false)
     // Ref for scroll animation when changing steps
     const contentRef = React.useRef(null)
-
-    useEffect(() => {
-        if (contentRef.current) {
-            contentRef.current.scrollTo({ top: 0, behavior: "smooth" })
-        }
-    }, [step])
 
     const next = () => setStep(s => Math.min(steps.length - 1, s + 1))
     const prev = () => setStep(s => Math.max(0, s - 1))

@@ -230,17 +230,6 @@ const UsersRegistry = () => {
         }
     }, [formatUser, updateSpecificUser, updateUserFacilityInfo])
 
-    // Listen for facility-created event from modal to append to list
-    useEffect(() => {
-        const handler = e => {
-            if (e.detail) {
-                setUsers(prev => [...prev, formatUser(e.detail)])
-            }
-        }
-        window.addEventListener("user-created", handler)
-        return () => window.removeEventListener("user-created", handler)
-    }, [])
-
     const filteredUsers = useMemo(() => {
         return users.filter(u => {
             const matchesSearch = search

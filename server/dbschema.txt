@@ -12,8 +12,8 @@ CREATE TABLE public.allergies (
   recorded_by uuid,
   recorded_at timestamp with time zone DEFAULT now(),
   CONSTRAINT allergies_pkey PRIMARY KEY (allergy_id),
-  CONSTRAINT allergies_patient_id_fkey FOREIGN KEY (patient_id) REFERENCES public.patients(patient_id),
-  CONSTRAINT allergies_recorded_by_fkey FOREIGN KEY (recorded_by) REFERENCES public.users(user_id)
+  CONSTRAINT allergies_recorded_by_fkey FOREIGN KEY (recorded_by) REFERENCES public.users(user_id),
+  CONSTRAINT allergies_patient_id_fkey FOREIGN KEY (patient_id) REFERENCES public.patients(patient_id)
 );
 CREATE TABLE public.anthropometric_measurements (
   am_id uuid NOT NULL DEFAULT uuid_generate_v4(),
@@ -43,10 +43,10 @@ CREATE TABLE public.appointments (
   created_at timestamp with time zone DEFAULT now(),
   updated_at timestamp with time zone DEFAULT now(),
   CONSTRAINT appointments_pkey PRIMARY KEY (appointment_id),
-  CONSTRAINT appointments_facility_id_fkey FOREIGN KEY (facility_id) REFERENCES public.healthcare_facilities(facility_id),
-  CONSTRAINT appointments_patient_id_fkey FOREIGN KEY (patient_id) REFERENCES public.patients(patient_id),
   CONSTRAINT appointments_scheduled_by_fkey FOREIGN KEY (scheduled_by) REFERENCES public.users(user_id),
-  CONSTRAINT appointments_doctor_id_fkey FOREIGN KEY (doctor_id) REFERENCES public.users(user_id)
+  CONSTRAINT appointments_doctor_id_fkey FOREIGN KEY (doctor_id) REFERENCES public.users(user_id),
+  CONSTRAINT appointments_facility_id_fkey FOREIGN KEY (facility_id) REFERENCES public.healthcare_facilities(facility_id),
+  CONSTRAINT appointments_patient_id_fkey FOREIGN KEY (patient_id) REFERENCES public.patients(patient_id)
 );
 CREATE TABLE public.audit_logs (
   log_id uuid NOT NULL DEFAULT uuid_generate_v4(),
@@ -84,9 +84,9 @@ CREATE TABLE public.delivery_record (
   obstetrician uuid,
   pediatrician uuid,
   CONSTRAINT delivery_record_pkey PRIMARY KEY (delivery_id),
-  CONSTRAINT delivery_record_patient_id_fkey FOREIGN KEY (patient_id) REFERENCES public.patients(patient_id),
+  CONSTRAINT delivery_record_obstetrician_fkey FOREIGN KEY (obstetrician) REFERENCES public.users(user_id),
   CONSTRAINT delivery_record_pediatrician_fkey FOREIGN KEY (pediatrician) REFERENCES public.users(user_id),
-  CONSTRAINT delivery_record_obstetrician_fkey FOREIGN KEY (obstetrician) REFERENCES public.users(user_id)
+  CONSTRAINT delivery_record_patient_id_fkey FOREIGN KEY (patient_id) REFERENCES public.patients(patient_id)
 );
 CREATE TABLE public.facility_users (
   facility_id uuid NOT NULL,
@@ -96,9 +96,9 @@ CREATE TABLE public.facility_users (
   end_date date,
   assigned_by uuid NOT NULL,
   CONSTRAINT facility_users_pkey PRIMARY KEY (facility_id, user_id),
+  CONSTRAINT facility_users_facility_id_fkey FOREIGN KEY (facility_id) REFERENCES public.healthcare_facilities(facility_id),
   CONSTRAINT facility_users_assigned_by_fkey FOREIGN KEY (assigned_by) REFERENCES public.users(user_id),
-  CONSTRAINT facility_users_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(user_id),
-  CONSTRAINT facility_users_facility_id_fkey FOREIGN KEY (facility_id) REFERENCES public.healthcare_facilities(facility_id)
+  CONSTRAINT facility_users_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(user_id)
 );
 CREATE TABLE public.growth_milestones (
   milestone_id uuid NOT NULL DEFAULT uuid_generate_v4(),
@@ -110,8 +110,8 @@ CREATE TABLE public.growth_milestones (
   recorded_by uuid NOT NULL,
   recorded_at timestamp with time zone NOT NULL DEFAULT now(),
   CONSTRAINT growth_milestones_pkey PRIMARY KEY (milestone_id),
-  CONSTRAINT growth_milestones_patient_id_fkey FOREIGN KEY (patient_id) REFERENCES public.patients(patient_id),
-  CONSTRAINT growth_milestones_recorded_by_fkey FOREIGN KEY (recorded_by) REFERENCES public.users(user_id)
+  CONSTRAINT growth_milestones_recorded_by_fkey FOREIGN KEY (recorded_by) REFERENCES public.users(user_id),
+  CONSTRAINT growth_milestones_patient_id_fkey FOREIGN KEY (patient_id) REFERENCES public.patients(patient_id)
 );
 CREATE TABLE public.healthcare_facilities (
   facility_id uuid NOT NULL DEFAULT uuid_generate_v4(),
@@ -140,8 +140,8 @@ CREATE TABLE public.invite_tokens (
   created_by uuid NOT NULL,
   consumed_at timestamp with time zone,
   CONSTRAINT invite_tokens_pkey PRIMARY KEY (inv_id),
-  CONSTRAINT invite_tokens_created_by_fkey FOREIGN KEY (created_by) REFERENCES public.users(user_id),
-  CONSTRAINT invite_tokens_child_id_fkey FOREIGN KEY (child_id) REFERENCES public.patients(patient_id)
+  CONSTRAINT invite_tokens_child_id_fkey FOREIGN KEY (child_id) REFERENCES public.patients(patient_id),
+  CONSTRAINT invite_tokens_created_by_fkey FOREIGN KEY (created_by) REFERENCES public.users(user_id)
 );
 CREATE TABLE public.medical_visits (
   visit_id uuid NOT NULL DEFAULT uuid_generate_v4(),
@@ -158,11 +158,11 @@ CREATE TABLE public.medical_visits (
   updated_at timestamp with time zone DEFAULT now(),
   updated_by uuid,
   CONSTRAINT medical_visits_pkey PRIMARY KEY (visit_id),
-  CONSTRAINT medical_visits_patient_id_fkey FOREIGN KEY (patient_id) REFERENCES public.patients(patient_id),
+  CONSTRAINT medical_visits_updated_by_fkey FOREIGN KEY (updated_by) REFERENCES public.users(user_id),
   CONSTRAINT medical_visits_created_by_fkey FOREIGN KEY (created_by) REFERENCES public.users(user_id),
   CONSTRAINT medical_visits_doctor_id_fkey FOREIGN KEY (doctor_id) REFERENCES public.users(user_id),
   CONSTRAINT medical_visits_facility_id_fkey FOREIGN KEY (facility_id) REFERENCES public.healthcare_facilities(facility_id),
-  CONSTRAINT medical_visits_updated_by_fkey FOREIGN KEY (updated_by) REFERENCES public.users(user_id)
+  CONSTRAINT medical_visits_patient_id_fkey FOREIGN KEY (patient_id) REFERENCES public.patients(patient_id)
 );
 CREATE TABLE public.parent_access (
   access_id uuid NOT NULL DEFAULT uuid_generate_v4(),
@@ -174,8 +174,8 @@ CREATE TABLE public.parent_access (
   revoked_at date,
   is_active boolean NOT NULL DEFAULT true,
   CONSTRAINT parent_access_pkey PRIMARY KEY (access_id),
-  CONSTRAINT parent_access_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(user_id),
   CONSTRAINT parent_access_patient_id_fkey FOREIGN KEY (patient_id) REFERENCES public.patients(patient_id),
+  CONSTRAINT parent_access_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(user_id),
   CONSTRAINT parent_access_granted_by_fkey FOREIGN KEY (granted_by) REFERENCES public.users(user_id)
 );
 CREATE TABLE public.patient_facility (
@@ -187,9 +187,9 @@ CREATE TABLE public.patient_facility (
   notes text,
   is_active boolean DEFAULT true,
   CONSTRAINT patient_facility_pkey PRIMARY KEY (pf_id),
-  CONSTRAINT patient_facility_facility_id_fkey FOREIGN KEY (facility_id) REFERENCES public.healthcare_facilities(facility_id),
+  CONSTRAINT patient_facility_patient_id_fkey FOREIGN KEY (patient_id) REFERENCES public.patients(patient_id),
   CONSTRAINT patient_facility_assigned_by_fkey FOREIGN KEY (assigned_by) REFERENCES public.users(user_id),
-  CONSTRAINT patient_facility_patient_id_fkey FOREIGN KEY (patient_id) REFERENCES public.patients(patient_id)
+  CONSTRAINT patient_facility_facility_id_fkey FOREIGN KEY (facility_id) REFERENCES public.healthcare_facilities(facility_id)
 );
 CREATE TABLE public.patients (
   patient_id uuid NOT NULL DEFAULT uuid_generate_v4(),
@@ -250,6 +250,8 @@ CREATE TABLE public.users (
   updated_at timestamp with time zone NOT NULL DEFAULT now(),
   is_active boolean DEFAULT false,
   is_subscribed boolean DEFAULT false,
+  subscription_expires date CHECK (subscription_expires > '2025-08-01'::date),
+  plan text,
   CONSTRAINT users_pkey PRIMARY KEY (user_id)
 );
 CREATE TABLE public.vaccinations (
@@ -267,7 +269,7 @@ CREATE TABLE public.vaccinations (
   notes text,
   recorded_at timestamp with time zone DEFAULT now(),
   CONSTRAINT vaccinations_pkey PRIMARY KEY (vax_id),
+  CONSTRAINT vaccinations_administered_by_fkey FOREIGN KEY (administered_by) REFERENCES public.users(user_id),
   CONSTRAINT vaccinations_visit_id_fkey FOREIGN KEY (visit_id) REFERENCES public.medical_visits(visit_id),
-  CONSTRAINT vaccinations_patient_id_fkey FOREIGN KEY (patient_id) REFERENCES public.patients(patient_id),
-  CONSTRAINT vaccinations_administered_by_fkey FOREIGN KEY (administered_by) REFERENCES public.users(user_id)
+  CONSTRAINT vaccinations_patient_id_fkey FOREIGN KEY (patient_id) REFERENCES public.patients(patient_id)
 );

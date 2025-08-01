@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react"
-import { addUser } from "../../api/auth"
+import { createUser } from "../../api/admin/users"
 import { sanitizeObject } from "../../util/sanitize"
 
 // UI Components
@@ -26,13 +26,14 @@ const initialForm = {
     phone_number: "",
     facility_id: "",
     facility_role: "",
+    status: "active", // Added default status
 }
 
 const steps = [
-    "Basic Info",
+    "Basic Information",
     "Professional Details",
-    "Facility Assignment",
-    "Review",
+    "Subscription & Facility",
+    "Review & Confirm",
 ]
 
 const RegisterUserModal = ({ open, onClose }) => {
@@ -49,8 +50,26 @@ const RegisterUserModal = ({ open, onClose }) => {
         }
     }, [step])
 
-    const next = () => setStep(s => Math.min(steps.length - 1, s + 1))
-    const prev = () => setStep(s => Math.max(0, s - 1))
+    // Transition effect when changing steps
+    const goToStep = newStep => {
+        if (newStep > step) {
+            if (
+                step === 0 &&
+                (!form.email || !form.firstname || !form.lastname)
+            ) {
+                showToast("error", "Please fill in all required fields")
+                return
+            }
+            if (step === 1 && (!form.role || !form.specialty)) {
+                showToast("error", "Please fill in all required fields")
+                return
+            }
+        }
+        setStep(newStep)
+    }
+
+    const next = () => goToStep(Math.min(steps.length - 1, step + 1))
+    const prev = () => goToStep(Math.max(0, step - 1))
 
     const reset = () => {
         setForm(initialForm)
@@ -66,8 +85,7 @@ const RegisterUserModal = ({ open, onClose }) => {
                 password: "keepsake123", // Default password as specified in initialForm
             })
 
-            // TODO: Replace with actual API call to register user
-            const res = await addUser(payload)
+            const res = await createUser(payload)
 
             if (res.status === "success") {
                 showToast("success", "User registered successfully")
@@ -105,10 +123,10 @@ const RegisterUserModal = ({ open, onClose }) => {
                 {/* Stepper */}
                 <Stepper
                     value={step + 1}
-                    onValueChange={val => setStep(val - 1)}
+                    onValueChange={val => goToStep(val - 1)}
                     className="mb-4 mx-auto w-full justify-center"
                     orientation="horizontal">
-                    {steps.map((_, idx) => (
+                    {steps.map((title, idx) => (
                         <StepperItem
                             key={idx + 1}
                             step={idx + 1}
@@ -123,13 +141,13 @@ const RegisterUserModal = ({ open, onClose }) => {
                     ))}
                 </Stepper>
 
-                {/* Step content */}
+                {/* Step content with transition */}
                 <div
                     ref={contentRef}
-                    className="space-y-3 max-h-[60vh] overflow-y-auto pr-1">
+                    className="space-y-3 max-h-[60vh] overflow-y-auto pr-1 transition-all duration-300">
                     {step === 0 && (
+                        // ... Basic Information step ...
                         <>
-                            {/* Basic Information */}
                             <div className="space-y-3">
                                 <div className="flex gap-2">
                                     <div className="flex-1 form-control">
@@ -170,12 +188,11 @@ const RegisterUserModal = ({ open, onClose }) => {
                                                     lastname: e.target.value,
                                                 })
                                             }
-                                            placeholder="Dela Cruz"
+                                            placeholder="De la Cruz"
                                             required
                                         />
                                     </div>
                                 </div>
-
                                 <div className="form-control">
                                     <label
                                         htmlFor="email"
@@ -197,7 +214,6 @@ const RegisterUserModal = ({ open, onClose }) => {
                                         required
                                     />
                                 </div>
-
                                 <div className="form-control">
                                     <label
                                         htmlFor="phone_number"
@@ -222,8 +238,8 @@ const RegisterUserModal = ({ open, onClose }) => {
                             </div>
                         </>
                     )}
-
                     {step === 1 && (
+                        // ... Professional Details step ...
                         <div className="space-y-3">
                             <div className="form-control">
                                 <label
@@ -245,7 +261,6 @@ const RegisterUserModal = ({ open, onClose }) => {
                                     placeholder="e.g., Pediatrician"
                                 />
                             </div>
-
                             <div className="form-control">
                                 <label
                                     htmlFor="role"
@@ -270,7 +285,6 @@ const RegisterUserModal = ({ open, onClose }) => {
                                     <option value="admin">Admin</option>
                                 </select>
                             </div>
-
                             <div className="form-control">
                                 <label
                                     htmlFor="license_number"
@@ -296,8 +310,8 @@ const RegisterUserModal = ({ open, onClose }) => {
                             </div>
                         </div>
                     )}
-
                     {step === 2 && (
+                        // ... Subscription & Facility step ...
                         <div className="space-y-3 flex flex-col gap-4">
                             <div className="flex flex-col form-control">
                                 <label
@@ -315,11 +329,8 @@ const RegisterUserModal = ({ open, onClose }) => {
                                             plan: e.target.value,
                                         })
                                     }>
-                                    <option value="standard">Standard</option>
+                                    <option value="standard">Freemium</option>
                                     <option value="premium">Premium</option>
-                                    <option value="enterprise">
-                                        Enterprise
-                                    </option>
                                 </select>
                             </div>
                             <div className="flex flex-col form-control">
@@ -342,10 +353,11 @@ const RegisterUserModal = ({ open, onClose }) => {
                                     }
                                 />
                             </div>
+                            {/* Facility assignment fields can be added here if needed */}
                         </div>
                     )}
-
-                    {step === 2 && (
+                    {step === 3 && (
+                        // ... Review & Confirm step ...
                         <div>
                             <div className="space-y-2 text-sm">
                                 <div className="flex justify-between">
@@ -381,6 +393,18 @@ const RegisterUserModal = ({ open, onClose }) => {
                                         License Number
                                     </span>
                                     <span>{form.license_number || "N/A"}</span>
+                                </div>
+                                <div className="flex justify-between">
+                                    <span className="font-medium">Plan</span>
+                                    <span>{form.plan || "N/A"}</span>
+                                </div>
+                                <div className="flex justify-between">
+                                    <span className="font-medium">
+                                        Expiry Date
+                                    </span>
+                                    <span>
+                                        {form.subscription_expires || "N/A"}
+                                    </span>
                                 </div>
                             </div>
                             {/* Confirm Button */}
