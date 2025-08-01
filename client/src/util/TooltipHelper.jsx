@@ -25,7 +25,7 @@ export const TooltipHelper = ({
         <TooltipProvider>
             <Tooltip>
                 <TooltipTrigger asChild>{children}</TooltipTrigger>
-                <TooltipContent side={side} align={align} className="bg-white">
+                <TooltipContent side={side} align={align}>
                     <p>{content}</p>
                 </TooltipContent>
             </Tooltip>
