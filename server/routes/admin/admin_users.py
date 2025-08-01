@@ -105,6 +105,7 @@ def add_user():
 def get_all_users():
     """Get all users with their roles, status, and facility assignments"""
     try:
+        # Get users data from the database
         response = supabase.table('users').select('*, facility_users!facility_users_user_id_fkey(*, healthcare_facilities(facility_name))').neq('role', 'admin').execute()
         
         if getattr(response, 'error', None):
@@ -113,7 +114,7 @@ def get_all_users():
                 "status": "error",
                 "message": "Failed to fetch users"
             }), 500
-        
+            
         return jsonify({
             "status": "success",
             "data": response.data,

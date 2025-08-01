@@ -1,6 +1,5 @@
 import datetime, json, logging
 from utils.redis_client import redis_client
-from redis.exceptions import RedisError
 
 SESSION_PREFIX = 'keepsake_session:'
 SESSION_TIMEOUT = 1800  # 30 minutes
@@ -18,52 +17,34 @@ def create_session_id():
 
 def store_session_data(session_id, user_data):
     """Store session data in Redis with expiration"""
-    try:
-        if not session_id:
-            raise SessionError("session_id is required")
-            
-        if not user_data:
-            raise SessionError("user_data is required")
-
-        # Ensure we have the minimum required data
-        if not user_data.get('id') or not user_data.get('email'):
-            raise SessionError("Missing required user data (id or email)")
-
-        current_time = datetime.datetime.utcnow().isoformat()
-        
-        session_data = {
-            'user_id': user_data.get('id'),
-            'email': user_data.get('email'),
-            'role': user_data.get('role'),
-            'firstname': user_data.get('firstname'),
-            'lastname': user_data.get('lastname'),
-            'specialty': user_data.get('specialty'),
-            'license_number': user_data.get('license_number'),
-            'phone_number': user_data.get('phone_number'),
-            'access_token': user_data.get('access_token'),
-            'refresh_token': user_data.get('refresh_token'),
-            'expires_at': user_data.get('expires_at'),
-            'last_sign_in_at': user_data.get('last_sign_in_at'),
-            'created_at': current_time,
-            'last_activity': current_time
-        }
+    current_time = datetime.datetime.utcnow().isoformat()
     
-        # Use the shared Redis client configured for the app
-        redis_client.setex(
-            f"{SESSION_PREFIX}{session_id}",
-            SESSION_TIMEOUT,
-            json.dumps(session_data)
-        )
-        
-        return session_id
+    session_data = {
+        'user_id': user_data.get('id'),
+        'email': user_data.get('email'),
+        'role': user_data.get('role'),
+        'firstname': user_data.get('firstname'),
+        'lastname': user_data.get('lastname'),
+        'specialty': user_data.get('specialty'),
+        'license_number': user_data.get('license_number'),
+        'phone_number': user_data.get('phone_number'),
+        'access_token': user_data.get('access_token'),
+        'refresh_token': user_data.get('refresh_token'),
+        'expires_at': user_data.get('expires_at'),
+        'last_sign_in_at': user_data.get('last_sign_in_at'),
+        'created_at': current_time,
+        'last_activity': current_time
+    }
 
-    except RedisError as e:
-        logger.error(f"Redis error storing session data: {str(e)}")
-        raise SessionError(f"Failed to store session: {str(e)}")
-    except Exception as e:
-        logger.error(f"Unexpected error storing session data: {str(e)}")
-        raise SessionError(f"Session storage failed: {str(e)}")
-
+    # Use the shared Redis client configured for the app
+    redis_client.setex(
+        f"{SESSION_PREFIX}{session_id}",
+        SESSION_TIMEOUT,
+        json.dumps(session_data)
+    )
+    
+    return session_id
+    
 def get_session_data(session_id):
     """Retrieve session data from Redis"""
     if not session_id:

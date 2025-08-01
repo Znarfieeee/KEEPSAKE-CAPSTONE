@@ -1,3 +1,4 @@
+/* eslint-disable no-unused-vars */
 import React, {
     useEffect,
     useMemo,
@@ -20,12 +21,46 @@ import { showToast } from "../../util/alertHelper"
 import { displayRoles } from "../../util/roleHelper"
 import { subscribeToUserManagement } from "../../util/sbRealtime"
 
+// Helper function to format last login time
+const formatLastLogin = lastLoginTime => {
+    try {
+        if (!lastLoginTime || lastLoginTime === "null") return "Never"
+
+        const lastLogin = new Date(lastLoginTime)
+
+        const now = new Date()
+        const diffInHours = Math.floor((now - lastLogin) / (1000 * 60 * 60))
+
+        if (diffInHours < 24) {
+            return `${diffInHours} ${diffInHours === 1 ? "hour" : "hours"} ago`
+        } else {
+            const days = Math.floor(diffInHours / 24)
+            const remainingHours = diffInHours % 24
+
+            if (remainingHours === 0) {
+                return `${days} ${days === 1 ? "day" : "days"} ago`
+            } else {
+                return `${days} ${
+                    days === 1 ? "day" : "days"
+                } and ${remainingHours} ${
+                    remainingHours === 1 ? "hour" : "hours"
+                } ago`
+            }
+        }
+    } catch (error) {
+        return "Never"
+    }
+}
+
 // Lazy-loaded components (modals are heavy and used conditionally)
 const RegisterUserModal = lazy(() =>
     import("../../components/sysAdmin_users/RegisterUserModal")
 )
 const UserDetailModal = lazy(() =>
     import("../../components/sysAdmin_users/UserDetailModal")
+)
+const UserAssignFacility = lazy(() =>
+    import("../../components/sysAdmin_users/UserAssignFacility")
 )
 
 const UsersRegistry = () => {
@@ -45,6 +80,8 @@ const UsersRegistry = () => {
     const [showRegister, setShowRegister] = useState(false)
     const [showDetail, setShowDetail] = useState(false)
     const [detailUser, setDetailUser] = useState(null)
+    const [showAssignFacility, setShowAssignFacility] = useState(false)
+    const [selectedUserId, setSelectedUserId] = useState(null)
 
     // Helper to normalize user records coming from API
     const formatUser = useCallback(
@@ -63,7 +100,10 @@ const UsersRegistry = () => {
             updated_at: raw.updated_at
                 ? new Date(raw.updated_at).toLocaleDateString()
                 : "—",
-            // Enhanced facility information handling
+            last_login:
+                raw.last_sign_in_at && raw.last_sign_in_at !== "null"
+                    ? formatLastLogin(raw.last_sign_in_at)
+                    : "Never",
             assigned_facility:
                 raw.facility_assignment?.facility_name ||
                 raw.facility_users?.[0]?.healthcare_facilities?.facility_name ||
@@ -277,9 +317,9 @@ const UsersRegistry = () => {
         )
     }
 
-    const handleAuditLogs = user => {
-        // Placeholder – navigate or open logs route
-        showToast("info", `Audit logs for ${user.name} not available in demo`)
+    const handleFacilityAssignment = user => {
+        setSelectedUserId(user.id)
+        setShowAssignFacility(true)
     }
 
     const handleDelete = user => {
@@ -370,7 +410,7 @@ const UsersRegistry = () => {
                 setItemsPerPage={setItemsPerPage}
                 onView={handleView}
                 onToggleStatus={handleToggleStatus}
-                onAuditLogs={handleAuditLogs}
+                onTransfer={handleFacilityAssignment}
                 onDelete={handleDelete}
             />
 
@@ -387,7 +427,18 @@ const UsersRegistry = () => {
                         open={showDetail}
                         user={detailUser}
                         onClose={() => setShowDetail(false)}
-                        onAuditLogs={handleAuditLogs}
+                        onAuditLogs={handleFacilityAssignment}
+                    />
+                )}
+                {showAssignFacility && (
+                    <UserAssignFacility
+                        open={showAssignFacility}
+                        userId={selectedUserId}
+                        user={users.find(u => u.id === selectedUserId)}
+                        onClose={() => {
+                            setShowAssignFacility(false)
+                            setSelectedUserId(null)
+                        }}
                     />
                 )}
             </Suspense>

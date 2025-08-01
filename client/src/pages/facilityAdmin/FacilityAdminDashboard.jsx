@@ -1,6 +1,7 @@
-import React from "react"
+import React, { useState, useEffect } from "react"
 
-// Placeholder imports for modular components
+// API imports
+// import { getFacilityUsers } from "../../api/admin/users"
 import UserTable from "../../components/facilityAdmin/UserTable"
 import SearchBar from "../../components/facilityAdmin/SearchBar"
 import RoleFilterDropdown from "../../components/facilityAdmin/RoleFilterDropdown"
@@ -13,7 +14,11 @@ import ResetPasswordModal from "../../components/facilityAdmin/ResetPasswordModa
 import AddUserButton from "../../components/facilityAdmin/AddUserButton"
 
 const FacilityAdminDashboard = () => {
-    // State for filters and modals (to be implemented)
+    const [users, setUsers] = useState([])
+    const [selectedUser, setSelectedUser] = useState(null)
+    const [showEditRole, setShowEditRole] = useState(false)
+    const [showDeactivate, setShowDeactivate] = useState(false)
+    const [showResetPassword, setShowResetPassword] = useState(false)
 
     return (
         <div className="min-h-screen bg-gray-50 p-6">
@@ -38,7 +43,26 @@ const FacilityAdminDashboard = () => {
                     <StatusFilterDropdown options={["active", "inactive"]} />
                 </div>
                 <div className="bg-white rounded-lg shadow p-4">
-                    <UserTable />
+                    <UserTable
+                        users={users}
+                        onView={user => setSelectedUser(user)}
+                        onEditRole={user => {
+                            setSelectedUser(user)
+                            setShowEditRole(true)
+                        }}
+                        onDeactivate={user => {
+                            setSelectedUser(user)
+                            setShowDeactivate(true)
+                        }}
+                        onReactivate={user => {
+                            // TODO: Implement reactivate functionality
+                            console.log("Reactivate user:", user)
+                        }}
+                        onResetPassword={user => {
+                            setSelectedUser(user)
+                            setShowResetPassword(true)
+                        }}
+                    />
                 </div>
                 {/* Modals (conditionally rendered) */}
                 <UserDetailsModal />

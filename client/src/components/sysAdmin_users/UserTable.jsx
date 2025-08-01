@@ -1,11 +1,13 @@
 import React from "react"
 import StatusBadge from "./UserStatusBadge"
 import { Button } from "../ui/Button"
+import { TooltipHelper } from "../../util/TooltipHelper"
+
 import {
     Eye,
     Ban,
     CheckCircle,
-    FileClock,
+    ArrowRightLeft,
     Trash2,
     ChevronLeft,
     ChevronRight,
@@ -19,7 +21,7 @@ const UserTable = ({
     setItemsPerPage,
     onView,
     onToggleStatus,
-    onAuditLogs,
+    onTransfer,
     onDelete,
     loading = false,
 }) => {
@@ -29,11 +31,6 @@ const UserTable = ({
 
     const handlePrev = () => setPage(p => Math.max(1, p - 1))
     const handleNext = () => setPage(p => Math.min(totalPages, p + 1))
-    const planClasses = {
-        freemium: "bg-green-100 text-green-700",
-        premium: "bg-blue-100 text-blue-700",
-        default: "bg-gray-100 text-gray-700",
-    }
 
     return (
         <div className="w-full overflow-x-auto">
@@ -95,44 +92,57 @@ const UserTable = ({
                                   </td>
                                   <td className="p-2 whitespace-nowrap">
                                       <div className="flex gap-1">
-                                          <Button
-                                              variant="ghost"
-                                              size="icon"
-                                              onClick={() => onView(user)}
-                                              title="View Details">
-                                              <Eye className="size-4" />
-                                          </Button>
-                                          <Button
-                                              variant="ghost"
-                                              size="icon"
-                                              onClick={() =>
-                                                  onToggleStatus(user)
-                                              }
-                                              title={
+                                          <TooltipHelper content="View Details">
+                                              <Button
+                                                  variant="ghost"
+                                                  size="icon"
+                                                  onClick={() => onView(user)}>
+                                                  <Eye className="size-4" />
+                                              </Button>
+                                          </TooltipHelper>
+
+                                          <TooltipHelper content="Assign/Transfer Facility">
+                                              <Button
+                                                  variant="ghost"
+                                                  size="icon"
+                                                  onClick={() =>
+                                                      onTransfer(user)
+                                                  }>
+                                                  <ArrowRightLeft className="size-4" />
+                                              </Button>
+                                          </TooltipHelper>
+
+                                          <TooltipHelper
+                                              content={
                                                   user.status === "inactive"
-                                                      ? "Activate"
-                                                      : "Deactivate"
+                                                      ? "Activate User"
+                                                      : "Deactivate User"
                                               }>
-                                              {user.status === "inactive" ? (
-                                                  <CheckCircle className="size-4" />
-                                              ) : (
-                                                  <Ban className="size-4" />
-                                              )}
-                                          </Button>
-                                          <Button
-                                              variant="ghost"
-                                              size="icon"
-                                              onClick={() => onAuditLogs(user)}
-                                              title="View Audit Logs">
-                                              <FileClock className="size-4" />
-                                          </Button>
-                                          <Button
-                                              variant="ghost"
-                                              size="icon"
-                                              onClick={() => onDelete(user)}
-                                              title="Delete User">
-                                              <Trash2 className="size-4" />
-                                          </Button>
+                                              <Button
+                                                  variant="ghost"
+                                                  size="icon"
+                                                  onClick={() =>
+                                                      onToggleStatus(user)
+                                                  }>
+                                                  {user.status ===
+                                                  "inactive" ? (
+                                                      <CheckCircle className="size-4" />
+                                                  ) : (
+                                                      <Ban className="size-4" />
+                                                  )}
+                                              </Button>
+                                          </TooltipHelper>
+
+                                          <TooltipHelper content="Delete User">
+                                              <Button
+                                                  variant="ghost"
+                                                  size="icon"
+                                                  onClick={() =>
+                                                      onDelete(user)
+                                                  }>
+                                                  <Trash2 className="size-4" />
+                                              </Button>
+                                          </TooltipHelper>
                                       </div>
                                   </td>
                               </tr>
