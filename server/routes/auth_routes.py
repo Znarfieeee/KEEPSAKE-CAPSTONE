@@ -81,6 +81,7 @@ def login():
                     'specialty': existing_session.get('specialty'),
                     'license_number': existing_session.get('license_number'),
                     'phone_number': existing_session.get('phone_number'),
+                    'last_sign_in_at': existing_session.get('last_sign_in_at')
                 }
                 
                 current_app.logger.info(f"AUDIT: User {existing_session.get('email')} reused existing session from IP {request.remote_addr}")
@@ -127,6 +128,10 @@ def login():
                 }), 401
             
             user_metadata = auth_response.user.user_metadata or {}
+            
+            # Get user's last sign in time from Supabase auth
+            last_sign_in = auth_response.user.last_sign_in_at.isoformat()
+            
             user_data = {
                 'id': auth_response.user.id,
                 'email': auth_response.user.email,
@@ -137,6 +142,7 @@ def login():
                 'license_number': user_metadata.get('license_number', ''),
                 'subscription_expires': user_metadata.get('subscription_expires', ''),
                 'phone_number': user_metadata.get('phone_number', ''),
+                'last_sign_in_at': last_sign_in,
             }
             
             supabase_tokens = {
@@ -306,7 +312,8 @@ def get_session():
             "lastname": session_data.get("lastname"),
             "specialty": session_data.get("specialty"),
             "license_number": session_data.get("license_number"),
-            "phone_number": session_data.get("phone_number")
+            "phone_number": session_data.get("phone_number"),
+            "last_sign_in_at": session_data.get("last_sign_in_at")
         }
 
         return jsonify({
