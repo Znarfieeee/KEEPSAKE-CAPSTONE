@@ -133,7 +133,6 @@ const UsersRegistry = () => {
                     return updatedUserData
                 }
             } catch (err) {
-                console.error("Failed to fetch updated user data:", err)
                 return null
             }
         },
@@ -179,8 +178,6 @@ const UsersRegistry = () => {
         const unsubscribeRealtime = subscribeToUserManagement({
             // Handle users table changes
             onUserChange: payload => {
-                console.log("Users table change:", payload)
-
                 if (payload.eventType === "INSERT") {
                     // For new users, fetch complete data including facility info
                     updateSpecificUser(payload.new.user_id)
@@ -217,8 +214,6 @@ const UsersRegistry = () => {
 
             // Handle facility_users table changes
             onFacilityUserChange: payload => {
-                console.log("Facility users table change:", payload)
-
                 const userId = payload.new?.user_id || payload.old?.user_id
 
                 if (payload.eventType === "INSERT") {
@@ -239,8 +234,6 @@ const UsersRegistry = () => {
 
             // Handle healthcare_facilities table changes (if facility names change)
             onFacilityChange: payload => {
-                console.log("Healthcare facilities table change:", payload)
-
                 if (payload.eventType === "UPDATE") {
                     const facilityId = payload.new.id
                     const newFacilityName = payload.new.facility_name

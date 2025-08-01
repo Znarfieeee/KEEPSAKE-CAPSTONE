@@ -49,13 +49,21 @@ export const login = async (email, password) => {
     }
 }
 
-export const logout = async () => {
-    const response = await axios.post(
-        `${backendConnection()}/logout`,
-        {},
-        axiosConfig
-    )
-    return response.data
+export const logout = async (silent = false) => {
+    try {
+        const response = await axios.post(
+            `${backendConnection()}/logout`,
+            {},
+            axiosConfig
+        )
+        return response.data
+    } catch (error) {
+        if (!silent) {
+            throw error // Propagate error for non-silent logout
+        }
+        // Return a default response for silent logout
+        return { status: "success", message: "Logged out" }
+    }
 }
 
 export const refreshSession = async () => {

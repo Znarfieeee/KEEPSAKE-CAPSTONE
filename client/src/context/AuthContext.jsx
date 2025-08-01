@@ -1,5 +1,4 @@
-/* eslint-disable no-unused-vars */
-import React, { useState, useEffect, useRef, useCallback } from "react"
+import { useState, useEffect, useRef, useCallback } from "react"
 import { useNavigate } from "react-router-dom"
 import {
     login,
@@ -41,27 +40,30 @@ export const AuthProvider = ({ children }) => {
     }, [])
 
     // Only navigate on initial login, not on refresh
-    const navigateOnLogin = role => {
-        switch (role) {
-            case "admin":
-                navigate("/admin")
-                break
-            case "Pediapro":
-                navigate("/pediapro")
-                break
-            case "Keepsaker":
-                navigate("/keepsaker")
-                break
-            case "VitalCustodian":
-                navigate("/vital_custodian")
-                break
-            case "facility_admin":
-                navigate("/facility_admin")
-                break
-            default:
-                navigate("/")
-        }
-    }
+    const navigateOnLogin = useCallback(
+        role => {
+            switch (role) {
+                case "admin":
+                    navigate("/admin")
+                    break
+                case "Pediapro":
+                    navigate("/pediapro")
+                    break
+                case "Keepsaker":
+                    navigate("/keepsaker")
+                    break
+                case "VitalCustodian":
+                    navigate("/vital_custodian")
+                    break
+                case "facility_admin":
+                    navigate("/facility_admin")
+                    break
+                default:
+                    navigate("/")
+            }
+        },
+        [navigate]
+    )
 
     const checkExistingSession = useCallback(async () => {
         try {
@@ -72,7 +74,7 @@ export const AuthProvider = ({ children }) => {
                 return true
             }
             return false
-        } catch (err) {
+        } catch {
             // Suppress detailed error logging
             return false
         }
@@ -154,7 +156,7 @@ export const AuthProvider = ({ children }) => {
                     showToast("error", "Invalid credentials")
                     return { success: false, message: "Invalid credentials" }
                 }
-            } catch (_) {
+            } catch {
                 showToast("error", "Authentication failed")
                 return { success: false, message: "Authentication failed" }
             } finally {
@@ -225,9 +227,10 @@ export const AuthProvider = ({ children }) => {
                 signOut(true)
             }
         }, IDLE_LOGOUT_TIME)
-    }, [isAuthenticated, signOut])
+    }, [isAuthenticated, signOut, ACTIVITY_THROTTLE, IDLE_LOGOUT_TIME])
 
-    const startSessionManagement = useCallback(() => {
+    // Internal session management - not exposed in context
+    const _startSessionManagement = useCallback(() => {
         if (!isAuthenticated) return
 
         clearAllTimers()
@@ -246,7 +249,14 @@ export const AuthProvider = ({ children }) => {
         }, REFRESH_INTERVAL)
 
         handleActivity()
-    }, [isAuthenticated, handleActivity, clearAllTimers, runRefreshSession])
+    }, [
+        isAuthenticated,
+        handleActivity,
+        clearAllTimers,
+        runRefreshSession,
+        IDLE_LOGOUT_TIME,
+        REFRESH_INTERVAL,
+    ])
 
     const btnClicked = () => {
         alert("Button clicked")
@@ -301,7 +311,12 @@ export const AuthProvider = ({ children }) => {
                 "visibilitychange",
                 handleVisibilityChange
             )
-    }, [isAuthenticated, handleActivity, runRefreshSession])
+    }, [
+        isAuthenticated,
+        handleActivity,
+        runRefreshSession,
+        VISIBILITY_REFRESH_THRESHOLD,
+    ])
 
     useEffect(() => {
         const handleOnline = () => {
