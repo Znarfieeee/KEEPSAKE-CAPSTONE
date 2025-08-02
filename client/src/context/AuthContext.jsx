@@ -1,3 +1,4 @@
+/* eslint-disable no-unused-vars */
 import { useState, useEffect, useRef, useCallback } from "react"
 import { useNavigate } from "react-router-dom"
 import {
@@ -39,7 +40,6 @@ export const AuthProvider = ({ children }) => {
         })
     }, [])
 
-    // Only navigate on initial login, not on refresh
     const navigateOnLogin = useCallback(
         role => {
             switch (role) {
@@ -178,18 +178,17 @@ export const AuthProvider = ({ children }) => {
                     try {
                         await logout()
                         showToast("success", "Logout successful")
-                    } catch (error) {
-                        console.warn("Logout API call failed: ", error)
+                    } catch (_) {
                         showToast("info", "You have been logged out!")
                     }
                 } else {
                     try {
                         await logout()
-                    } catch (error) {
-                        console.warn("Silent logout API call failed: ", error)
+                    } catch {
+                        // Silent handling of logged out session.
                     }
                 }
-            } catch (_) {
+            } catch {
                 // Silent failure but ensure user is logged out locally
                 if (!silent)
                     return showToast("info", "You have been logged out!")
@@ -229,12 +228,11 @@ export const AuthProvider = ({ children }) => {
         }, IDLE_LOGOUT_TIME)
     }, [isAuthenticated, signOut, ACTIVITY_THROTTLE, IDLE_LOGOUT_TIME])
 
-    // Internal session management - not exposed in context
     const _startSessionManagement = useCallback(() => {
         if (!isAuthenticated) return
 
         clearAllTimers()
-
+        console.log("Session Management")
         refreshTimerRef.current = setInterval(async () => {
             const now = Date.now()
             const timeSinceLastRefresh = now - lastRefreshRef.current

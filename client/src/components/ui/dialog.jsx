@@ -96,21 +96,21 @@ function DialogTitle({ className, ...props }) {
     )
 }
 
-function DialogDescription({ className, ...props }) {
-    return (
-        <DialogPrimitive.Description
-            data-slot="dialog-description"
-            className={cn("text-muted-foreground text-sm", className)}
-            {...props}
-        />
-    )
-}
+// function DialogDescription({ className, ...props }) {
+//     return (
+//         <DialogPrimitive.Description
+//             data-slot="dialog-description"
+//             className={cn("text-muted-foreground text-sm", className)}
+//             {...props}
+//         />
+//     )
+// }
 
 export {
     Dialog,
     DialogClose,
     DialogContent,
-    DialogDescription,
+    // DialogDescription,
     DialogFooter,
     DialogHeader,
     DialogOverlay,

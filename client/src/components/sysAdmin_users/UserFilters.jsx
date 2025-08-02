@@ -1,5 +1,12 @@
 import React from "react"
 import { Search } from "lucide-react"
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "../ui/select"
 
 const UserFilters = ({
     search,
@@ -12,24 +19,24 @@ const UserFilters = ({
     onPlanChange,
 }) => {
     const statusOptions = [
-        { value: "", label: "All Status" },
+        { value: "all", label: "All Status" },
         { value: "active", label: "Active" },
-        { value: "pending", label: "Pending" },
         { value: "inactive", label: "Inactive" },
     ]
 
     const typeOptions = [
-        { value: "", label: "All Types" },
-        { value: "SystemAdmin", label: "System Admin" },
-        { value: "FacilityAdmin", label: "Facility Admin" },
-        { value: "Physician", label: "Physician" },
-        { value: "user", label: "User" },
+        { value: "all", label: "All Types" },
+        { value: "facility admin", label: "Facility Admin" },
+        { value: "doctor", label: "Doctor" },
+        { value: "nurse", label: "Nurse" },
+        { value: "staff", label: "Staff" },
+        { value: "parent", label: "Parent" },
     ]
 
     const planOptions = [
-        { value: "", label: "All Plans" },
-        { value: "freemium", label: "Freemium" },
-        { value: "premium", label: "Premium" },
+        { value: "all", label: "All Plans" },
+        { value: "false", label: "Freemium" },
+        { value: "true", label: "Premium" },
     ]
 
     return (
@@ -48,44 +55,56 @@ const UserFilters = ({
             <div className="flex gap-4">
                 {/* Type Filter */}
                 <div>
-                    <select
-                        value={typeFilter}
-                        onChange={e => onTypeChange(e.target.value)}
-                        className="h-10 w-full rounded-md border border-gray-200 bg-white px-3 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20">
-                        {typeOptions.map(option => (
-                            <option key={option.value} value={option.value}>
-                                {option.label}
-                            </option>
-                        ))}
-                    </select>
+                    <Select value={typeFilter} onValueChange={onTypeChange}>
+                        <SelectTrigger className="w-full bg-white">
+                            <SelectValue placeholder="Select user type" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            {typeOptions.map(option => (
+                                <SelectItem
+                                    key={option.value}
+                                    value={option.value}>
+                                    {option.label}
+                                </SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
                 </div>
 
                 {/* Status Filter */}
                 <div>
-                    <select
-                        value={statusFilter}
-                        onChange={e => onStatusChange(e.target.value)}
-                        className="h-10 w-full rounded-md border border-gray-200 bg-white px-3 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20">
-                        {statusOptions.map(option => (
-                            <option key={option.value} value={option.value}>
-                                {option.label}
-                            </option>
-                        ))}
-                    </select>
+                    <Select value={statusFilter} onValueChange={onStatusChange}>
+                        <SelectTrigger className="w-full bg-white">
+                            <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                            {statusOptions.map(option => (
+                                <SelectItem
+                                    key={option.value}
+                                    value={option.value}>
+                                    {option.label}
+                                </SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
                 </div>
 
                 {/* Plan Filter */}
                 <div>
-                    <select
-                        value={planFilter}
-                        onChange={e => onPlanChange(e.target.value)}
-                        className="h-10 w-full rounded-md border border-gray-200 bg-white px-3 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20">
-                        {planOptions.map(option => (
-                            <option key={option.value} value={option.value}>
-                                {option.label}
-                            </option>
-                        ))}
-                    </select>
+                    <Select value={planFilter} onValueChange={onPlanChange}>
+                        <SelectTrigger className="w-full bg-white">
+                            <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                            {planOptions.map(option => (
+                                <SelectItem
+                                    key={option.value}
+                                    value={option.value}>
+                                    {option.label}
+                                </SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
                 </div>
             </div>
         </div>

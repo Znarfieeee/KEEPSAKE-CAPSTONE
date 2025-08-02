@@ -119,7 +119,7 @@ def create_facility():
         }), 500
 
 # Get Facility by ID
-@facility_bp.route('/admin/facilities/<string:facility_id>', methods=['GET'])
+@facility_bp.route('/admin/facilities/<facility_id>', methods=['GET'])
 @require_auth
 def get_facility_by_id(facility_id):
     """Retrieve a single facility by its UUID."""
@@ -148,6 +148,30 @@ def get_facility_by_id(facility_id):
         return jsonify({
             "status": "error",
             "message": f"Error retrieving facility: {str(e)}",
+        }), 500
+
+# Soft delete by deactivating active status
+@facility_bp.route('/admin/<facility_id>/delete_facility', methods=['POST'])
+@require_auth
+@require_role('admin')
+def delete_facility(facility_id):
+    try:
+        response = supabase.table('healthcare_facilities').update({"subscription_status": "inactive"}).eq("facility_id", facility_id).execute()
+        
+        if not response:
+            return jsonify({
+                "status": "error",
+                "message": f"Error deactivating facility: {str(facility_id)}"
+            })
+            
+        return jsonify({
+            "status": "success",
+            "message": "Successfully deactivate facility."
+        })
+    except Exception as e:
+        return jsonify({
+            "status": "error",
+            "message": "Server error"
         }), 500
 
 # Assign facility admin to facility

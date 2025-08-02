@@ -70,9 +70,9 @@ const UsersRegistry = () => {
 
     // UI state
     const [search, setSearch] = useState("")
-    const [statusFilter, setStatusFilter] = useState("")
-    const [typeFilter, setTypeFilter] = useState("")
-    const [planFilter, setPlanFilter] = useState("")
+    const [statusFilter, setStatusFilter] = useState("all")
+    const [typeFilter, setTypeFilter] = useState("all")
+    const [planFilter, setPlanFilter] = useState("all")
     const [page, setPage] = useState(1)
     const [itemsPerPage, setItemsPerPage] = useState(10)
 
@@ -276,15 +276,22 @@ const UsersRegistry = () => {
                       String(field).toLowerCase().includes(search.toLowerCase())
                   )
                 : true
-            const matchesStatus = statusFilter
-                ? u.status === statusFilter
-                : true
-            const matchesType = typeFilter
-                ? u.role.toLowerCase() === typeFilter.toLowerCase()
-                : true
-            return matchesSearch && matchesStatus && matchesType
+            const matchesStatus =
+                statusFilter && statusFilter !== "all"
+                    ? u.status === statusFilter
+                    : true
+            const matchesType =
+                typeFilter && typeFilter !== "all"
+                    ? u.role.toLowerCase() === typeFilter.toLowerCase()
+                    : true
+            const matchesPlan =
+                planFilter && planFilter !== "all"
+                    ? u.plan.toLowerCase() ===
+                      (planFilter === "true" ? "premium" : "freemium")
+                    : true
+            return matchesSearch && matchesStatus && matchesType && matchesPlan
         })
-    }, [users, search, statusFilter, typeFilter])
+    }, [users, search, statusFilter, typeFilter, planFilter])
 
     // Role-based guard
     if (user.role !== "SystemAdmin" && user.role !== "admin") {

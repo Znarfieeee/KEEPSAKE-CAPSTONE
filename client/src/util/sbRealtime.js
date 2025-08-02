@@ -15,59 +15,52 @@ import { supabase } from "../lib/supabaseClient"
 export function subscribeToSupabaseRealtime(table, onChange, options = {}) {
     const { filter, enablePresence = false } = options
 
-    // Create a unique channel name to avoid conflicts
     const channelName = `realtime:${table}:${Date.now()}`
 
     let channel = supabase.channel(channelName)
 
-    // Add postgres changes listener
     let changeConfig = {
         event: "*",
         schema: "public",
         table: table,
     }
 
-    // Add filter if provided (e.g., "user_id=eq.123")
     if (filter) {
         changeConfig.filter = filter
     }
 
-    channel = channel.on("postgres_changes", changeConfig, payload => {
-        console.log(`Realtime change on ${table}:`, payload)
-
-        try {
-            onChange(payload)
-        } catch (error) {
-            console.error(`Error handling realtime change for ${table}:`, error)
-        }
-    })
-
-    // Add presence tracking if enabled
-    if (enablePresence) {
-        channel = channel.on("presence", { event: "*" }, payload => {
-            console.log(`Presence change on ${table}:`, payload)
+    channel = channel
+        .on("system", { event: "websocket_status" }, status => {
+            if (status === "disconnected") {
+                channel.subscribe()
+            }
         })
+        .on("postgres_changes", changeConfig, payload => {
+            try {
+                onChange(payload)
+            } catch {
+                // Handle errors silently
+            }
+        })
+
+    if (enablePresence) {
+        channel = channel.on("presence", { event: "*" })
     }
 
-    // Subscribe to the channel
-    channel.subscribe(status => {
-        console.log(`Subscription status for ${table}:`, status)
-
+    channel.subscribe(async status => {
         if (status === "SUBSCRIBED") {
-            console.log(
-                `✅ Successfully subscribed to ${table} realtime changes`
-            )
+            // Connection Successful
         } else if (status === "CLOSED") {
-            console.log(`❌ Subscription to ${table} was closed`)
-        } else if (status === "CHANNEL_ERROR") {
-            console.error(`💥 Channel error for ${table}`)
+            setTimeout(() => {
+                channel.subscribe()
+            }, 1000)
         }
     })
 
-    // Return cleanup function
     return () => {
-        console.log(`🧹 Unsubscribing from ${table} realtime changes`)
-        supabase.removeChannel(channel)
+        if (channel) {
+            supabase.removeChannel(channel)
+        }
     }
 }
 
@@ -119,10 +112,6 @@ export function subscribeWithReconnect(table, onChange, options = {}) {
                     reconnectAttempts++
                     const delay =
                         reconnectDelay * Math.pow(2, reconnectAttempts - 1) // Exponential backoff
-
-                    console.log(
-                        `Attempting to reconnect to ${table} in ${delay}ms (attempt ${reconnectAttempts})`
-                    )
 
                     setTimeout(() => {
                         if (unsubscribe) unsubscribe()

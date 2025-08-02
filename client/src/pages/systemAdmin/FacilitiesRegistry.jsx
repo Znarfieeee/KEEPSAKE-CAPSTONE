@@ -1,4 +1,3 @@
-/* eslint-disable no-unused-vars */
 import React, { useEffect, useMemo, useState, lazy, Suspense } from "react"
 import FacilityRegistryHeader from "../../components/sysAdmin_facilities/FacilityRegistryHeader"
 import FacilityFilters from "../../components/sysAdmin_facilities/FacilityFilters"
@@ -44,8 +43,7 @@ const FacilitiesRegistry = () => {
         plan: raw.plan,
         expiry: raw.subscription_expires,
         admin: raw.admin || raw.email || "—",
-        status:
-            raw.subscription_status === "suspended" ? "suspended" : "active",
+        status: raw.subscription_status,
         contact: raw.contact_number,
         email: raw.email,
         website: raw.website,
@@ -64,7 +62,7 @@ const FacilitiesRegistry = () => {
                         res.message || "Failed to load facilities"
                     )
                 }
-            } catch (err) {
+            } catch {
                 showToast("error", "Failed to load facilities")
             } finally {
                 setLoading(false)
