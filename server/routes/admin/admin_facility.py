@@ -10,6 +10,38 @@ from postgrest.exceptions import APIError as AuthApiError
 facility_bp = Blueprint('facility', __name__)
 redis_client = get_redis_client()
 
+FACILITY_CACHE_KEY = "healthcare_facilities:all"
+FACILITY_CACHE_PREFIX = "healthcare_facilities:"
+FACILITY_USERS_CACHE_PREFIX = "facility_users:"
+
+def invalidate_facility_caches(facility_id=None):
+    """
+    Smart cache invalidation - like clearing specific drawers in a filing cabinet
+    instead of throwing out the whole cabinet.
+    """
+    try:
+        # Always clear the main facilities list
+        redis_client.delete(FACILITY_CACHE_KEY)
+        
+        if facility_id:
+            # Clear specific facility cache
+            facility_key = f"{FACILITY_CACHE_PREFIX}{facility_id}"
+            redis_client.delete(facility_key)
+            
+            # Clear facility users cache
+            users_key = f"{FACILITY_USERS_CACHE_PREFIX}{facility_id}"
+            redis_client.delete(users_key)
+            
+            # Clear any related pattern-based caches
+            pattern_keys = redis_client.keys(f"{FACILITY_CACHE_PREFIX}{facility_id}:*")
+            if pattern_keys:
+                redis_client.delete(*pattern_keys)
+                
+        current_app.logger.info(f"Cache invalidated for facility: {facility_id or 'all'}")
+        
+    except Exception as e:
+        current_app.logger.error(f"Cache invalidation failed: {str(e)}")
+
 # Get all list of facilities
 @facility_bp.route('/admin/facilities', methods=['GET'])
 @require_auth
@@ -17,17 +49,20 @@ redis_client = get_redis_client()
 def list_facilities():
     """Return all healthcare facilities visible to the current user."""
     try:
-        cache_key = "healthcare_facilities:all"
-        cached = redis_client.get(cache_key)
+        bust_cache = request.arg.get('bust_cache', 'false').lower() == 'true'
 
         # If we have cached data, return it
-        if cached:
-            cached_data = json.loads(cached)
-            return jsonify({
-                "status": "success",
-                "data": cached_data,
-                "cached": True,
-            }), 200
+        if not bust_cache:
+            cached = redis_client.get(FACILITY_CACHE_KEY)
+            
+            if cached:
+                cached_data = json.loads(cached)
+                return jsonify({
+                    "status": "success",
+                    "data": cached_data,
+                    "cached": True,
+                    "timestamp": datetime.utc.now().isoformat()
+                }), 200
 
         # If no cache, fetch from Supabase
         resp = supabase.table('healthcare_facilities').select('*').execute()
@@ -39,16 +74,15 @@ def list_facilities():
                 "details": resp.error.message if resp.error else "Unknown",
             }), 400
         
-        # Store fresh copy in Redis (10-minute TTL)
-        redis_client.setex(cache_key, 600, json.dumps(resp.data))
+        # Store fresh copy in Redis (5-minute TTL)
+        redis_client.setex(FACILITY_CACHE_KEY, 300, json.dumps(resp.data))
         
         return jsonify({
             "status": "success",
             "data": resp.data,
             "cached": False,
+            "timestamp": datetime.utc.now().isoformat()            
         }), 200
-
-        
 
     except Exception as e:
         return jsonify({
@@ -65,7 +99,6 @@ def create_facility():
     try:
         data = request.json or {}
 
-        # Basic validation – facility_name is minimally required
         if not data.get('facility_name'):
             return jsonify({
                 "status": "error",
@@ -98,8 +131,8 @@ def create_facility():
                 "details": resp.error.message if resp.error else "Unknown",
             }), 400
 
-        # Invalidate cached list so subsequent GET reflects the new record
-        redis_client.delete("healthcare_facilities:all")
+        # Invalidate cache after successful creation
+        invalidate_facility_caches()
 
         return jsonify({
             "status": "success",
@@ -116,6 +149,39 @@ def create_facility():
         return jsonify({
             "status": "error",
             "message": f"Error creating facility: {str(e)}",
+        }), 500
+        
+@facility_bp.route('/admin/facilities/<facility_id>', methods=['PUT'])
+@require_auth
+@require_role('admin')
+def update_facility(facility_id):
+    try:
+        data = request.json or {}
+        
+        resp = supabase.table('healthcare_facilities')\
+            .update(data)\
+                .eq('facility_id', facility_id)\
+                .execute()
+                
+        if getattr(resp, 'error', None):
+            return jsonify({
+                "status": "error",
+                "message": "Failed to update facility",
+                "details": resp.error.message if resp.error else "Unknown"
+            }), 400
+            
+        invalidate_facility_caches(facility_id)
+        
+        return jsonify({
+            "status": "success",
+            "message": "Facility updated successfully!",
+            "data": resp.data[0] if resp.data else None
+        }), 201
+        
+    except AuthApiError as AuthError:
+        return jsonify({
+            "status": "error",
+            "message": f"API error: {str(AuthError)}" 
         }), 500
 
 # Get Facility by ID
@@ -163,11 +229,13 @@ def delete_facility(facility_id):
                 "status": "error",
                 "message": f"Error deactivating facility: {str(facility_id)}"
             })
+        
+        invalidate_facility_caches(facility_id)
             
         return jsonify({
             "status": "success",
             "message": "Successfully deactivate facility."
-        })
+        }), 200
     except Exception as e:
         return jsonify({
             "status": "error",
@@ -247,6 +315,8 @@ def add_facility_admin(facility_id):
             if result.get('success'):
                 current_app.logger.info(f"AUDIT: Successfully assigned {email} to facility {facility_id} as {role} by admin {current_user.get('email')}")
                 
+                invalidate_facility_caches(facility_id)
+                
                 return jsonify({
                     "status": "success",
                     "message": result.get('message', 'User assigned to facility successfully'),
@@ -274,12 +344,6 @@ def add_facility_admin(facility_id):
                     "message": "No response from assignment procedure"
                 }), 500
             
-        
-        return jsonify({
-            "status": "success",
-            "message": "User assigned to facility successfully"
-        }), 200
-
     except Exception as e:
         current_app.logger.error(f"AUDIT: Exception in add_facility_admin for facility {facility_id}: {str(e)}")
         return jsonify({

@@ -23,9 +23,9 @@ const FacilitiesRegistry = () => {
 
     // UI state
     const [search, setSearch] = useState("")
-    const [statusFilter, setStatusFilter] = useState("")
-    const [typeFilter, setTypeFilter] = useState("")
-    const [planFilter, setPlanFilter] = useState("")
+    const [statusFilter, setStatusFilter] = useState("all")
+    const [typeFilter, setTypeFilter] = useState("all")
+    const [planFilter, setPlanFilter] = useState("all")
     const [page, setPage] = useState(1)
     const [itemsPerPage, setItemsPerPage] = useState(10)
 
@@ -85,15 +85,22 @@ const FacilitiesRegistry = () => {
     const filteredFacilities = useMemo(() => {
         return facilities.filter(f => {
             const matchesSearch = search
-                ? [f.name, f.location, f.id].some(field =>
-                      field.toLowerCase().includes(search.toLowerCase())
+                ? [f.name, f.location, f.id, f.plan, f.contact].some(field =>
+                      String(field).toLowerCase().includes(search.toLowerCase())
                   )
                 : true
-            const matchesStatus = statusFilter
-                ? f.status === statusFilter
-                : true
-            const matchesPlan = planFilter ? f.plan === planFilter : true
-            const matchesType = typeFilter ? f.type === typeFilter : true
+            const matchesStatus =
+                statusFilter && statusFilter !== "all"
+                    ? f.status === statusFilter.toLowerCase()
+                    : true
+            const matchesPlan =
+                planFilter && planFilter !== "all"
+                    ? f.plan === planFilter.toLowerCase()
+                    : true
+            const matchesType =
+                typeFilter && planFilter !== "all"
+                    ? f.type === typeFilter.toLowerCase()
+                    : true
             return matchesSearch && matchesStatus && matchesPlan && matchesType
         })
     }, [facilities, search, statusFilter, typeFilter, planFilter])
