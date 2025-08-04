@@ -1,9 +1,13 @@
 {
     "cSpell.words": [
         "dotenv",
+        "firstname",
         "gensalt",
+        "gotrue",
         "hashpw",
         "jsonify",
+        "keepsaker",
+        "lastname",
         "levelname",
         "pediapro",
         "supabase",

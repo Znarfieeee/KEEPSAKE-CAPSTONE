@@ -1,6 +1,9 @@
 import React from "react"
+
+// UI Components
 import StatusBadge from "./StatusBadge"
 import { Button } from "../ui/Button"
+import { TooltipHelper } from "../../util/TooltipHelper"
 import {
     Eye,
     Ban,
@@ -34,7 +37,7 @@ const FacilityTable = ({
         <div className="w-full overflow-x-auto">
             <table className="w-full text-sm">
                 <thead className="border-b border-gray-300 text-xs uppercase text-muted-foreground">
-                    <tr className="text-left">
+                    <tr className="text-left text-black">
                         <th className="py-3 px-2">Facility Name</th>
                         <th className="py-3 px-2">Address</th>
                         <th className="py-3 px-2">Plan</th>
@@ -92,48 +95,60 @@ const FacilityTable = ({
                                   </td>
                                   <td className="p-2 whitespace-nowrap">
                                       <div className="flex gap-1">
-                                          <Button
-                                              variant="ghost"
-                                              size="icon"
-                                              onClick={() => onView(facility)}
-                                              title="View">
-                                              <Eye className="size-4" />
-                                          </Button>
-                                          <Button
-                                              variant="ghost"
-                                              size="icon"
-                                              onClick={() =>
-                                                  onToggleStatus(facility)
-                                              }
-                                              title={
+                                          <TooltipHelper content="View Facility">
+                                              <Button
+                                                  variant="ghost"
+                                                  size="icon"
+                                                  onClick={() =>
+                                                      onView(facility)
+                                                  }
+                                                  title="View">
+                                                  <Eye className="size-4" />
+                                              </Button>
+                                          </TooltipHelper>
+                                          <TooltipHelper
+                                              content={
                                                   facility.status ===
                                                   "suspended"
-                                                      ? "Activate"
-                                                      : "Suspend"
+                                                      ? "Activate Facility"
+                                                      : "Suspend Facility"
                                               }>
-                                              {facility.status ===
-                                              "suspended" ? (
-                                                  <CheckCircle className="size-4" />
-                                              ) : (
-                                                  <Ban className="size-4" />
-                                              )}
-                                          </Button>
-                                          <Button
-                                              variant="ghost"
-                                              size="icon"
-                                              onClick={() =>
-                                                  onAuditLogs(facility)
-                                              }
-                                              title="Audit Logs">
-                                              <FileClock className="size-4" />
-                                          </Button>
-                                          <Button
-                                              variant="ghost"
-                                              size="icon"
-                                              onClick={() => onDelete(facility)}
-                                              title="Delete">
-                                              <Trash2 className="size-4" />
-                                          </Button>
+                                              <Button
+                                                  variant="ghost"
+                                                  size="icon"
+                                                  onClick={() =>
+                                                      onToggleStatus(facility)
+                                                  }>
+                                                  {facility.status ===
+                                                  "suspended" ? (
+                                                      <CheckCircle className="size-4" />
+                                                  ) : (
+                                                      <Ban className="size-4" />
+                                                  )}
+                                              </Button>
+                                          </TooltipHelper>
+                                          <TooltipHelper content="Audit Logs">
+                                              <Button
+                                                  variant="ghost"
+                                                  size="icon"
+                                                  onClick={() =>
+                                                      onAuditLogs(facility)
+                                                  }>
+                                                  {" "}
+                                                  <FileClock className="size-4" />
+                                              </Button>
+                                          </TooltipHelper>
+                                          <TooltipHelper content="Delete facility">
+                                              <Button
+                                                  variant="ghost"
+                                                  size="icon"
+                                                  onClick={() =>
+                                                      onDelete(facility)
+                                                  }>
+                                                  {" "}
+                                                  <Trash2 className="size-4" />
+                                              </Button>
+                                          </TooltipHelper>
                                       </div>
                                   </td>
                               </tr>

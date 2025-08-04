@@ -1,6 +1,7 @@
-import React from "react"
-import { useAuth } from "../../context/auth"
-// Placeholder imports for modular components
+import React, { useState, useEffect } from "react"
+
+// API imports
+// import { getFacilityUsers } from "../../api/admin/users"
 import UserTable from "../../components/facilityAdmin/UserTable"
 import SearchBar from "../../components/facilityAdmin/SearchBar"
 import RoleFilterDropdown from "../../components/facilityAdmin/RoleFilterDropdown"
@@ -12,18 +13,12 @@ import DeactivateUserConfirm from "../../components/facilityAdmin/DeactivateUser
 import ResetPasswordModal from "../../components/facilityAdmin/ResetPasswordModal"
 import AddUserButton from "../../components/facilityAdmin/AddUserButton"
 
-const FacilityAdminPage = () => {
-    const { user } = useAuth()
-    // Facility admin access only (placeholder logic)
-    if (!user || user.role !== "facility_admin") {
-        return (
-            <div className="p-8 text-center text-red-500">
-                Access denied. Facility admin only.
-            </div>
-        )
-    }
-
-    // State for filters and modals (to be implemented)
+const FacilityAdminDashboard = () => {
+    const [users, setUsers] = useState([])
+    const [selectedUser, setSelectedUser] = useState(null)
+    const [showEditRole, setShowEditRole] = useState(false)
+    const [showDeactivate, setShowDeactivate] = useState(false)
+    const [showResetPassword, setShowResetPassword] = useState(false)
 
     return (
         <div className="min-h-screen bg-gray-50 p-6">
@@ -48,7 +43,26 @@ const FacilityAdminPage = () => {
                     <StatusFilterDropdown options={["active", "inactive"]} />
                 </div>
                 <div className="bg-white rounded-lg shadow p-4">
-                    <UserTable />
+                    <UserTable
+                        users={users}
+                        onView={user => setSelectedUser(user)}
+                        onEditRole={user => {
+                            setSelectedUser(user)
+                            setShowEditRole(true)
+                        }}
+                        onDeactivate={user => {
+                            setSelectedUser(user)
+                            setShowDeactivate(true)
+                        }}
+                        onReactivate={user => {
+                            // TODO: Implement reactivate functionality
+                            console.log("Reactivate user:", user)
+                        }}
+                        onResetPassword={user => {
+                            setSelectedUser(user)
+                            setShowResetPassword(true)
+                        }}
+                    />
                 </div>
                 {/* Modals (conditionally rendered) */}
                 <UserDetailsModal />
@@ -61,4 +75,4 @@ const FacilityAdminPage = () => {
     )
 }
 
-export default FacilityAdminPage
+export default FacilityAdminDashboard

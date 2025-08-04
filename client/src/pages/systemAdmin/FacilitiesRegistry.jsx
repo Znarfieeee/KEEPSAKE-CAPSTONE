@@ -1,18 +1,18 @@
 import React, { useEffect, useMemo, useState, lazy, Suspense } from "react"
-import FacilityRegistryHeader from "../../components/facilities/FacilityRegistryHeader"
-import FacilityFilters from "../../components/facilities/FacilityFilters"
-import FacilityTable from "../../components/facilities/FacilityTable"
+import FacilityRegistryHeader from "../../components/sysAdmin_facilities/FacilityRegistryHeader"
+import FacilityFilters from "../../components/sysAdmin_facilities/FacilityFilters"
+import FacilityTable from "../../components/sysAdmin_facilities/FacilityTable"
 
 // Lazy-loaded components (modals are heavy and used conditionally)
 const RegisterFacilityModal = lazy(() =>
-    import("../../components/facilities/RegisterFacilityModal")
+    import("../../components/sysAdmin_facilities/RegisterFacilityModal")
 )
 const FacilityDetailModal = lazy(() =>
-    import("../../components/facilities/FacilityDetailModal")
+    import("../../components/sysAdmin_facilities/FacilityDetailModal")
 )
 import { useAuth } from "../../context/auth"
 import { showToast } from "../../util/alertHelper"
-import { getFacilities } from "../../api/facility"
+import { getFacilities } from "../../api/admin/facility"
 import Unauthorized from "../../components/Unauthorized"
 
 const FacilitiesRegistry = () => {
@@ -23,9 +23,9 @@ const FacilitiesRegistry = () => {
 
     // UI state
     const [search, setSearch] = useState("")
-    const [statusFilter, setStatusFilter] = useState("")
-    const [typeFilter, setTypeFilter] = useState("")
-    const [planFilter, setPlanFilter] = useState("")
+    const [statusFilter, setStatusFilter] = useState("all")
+    const [typeFilter, setTypeFilter] = useState("all")
+    const [planFilter, setPlanFilter] = useState("all")
     const [page, setPage] = useState(1)
     const [itemsPerPage, setItemsPerPage] = useState(10)
 
@@ -43,8 +43,7 @@ const FacilitiesRegistry = () => {
         plan: raw.plan,
         expiry: raw.subscription_expires,
         admin: raw.admin || raw.email || "—",
-        status:
-            raw.subscription_status === "suspended" ? "suspended" : "active",
+        status: raw.subscription_status,
         contact: raw.contact_number,
         email: raw.email,
         website: raw.website,
@@ -63,8 +62,7 @@ const FacilitiesRegistry = () => {
                         res.message || "Failed to load facilities"
                     )
                 }
-            } catch (err) {
-                console.error(err)
+            } catch {
                 showToast("error", "Failed to load facilities")
             } finally {
                 setLoading(false)
@@ -87,15 +85,22 @@ const FacilitiesRegistry = () => {
     const filteredFacilities = useMemo(() => {
         return facilities.filter(f => {
             const matchesSearch = search
-                ? [f.name, f.location, f.id].some(field =>
-                      field.toLowerCase().includes(search.toLowerCase())
+                ? [f.name, f.location, f.id, f.plan, f.contact].some(field =>
+                      String(field).toLowerCase().includes(search.toLowerCase())
                   )
                 : true
-            const matchesStatus = statusFilter
-                ? f.status === statusFilter
-                : true
-            const matchesPlan = planFilter ? f.plan === planFilter : true
-            const matchesType = typeFilter ? f.type === typeFilter : true
+            const matchesStatus =
+                statusFilter && statusFilter !== "all"
+                    ? f.status === statusFilter.toLowerCase()
+                    : true
+            const matchesPlan =
+                planFilter && planFilter !== "all"
+                    ? f.plan === planFilter.toLowerCase()
+                    : true
+            const matchesType =
+                typeFilter && planFilter !== "all"
+                    ? f.type === typeFilter.toLowerCase()
+                    : true
             return matchesSearch && matchesStatus && matchesPlan && matchesType
         })
     }, [facilities, search, statusFilter, typeFilter, planFilter])

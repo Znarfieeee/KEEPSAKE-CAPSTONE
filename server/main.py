@@ -1,14 +1,16 @@
-from flask import Flask, jsonify
+from flask import Flask, jsonify, request, make_response
 from config.settings import settings_bp
 from routes.auth_routes import auth_bp
-from routes.facility_routes import facility_bp
+from routes.admin_routes import admin_bp
+from routes.admin.admin_facility import facility_bp
+from routes.admin.admin_users import users_bp
 from flask_cors import CORS
 from datetime import timedelta
 import os
 import logging
 import sys
 import traceback
-from flask_session import Session
+from flask_session import Session # type: ignore
 from utils.redis_client import get_redis_client
 from config.settings import supabase_anon_client
 from utils.audit_logger import configure_audit_logger
@@ -18,7 +20,9 @@ app = Flask("keepsake")
 # Blueprints
 app.register_blueprint(settings_bp)
 app.register_blueprint(auth_bp)
+app.register_blueprint(admin_bp)
 app.register_blueprint(facility_bp)
+app.register_blueprint(users_bp)
 
 # Redis session configuration (DB 1 reserved for web sessions)
 redis_client = get_redis_client()
@@ -46,6 +50,8 @@ Session(app)
 allowed_origins = [
     "http://localhost:5173",
     "http://127.0.0.1:5173",
+    "http://localhost:5000",
+    "http://127.0.0.1:5000"
 ]
 CORS(
     app,
@@ -53,9 +59,19 @@ CORS(
     supports_credentials=True,
 )
 
+@app.before_request
+def handle_preflight():
+    if request.method == "OPTIONS":
+        response = make_response()
+        response.headers.add("Access-Control-Allow-Credentials", "true")
+        response.headers.add("Access-Control-Allow-Headers", "Content-Type,Authorization")
+        response.headers.add("Access-Control-Allow-Methods", "GET,PUT,POST,DELETE,OPTIONS")
+        response.headers.add("Access-Control-Allow-Origin", request.headers.get("Origin", "*"))
+        return response
+
 # Configure logging for HIPAA audit trail
 if not app.debug:
-    # Centralised audit logger setup (attaches handlers to app.logger)
+    # Centralized audit logger setup (attaches handlers to app.logger)
     configure_audit_logger(attach_to_logger=app.logger)
     app.logger.info('Keepsake medical app startup')
 

@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from "react"
+/* eslint-disable no-unused-vars */
+import { useState, useEffect, useRef, useCallback } from "react"
 import { useNavigate } from "react-router-dom"
 import {
     login,
@@ -13,9 +14,58 @@ export const AuthProvider = ({ children }) => {
     const [user, setUser] = useState(null)
     const [loading, setLoading] = useState(true)
     const [isAuthenticated, setIsAuthenticated] = useState(false)
+    const [isRefreshing, setIsRefreshing] = useState(false)
+    const [sessionStatus, setSessionStatus] = useState()
     const navigate = useNavigate()
 
-    const checkExistingSession = async () => {
+    const IDLE_LOGOUT_TIME = 30 * 60 * 1000 // 30 minutes - auto logout
+    const REFRESH_INTERVAL = 24 * 60 * 1000 // 24 minutes - refresh tokens
+    const ACTIVITY_THROTTLE = 30 * 1000 // 30 seconds - throttle activity updates
+    const VISIBILITY_REFRESH_THRESHOLD = 5 * 60 * 1000 // 5 minutes - refresh when returning to tab
+
+    const refreshTimerRef = useRef(null)
+    const idleTimerRef = useRef(null)
+    const lastActivityRef = useRef(Date.now())
+    const lastRefreshRef = useRef(Date.now())
+    const isActiveRef = useRef(true)
+    const refreshPromiseRef = useRef(null) // Prevent concurrent refresh calls
+
+    const clearAllTimers = useCallback(() => {
+        ;[refreshTimerRef, idleTimerRef].forEach(timer => {
+            if (timer.current) {
+                clearTimeout(timer.current)
+                clearInterval(timer.current)
+                timer.current = null
+            }
+        })
+    }, [])
+
+    const navigateOnLogin = useCallback(
+        role => {
+            switch (role) {
+                case "admin":
+                    navigate("/admin")
+                    break
+                case "Pediapro":
+                    navigate("/pediapro")
+                    break
+                case "Keepsaker":
+                    navigate("/keepsaker")
+                    break
+                case "VitalCustodian":
+                    navigate("/vital_custodian")
+                    break
+                case "facility_admin":
+                    navigate("/facility_admin")
+                    break
+                default:
+                    navigate("/")
+            }
+        },
+        [navigate]
+    )
+
+    const checkExistingSession = useCallback(async () => {
         try {
             const data = await getSession()
             if (data.status === "success") {
@@ -24,66 +74,187 @@ export const AuthProvider = ({ children }) => {
                 return true
             }
             return false
-        } catch (err) {
-            console.error("Session check failed:", err)
+        } catch {
+            // Suppress detailed error logging
             return false
         }
-    }
+    }, [])
 
-    const runRefreshSession = async () => {
-        try {
-            const data = await refreshToken()
-            if (data.status === "success") {
-                setUser(data.user)
-                setIsAuthenticated(true)
-                return true
-            }
-            return false
-        } catch (err) {
-            console.error("Token refresh failed:", err)
-            return false
-        }
-    }
-
-    const signIn = async (email, password) => {
-        try {
-            const hasExistingSession = await checkExistingSession()
-            if (hasExistingSession) {
-                return { success: true, message: "Already logged in" }
+    const runRefreshSession = useCallback(
+        async (force = false) => {
+            if (refreshPromiseRef.current && !force) {
+                return refreshPromiseRef.current
             }
 
-            const response = await login(email, password)
+            const refreshPromise = async () => {
+                if (isRefreshing && !force) return false
 
-            if (response.status === "success") {
-                showToast("success", "Login successful")
-                setUser(response.user)
-                setIsAuthenticated(true)
+                try {
+                    setIsRefreshing(true)
+                    const data = await refreshToken()
 
-                return response
-            } else {
-                throw new Error(response.message || "Login failed")
+                    if (data.status === "success") {
+                        setUser(data.user)
+                        setIsAuthenticated(true)
+                        lastRefreshRef.current = Date.now()
+                        setSessionStatus("active")
+                        return true
+                    }
+
+                    if (isAuthenticated) {
+                        showToast(
+                            "warning",
+                            "Session expired. Please log in again."
+                        )
+                        await signOut(true)
+                    }
+                    return false
+                } catch (_) {
+                    // Silent failure for security
+                    if (isAuthenticated) {
+                        showToast(
+                            "warning",
+                            "Session expired. Please log in again."
+                        )
+                        await signOut(true)
+                    }
+                    return false
+                } finally {
+                    setIsRefreshing(false)
+                    refreshPromiseRef.current = null
+                }
             }
-        } catch (err) {
-            showToast("error", err.message || "Login failed")
-            throw err
-        } finally {
-            setLoading(false)
-        }
-    }
 
-    const signOut = async () => {
-        try {
-            await logout()
-            showToast("success", "Logout successful")
-        } catch (err) {
-            console.error("There is an error: ", err)
-            showToast("error", "Logout failed")
-        } finally {
-            setLoading(false)
-            setUser(null)
-            setIsAuthenticated(false)
-        }
-    }
+            refreshPromiseRef.current = refreshPromise()
+            return refreshPromiseRef.current
+        },
+        [isAuthenticated, isRefreshing]
+    )
+
+    const signIn = useCallback(
+        async (email, password) => {
+            try {
+                setLoading(true)
+
+                const hasExistingSession = await checkExistingSession()
+                if (hasExistingSession) {
+                    return { success: true, message: "Already logged in" }
+                }
+
+                const response = await login(email, password)
+
+                if (response.status === "success") {
+                    showToast("success", "Login successful")
+                    setUser(response.user)
+                    setIsAuthenticated(true)
+                    lastRefreshRef.current = Date.now()
+                    setSessionStatus("active")
+
+                    navigateOnLogin(response.user.role)
+                    return response
+                } else {
+                    showToast("error", "Invalid credentials")
+                    return { success: false, message: "Invalid credentials" }
+                }
+            } catch {
+                showToast("error", "Authentication failed")
+                return { success: false, message: "Authentication failed" }
+            } finally {
+                setLoading(false)
+            }
+        },
+        [checkExistingSession, navigateOnLogin]
+    )
+
+    const signOut = useCallback(
+        async (silent = false) => {
+            try {
+                setLoading(true)
+                isActiveRef.current = false
+
+                clearAllTimers()
+
+                if (!silent) {
+                    try {
+                        await logout()
+                        showToast("success", "Logout successful")
+                    } catch (_) {
+                        showToast("info", "You have been logged out!")
+                    }
+                } else {
+                    try {
+                        await logout()
+                    } catch {
+                        // Silent handling of logged out session.
+                    }
+                }
+            } catch {
+                // Silent failure but ensure user is logged out locally
+                if (!silent)
+                    return showToast("info", "You have been logged out!")
+                showToast("info", "You have been logged out")
+            } finally {
+                setLoading(false)
+                setUser(null)
+                setIsAuthenticated(false)
+                setSessionStatus("expired")
+                refreshPromiseRef.current = null
+                navigate("/login")
+            }
+        },
+        [clearAllTimers]
+    )
+
+    const handleActivity = useCallback(() => {
+        if (!isAuthenticated) return
+
+        const now = Date.now()
+        const timeSinceLastActivity = now - lastActivityRef.current
+
+        if (timeSinceLastActivity < ACTIVITY_THROTTLE) return
+
+        lastActivityRef.current = now
+        isActiveRef.current = true
+        setSessionStatus("active")
+
+        if (idleTimerRef.current) clearTimeout(idleTimerRef.current)
+
+        idleTimerRef.current = setTimeout(() => {
+            if (isAuthenticated && isActiveRef.current) {
+                setSessionStatus("expired")
+                showToast("info", "Logging out due to inactivity")
+                signOut(true)
+            }
+        }, IDLE_LOGOUT_TIME)
+    }, [isAuthenticated, signOut, ACTIVITY_THROTTLE, IDLE_LOGOUT_TIME])
+
+    const _startSessionManagement = useCallback(() => {
+        if (!isAuthenticated) return
+
+        clearAllTimers()
+        console.log("Session Management")
+        refreshTimerRef.current = setInterval(async () => {
+            const now = Date.now()
+            const timeSinceLastRefresh = now - lastRefreshRef.current
+            const timeSinceLastActivity = now - lastActivityRef.current
+
+            if (
+                timeSinceLastActivity < IDLE_LOGOUT_TIME &&
+                timeSinceLastRefresh >= REFRESH_INTERVAL
+            ) {
+                await runRefreshSession()
+            }
+        }, REFRESH_INTERVAL)
+
+        handleActivity()
+    }, [
+        isAuthenticated,
+        handleActivity,
+        clearAllTimers,
+        runRefreshSession,
+        IDLE_LOGOUT_TIME,
+        REFRESH_INTERVAL,
+    ])
 
     const btnClicked = () => {
         alert("Button clicked")
@@ -100,65 +271,94 @@ export const AuthProvider = ({ children }) => {
                     if (!refreshedSession) {
                         setUser(null)
                         setIsAuthenticated(false)
+                        setSessionStatus("expired")
                     }
+                } else {
+                    lastRefreshRef.current = Date.now()
+                    setSessionStatus("active")
                 }
-                setLoading(false)
-            } catch (err) {
-                if (err.message === "Session expired. Please login again.") {
-                    setUser(null)
-                }
-                console.debug("Session error:", err.message)
+            } catch (_) {
+                setUser(null)
+                setIsAuthenticated(false)
+                setSessionStatus("expired")
             } finally {
                 setLoading(false)
             }
         }
 
         initializeAuth()
-    }, [])
+    }, [checkExistingSession, runRefreshSession])
 
     useEffect(() => {
-        if (!isAuthenticated) return
+        const handleVisibilityChange = () => {
+            if (document.visibilityState === "visible" && isAuthenticated) {
+                handleActivity()
 
-        const refreshInterval = setInterval(async () => {
-            await runRefreshSession()
-        }, 25 * 60 * 1000)
+                const now = Date.now()
+                const timeSinceLastRefresh = now - lastRefreshRef.current
 
-        return () => clearInterval(refreshInterval)
-    }, [isAuthenticated])
-
-    useEffect(() => {
-        if (!loading && user?.role) {
-            switch (user.role) {
-                case "admin":
-                    navigate("/admin")
-                    break
-                case "Pediapro":
-                    navigate("/pediapro")
-                    break
-                case "Keepsaker":
-                    navigate("/keepsaker")
-                    break
-                case "VitalCustodian":
-                    navigate("/vital_custodian")
-                    break
-                default:
-                    navigate("/")
+                if (timeSinceLastRefresh > VISIBILITY_REFRESH_THRESHOLD) {
+                    runRefreshSession()
+                }
             }
         }
-    }, [loading, user, navigate])
+
+        document.addEventListener("visibilitychange", handleVisibilityChange)
+        return () =>
+            document.removeEventListener(
+                "visibilitychange",
+                handleVisibilityChange
+            )
+    }, [
+        isAuthenticated,
+        handleActivity,
+        runRefreshSession,
+        VISIBILITY_REFRESH_THRESHOLD,
+    ])
+
+    useEffect(() => {
+        const handleOnline = () => {
+            if (isAuthenticated) {
+                runRefreshSession()
+            }
+        }
+
+        window.addEventListener("online", handleOnline)
+        return () => window.removeEventListener("online", handleOnline)
+    }, [isAuthenticated, runRefreshSession])
+
+    const contextValue = {
+        // Core auth state
+        user,
+        isAuthenticated,
+        loading,
+        isRefreshing,
+        sessionStatus, // 'active', 'warning', 'expired'
+
+        // Auth actions
+        signIn,
+        signOut,
+        checkExistingSession,
+        refreshSession: runRefreshSession,
+
+        // Legacy/debug
+        btnClicked,
+
+        // Utility functions for components that need session info
+        isSessionActive: () => sessionStatus === "active",
+        isSessionWarning: () => sessionStatus === "warning",
+
+        // Session timing info (for components that might show countdown timers)
+        sessionTiming: {
+            lastActivity: lastActivityRef.current,
+            lastRefresh: lastRefreshRef.current,
+            idleTimeoutMs: IDLE_LOGOUT_TIME,
+            refreshIntervalMs: REFRESH_INTERVAL,
+        },
+    }
 
     return (
-        <AuthContext.Provider
-            value={{
-                user,
-                isAuthenticated,
-                signIn,
-                signOut,
-                loading,
-                checkExistingSession,
-                refreshSession: refreshToken,
-                btnClicked,
-            }}>
+        <AuthContext.Provider value={contextValue}>
             {children}
         </AuthContext.Provider>
     )

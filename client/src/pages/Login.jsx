@@ -1,6 +1,7 @@
 import React, { useRef, useState } from "react"
 import { Link } from "react-router-dom"
 import { useAuth } from "../context/auth"
+import { sanitizeInput } from "../util/sanitize"
 
 // Images
 import LOGO from "../assets/logo1.png"
@@ -28,13 +29,34 @@ const Login = () => {
         setFormError("")
         setIsLoading(true)
 
-        const email = emailRef.current.value
-        const password = passwordRef.current.value
+        const email = sanitizeInput(emailRef.current.value)
+        const password = sanitizeInput(passwordRef.current.value)
         try {
             await signIn(email, password)
             setIsLoading(false)
         } catch (err) {
-            setFormError(err.message || "Login failed")
+            // Handle specific error cases for better UX
+            if (err.message?.toLowerCase().includes("invalid email")) {
+                setFormError("The email address you entered is not valid.")
+            } else if (
+                err.message?.toLowerCase().includes("invalid password") ||
+                err.message?.toLowerCase().includes("invalid credentials")
+            ) {
+                setFormError("Incorrect email or password. Please try again.")
+            } else if (err.message?.toLowerCase().includes("network")) {
+                setFormError(
+                    "Network error. Please check your internet connection."
+                )
+            } else if (err.message?.toLowerCase().includes("unavailable")) {
+                setFormError(
+                    "Service is temporarily unavailable. Please try again later."
+                )
+            } else {
+                setFormError(
+                    err.message ||
+                        "An unexpected error occurred. Please try again."
+                )
+            }
         } finally {
             setIsLoading(false)
         }
@@ -108,9 +130,22 @@ const Login = () => {
                             />
                         </div>
                         {formError && (
-                            <p className="text-red-500 text-sm mt-2">
-                                {formError}
-                            </p>
+                            <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-md">
+                                <p className="text-red-600 text-sm flex items-center">
+                                    <svg
+                                        xmlns="http://www.w3.org/2000/svg"
+                                        className="h-5 w-5 mr-2"
+                                        viewBox="0 0 20 20"
+                                        fill="currentColor">
+                                        <path
+                                            fillRule="evenodd"
+                                            d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z"
+                                            clipRule="evenodd"
+                                        />
+                                    </svg>
+                                    {formError}
+                                </p>
+                            </div>
                         )}
                         <div
                             id="btn"

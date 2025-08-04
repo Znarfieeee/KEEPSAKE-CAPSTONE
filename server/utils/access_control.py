@@ -20,16 +20,32 @@ from utils.redis_client import redis_client
 # Valid roles in the system – keep this in sync with your database / Supabase metadata
 VALID_ROLES = {
     "admin",
-    "systemadmin",
     "facility_admin",
-    "pediapro",
-    "vital_custodian",
-    "keepsaker",
+    "doctor",
+    "nurse",
+    "staff",
+    "parent",
 }
 
 def _normalize_roles(roles: Iterable[str]):
     """Return a set of lower-cased role names, filtering out unknowns."""
     return {str(r).lower() for r in roles if str(r).lower() in VALID_ROLES}
+
+def check_session():
+    """Check if the current session is valid and return user data"""
+    session_id = request.cookies.get('keepsake_session')
+    if not session_id:
+        current_app.logger.warning("No session cookie found")
+        return None
+
+    session_data = get_session_data(session_id)
+    if not session_data:
+        current_app.logger.warning(f"No session data found for ID: {session_id}")
+        return None
+
+    # Update session activity
+    update_session_activity(session_id)
+    return session_data
 
 
 def require_role(*required_roles: str):

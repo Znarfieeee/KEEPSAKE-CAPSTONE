@@ -1,8 +1,14 @@
-import datetime, json
+import datetime, json, logging
 from utils.redis_client import redis_client
 
 SESSION_PREFIX = 'keepsake_session:'
 SESSION_TIMEOUT = 1800  # 30 minutes
+
+logger = logging.getLogger(__name__)
+
+class SessionError(Exception):
+    """Custom exception for session-related errors"""
+    pass
 
 def create_session_id():
     """Generate a secure session ID"""
@@ -11,6 +17,8 @@ def create_session_id():
 
 def store_session_data(session_id, user_data):
     """Store session data in Redis with expiration"""
+    current_time = datetime.datetime.utcnow().isoformat()
+    
     session_data = {
         'user_id': user_data.get('id'),
         'email': user_data.get('email'),
@@ -18,13 +26,16 @@ def store_session_data(session_id, user_data):
         'firstname': user_data.get('firstname'),
         'lastname': user_data.get('lastname'),
         'specialty': user_data.get('specialty'),
+        'license_number': user_data.get('license_number'),
+        'phone_number': user_data.get('phone_number'),
         'access_token': user_data.get('access_token'),
         'refresh_token': user_data.get('refresh_token'),
         'expires_at': user_data.get('expires_at'),
-        'created_at': datetime.datetime.utcnow().isoformat(),
-        'last_activity': datetime.datetime.utcnow().isoformat()
+        'last_sign_in_at': user_data.get('last_sign_in_at'),
+        'created_at': current_time,
+        'last_activity': current_time
     }
-    
+
     # Use the shared Redis client configured for the app
     redis_client.setex(
         f"{SESSION_PREFIX}{session_id}",
@@ -33,7 +44,7 @@ def store_session_data(session_id, user_data):
     )
     
     return session_id
-
+    
 def get_session_data(session_id):
     """Retrieve session data from Redis"""
     if not session_id:
