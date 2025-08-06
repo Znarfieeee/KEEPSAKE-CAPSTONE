@@ -1,4 +1,11 @@
-import React, { useEffect, useMemo, useState, lazy, Suspense } from "react"
+import React, {
+    useEffect,
+    useMemo,
+    useCallback,
+    useState,
+    lazy,
+    Suspense,
+} from "react"
 import FacilityRegistryHeader from "../../components/sysAdmin_facilities/FacilityRegistryHeader"
 import FacilityFilters from "../../components/sysAdmin_facilities/FacilityFilters"
 import FacilityTable from "../../components/sysAdmin_facilities/FacilityTable"
@@ -13,12 +20,12 @@ const FacilityDetailModal = lazy(() =>
 import { useAuth } from "../../context/auth"
 import { showToast } from "../../util/alertHelper"
 import { getFacilities } from "../../api/admin/facility"
+import { useFacilitiesRealtime } from "../../hook/useSupabaseRealtime"
 import Unauthorized from "../../components/Unauthorized"
 
 const FacilitiesRegistry = () => {
     const { user } = useAuth()
     const [facilities, setFacilities] = useState([])
-    // Loading state for initial data fetch
     const [loading, setLoading] = useState(true)
 
     // UI state
@@ -35,20 +42,78 @@ const FacilitiesRegistry = () => {
     const [detailFacility, setDetailFacility] = useState(null)
 
     // Helper to normalize facility records coming from API
-    const formatFacility = raw => ({
-        id: raw.facility_id,
-        name: raw.facility_name,
-        location: raw.address + ", " + raw.city + ", " + raw.zip_code,
-        type: raw.type,
-        plan: raw.plan,
-        expiry: raw.subscription_expires,
-        admin: raw.admin || raw.email || "—",
-        status: raw.subscription_status,
-        contact: raw.contact_number,
-        email: raw.email,
-        website: raw.website,
+    const formatFacility = useCallback(
+        raw => ({
+            id: raw.facility_id,
+            name: raw.facility_name,
+            location: raw.address + ", " + raw.city + ", " + raw.zip_code,
+            type: raw.type,
+            plan: raw.plan,
+            expiry: raw.subscription_expires,
+            admin: raw.admin || raw.email || "—",
+            status: raw.subscription_status,
+            contact: raw.contact_number,
+            email: raw.email,
+            website: raw.website,
+        }),
+        []
+    )
+
+    const handleFacilityChange = useCallback(
+        ({ type, facility, raw }) => {
+            console.log(`Real-time ${type} received:`, facility)
+
+            switch (type) {
+                case "INSERT":
+                    setFacilities(prev => {
+                        const exists = prev.some(f => f.id === facility.id)
+                        if (exists) return prev
+
+                        showToast(
+                            "success",
+                            `New facility "${facility.name}" added`
+                        )
+                        return [...prev, facility]
+                    })
+                    break
+
+                case "UPDATE":
+                    setFacilities(prev =>
+                        prev.map(f =>
+                            f.id === facility.id ? { ...facility } : f
+                        )
+                    )
+                    showToast("info", `Facility "${facility.name}" updated!`)
+
+                    if (showDetail && detailFacility?.id === facility.id) {
+                        setDetailFacility(facility)
+                    }
+                    break
+
+                case "DELETE":
+                    setFacilities(prev =>
+                        prev.filter(f => f.id !== facility.id)
+                    )
+                    showToast("warning", `Facility "${facility.name}" removed`)
+
+                    if (showDetail && detailFacility?.id === facility.id) {
+                        setShowDetail(false)
+                        setDetailFacility(null)
+                    }
+                    break
+
+                default:
+                    console.warn("Unknown real-time event type: ", type)
+            }
+        },
+        [showDetail, detailFacility]
+    )
+
+    useFacilitiesRealtime({
+        onFacilityChange: handleFacilityChange,
     })
 
+    // Initial data load
     useEffect(() => {
         const fetchData = async () => {
             try {
@@ -69,18 +134,7 @@ const FacilitiesRegistry = () => {
             }
         }
         fetchData()
-    }, [])
-
-    // Listen for facility-created event from modal to append to list
-    useEffect(() => {
-        const handler = e => {
-            if (e.detail) {
-                setFacilities(prev => [...prev, formatFacility(e.detail)])
-            }
-        }
-        window.addEventListener("facility-created", handler)
-        return () => window.removeEventListener("facility-created", handler)
-    }, [])
+    }, [formatFacility])
 
     const filteredFacilities = useMemo(() => {
         return facilities.filter(f => {
@@ -98,7 +152,7 @@ const FacilitiesRegistry = () => {
                     ? f.plan === planFilter.toLowerCase()
                     : true
             const matchesType =
-                typeFilter && planFilter !== "all"
+                typeFilter && typeFilter !== "all"
                     ? f.type === typeFilter.toLowerCase()
                     : true
             return matchesSearch && matchesStatus && matchesPlan && matchesType
@@ -129,6 +183,7 @@ const FacilitiesRegistry = () => {
         )
     }
 
+    // Testing purposes && might change to edit facility later
     const handleAuditLogs = facility => {
         // Placeholder – navigate or open logs route
         showToast(
@@ -137,6 +192,7 @@ const FacilitiesRegistry = () => {
         )
     }
 
+    // Testing purposes
     const handleDelete = facility => {
         if (window.confirm(`Delete facility ${facility.name}?`)) {
             setFacilities(prev => prev.filter(f => f.id !== facility.id))

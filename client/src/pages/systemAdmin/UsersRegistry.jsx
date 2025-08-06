@@ -15,6 +15,7 @@ import UserRegistryHeader from "../../components/sysAdmin_users/UserRegistryHead
 import UserFilters from "../../components/sysAdmin_users/UserFilters"
 import UserTable from "../../components/sysAdmin_users/UserTable"
 import Unauthorized from "../../components/Unauthorized"
+import { Button } from "../../components/ui/Button"
 
 // Helper
 import { showToast } from "../../util/alertHelper"
@@ -380,6 +381,7 @@ const UsersRegistry = () => {
                 onExportCSV={handleExportCSV}
                 onOpenReports={handleReports}
             />
+            <Button>Rimar</Button>
 
             <UserFilters
                 search={search}

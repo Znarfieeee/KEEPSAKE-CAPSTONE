@@ -227,7 +227,7 @@ function Landing_page() {
                             </p>
                             <div
                                 id="buttons"
-                                className="flex justify-center items-center my-10 gap-6 z-10 rise-up md:mt-15">
+                                className="flex justify-start items-center my-10 gap-6 z-10 rise-up md:mt-15">
                                 <Button
                                     variant="default"
                                     className="px-6 py-4 text-base lg:px-8 lg:py-6 lg:text-lg transition hover:scale-120 duration-300 delay-30"
