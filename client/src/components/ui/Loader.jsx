@@ -79,22 +79,22 @@ const StyledWrapper = styled.div`
 
     @media (min-width: 768px) {
         .loading {
-            width: 192px;
-            height: 144px;
+            width: 160;
+            height: 120px;
         }
     }
 
     @media (min-width: 1024px) {
         .loading {
-            width: 224px;
-            height: 168px;
+            width: 160;
+            height: 120;
         }
     }
 
     @media (min-width: 1280px) {
         .loading {
-            width: 256px;
-            height: 192px;
+            width: 160;
+            height: 120px;
         }
     }
 

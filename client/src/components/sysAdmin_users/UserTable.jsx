@@ -43,7 +43,7 @@ const UserTable = ({
                         <th className="py-3 px-2">Subscription Expiry</th>
                         <th className="py-3 px-2">Last Login</th>
                         <th className="py-3 px-2">Status</th>
-                        <th className="py-3 px-2 text-right">Actions</th>
+                        <th className="py-3 px-2">Actions</th>
                     </tr>
                 </thead>
                 <tbody>

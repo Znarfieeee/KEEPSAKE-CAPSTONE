@@ -58,7 +58,8 @@
 }
 
 @theme inline {
-    --color-black: var(--black);
+    --color-white: #fffafa;
+    --color-black: #3f3f3f;
     --color-background: var(--background);
     --color-foreground: var(--foreground);
     --color-card: var(--card);
