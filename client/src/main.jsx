@@ -12,7 +12,7 @@ const system = createSystem({
 
 createRoot(document.getElementById("root")).render(
     <StrictMode>
-        <ChakraProvider value={system}>
+        <ChakraProvider value={system} resetCSS={false}>
             <App />
         </ChakraProvider>
     </StrictMode>

@@ -137,40 +137,42 @@ function Landing_page() {
                             alt="KEEPSAKE Logo"
                             className="h-10 w-auto md:h-14"
                         />
-                        <nav className="hidden flex-row items-center justify-center h-full gap-6 font-semibold text-sm md:flex md:gap-8 lg:gap-20">
-                            <Link
-                                to="/"
-                                onClick={buttonClicked}
-                                className="hover:text-primary transition ease-in-out duration-300 delay-50 hover:scale-120">
-                                Home
-                            </Link>
-                            <Link
-                                to="/services"
-                                onClick={buttonClicked}
-                                className="hover:text-primary transition ease-in-out duration-300 delay-50 hover:scale-120">
-                                Services
-                            </Link>
-                            <Link
-                                to="/about"
-                                onClick={buttonClicked}
-                                className="hover:text-primary transition ease-in-out duration-300 delay-50 hover:scale-120">
-                                About us
-                            </Link>
-                            <Link
-                                to="/clinics"
-                                onClick={buttonClicked}
-                                className="hover:text-primary transition ease-in-out duration-300 delay-50 hover:scale-120">
-                                Clinics
-                            </Link>
-                        </nav>
+                        <div className="flex justify-end items-center gap-8">
+                            <nav className="hidden flex-row items-center justify-center h-full gap-8 font-semibold text-sm md:flex md:gap-6 lg:gap-8">
+                                <Link
+                                    to="/"
+                                    onClick={buttonClicked}
+                                    className="hover:text-primary transition ease-in-out duration-300 delay-50 hover:scale-120">
+                                    Home
+                                </Link>
+                                <Link
+                                    to="/services"
+                                    onClick={buttonClicked}
+                                    className="hover:text-primary transition ease-in-out duration-300 delay-50 hover:scale-120">
+                                    Services
+                                </Link>
+                                <Link
+                                    to="/about"
+                                    onClick={buttonClicked}
+                                    className="hover:text-primary transition ease-in-out duration-300 delay-50 hover:scale-120">
+                                    About us
+                                </Link>
+                                <Link
+                                    to="/clinics"
+                                    onClick={buttonClicked}
+                                    className="hover:text-primary transition ease-in-out duration-300 delay-50 hover:scale-120">
+                                    Clinics
+                                </Link>
+                            </nav>
 
-                        <Link to="/login">
-                            <Button
-                                variant="default"
-                                className="px-4 py-2 text-base md:px-6 md:py-4 md:text-md hover:scale-110 transition-all duration-300 delay-50">
-                                Login
-                            </Button>
-                        </Link>
+                            <Link to="/login">
+                                <Button
+                                    variant="default"
+                                    className="px-4 py-2 text-base md:px-6 md:py-4 md:text-md hover:scale-110 transition-all duration-300 delay-50">
+                                    Login
+                                </Button>
+                            </Link>
+                        </div>
                     </div>
                     {/* Drawer */}
                     <div

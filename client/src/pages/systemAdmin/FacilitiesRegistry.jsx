@@ -19,8 +19,7 @@ const FacilityDetailModal = lazy(() =>
 )
 import { useAuth } from "../../context/auth"
 import { showToast } from "../../util/alertHelper"
-import { getFacilities } from "../../api/admin/facility"
-import { useFacilitiesRealtime } from "../../hook/useSupabaseRealtime"
+import { useFacilitiesRealtime, supabase } from "../../hook/useSupabaseRealtime"
 import Unauthorized from "../../components/Unauthorized"
 
 const FacilitiesRegistry = () => {
@@ -113,28 +112,32 @@ const FacilitiesRegistry = () => {
         onFacilityChange: handleFacilityChange,
     })
 
-    // Initial data load
-    useEffect(() => {
-        const fetchData = async () => {
-            try {
-                setLoading(true)
-                const res = await getFacilities()
-                if (res.status === "success") {
-                    setFacilities(res.data.map(formatFacility))
-                } else {
-                    showToast(
-                        "error",
-                        res.message || "Failed to load facilities"
-                    )
-                }
-            } catch {
+    // Initial data load using Supabase directly
+    const fetchFacilities = useCallback(async () => {
+        try {
+            setLoading(true)
+            const { data, error } = await supabase
+                .from("healthcare_facilities")
+                .select("*")
+
+            if (error) {
                 showToast("error", "Failed to load facilities")
-            } finally {
-                setLoading(false)
+                console.error("Supabase error:", error)
+                return
             }
+
+            setFacilities(data.map(formatFacility))
+        } catch (error) {
+            showToast("error", "Failed to load facilities")
+            console.error("Error:", error)
+        } finally {
+            setLoading(false)
         }
-        fetchData()
     }, [formatFacility])
+
+    useEffect(() => {
+        fetchFacilities()
+    }, [fetchFacilities])
 
     const filteredFacilities = useMemo(() => {
         return facilities.filter(f => {
@@ -244,6 +247,7 @@ const FacilitiesRegistry = () => {
                 onOpenRegister={() => setShowRegister(true)}
                 onExportCSV={handleExportCSV}
                 onOpenReports={handleReports}
+                onRefresh={fetchFacilities}
             />
 
             <FacilityFilters

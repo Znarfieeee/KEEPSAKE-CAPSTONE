@@ -6,6 +6,7 @@ import { AuthProvider } from "./context/AuthContext"
 import Landing_page from "./pages/Landing_page"
 import Login from "./pages/Login"
 import NotFound from "./pages/NotFound"
+import Loader from "./components/ui/Loader"
 
 // Admin
 import AdminDashboard from "./pages/systemAdmin/AdminDashboard"
@@ -43,6 +44,10 @@ function App() {
                 {
                     path: "/login",
                     element: <Login />,
+                },
+                {
+                    path: "/loader",
+                    element: <Loader />,
                 },
                 {
                     path: "/admin",

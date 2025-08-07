@@ -8,13 +8,14 @@ const axiosConfig = {
     },
 }
 
-export const getUsers = async () => {
+// USE SUPABASE REAL-TIME INSTEAD
+/* export const getUsers = async () => {
     const response = await axios.get(
         `${backendConnection()}/admin/users`,
         axiosConfig
     )
     return response.data
-}
+} */
 
 export const getUserById = async userId => {
     const response = await axios.get(
@@ -34,7 +35,7 @@ export const createUser = async userData => {
 }
 
 export default {
-    getUsers,
+    // getUsers,
     getUserById,
     createUser,
 }
