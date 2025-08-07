@@ -12,7 +12,7 @@ const UserStatusBadge = ({ status = "pending", className = "" }) => {
     return (
         <span
             className={cn(
-                "inline-flex items-center justify-center px-2.5 py-0.5",
+                "inline-flex items-center justify-center px-2 py-0.5",
                 "text-xs font-medium rounded-full w-24",
                 statusClasses[status] || statusClasses.pending,
                 className

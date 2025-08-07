@@ -7,15 +7,17 @@ const axiosConfig = {
         "Content-Type": "application/json",
     },
 }
-
-export const getFacilities = async () => {
+// Use the SUPABASE REAL-TIME INSTEAD
+/* export const getFacilities = async ({ bust_cache = false } = {}) => {
     const response = await axios.get(
-        `${backendConnection()}/admin/facilities`,
+        `${backendConnection()}/admin/facilities${
+            bust_cache ? "?bust_cache=true" : ""
+        }`,
         axiosConfig
     )
     return response.data
 }
-
+ */
 export const getFacilityById = async facilityId => {
     const response = await axios.get(
         `${backendConnection()}/admin/facilities/${facilityId}`,

@@ -41,7 +41,7 @@ const UserTable = ({
                         <th className="py-3 px-2">Role</th>
                         <th className="py-3 px-2">Plan</th>
                         <th className="py-3 px-2">Subscription Expiry</th>
-                        <th className="py-3 px-2">Assigned Facility</th>
+                        <th className="py-3 px-2">Last Login</th>
                         <th className="py-3 px-2">Status</th>
                         <th className="py-3 px-2 text-right">Actions</th>
                     </tr>
@@ -72,20 +72,13 @@ const UserTable = ({
                                       {user.role}
                                   </td>
                                   <td className="p-2 whitespace-nowrap capitalize">
-                                      <span
-                                          className={`(
-                                                      "inline-flex items-center justify-center px-2.5 py-0.5",
-                                                      "text-xs font-medium rounded-full w-24",
-                                                      planClasses[user.plan]
-                                                  )`}>
-                                          {user.plan}
-                                      </span>
+                                      {user.plan}
                                   </td>
                                   <td className="p-2 whitespace-nowrap">
-                                      {user.subscription_expiry || "—"}
+                                      {user.sub_exp || "—"}
                                   </td>
                                   <td className="p-2 whitespace-nowrap">
-                                      {user.assigned_facility}
+                                      {user.last_login}
                                   </td>
                                   <td className="p-2 whitespace-nowrap">
                                       <StatusBadge status={user.status} />

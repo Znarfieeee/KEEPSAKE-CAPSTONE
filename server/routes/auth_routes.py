@@ -453,7 +453,7 @@ def list_active_sessions():
         })
         
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return jsonify({"error": str(e)}), 
     
 # Assign facility admin to facility
 @auth_bp.route('/admin/<facility_id>/add_facility_admin', methods=['POST'])
