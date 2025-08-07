@@ -49,7 +49,7 @@ def invalidate_facility_caches(facility_id=None):
 def list_facilities():
     """Return all healthcare facilities visible to the current user."""
     try:
-        bust_cache = request.arg.get('bust_cache', 'false').lower() == 'true'
+        bust_cache = request.args.get('bust_cache', 'false').lower() == 'true'
 
         # If we have cached data, return it
         if not bust_cache:
@@ -61,7 +61,7 @@ def list_facilities():
                     "status": "success",
                     "data": cached_data,
                     "cached": True,
-                    "timestamp": datetime.utc.now().isoformat()
+                    "timestamp": datetime.datetime.utcnow().isoformat()
                 }), 200
 
         # If no cache, fetch from Supabase
@@ -81,7 +81,7 @@ def list_facilities():
             "status": "success",
             "data": resp.data,
             "cached": False,
-            "timestamp": datetime.utc.now().isoformat()            
+            "timestamp": datetime.datetime.utcnow().isoformat()            
         }), 200
 
     except Exception as e:
@@ -608,7 +608,7 @@ def assign_patient_to_facility(facility_id):
         }), 500
 
 # Need refinements kay dapat ang invitation system also allows user to register if there are no accounts
-# If found that accounts exist, then iinvite in to facility.
+# If found that accounts exist, then i-invite in to facility.
 # Inviting user into the facility
 @facility_bp.route('/admin/facilities/<facility_id>/invite', methods=['POST'])
 @require_auth
