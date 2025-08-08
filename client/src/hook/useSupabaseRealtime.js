@@ -152,6 +152,7 @@ export const useFacilitiesRealtime = ({ onFacilityChange }) => {
         onInsert: handleInsert,
         onUpdate: handleUpdate,
         onDelete: handleDelete,
+        filter: "deleted_at=is.null",
         dependencies: [onFacilityChange],
     })
 }

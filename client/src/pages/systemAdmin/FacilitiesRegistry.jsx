@@ -59,7 +59,7 @@ const FacilitiesRegistry = () => {
     )
 
     const handleFacilityChange = useCallback(
-        ({ type, facility, raw }) => {
+        ({ type, facility }) => {
             console.log(`Real-time ${type} received:`, facility)
 
             switch (type) {
@@ -119,6 +119,7 @@ const FacilitiesRegistry = () => {
             const { data, error } = await supabase
                 .from("healthcare_facilities")
                 .select("*")
+                .is("deleted_at", null)
 
             if (error) {
                 showToast("error", "Failed to load facilities")
@@ -172,18 +173,8 @@ const FacilitiesRegistry = () => {
         setShowDetail(true)
     }
 
-    const handleToggleStatus = facility => {
-        const updatedStatus =
-            facility.status === "suspended" ? "active" : "suspended"
-        setFacilities(prev =>
-            prev.map(f =>
-                f.id === facility.id ? { ...f, status: updatedStatus } : f
-            )
-        )
-        showToast(
-            "success",
-            `Facility ${updatedStatus === "active" ? "activated" : "suspended"}`
-        )
+    const handleGoto = () => {
+        alert("Going to facility")
     }
 
     // Testing purposes && might change to edit facility later
@@ -278,7 +269,7 @@ const FacilitiesRegistry = () => {
                 itemsPerPage={itemsPerPage}
                 setItemsPerPage={setItemsPerPage}
                 onView={handleView}
-                onToggleStatus={handleToggleStatus}
+                onGoto={handleGoto}
                 onAuditLogs={handleAuditLogs}
                 onDelete={handleDelete}
             />

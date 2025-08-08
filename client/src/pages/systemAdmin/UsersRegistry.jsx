@@ -98,7 +98,7 @@ const UsersRegistry = () => {
             license_number: raw.license_number || "—",
             contact: raw.phone_number || "—",
             sub_exp: raw.subscription_expires,
-            plan: raw.is_subscribed === "true" ? "Premium" : "Freemium",
+            plan: raw.is_subscribed ? "Premium" : "Free",
             status: raw.is_active ? "active" : "inactive",
             created_at: new Date(raw.created_at).toLocaleDateString(),
             updated_at: raw.updated_at
@@ -223,6 +223,9 @@ const UsersRegistry = () => {
 
             // Step 3: Merge the data
             const usersWithFacilities = userData.map(user => {
+                console.log("Raw user: ", user)
+                const formatted = formatUser(user)
+                console.log("Formatted user: ", formatted)
                 const facilityAssignment = facilityData?.find(
                     f => f.user_id === user.user_id
                 )

@@ -18,6 +18,7 @@ import {
 export const TooltipHelper = ({
     children,
     content,
+    classname,
     side = "top",
     align = "center",
 }) => {
@@ -25,7 +26,7 @@ export const TooltipHelper = ({
         <TooltipProvider>
             <Tooltip>
                 <TooltipTrigger asChild>{children}</TooltipTrigger>
-                <TooltipContent side={side} align={align}>
+                <TooltipContent side={side} className={classname} align={align}>
                     <p>{content}</p>
                 </TooltipContent>
             </Tooltip>
