@@ -64,7 +64,7 @@ def list_facilities():
                     "cached": True,
                     "timestamp": datetime.datetime.utcnow().isoformat()
                 }), 200
-
+                
         # If no cache, fetch from Supabase
         resp = supabase.table('healthcare_facilities').select('*').execute()
         

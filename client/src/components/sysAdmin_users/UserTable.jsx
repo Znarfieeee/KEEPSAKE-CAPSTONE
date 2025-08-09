@@ -1,8 +1,9 @@
 import React from "react"
-import StatusBadge from "./UserStatusBadge"
+
+// UI Components
 import { Button } from "../ui/Button"
 import { TooltipHelper } from "../../util/TooltipHelper"
-
+import { UserStatusBadge } from "../ui/StatusBadge"
 import {
     Eye,
     Ban,
@@ -82,7 +83,7 @@ const UserTable = ({
                                       {user.last_login}
                                   </td>
                                   <td className="p-2 whitespace-nowrap">
-                                      <StatusBadge status={user.status} />
+                                      <UserStatusBadge status={user.status} />
                                   </td>
                                   <td className="p-2 whitespace-nowrap">
                                       <div className="flex gap-1">

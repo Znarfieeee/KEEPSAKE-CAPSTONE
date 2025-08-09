@@ -6,12 +6,13 @@ import { AuthProvider } from "./context/AuthContext"
 import Landing_page from "./pages/Landing_page"
 import Login from "./pages/Login"
 import NotFound from "./pages/NotFound"
+
 // Admin
 import AdminDashboard from "./pages/systemAdmin/AdminDashboard"
 import FacilitiesRegistry from "./pages/systemAdmin/FacilitiesRegistry"
 import UsersRegistry from "./pages/systemAdmin/UsersRegistry"
 import SubscriptionPage from "./pages/systemAdmin/SubscriptionPage"
-import TokenInvitePage from "./pages/systemAdmin/TokenInvitePage"
+import TokenInvitations from "./pages/systemAdmin/TokenInvitations"
 import AuditLogsPage from "./pages/systemAdmin/AuditLogsPage"
 import ApiWebhooksPage from "./pages/systemAdmin/ApiWebhooksPage"
 import SystemConfigPage from "./pages/systemAdmin/SystemConfigPage"
@@ -69,7 +70,7 @@ function App() {
                         },
                         {
                             path: "tokinv_system",
-                            element: <TokenInvitePage />,
+                            element: <TokenInvitations />,
                         },
                         {
                             path: "audit_logs",

@@ -223,9 +223,6 @@ const UsersRegistry = () => {
 
             // Step 3: Merge the data
             const usersWithFacilities = userData.map(user => {
-                console.log("Raw user: ", user)
-                const formatted = formatUser(user)
-                console.log("Formatted user: ", formatted)
                 const facilityAssignment = facilityData?.find(
                     f => f.user_id === user.user_id
                 )
@@ -257,8 +254,6 @@ const UsersRegistry = () => {
     // Handle user table changes
     const handleUserChange = useCallback(
         ({ type, user, raw }) => {
-            console.log(`Real-time ${type} received:`, user)
-
             switch (type) {
                 case "INSERT":
                     setUsers(prev => {

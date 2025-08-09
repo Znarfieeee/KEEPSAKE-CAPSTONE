@@ -9,6 +9,7 @@ import React, {
 import FacilityRegistryHeader from "../../components/sysAdmin_facilities/FacilityRegistryHeader"
 import FacilityFilters from "../../components/sysAdmin_facilities/FacilityFilters"
 import FacilityTable from "../../components/sysAdmin_facilities/FacilityTable"
+import EditFacility from "../../components/sysAdmin_facilities/EditFacility"
 
 // Lazy-loaded components (modals are heavy and used conditionally)
 const RegisterFacilityModal = lazy(() =>
@@ -38,7 +39,9 @@ const FacilitiesRegistry = () => {
     // Modals state
     const [showRegister, setShowRegister] = useState(false)
     const [showDetail, setShowDetail] = useState(false)
+    const [showEdit, setShowEdit] = useState(false)
     const [detailFacility, setDetailFacility] = useState(null)
+    const [editingFacility, setEditingFacility] = useState(null)
 
     // Helper to normalize facility records coming from API
     const formatFacility = useCallback(
@@ -177,12 +180,14 @@ const FacilitiesRegistry = () => {
         alert("Going to facility")
     }
 
-    // Testing purposes && might change to edit facility later
-    const handleAuditLogs = facility => {
-        // Placeholder – navigate or open logs route
-        showToast(
-            "info",
-            `Audit logs for ${facility.name} not available in demo`
+    const handleEditFacility = facility => {
+        setEditingFacility(facility)
+        setShowEdit(true)
+    }
+
+    const handleUpdateFacility = updatedFacility => {
+        setFacilities(prev =>
+            prev.map(f => (f.id === updatedFacility.id ? updatedFacility : f))
         )
     }
 
@@ -270,7 +275,7 @@ const FacilitiesRegistry = () => {
                 setItemsPerPage={setItemsPerPage}
                 onView={handleView}
                 onGoto={handleGoto}
-                onAuditLogs={handleAuditLogs}
+                onEdit={handleEditFacility}
                 onDelete={handleDelete}
             />
 
@@ -287,7 +292,15 @@ const FacilitiesRegistry = () => {
                         open={showDetail}
                         facility={detailFacility}
                         onClose={() => setShowDetail(false)}
-                        onAuditLogs={handleAuditLogs}
+                        onEdit={handleEditFacility}
+                    />
+                )}
+                {showEdit && (
+                    <EditFacility
+                        open={showEdit}
+                        facility={editingFacility}
+                        onClose={() => setShowEdit(false)}
+                        onUpdate={handleUpdateFacility}
                     />
                 )}
             </Suspense>

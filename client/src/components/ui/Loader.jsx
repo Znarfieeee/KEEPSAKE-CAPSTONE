@@ -43,7 +43,6 @@ const StyledWrapper = styled.div`
     .loading {
         width: 128px;
         height: 96px;
-        animation: scaleIn 0.4s ease-in-out;
     }
 
     .loading svg {

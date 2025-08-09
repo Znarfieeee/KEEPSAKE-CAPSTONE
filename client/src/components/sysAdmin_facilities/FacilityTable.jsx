@@ -1,7 +1,7 @@
 import React from "react"
 
 // UI Components
-import StatusBadge from "./StatusBadge"
+import { FacilityStatusBadge } from "../ui/StatusBadge"
 import { Button } from "../ui/Button"
 import { TooltipHelper } from "../../util/TooltipHelper"
 import {
@@ -22,7 +22,7 @@ const FacilityTable = ({
     setItemsPerPage,
     onView,
     onGoto,
-    onAuditLogs,
+    onEdit,
     onDelete,
     loading = false,
 }) => {
@@ -91,7 +91,9 @@ const FacilityTable = ({
                                       {facility.admin}
                                   </td>
                                   <td className="p-2 whitespace-nowrap">
-                                      <StatusBadge status={facility.status} />
+                                      <FacilityStatusBadge
+                                          status={facility.status}
+                                      />
                                   </td>
                                   <td className="p-2 whitespace-nowrap">
                                       <div className="flex gap-1">
@@ -121,7 +123,7 @@ const FacilityTable = ({
                                                   size="icon"
                                                   className="hover:text-green-600 hover:bg-green-100"
                                                   onClick={() =>
-                                                      onAuditLogs(facility)
+                                                      onEdit(facility)
                                                   }>
                                                   <UserPen className="size-4" />
                                               </Button>
