@@ -1,17 +1,17 @@
 import React from "react"
 
 // UI Components
-import StatusBadge from "./StatusBadge"
+import { FacilityStatusBadge } from "../ui/StatusBadge"
 import { Button } from "../ui/Button"
 import { TooltipHelper } from "../../util/TooltipHelper"
 import {
     Eye,
-    Ban,
     CheckCircle,
-    FileClock,
     Trash2,
     ChevronLeft,
     ChevronRight,
+    UserPen,
+    TableOfContents,
 } from "lucide-react"
 
 const FacilityTable = ({
@@ -21,8 +21,8 @@ const FacilityTable = ({
     itemsPerPage,
     setItemsPerPage,
     onView,
-    onToggleStatus,
-    onAuditLogs,
+    onGoto,
+    onEdit,
     onDelete,
     loading = false,
 }) => {
@@ -91,7 +91,9 @@ const FacilityTable = ({
                                       {facility.admin}
                                   </td>
                                   <td className="p-2 whitespace-nowrap">
-                                      <StatusBadge status={facility.status} />
+                                      <FacilityStatusBadge
+                                          status={facility.status}
+                                      />
                                   </td>
                                   <td className="p-2 whitespace-nowrap">
                                       <div className="flex gap-1">
@@ -99,6 +101,7 @@ const FacilityTable = ({
                                               <Button
                                                   variant="ghost"
                                                   size="icon"
+                                                  className="hover:text-blue-600 hover:bg-blue-100"
                                                   onClick={() =>
                                                       onView(facility)
                                                   }
@@ -106,46 +109,33 @@ const FacilityTable = ({
                                                   <Eye className="size-4" />
                                               </Button>
                                           </TooltipHelper>
-                                          <TooltipHelper
-                                              content={
-                                                  facility.status ===
-                                                  "suspended"
-                                                      ? "Activate Facility"
-                                                      : "Suspend Facility"
-                                              }>
+                                          <TooltipHelper content="Go-to Facility">
                                               <Button
                                                   variant="ghost"
                                                   size="icon"
-                                                  onClick={() =>
-                                                      onToggleStatus(facility)
-                                                  }>
-                                                  {facility.status ===
-                                                  "suspended" ? (
-                                                      <CheckCircle className="size-4" />
-                                                  ) : (
-                                                      <Ban className="size-4" />
-                                                  )}
+                                                  onClick={() => onGoto()}>
+                                                  <TableOfContents className="size-4" />
                                               </Button>
                                           </TooltipHelper>
-                                          <TooltipHelper content="Audit Logs">
+                                          <TooltipHelper content="Edit Facility">
                                               <Button
                                                   variant="ghost"
                                                   size="icon"
+                                                  className="hover:text-green-600 hover:bg-green-100"
                                                   onClick={() =>
-                                                      onAuditLogs(facility)
+                                                      onEdit(facility)
                                                   }>
-                                                  {" "}
-                                                  <FileClock className="size-4" />
+                                                  <UserPen className="size-4" />
                                               </Button>
                                           </TooltipHelper>
                                           <TooltipHelper content="Delete facility">
                                               <Button
                                                   variant="ghost"
                                                   size="icon"
+                                                  className="hover:text-red-600 hover:bg-red-100"
                                                   onClick={() =>
                                                       onDelete(facility)
                                                   }>
-                                                  {" "}
                                                   <Trash2 className="size-4" />
                                               </Button>
                                           </TooltipHelper>

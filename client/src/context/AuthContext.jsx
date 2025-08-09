@@ -19,7 +19,7 @@ export const AuthProvider = ({ children }) => {
     const navigate = useNavigate()
 
     const IDLE_LOGOUT_TIME = 30 * 60 * 1000 // 30 minutes - auto logout
-    const REFRESH_INTERVAL = 24 * 60 * 1000 // 24 minutes - refresh tokens
+    const REFRESH_INTERVAL = 15 * 60 * 1000 // 15 minutes - refresh tokens
     const ACTIVITY_THROTTLE = 30 * 1000 // 30 seconds - throttle activity updates
     const VISIBILITY_REFRESH_THRESHOLD = 5 * 60 * 1000 // 5 minutes - refresh when returning to tab
 
@@ -227,6 +227,17 @@ export const AuthProvider = ({ children }) => {
             }
         }, IDLE_LOGOUT_TIME)
     }, [isAuthenticated, signOut, ACTIVITY_THROTTLE, IDLE_LOGOUT_TIME])
+
+    useEffect(() => {
+        if (!isAuthenticated) return
+
+        const events = ["mousemove", "keydown", "click", "scroll", "touchstart"]
+        events.forEach(e => window.addEventListener(e, handleActivity))
+
+        return () => {
+            events.forEach(e => window.removeEventListener(e, handleActivity))
+        }
+    }, [isAuthenticated, handleActivity])
 
     const _startSessionManagement = useCallback(() => {
         if (!isAuthenticated) return

@@ -98,7 +98,7 @@ const UsersRegistry = () => {
             license_number: raw.license_number || "—",
             contact: raw.phone_number || "—",
             sub_exp: raw.subscription_expires,
-            plan: raw.is_subscribed === "true" ? "Premium" : "Freemium",
+            plan: raw.is_subscribed ? "Premium" : "Free",
             status: raw.is_active ? "active" : "inactive",
             created_at: new Date(raw.created_at).toLocaleDateString(),
             updated_at: raw.updated_at
@@ -254,8 +254,6 @@ const UsersRegistry = () => {
     // Handle user table changes
     const handleUserChange = useCallback(
         ({ type, user, raw }) => {
-            console.log(`Real-time ${type} received:`, user)
-
             switch (type) {
                 case "INSERT":
                     setUsers(prev => {

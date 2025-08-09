@@ -42,55 +42,54 @@ def invalidate_facility_caches(facility_id=None):
     except Exception as e:
         current_app.logger.error(f"Cache invalidation failed: {str(e)}")
 
-
 """ USE THE SUPABASE REAL-TIME 'GET' METHOD TO GET THE LIST OF FACILITIES """
 # Get all list of facilities
-# @facility_bp.route('/admin/facilities', methods=['GET'])
-# @require_auth
-# @require_role('admin')
-# def list_facilities():
-#     """Return all healthcare facilities visible to the current user."""
-#     try:
-#         bust_cache = request.args.get('bust_cache', 'false').lower() == 'true'
+@facility_bp.route('/admin/facilities', methods=['GET'])
+@require_auth
+@require_role('admin')
+def list_facilities():
+    """Return all healthcare facilities visible to the current user."""
+    try:
+        bust_cache = request.args.get('bust_cache', 'false').lower() == 'true'
 
-#         # If we have cached data, return it
-#         if not bust_cache:
-#             cached = redis_client.get(FACILITY_CACHE_KEY)
+        # If we have cached data, return it
+        if not bust_cache:
+            cached = redis_client.get(FACILITY_CACHE_KEY)
             
-#             if cached:
-#                 cached_data = json.loads(cached)
-#                 return jsonify({
-#                     "status": "success",
-#                     "data": cached_data,
-#                     "cached": True,
-#                     "timestamp": datetime.datetime.utcnow().isoformat()
-#                 }), 200
+            if cached:
+                cached_data = json.loads(cached)
+                return jsonify({
+                    "status": "success",
+                    "data": cached_data,
+                    "cached": True,
+                    "timestamp": datetime.datetime.utcnow().isoformat()
+                }), 200
+                
+        # If no cache, fetch from Supabase
+        resp = supabase.table('healthcare_facilities').select('*').execute()
+        
+        if getattr(resp, 'error', None):
+            return jsonify({
+                "status": "error", 
+                "message": "Failed to fetch facilities",
+                "details": resp.error.message if resp.error else "Unknown",
+            }), 400
+        
+        # Store fresh copy in Redis (5-minute TTL)
+        redis_client.setex(FACILITY_CACHE_KEY, 300, json.dumps(resp.data))
+        
+        return jsonify({
+            "status": "success",
+            "data": resp.data,
+            "cached": False,
+            "timestamp": datetime.datetime.utcnow().isoformat()            
+        }), 200
 
-#         # If no cache, fetch from Supabase
-#         resp = supabase.table('healthcare_facilities').select('*').execute()
-        
-#         if getattr(resp, 'error', None):
-#             return jsonify({
-#                 "status": "error", 
-#                 "message": "Failed to fetch facilities",
-#                 "details": resp.error.message if resp.error else "Unknown",
-#             }), 400
-        
-#         # Store fresh copy in Redis (5-minute TTL)
-#         redis_client.setex(FACILITY_CACHE_KEY, 300, json.dumps(resp.data))
-        
-#         return jsonify({
-#             "status": "success",
-#             "data": resp.data,
-#             "cached": False,
-#             "timestamp": datetime.datetime.utcnow().isoformat()            
-#         }), 200
-
-#     except Exception as e:
-#         return jsonify({
-#             "status": "error",
-#             "message": f"Error fetching facilities: {str(e)}",
-#         }), 500
+    except Exception as e:
+        return jsonify({
+            "status": "error",
+            "message": f"Error fetching facilities: {str(e)}",
+        }), 500
 
 # Create new facility
 @facility_bp.route('/admin/facilities', methods=['POST'])
@@ -152,7 +151,8 @@ def create_facility():
             "status": "error",
             "message": f"Error creating facility: {str(e)}",
         }), 500
-        
+
+# Update facility
 @facility_bp.route('/admin/facilities/<facility_id>', methods=['PUT'])
 @require_auth
 @require_role('admin')
@@ -218,26 +218,34 @@ def get_facility_by_id(facility_id):
             "message": f"Error retrieving facility: {str(e)}",
         }), 500
 
-# Soft delete by deactivating active status
-@facility_bp.route('/admin/<facility_id>/delete_facility', methods=['POST'])
+# soft delete facility
+@facility_bp.route('/admin/delete_facility/<facility_id>', methods=['POST'])
 @require_auth
 @require_role('admin')
 def delete_facility(facility_id):
     try:
-        response = supabase.table('healthcare_facilities').update({"subscription_status": "inactive"}).eq("facility_id", facility_id).execute()
+        deleted_at = datetime.utcnow().isoformat()
+        response = supabase.table('healthcare_facilities').update('deleted_at', ).eq("facility_id", facility_id).execute()
         
-        if not response:
+        if getattr(response, "error", None):
             return jsonify({
                 "status": "error",
-                "message": f"Error deactivating facility: {str(facility_id)}"
-            })
+                "message": f"Error deleting facility: {response.error.message}"
+            }), 400
+        
+        if not response.data:
+            return jsonify({
+                "status": "error",
+                "message": f"Facility not found: {str(facility_id)}"
+            }), 404
         
         invalidate_facility_caches(facility_id)
             
         return jsonify({
             "status": "success",
-            "message": "Successfully deactivate facility."
+            "message": "Successfully deleted facility."
         }), 200
+        
     except Exception as e:
         return jsonify({
             "status": "error",

@@ -6,9 +6,17 @@ import React, {
     lazy,
     Suspense,
 } from "react"
+import { useAuth } from "../../context/auth"
+import { useFacilitiesRealtime, supabase } from "../../hook/useSupabaseRealtime"
+import { showToast } from "../../util/alertHelper"
+import { updateFacility } from "../../api/admin/facility"
+
+// UI Components
 import FacilityRegistryHeader from "../../components/sysAdmin_facilities/FacilityRegistryHeader"
 import FacilityFilters from "../../components/sysAdmin_facilities/FacilityFilters"
 import FacilityTable from "../../components/sysAdmin_facilities/FacilityTable"
+import EditFacility from "../../components/sysAdmin_facilities/EditFacility"
+import Unauthorized from "../../components/Unauthorized"
 
 // Lazy-loaded components (modals are heavy and used conditionally)
 const RegisterFacilityModal = lazy(() =>
@@ -17,10 +25,6 @@ const RegisterFacilityModal = lazy(() =>
 const FacilityDetailModal = lazy(() =>
     import("../../components/sysAdmin_facilities/FacilityDetailModal")
 )
-import { useAuth } from "../../context/auth"
-import { showToast } from "../../util/alertHelper"
-import { useFacilitiesRealtime, supabase } from "../../hook/useSupabaseRealtime"
-import Unauthorized from "../../components/Unauthorized"
 
 const FacilitiesRegistry = () => {
     const { user } = useAuth()
@@ -38,7 +42,9 @@ const FacilitiesRegistry = () => {
     // Modals state
     const [showRegister, setShowRegister] = useState(false)
     const [showDetail, setShowDetail] = useState(false)
+    const [showEdit, setShowEdit] = useState(false)
     const [detailFacility, setDetailFacility] = useState(null)
+    const [editingFacility, setEditingFacility] = useState(null)
 
     // Helper to normalize facility records coming from API
     const formatFacility = useCallback(
@@ -59,7 +65,7 @@ const FacilitiesRegistry = () => {
     )
 
     const handleFacilityChange = useCallback(
-        ({ type, facility, raw }) => {
+        ({ type, facility }) => {
             console.log(`Real-time ${type} received:`, facility)
 
             switch (type) {
@@ -77,6 +83,18 @@ const FacilitiesRegistry = () => {
                     break
 
                 case "UPDATE":
+                    setFacilities(prev =>
+                        prev.map(f =>
+                            f.id === facility.id ? { ...facility } : f
+                        )
+                    )
+                    showToast("info", `Facility "${facility.name}" updated!`)
+
+                    if (showDetail && detailFacility?.id === facility.id) {
+                        setDetailFacility(facility)
+                    }
+                    break
+                case "PUT":
                     setFacilities(prev =>
                         prev.map(f =>
                             f.id === facility.id ? { ...facility } : f
@@ -119,6 +137,7 @@ const FacilitiesRegistry = () => {
             const { data, error } = await supabase
                 .from("healthcare_facilities")
                 .select("*")
+                .is("deleted_at", null)
 
             if (error) {
                 showToast("error", "Failed to load facilities")
@@ -172,27 +191,24 @@ const FacilitiesRegistry = () => {
         setShowDetail(true)
     }
 
-    const handleToggleStatus = facility => {
-        const updatedStatus =
-            facility.status === "suspended" ? "active" : "suspended"
-        setFacilities(prev =>
-            prev.map(f =>
-                f.id === facility.id ? { ...f, status: updatedStatus } : f
-            )
-        )
-        showToast(
-            "success",
-            `Facility ${updatedStatus === "active" ? "activated" : "suspended"}`
-        )
+    const handleGoto = () => {
+        alert("Going to facility")
     }
 
-    // Testing purposes && might change to edit facility later
-    const handleAuditLogs = facility => {
-        // Placeholder – navigate or open logs route
-        showToast(
-            "info",
-            `Audit logs for ${facility.name} not available in demo`
-        )
+    const handleEditFacility = facility => {
+        setEditingFacility(facility)
+        setShowEdit(true)
+    }
+
+    const handleUpdateFacility = async facility => {
+        const response = await updateFacility(facility)
+
+        if (!response) {
+            showToast("error", "Failed to update facility. Try again.")
+        }
+
+        showToast("success", "Facility updated successfully.")
+        setShowEdit(false)
     }
 
     // Testing purposes
@@ -278,8 +294,8 @@ const FacilitiesRegistry = () => {
                 itemsPerPage={itemsPerPage}
                 setItemsPerPage={setItemsPerPage}
                 onView={handleView}
-                onToggleStatus={handleToggleStatus}
-                onAuditLogs={handleAuditLogs}
+                onGoto={handleGoto}
+                onEdit={handleEditFacility}
                 onDelete={handleDelete}
             />
 
@@ -296,7 +312,16 @@ const FacilitiesRegistry = () => {
                         open={showDetail}
                         facility={detailFacility}
                         onClose={() => setShowDetail(false)}
-                        onAuditLogs={handleAuditLogs}
+                        onEdit={handleEditFacility}
+                    />
+                )}
+                {showEdit && (
+                    <EditFacility
+                        open={showEdit}
+                        facility={editingFacility}
+                        onSave={handleUpdateFacility}
+                        onClose={() => setShowEdit(false)}
+                        onUpdate={handleUpdateFacility}
                     />
                 )}
             </Suspense>

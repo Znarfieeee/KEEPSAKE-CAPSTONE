@@ -1,8 +1,9 @@
 import React from "react"
-import StatusBadge from "./UserStatusBadge"
+
+// UI Components
 import { Button } from "../ui/Button"
 import { TooltipHelper } from "../../util/TooltipHelper"
-
+import { UserStatusBadge } from "../ui/StatusBadge"
 import {
     Eye,
     Ban,
@@ -11,6 +12,7 @@ import {
     Trash2,
     ChevronLeft,
     ChevronRight,
+    UserPen,
 } from "lucide-react"
 
 const UserTable = ({
@@ -43,7 +45,7 @@ const UserTable = ({
                         <th className="py-3 px-2">Subscription Expiry</th>
                         <th className="py-3 px-2">Last Login</th>
                         <th className="py-3 px-2">Status</th>
-                        <th className="py-3 px-2 text-right">Actions</th>
+                        <th className="py-3 px-2">Actions</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -81,7 +83,7 @@ const UserTable = ({
                                       {user.last_login}
                                   </td>
                                   <td className="p-2 whitespace-nowrap">
-                                      <StatusBadge status={user.status} />
+                                      <UserStatusBadge status={user.status} />
                                   </td>
                                   <td className="p-2 whitespace-nowrap">
                                       <div className="flex gap-1">
@@ -89,6 +91,7 @@ const UserTable = ({
                                               <Button
                                                   variant="ghost"
                                                   size="icon"
+                                                  className="hover:text-blue-600 hover:bg-blue-100"
                                                   onClick={() => onView(user)}>
                                                   <Eye className="size-4" />
                                               </Button>
@@ -98,6 +101,7 @@ const UserTable = ({
                                               <Button
                                                   variant="ghost"
                                                   size="icon"
+                                                  className="hover:text-yellow-600 hover:bg-yellow-100"
                                                   onClick={() =>
                                                       onTransfer(user)
                                                   }>
@@ -126,10 +130,23 @@ const UserTable = ({
                                               </Button>
                                           </TooltipHelper>
 
+                                          <TooltipHelper content="Edit User">
+                                              <Button
+                                                  variant="ghost"
+                                                  size="icon"
+                                                  className="hover:text-green-600 hover:bg-green-100"
+                                                  onClick={() =>
+                                                      onDelete(user)
+                                                  }>
+                                                  <UserPen className="size-4" />
+                                              </Button>
+                                          </TooltipHelper>
+
                                           <TooltipHelper content="Delete User">
                                               <Button
                                                   variant="ghost"
                                                   size="icon"
+                                                  className="hover:text-red-600 hover:bg-red-100"
                                                   onClick={() =>
                                                       onDelete(user)
                                                   }>
