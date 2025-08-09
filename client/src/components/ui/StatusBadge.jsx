@@ -1,6 +1,6 @@
 import * as React from "react"
 import { cn } from "../../util/utils"
-import { statusBadgeVariants, getStatusStyles } from "./status-badge"
+// import { statusBadgeVariants } from "./status-badge"
 
 export const StatusBadge = React.forwardRef(
     ({ status = "pending", className, type = "default", ...props }, ref) => {
@@ -14,8 +14,8 @@ export const StatusBadge = React.forwardRef(
             <span
                 ref={ref}
                 className={cn(
-                    statusBadgeVariants({ type }),
-                    getStatusStyles(status),
+                    // statusBadgeVariants({ type }),
+                    // getStatusStyles(status),
                     className
                 )}
                 {...props}>
