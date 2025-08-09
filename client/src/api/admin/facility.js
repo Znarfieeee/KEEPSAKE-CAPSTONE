@@ -35,6 +35,15 @@ export const createFacility = async facilityData => {
     return response.data
 }
 
+export const updateFacility = async facilityData => {
+    const response = await axios.put(
+        `${backendConnection()}/admin/facilities/${facilityData.id}`,
+        facilityData,
+        axiosConfig
+    )
+    return response.data
+}
+
 export const deactivateFacility = async facilityId => {
     const response = await axios.post(
         `${backendConnection()}/admin/deactivate_facility/${facilityId}`,
@@ -54,5 +63,6 @@ export default {
     getFacilities,
     getFacilityById,
     createFacility,
+    updateFacility,
     deactivateFacility,
 }

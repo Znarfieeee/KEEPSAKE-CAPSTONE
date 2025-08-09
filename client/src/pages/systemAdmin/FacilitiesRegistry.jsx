@@ -6,10 +6,17 @@ import React, {
     lazy,
     Suspense,
 } from "react"
+import { useAuth } from "../../context/auth"
+import { useFacilitiesRealtime, supabase } from "../../hook/useSupabaseRealtime"
+import { showToast } from "../../util/alertHelper"
+import { updateFacility } from "../../api/admin/facility"
+
+// UI Components
 import FacilityRegistryHeader from "../../components/sysAdmin_facilities/FacilityRegistryHeader"
 import FacilityFilters from "../../components/sysAdmin_facilities/FacilityFilters"
 import FacilityTable from "../../components/sysAdmin_facilities/FacilityTable"
 import EditFacility from "../../components/sysAdmin_facilities/EditFacility"
+import Unauthorized from "../../components/Unauthorized"
 
 // Lazy-loaded components (modals are heavy and used conditionally)
 const RegisterFacilityModal = lazy(() =>
@@ -18,10 +25,6 @@ const RegisterFacilityModal = lazy(() =>
 const FacilityDetailModal = lazy(() =>
     import("../../components/sysAdmin_facilities/FacilityDetailModal")
 )
-import { useAuth } from "../../context/auth"
-import { showToast } from "../../util/alertHelper"
-import { useFacilitiesRealtime, supabase } from "../../hook/useSupabaseRealtime"
-import Unauthorized from "../../components/Unauthorized"
 
 const FacilitiesRegistry = () => {
     const { user } = useAuth()
@@ -80,6 +83,18 @@ const FacilitiesRegistry = () => {
                     break
 
                 case "UPDATE":
+                    setFacilities(prev =>
+                        prev.map(f =>
+                            f.id === facility.id ? { ...facility } : f
+                        )
+                    )
+                    showToast("info", `Facility "${facility.name}" updated!`)
+
+                    if (showDetail && detailFacility?.id === facility.id) {
+                        setDetailFacility(facility)
+                    }
+                    break
+                case "PUT":
                     setFacilities(prev =>
                         prev.map(f =>
                             f.id === facility.id ? { ...facility } : f
@@ -185,10 +200,15 @@ const FacilitiesRegistry = () => {
         setShowEdit(true)
     }
 
-    const handleUpdateFacility = updatedFacility => {
-        setFacilities(prev =>
-            prev.map(f => (f.id === updatedFacility.id ? updatedFacility : f))
-        )
+    const handleUpdateFacility = async facility => {
+        const response = await updateFacility(facility)
+
+        if (!response) {
+            showToast("error", "Failed to update facility. Try again.")
+        }
+
+        showToast("success", "Facility updated successfully.")
+        setShowEdit(false)
     }
 
     // Testing purposes
@@ -299,6 +319,7 @@ const FacilitiesRegistry = () => {
                     <EditFacility
                         open={showEdit}
                         facility={editingFacility}
+                        onSave={handleUpdateFacility}
                         onClose={() => setShowEdit(false)}
                         onUpdate={handleUpdateFacility}
                     />

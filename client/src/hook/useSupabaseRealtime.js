@@ -68,6 +68,16 @@ export const useSupabaseRealtime = ({
             .on(
                 "postgres_changes",
                 {
+                    event: "PUT",
+                    schema: "public",
+                    table: table,
+                    ...(filter && { filter }),
+                },
+                handleUpdate
+            )
+            .on(
+                "postgres_changes",
+                {
                     event: "DELETE",
                     schema: "public",
                     table: table,
