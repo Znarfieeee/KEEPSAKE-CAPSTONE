@@ -185,7 +185,7 @@ const Login = () => {
                         </span>
                         {/* <Separator className="flex-grow" /> */}
                     </div>
-                    <GoogleButton className="w-[90%] mt-6 bg-gray-100 border border-gray-300 hover:bg-gray-200" />
+                    <GoogleButton className="w-[90%] mx-auto mt-6 bg-gray-100 border border-gray-300 hover:bg-gray-200" />
                     <p className="text-sm mt-4 text-center">
                         Manual self-registration is disabled.&nbsp;
                         <TooltipProvider>

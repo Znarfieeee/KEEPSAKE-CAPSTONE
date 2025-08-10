@@ -1,9 +1,12 @@
-from flask import Blueprint, request, jsonify, current_app
-from config.settings import supabase, supabase_service_role_client, supabase_anon_client
+from flask import Blueprint, request, jsonify, current_app, make_response
+from config.settings import supabase, supabase_service_role_client
 import datetime
 import json
 from gotrue.errors import AuthApiError
 from functools import wraps
+from authlib.integrations.flask_client import OAuth
+from urllib.parse import urlencode
+import os
 
 from utils.sessions import create_session_id, store_session_data, get_session_data, update_session_activity, update_session_tokens
 from utils.redis_client import redis_client
@@ -20,6 +23,361 @@ SESSION_TIMEOUT = 1800 #30 minutes
 REFRESH_TOKEN_TIMEOUT = 7 * 24 * 60 * 60  # 7 days
 
 auth_bp = Blueprint('auth', __name__)
+oauth = OAuth()
+
+def init_google_oauth(app):
+    """Initialize Google OAuth with the application"""
+    oauth.init_app(app)
+    if not os.environ.get('GOOGLE_CLIENT_ID') or not os.environ.get('GOOGLE_CLIENT_SECRET'):
+        raise ValueError("Google OAuth credentials are not properly configured in environment variables")
+        
+    return oauth.register(
+        name='google',
+        client_id=os.environ.get('GOOGLE_CLIENT_ID'),
+        client_secret=os.environ.get('GOOGLE_CLIENT_SECRET'),
+        server_metadata_url='https://accounts.google.com/.well-known/openid-configuration',
+        authorize_url='https://accounts.google.com/o/oauth2/auth',
+        authorize_params=None,
+        token_url='https://accounts.google.com/o/oauth2/token',
+        access_token_url='https://accounts.google.com/o/oauth2/token',
+        refresh_token_url=None,
+        client_kwargs={
+            'scope': 'openid email profile',
+            'token_endpoint_auth_method': 'client_secret_basic'
+        }
+    )
+
+def render_popup_success(message):
+    """Render a success page that communicates with the parent window"""
+    # Ensure message is properly encoded
+    success_message = "Authentication successful!"
+    
+    html_content = f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>Authentication Successful</title>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <style>
+            body {{
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+                margin: 0;
+                padding: 40px 20px;
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                color: white;
+                text-align: center;
+                min-height: 100vh;
+                display: flex;
+                flex-direction: column;
+                justify-content: center;
+                align-items: center;
+            }}
+            .container {{
+                background: rgba(255, 255, 255, 0.1);
+                padding: 30px;
+                border-radius: 10px;
+                backdrop-filter: blur(10px);
+                border: 1px solid rgba(255, 255, 255, 0.2);
+            }}
+            .success-icon {{
+                font-size: 48px;
+                margin-bottom: 20px;
+            }}
+            h1 {{
+                margin: 0 0 10px 0;
+                font-size: 24px;
+            }}
+            p {{
+                margin: 0;
+                opacity: 0.8;
+            }}
+            .spinner {{
+                border: 2px solid rgba(255,255,255,0.3);
+                border-radius: 50%;
+                border-top: 2px solid white;
+                width: 20px;
+                height: 20px;
+                animation: spin 1s linear infinite;
+                margin: 20px auto;
+            }}
+            @keyframes spin {{
+                0% {{ transform: rotate(0deg); }}
+                100% {{ transform: rotate(360deg); }}
+            }}
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div class="success-icon">✅</div>
+            <h1>Authentication Successful!</h1>
+            <p>{success_message}</p>
+            <div class="spinner"></div>
+            <p style="font-size: 14px; margin-top: 20px;">Closing window...</p>
+        </div>
+        
+        <script>
+            // Send success message to parent window
+            if (window.opener) {{
+                window.opener.postMessage({{
+                    type: 'GOOGLE_AUTH_COMPLETE',
+                    success: true,
+                    data: null
+                }}, window.location.origin);
+                
+                // Close popup after a short delay
+                setTimeout(() => {{
+                    window.close();
+                }}, 2000);
+            }} else {{
+                // Fallback if no opener (shouldn't happen in normal flow)
+                setTimeout(() => {{
+                    window.close();
+                }}, 3000);
+            }}
+        </script>
+    </body>
+    </html>
+    """
+    
+    # Create response with proper encoding
+    response = make_response(html_content)
+    response.headers['Content-Type'] = 'text/html; charset=utf-8'
+    return response
+
+def render_popup_error(error_message):
+    """Render an error page that communicates with the parent window"""
+    # Ensure error message is safely encoded
+    error_message = "Authentication Failed"
+    
+    html_content = f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>Authentication Failed</title>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <style>
+            body {{
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+                margin: 0;
+                padding: 40px 20px;
+                background: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%);
+                color: white;
+                text-align: center;
+                min-height: 100vh;
+                display: flex;
+                flex-direction: column;
+                justify-content: center;
+                align-items: center;
+            }}
+            .container {{
+                background: rgba(255, 255, 255, 0.1);
+                padding: 30px;
+                border-radius: 10px;
+                backdrop-filter: blur(10px);
+                border: 1px solid rgba(255, 255, 255, 0.2);
+            }}
+            .error-icon {{
+                font-size: 48px;
+                margin-bottom: 20px;
+            }}
+            h1 {{
+                margin: 0 0 10px 0;
+                font-size: 24px;
+            }}
+            p {{
+                margin: 10px 0;
+                opacity: 0.9;
+            }}
+            .close-btn {{
+                background: rgba(255, 255, 255, 0.2);
+                color: white;
+                border: 1px solid rgba(255, 255, 255, 0.3);
+                padding: 10px 20px;
+                border-radius: 5px;
+                cursor: pointer;
+                margin-top: 20px;
+                font-size: 14px;
+            }}
+            .close-btn:hover {{
+                background: rgba(255, 255, 255, 0.3);
+            }}
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div class="error-icon">❌</div>
+            <h1>Authentication Failed</h1>
+            <p>{error_message}</p>
+            <button class="close-btn" onclick="closeWindow()">Close Window</button>
+        </div>
+        
+        <script>
+            function closeWindow() {{
+                window.close();
+            }}
+            
+            // Send error message to parent window
+            if (window.opener) {{
+                window.opener.postMessage({{
+                    type: 'GOOGLE_AUTH_COMPLETE',
+                    success: false,
+                    error: '{error_message}'
+                }}, window.location.origin);
+            }}
+            
+            // Auto-close after 10 seconds
+            setTimeout(() => {{
+                window.close();
+            }}, 10000);
+        </script>
+    </body>
+    </html>
+    """
+    
+    # Create response with proper encoding
+    response = make_response(html_content)
+    response.headers['Content-Type'] = 'text/html; charset=utf-8'
+    return response
+
+@auth_bp.route('/auth/google', methods=['GET'])
+def google_login():
+    try:
+        google = oauth.google
+        
+        redirect_uri = request.url_root.rstrip('/') + '/auth/google/callback'
+    
+        current_app.logger.info(f"AUDIT: Google OAuth initiated from IP {request.remote_addr}")
+        
+        return google.authorize_redirect(redirect_uri)
+    
+    except Exception as e:
+        current_app.logger.error(f"AUDIT: Google OAuth initiation failed from IP {request.remote_addr} - Error: {str(e)}")
+        return jsonify({
+            "status": "error",
+            "message": "Failed to initiate Google authentication"
+        }), 500
+
+@auth_bp.route('/auth/google/callback', methods=['GET'])
+def google_callback():
+    """Handle Google OAuth callback"""
+    try:
+        # Check for existing session first (same logic as regular login)
+        session_id = request.cookies.get('session_id')
+        if session_id:
+            existing_session = get_session_data(session_id)
+            if existing_session:
+                update_session_activity(session_id)
+                user_data = {
+                    'id': existing_session.get('user_id'),
+                    'email': existing_session.get('email'),
+                    'role': existing_session.get('role'),
+                    'firstname': existing_session.get('firstname'),
+                    'lastname': existing_session.get('lastname'),
+                    'specialty': existing_session.get('specialty'),
+                    'license_number': existing_session.get('license_number'),
+                    'phone_number': existing_session.get('phone_number'),
+                    'last_sign_in_at': existing_session.get('last_sign_in_at')
+                }
+                
+                current_app.logger.info(f"AUDIT: User {existing_session.get('email')} reused existing session via Google auth from IP {request.remote_addr}")
+                
+                return render_popup_success("Authentication successful")
+
+        google = oauth.google
+        token = google.authorize_access_token()
+        
+        if not token:
+            current_app.logger.error(f"AUDIT: Google OAuth failed - no token received from IP {request.remote_addr}")
+            return render_popup_error("Authentication failed - no token received")
+        
+        # Get user info from Google
+        google_user_info = token.get('userinfo')
+        if not google_user_info:
+            # Fallback: fetch user info manually
+            resp = google.parse_id_token(token)
+            google_user_info = resp
+            
+        if not google_user_info or not google_user_info.get('email'):
+            current_app.logger.error(f"AUDIT: Google OAuth failed - no user info from IP {request.remote_addr}")
+            return render_popup_error("Failed to get user information from Google")
+        
+        google_email = google_user_info.get('email')
+        google_given_name = google_user_info.get('given_name', '')
+        google_family_name = google_user_info.get('family_name', '')
+        
+        current_app.logger.info(f"AUDIT: Google OAuth callback for {google_email} from IP {request.remote_addr}")
+        
+        # Check if user exists in Supabase
+        try:
+            user_query = supabase.table('users').select('*').eq('email', google_email).execute()
+            
+            if not user_query.data:
+                current_app.logger.warning(f"AUDIT: Google OAuth attempted for unregistered email {google_email} from IP {request.remote_addr}")
+                return render_popup_error("Account not found. Please contact your administrator.")
+            
+            user_record = user_query.data[0]
+            
+            if not user_record.get('is_active', False):
+                current_app.logger.warning(f"AUDIT: Google OAuth attempted for inactive account {google_email} from IP {request.remote_addr}")
+                return render_popup_error("Account is inactive. Please contact your administrator.")
+            
+            last_sign_in = datetime.datetime.utcnow().isoformat()
+            
+            user_data = {
+                'id': user_record['user_id'],
+                'email': user_record['email'],
+                'role': user_record.get('role'),
+                'firstname': user_record.get('firstname', google_given_name),
+                'lastname': user_record.get('lastname', google_family_name),
+                'specialty': user_record.get('specialty', ''),
+                'license_number': user_record.get('license_number', ''),
+                'phone_number': user_record.get('phone_number', ''),
+                'last_sign_in_at': last_sign_in,
+            }
+            
+            # Create session in Redis (without Supabase tokens since this is Google auth)
+            session_id = create_session_id()
+            session_data = {
+                "user_id": user_record['user_id'],
+                **user_data,
+                'access_token': None,  # Google auth doesn't use Supabase tokens
+                'refresh_token': None,
+                'expires_at': (datetime.datetime.utcnow() + datetime.timedelta(seconds=SESSION_TIMEOUT)).isoformat(),
+                'auth_provider': 'google'
+            }
+            
+            store_session_data(session_id, session_data)
+            
+            current_app.logger.info(f"AUDIT: User {google_email} logged in successfully via Google from IP {request.remote_addr} - Session: {session_id}")
+            
+            response = make_response(render_popup_success("Authentication successful"))
+            
+            # Set cookies
+            secure_cookie = request.is_secure
+            cookie_samesite = "None" if secure_cookie else "Lax"
+
+            response.set_cookie(
+                'session_id',
+                session_id,
+                httponly=True,
+                secure=secure_cookie,
+                samesite=cookie_samesite,
+                max_age=SESSION_TIMEOUT,
+                path="/",
+            )
+
+            return response
+                
+        except Exception as db_error:
+            current_app.logger.error(f"AUDIT: Database error during Google auth for {google_email} from IP {request.remote_addr} - Error: {str(db_error)}")
+            return render_popup_error("Database connection error")
+            
+    except Exception as e:
+        current_app.logger.error(f"AUDIT: Google OAuth callback failed from IP {request.remote_addr} - Error: {str(e)}")
+        return render_popup_error("Authentication failed")
+
 
 # Invite new user to the platform via email
 @auth_bp.route('/create_invite', methods=['POST'])
@@ -217,7 +575,6 @@ def login():
             "status": "error",
             "message": "An unexpected error occurred during login"
         }), 500
-
 
 @auth_bp.route('/logout', methods=['POST'])
 @require_auth
