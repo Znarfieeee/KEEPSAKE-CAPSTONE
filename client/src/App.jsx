@@ -6,6 +6,8 @@ import { AuthProvider } from "./context/AuthContext"
 import Landing_page from "./pages/Landing_page"
 import Login from "./pages/Login"
 import NotFound from "./pages/NotFound"
+import AuthSuccess from "./pages/AuthSuccess"
+import AuthError from "./pages/AuthError"
 
 // Admin
 import AdminDashboard from "./pages/systemAdmin/AdminDashboard"
@@ -43,6 +45,14 @@ function App() {
                 {
                     path: "/login",
                     element: <Login />,
+                },
+                {
+                    path: "/auth/success",
+                    element: <AuthSuccess />,
+                },
+                {
+                    path: "/auth/error",
+                    element: <AuthError />,
                 },
                 {
                     path: "/admin",

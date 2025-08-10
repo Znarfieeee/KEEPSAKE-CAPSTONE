@@ -14,8 +14,11 @@ from flask_session import Session # type: ignore
 from utils.redis_client import get_redis_client
 from config.settings import supabase_anon_client
 from utils.audit_logger import configure_audit_logger
+from routes.auth_routes import init_google_oauth
 
 app = Flask("keepsake")
+# Initialize Google OAuth
+init_google_oauth(app)
 
 # Blueprints
 app.register_blueprint(settings_bp)
@@ -34,8 +37,8 @@ app.config.update(
     SESSION_REDIS = redis_client,
     SESSION_PERMANENT = False,
     SESSION_USE_SIGNER = True,
-    SESSION_KEY_PREFIX = 'keepsake_session:',
-    SESSION_COOKIE_NAME = 'keepsake_session',
+    SESSION_KEY_PREFIX = 'flask_session:',
+    SESSION_COOKIE_NAME = 'flask_session',
     SESSION_COOKIE_HTTPONLY = True,
     SESSION_COOKIE_SECURE = True if os.environ.get('FLASK_ENV') == 'production' else False,
     SESSION_COOKIE_SAMESITE = 'Lax',

@@ -1,22 +1,13 @@
-/* eslint-disable no-unused-vars */
 import backendConnection from "./backendApi"
 import axios from "axios"
-
-const axiosConfig = {
-    withCredentials: true,
-    headers: {
-        "Content-Type": "application/json",
-    },
-    // Silence Axios error logging
-    silent: true,
-}
+import { axiosConfigWithTransform } from "./axiosConfig"
 
 export const login = async (email, password) => {
     try {
         const response = await axios.post(
             `${backendConnection()}/login`,
             { email, password },
-            axiosConfig
+            axiosConfigWithTransform
         )
         return response.data
     } catch (error) {
@@ -54,7 +45,7 @@ export const logout = async (silent = false) => {
         const response = await axios.post(
             `${backendConnection()}/logout`,
             {},
-            axiosConfig
+            axiosConfigWithTransform
         )
         return response.data
     } catch (error) {
@@ -71,7 +62,7 @@ export const refreshSession = async () => {
         const response = await axios.post(
             `${backendConnection()}/token/refresh`,
             {},
-            axiosConfig
+            axiosConfigWithTransform
         )
         return response.data
     } catch {
@@ -84,7 +75,7 @@ export const getSession = async () => {
     try {
         const response = await axios.get(
             `${backendConnection()}/session`,
-            axiosConfig
+            axiosConfigWithTransform
         )
         return response.data
     } catch {
@@ -97,7 +88,7 @@ export const checkSession = async () => {
     try {
         const response = await axios.get(
             `${backendConnection()}/session`,
-            axiosConfig
+            axiosConfigWithTransform
         )
         return response.data
     } catch {

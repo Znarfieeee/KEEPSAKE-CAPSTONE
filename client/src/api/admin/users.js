@@ -34,8 +34,17 @@ export const createUser = async userData => {
     return response.data
 }
 
+export const deleteUser = async userId => {
+    const response = await axios.delete(
+        `${backendConnection()}/admin/users/${userId}`,
+        axiosConfig
+    )
+    return response.data
+}
+
 export default {
     // getUsers,
     getUserById,
     createUser,
+    deleteUser
 }
