@@ -52,14 +52,17 @@ const GoogleButton = ({ className = "", disabled = false }) => {
                             setError(
                                 "Session validation failed after authentication"
                             )
+                            clearErrorAfterTimeout()
                         }
                     } catch (err) {
                         console.error("Session check failed:", err)
                         setError("Failed to validate session")
+                        clearErrorAfterTimeout()
                     }
                 } else {
                     console.error("Google auth error from popup:", authError)
                     setError(authError || "Authentication failed")
+                    clearErrorAfterTimeout()
                 }
 
                 setIsLoading(false)
@@ -82,8 +85,16 @@ const GoogleButton = ({ className = "", disabled = false }) => {
                 cleanup()
                 setIsLoading(false)
                 setError("Authentication was cancelled")
+                clearErrorAfterTimeout()
             }
         }, 1000)
+    }
+
+    // Function to clear error after timeout
+    const clearErrorAfterTimeout = () => {
+        setTimeout(() => {
+            setError(null)
+        }, 5000) // 5 seconds
     }
 
     const handleGoogleLogin = async () => {
@@ -124,6 +135,7 @@ const GoogleButton = ({ className = "", disabled = false }) => {
         } catch (err) {
             console.error("Google login error:", err)
             setError(err.message || "Failed to initiate Google authentication")
+            clearErrorAfterTimeout()
             setIsLoading(false)
             cleanup()
         }
@@ -163,11 +175,11 @@ const GoogleButton = ({ className = "", disabled = false }) => {
             </button>
 
             {error && (
-                <div className="mt-3 p-3 bg-red-50 border border-red-200 rounded-md">
+                <div className="mt-3 px-4 py-2 bg-red-50 border border-red-200 rounded-md">
                     <p className="text-red-600 text-sm flex items-center">
                         <svg
                             xmlns="http://www.w3.org/2000/svg"
-                            className="h-5 w-5 mr-2 flex-shrink-0"
+                            className="size-4 mr-2 flex-shrink-0"
                             viewBox="0 0 20 20"
                             fill="currentColor">
                             <path
