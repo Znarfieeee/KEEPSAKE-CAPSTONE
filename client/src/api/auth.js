@@ -1,13 +1,13 @@
 import backendConnection from "./backendApi"
 import axios from "axios"
-import { axiosConfigWithTransform } from "./axiosConfig"
+import { axiosConfig } from "./axiosConfig"
 
 export const login = async (email, password) => {
     try {
         const response = await axios.post(
             `${backendConnection()}/login`,
             { email, password },
-            axiosConfigWithTransform
+            axiosConfig
         )
         return response.data
     } catch (error) {
@@ -45,7 +45,7 @@ export const logout = async (silent = false) => {
         const response = await axios.post(
             `${backendConnection()}/logout`,
             {},
-            axiosConfigWithTransform
+            axiosConfig
         )
         return response.data
     } catch (error) {
@@ -62,7 +62,7 @@ export const refreshSession = async () => {
         const response = await axios.post(
             `${backendConnection()}/token/refresh`,
             {},
-            axiosConfigWithTransform
+            axiosConfig
         )
         return response.data
     } catch {
@@ -75,7 +75,7 @@ export const getSession = async () => {
     try {
         const response = await axios.get(
             `${backendConnection()}/session`,
-            axiosConfigWithTransform
+            axiosConfig
         )
         return response.data
     } catch {
@@ -88,7 +88,7 @@ export const checkSession = async () => {
     try {
         const response = await axios.get(
             `${backendConnection()}/session`,
-            axiosConfigWithTransform
+            axiosConfig
         )
         return response.data
     } catch {
