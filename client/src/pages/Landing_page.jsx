@@ -21,6 +21,7 @@ import { CiMobile3 } from "react-icons/ci"
 import { TbClockCog } from "react-icons/tb"
 import { PiDevicesLight } from "react-icons/pi"
 import Footer4Col from "../components/mvpblocks/footer-4col"
+import { CardDescription } from "../components/ui/card"
 
 function Landing_page() {
     const [drawerOpen, setDrawerOpen] = useState(false)
@@ -330,6 +331,7 @@ function Landing_page() {
                                     </span>
                                 </h1>
                             </header>
+
                             <div className="mt-6 max-w-2xl mx-auto px-6 grid grid-cols-2 md:grid-cols-3 gap-4 ">
                                 {feature.map((feature, idx) => (
                                     <div
