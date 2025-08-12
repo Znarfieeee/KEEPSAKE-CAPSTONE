@@ -330,6 +330,7 @@ function Landing_page() {
                                     </span>
                                 </h1>
                             </header>
+
                             <div className="mt-6 max-w-2xl mx-auto px-6 grid grid-cols-2 md:grid-cols-3 gap-4 ">
                                 {feature.map((feature, idx) => (
                                     <div

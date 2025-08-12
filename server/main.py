@@ -6,10 +6,7 @@ from routes.admin.admin_facility import facility_bp
 from routes.admin.admin_users import users_bp
 from flask_cors import CORS
 from datetime import timedelta
-import os
-import logging
-import sys
-import traceback
+import os, sys, json
 from flask_session import Session # type: ignore
 from utils.redis_client import get_redis_client, clear_corrupted_sessions
 from config.settings import supabase_anon_client
