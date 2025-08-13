@@ -1,7 +1,7 @@
 import React from "react"
 
 const DoctorSupport = () => {
-    return <div></div>
+    return <div>Help & Support</div>
 }
 
 export default DoctorSupport

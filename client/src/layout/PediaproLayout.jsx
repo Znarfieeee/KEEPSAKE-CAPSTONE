@@ -37,7 +37,7 @@ const mainSideNavLinks = [
     {
         icon: <MdQrCodeScanner className="text-xl" />,
         title: "QR CODE SCANNER",
-        to: "/pediapro/qr_scanner",
+        to: "/qr_scanner",
     },
 ]
 

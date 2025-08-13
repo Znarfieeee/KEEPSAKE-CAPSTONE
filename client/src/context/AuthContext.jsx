@@ -46,13 +46,13 @@ export const AuthProvider = ({ children }) => {
                 case "admin":
                     navigate("/admin")
                     break
-                case "Pediapro":
+                case "doctor":
                     navigate("/pediapro")
                     break
-                case "Keepsaker":
+                case "parent":
                     navigate("/keepsaker")
                     break
-                case "VitalCustodian":
+                case "vital_custodian":
                     navigate("/vital_custodian")
                     break
                 case "facility_admin":

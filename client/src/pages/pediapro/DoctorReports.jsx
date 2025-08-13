@@ -1,7 +1,7 @@
 import React from "react"
 
 const DoctorReports = () => {
-    return <div></div>
+    return <div>Reports</div>
 }
 
 export default DoctorReports

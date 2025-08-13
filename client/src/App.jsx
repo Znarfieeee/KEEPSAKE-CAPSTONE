@@ -1,3 +1,4 @@
+import React from "react"
 import { createBrowserRouter, RouterProvider, Outlet } from "react-router-dom"
 import ProtectedRoute from "./components/ProtectedRoute"
 import { AuthProvider } from "./context/AuthContext"
@@ -8,6 +9,7 @@ import Login from "@/pages/Login"
 import NotFound from "@/pages/NotFound"
 import AuthSuccess from "@/pages/AuthSuccess"
 import AuthError from "@/pages/AuthError"
+import QrScanner from "@/pages/QrScanner"
 
 // Admin
 import AdminDashboard from "@/pages/systemAdmin/AdminDashboard"
@@ -22,6 +24,14 @@ import MaintenancePage from "@/pages/systemAdmin/MaintenancePage"
 
 // Facility_admin
 import FacilityAdminDashboard from "@/pages/facilityAdmin/FacilityAdminDashboard"
+
+// Doctor
+import DoctorDashboard from "@/pages/pediapro/DoctorDashboard"
+import DoctorAppointments from "@/pages/pediapro/DoctorAppointments"
+import DoctorPatientRecords from "@/pages/pediapro/DoctorPatientRecords"
+import DoctorReports from "@/pages/pediapro/DoctorReports"
+import DoctorSettings from "@/pages/pediapro/DoctorSettings"
+import DoctorSupport from "@/pages/pediapro/DoctorSupport"
 
 import AdminLayout from "@/layout/AdminLayout"
 import FacilityAdminLayout from "@/layout/FacilityAdminLayout"
@@ -41,6 +51,10 @@ function App() {
                 {
                     path: "/",
                     element: <Landing_page />,
+                },
+                {
+                    path: "/qr_scanner",
+                    element: <QrScanner />,
                 },
                 {
                     path: "/login",
@@ -124,31 +138,27 @@ function App() {
                     children: [
                         {
                             index: true,
-                            element: <FacilityAdminDashboard />,
+                            element: <DoctorDashboard />,
                         },
                         {
-                            index: "appointments",
-                            element: <FacilityAdminDashboard />,
+                            path: "appointments",
+                            element: <DoctorAppointments />,
                         },
                         {
-                            index: "patient_records",
-                            element: <FacilityAdminDashboard />,
+                            path: "patient_records",
+                            element: <DoctorPatientRecords />,
                         },
                         {
-                            index: "reports",
-                            element: <FacilityAdminDashboard />,
+                            path: "reports",
+                            element: <DoctorReports />,
                         },
                         {
-                            index: "qr_scanner",
-                            element: <FacilityAdminDashboard />,
+                            path: "settings",
+                            element: <DoctorSettings />,
                         },
                         {
-                            index: "settings",
-                            element: <FacilityAdminDashboard />,
-                        },
-                        {
-                            index: "help_support",
-                            element: <FacilityAdminDashboard />,
+                            path: "help_support",
+                            element: <DoctorSupport />,
                         },
                     ],
                 },
