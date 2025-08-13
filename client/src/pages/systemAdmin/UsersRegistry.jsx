@@ -16,9 +16,9 @@ import {
 } from "../../hook/useSupabaseRealtime"
 
 // Components
-import UserRegistryHeader from "../../components/sysAdmin_users/UserRegistryHeader"
-import UserFilters from "../../components/sysAdmin_users/UserFilters"
-import UserTable from "../../components/sysAdmin_users/UserTable"
+import UserRegistryHeader from "../../components/System Administrator/sysAdmin_users/UserRegistryHeader"
+import UserFilters from "../../components/System Administrator/sysAdmin_users/UserFilters"
+import UserTable from "../../components/System Administrator/sysAdmin_users/UserTable"
 import Unauthorized from "../../components/Unauthorized"
 
 // Helper
@@ -57,13 +57,19 @@ const formatLastLogin = lastLoginTime => {
 
 // Lazy-loaded components
 const RegisterUserModal = lazy(() =>
-    import("../../components/sysAdmin_users/RegisterUserModal")
+    import(
+        "../../components/System Administrator/sysAdmin_users/RegisterUserModal"
+    )
 )
 const UserDetailModal = lazy(() =>
-    import("../../components/sysAdmin_users/UserDetailModal")
+    import(
+        "../../components/System Administrator/sysAdmin_users/UserDetailModal"
+    )
 )
 const UserAssignFacility = lazy(() =>
-    import("../../components/sysAdmin_users/UserAssignFacility")
+    import(
+        "../../components/System Administrator/sysAdmin_users/UserAssignFacility"
+    )
 )
 
 const UsersRegistry = () => {
@@ -189,7 +195,7 @@ const UsersRegistry = () => {
         }
     }, [])
 
-    // FIXED: Simplified initial data load without complex relationships
+    // Fetch user from Supabase Realtime
     const fetchUsers = useCallback(async () => {
         try {
             setLoading(true)
@@ -375,7 +381,7 @@ const UsersRegistry = () => {
     }, [users, search, statusFilter, typeFilter, planFilter])
 
     // Role-based guard
-    if (user.role !== "SystemAdmin" && user.role !== "admin") {
+    if (user.role !== "admin") {
         return <Unauthorized />
     }
 

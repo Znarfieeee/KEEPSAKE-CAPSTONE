@@ -1,25 +1,20 @@
 import React, { useEffect, useState } from "react"
-import {
-    Card,
-    CardContent,
-    CardHeader,
-    CardTitle,
-} from "../../components/ui/card"
-import { Input } from "../../components/ui/input"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Input } from "@/components/ui/input"
 import {
     Select,
     SelectContent,
     SelectItem,
     SelectTrigger,
     SelectValue,
-} from "../../components/ui/select"
-import { Button } from "../../components/ui/Button"
+} from "@/components/ui/select"
+import { Button } from "@/components/ui/Button"
 import { Download } from "lucide-react"
-import InvitationForm from "../../components/sysAdmin_tokenInvitation/InvitationForm"
-import InvitationTable from "../../components/sysAdmin_tokenInvitation/InvitationTable"
-import { showToast } from "../../util/alertHelper"
-import { supabase } from "../../lib/supabaseClient"
-import { useAuth } from "../../context/auth"
+import InvitationForm from "@/components/System Administrator/sysAdmin_tokenInvitation/InvitationForm"
+import InvitationTable from "@/components/System Administrator/sysAdmin_tokenInvitation/InvitationTable"
+import { showToast } from "@/util/alertHelper"
+import { supabase } from "@/lib/supabaseClient"
+import { useAuth } from "@/context/auth"
 // import { v4 as uuidv4 } from "uuid"
 
 const TokenInvitations = () => {

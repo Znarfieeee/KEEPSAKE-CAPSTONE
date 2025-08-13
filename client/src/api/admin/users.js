@@ -1,21 +1,15 @@
 import backendConnection from "../backendApi"
 import axios from "axios"
-
-const axiosConfig = {
-    withCredentials: true,
-    headers: {
-        "Content-Type": "application/json",
-    },
-}
+import { axiosConfig } from "../axiosConfig"
 
 // USE SUPABASE REAL-TIME INSTEAD
-/* export const getUsers = async () => {
+export const getUsers = async () => {
     const response = await axios.get(
         `${backendConnection()}/admin/users`,
         axiosConfig
     )
     return response.data
-} */
+}
 
 export const getUserById = async userId => {
     const response = await axios.get(
@@ -43,8 +37,8 @@ export const deleteUser = async userId => {
 }
 
 export default {
-    // getUsers,
+    getUsers,
     getUserById,
     createUser,
-    deleteUser
+    deleteUser,
 }

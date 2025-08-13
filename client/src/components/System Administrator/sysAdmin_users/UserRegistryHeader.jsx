@@ -1,5 +1,5 @@
 import React from "react"
-import { Button } from "../ui/Button"
+import { Button } from "@/components/ui/Button"
 import { PlusCircle, FileDown, BarChart3 } from "lucide-react"
 
 const UserRegistryHeader = ({ onOpenRegister, onExportCSV, onOpenReports }) => {

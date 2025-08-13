@@ -1,5 +1,5 @@
 import React from "react"
-import { Button } from "../ui/Button"
+import { Button } from "@/components/ui/Button"
 import {
     Dialog,
     DialogContent,
@@ -7,16 +7,16 @@ import {
     DialogHeader,
     DialogTitle,
     DialogTrigger,
-} from "../ui/Dialog"
+} from "@/components/ui/Dialog"
 import {
     Select,
     SelectContent,
     SelectItem,
     SelectTrigger,
     SelectValue,
-} from "../ui/select"
-import { Input } from "../ui/input"
-import { Label } from "../ui/label"
+} from "@/components/ui/select"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
 
 const InvitationForm = ({ facilities, onCreateInvitation, isLoading }) => {
     const [formData, setFormData] = React.useState({

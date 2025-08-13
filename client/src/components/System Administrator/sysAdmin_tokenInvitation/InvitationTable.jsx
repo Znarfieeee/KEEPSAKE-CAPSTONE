@@ -6,15 +6,15 @@ import {
     TableHead,
     TableHeader,
     TableRow,
-} from "../ui/Table"
-import { Badge } from "../ui/Badge"
+} from "../../ui/Table"
+import { Badge } from "../../ui/Badge"
 import {
     DropdownMenu,
     DropdownMenuContent,
     DropdownMenuItem,
     DropdownMenuTrigger,
-} from "../ui/dropdown-menu"
-import { Button } from "../ui/Button"
+} from "../../ui/dropdown-menu"
+import { Button } from "../../ui/Button"
 import { MoreHorizontal } from "lucide-react"
 import CopyTokenButton from "./CopyTokenButton"
 

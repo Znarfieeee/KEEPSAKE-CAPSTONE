@@ -1,6 +1,6 @@
 import React from "react"
-import { Button } from "../ui/Button"
-import { showToast } from "../../util/alertHelper"
+import { Button } from "../../ui/Button"
+import { showToast } from "../../../util/alertHelper"
 
 const CopyTokenButton = ({ token }) => {
     const handleCopy = async () => {

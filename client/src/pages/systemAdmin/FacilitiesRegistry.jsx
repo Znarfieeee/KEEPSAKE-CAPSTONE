@@ -6,24 +6,28 @@ import React, {
     lazy,
     Suspense,
 } from "react"
-import { useAuth } from "../../context/auth"
-import { useFacilitiesRealtime, supabase } from "../../hook/useSupabaseRealtime"
-import { showToast } from "../../util/alertHelper"
-import { updateFacility } from "../../api/admin/facility"
+import { useAuth } from "@/context/auth"
+import { useFacilitiesRealtime, supabase } from "@/hook/useSupabaseRealtime"
+import { showToast } from "@/util/alertHelper"
+import { updateFacility } from "@/api/admin/facility"
 
 // UI Components
-import FacilityRegistryHeader from "../../components/sysAdmin_facilities/FacilityRegistryHeader"
-import FacilityFilters from "../../components/sysAdmin_facilities/FacilityFilters"
-import FacilityTable from "../../components/sysAdmin_facilities/FacilityTable"
-import EditFacility from "../../components/sysAdmin_facilities/EditFacility"
-import Unauthorized from "../../components/Unauthorized"
+import FacilityRegistryHeader from "@/components/System Administrator/sysAdmin_facilities/FacilityRegistryHeader"
+import FacilityFilters from "@/components/System Administrator/sysAdmin_facilities/FacilityFilters"
+import FacilityTable from "@/components/System Administrator/sysAdmin_facilities/FacilityTable"
+import EditFacility from "@/components/System Administrator/sysAdmin_facilities/EditFacility"
+import Unauthorized from "@/components/Unauthorized"
 
 // Lazy-loaded components (modals are heavy and used conditionally)
 const RegisterFacilityModal = lazy(() =>
-    import("../../components/sysAdmin_facilities/RegisterFacilityModal")
+    import(
+        "@/components/System Administrator/sysAdmin_facilities/RegisterFacilityModal"
+    )
 )
 const FacilityDetailModal = lazy(() =>
-    import("../../components/sysAdmin_facilities/FacilityDetailModal")
+    import(
+        "@/components/System Administrator/sysAdmin_facilities/FacilityDetailModal"
+    )
 )
 
 const FacilitiesRegistry = () => {
