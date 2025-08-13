@@ -1,11 +1,12 @@
+import { BiHelpCircle } from "react-icons/bi"
 import React, { useState } from "react"
 import { Outlet, Link } from "react-router-dom"
 
 // UI Components
-import { CgFileDocument } from "react-icons/cg"
 import { TbBrandGoogleAnalytics } from "react-icons/tb"
 import { RiDashboardLine } from "react-icons/ri"
 import { BiCalendar } from "react-icons/bi"
+import { BiCog } from "react-icons/bi"
 import { TbHeartbeat } from "react-icons/tb"
 import { MdQrCodeScanner } from "react-icons/md"
 import Hamburger from "../components/ui/Hamburger"
@@ -16,7 +17,7 @@ const mainSideNavLinks = [
     {
         icon: <RiDashboardLine className="text-xl" />,
         title: "DASHBOARD",
-        to: "/pediapro/dashboard",
+        to: "/pediapro",
     },
     {
         icon: <BiCalendar className="text-xl" />,
@@ -40,7 +41,20 @@ const mainSideNavLinks = [
     },
 ]
 
-function AdminLayout() {
+const systemSideNavLinks = [
+    {
+        icon: <BiCog className="text-xl" />,
+        title: "Settings",
+        to: "/pediapro/settings",
+    },
+    {
+        icon: <BiHelpCircle className="text-xl" />,
+        title: "Help & Support",
+        to: "/pediapro/help_support",
+    },
+]
+
+function PediaproLayout() {
     const [drawerOpen, setDrawerOpen] = useState(false)
     const toggleDrawer = () => setDrawerOpen(open => !open)
 
@@ -75,7 +89,24 @@ function AdminLayout() {
                 }`}>
                 <nav className="h-full py-6">
                     <div className="mt-10">
+                        <span className="text-sm font-semibold text-tertiary px-8">
+                            Main
+                        </span>
                         {mainSideNavLinks.map((link, index) => (
+                            <Link
+                                key={index}
+                                to={link.to}
+                                className="flex items-center gap-4 px-8 py-3 text-black hover:bg-gray-100 duration-300 delay-30 transition-colors">
+                                {link.icon}
+                                <span className="text-sm">{link.title}</span>
+                            </Link>
+                        ))}
+                    </div>
+                    <div className="mt-5">
+                        <span className="text-sm font-semibold text-tertiary px-8">
+                            System
+                        </span>
+                        {systemSideNavLinks.map((link, index) => (
                             <Link
                                 key={index}
                                 to={link.to}
@@ -98,4 +129,4 @@ function AdminLayout() {
     )
 }
 
-export default AdminLayout
+export default PediaproLayout

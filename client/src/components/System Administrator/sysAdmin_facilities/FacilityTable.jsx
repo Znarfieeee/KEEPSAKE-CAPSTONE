@@ -1,35 +1,35 @@
 import React from "react"
 
 // UI Components
-import { Button } from "../ui/Button"
-import { TooltipHelper } from "../../util/TooltipHelper"
-import { UserStatusBadge } from "../ui/StatusBadge"
+import { FacilityStatusBadge } from "@/components/ui/StatusBadge"
+import { Button } from "@/components/ui/Button"
 import {
     Eye,
-    Ban,
-    CheckCircle,
-    ArrowRightLeft,
     Trash2,
     ChevronLeft,
     ChevronRight,
     UserPen,
+    TableOfContents,
 } from "lucide-react"
 
-const UserTable = ({
-    users = [],
+// Helper
+import { TooltipHelper } from "@/util/TooltipHelper"
+
+const FacilityTable = ({
+    facilities = [],
     page,
     setPage,
     itemsPerPage,
     setItemsPerPage,
     onView,
-    onToggleStatus,
-    onTransfer,
+    onGoto,
+    onEdit,
     onDelete,
     loading = false,
 }) => {
-    const totalPages = Math.ceil(users.length / itemsPerPage) || 1
+    const totalPages = Math.ceil(facilities.length / itemsPerPage) || 1
     const startIdx = (page - 1) * itemsPerPage
-    const currentData = users.slice(startIdx, startIdx + itemsPerPage)
+    const currentData = facilities.slice(startIdx, startIdx + itemsPerPage)
 
     const handlePrev = () => setPage(p => Math.max(1, p - 1))
     const handleNext = () => setPage(p => Math.min(totalPages, p + 1))
@@ -38,12 +38,13 @@ const UserTable = ({
         <div className="w-full overflow-x-auto">
             <table className="w-full text-sm">
                 <thead className="border-b border-gray-300 text-xs uppercase text-muted-foreground">
-                    <tr className="text-left">
-                        <th className="py-3 px-2">Full Name</th>
-                        <th className="py-3 px-2">Role</th>
+                    <tr className="text-left text-black">
+                        <th className="py-3 px-2">Facility Name</th>
+                        <th className="py-3 px-2">Address</th>
                         <th className="py-3 px-2">Plan</th>
+                        <th className="py-3 px-2">Type</th>
                         <th className="py-3 px-2">Subscription Expiry</th>
-                        <th className="py-3 px-2">Last Login</th>
+                        <th className="py-3 px-2">Assigned Admin</th>
                         <th className="py-3 px-2">Status</th>
                         <th className="py-3 px-2">Actions</th>
                     </tr>
@@ -63,92 +64,78 @@ const UserTable = ({
                                   ))}
                               </tr>
                           ))
-                        : currentData.map(user => (
+                        : currentData.map(facility => (
                               <tr
-                                  key={user.id}
+                                  key={facility.id}
                                   className="border-b border-gray-200 last:border-none">
                                   <td className="p-2 whitespace-nowrap">
-                                      {`${user.firstname} ${user.lastname}`}
+                                      {facility.name}
                                   </td>
                                   <td className="p-2 whitespace-nowrap">
-                                      {user.role}
+                                      {facility.location.length > 30
+                                          ? `${facility.location.substring(
+                                                0,
+                                                30
+                                            )}...`
+                                          : facility.location}
                                   </td>
                                   <td className="p-2 whitespace-nowrap capitalize">
-                                      {user.plan}
+                                      {facility.plan}
+                                  </td>
+                                  <td className="p-2 whitespace-nowrap capitalize">
+                                      {facility.type}
                                   </td>
                                   <td className="p-2 whitespace-nowrap">
-                                      {user.sub_exp || "—"}
+                                      {facility.expiry}
                                   </td>
                                   <td className="p-2 whitespace-nowrap">
-                                      {user.last_login}
+                                      {facility.admin}
                                   </td>
                                   <td className="p-2 whitespace-nowrap">
-                                      <UserStatusBadge status={user.status} />
+                                      <FacilityStatusBadge
+                                          status={facility.status}
+                                      />
                                   </td>
                                   <td className="p-2 whitespace-nowrap">
                                       <div className="flex gap-1">
-                                          <TooltipHelper content="View Details">
+                                          <TooltipHelper content="View Facility">
                                               <Button
                                                   variant="ghost"
                                                   size="icon"
                                                   className="hover:text-blue-600 hover:bg-blue-100"
-                                                  onClick={() => onView(user)}>
+                                                  onClick={() =>
+                                                      onView(facility)
+                                                  }
+                                                  title="View">
                                                   <Eye className="size-4" />
                                               </Button>
                                           </TooltipHelper>
-
-                                          <TooltipHelper content="Assign/Transfer Facility">
+                                          <TooltipHelper content="Go-to Facility">
                                               <Button
                                                   variant="ghost"
                                                   size="icon"
-                                                  className="hover:text-yellow-600 hover:bg-yellow-100"
-                                                  onClick={() =>
-                                                      onTransfer(user)
-                                                  }>
-                                                  <ArrowRightLeft className="size-4" />
+                                                  onClick={() => onGoto()}>
+                                                  <TableOfContents className="size-4" />
                                               </Button>
                                           </TooltipHelper>
-
-                                          <TooltipHelper
-                                              content={
-                                                  user.status === "inactive"
-                                                      ? "Activate User"
-                                                      : "Deactivate User"
-                                              }>
-                                              <Button
-                                                  variant="ghost"
-                                                  size="icon"
-                                                  onClick={() =>
-                                                      onToggleStatus(user)
-                                                  }>
-                                                  {user.status ===
-                                                  "inactive" ? (
-                                                      <CheckCircle className="size-4" />
-                                                  ) : (
-                                                      <Ban className="size-4" />
-                                                  )}
-                                              </Button>
-                                          </TooltipHelper>
-
-                                          <TooltipHelper content="Edit User">
+                                          <TooltipHelper content="Edit Facility">
                                               <Button
                                                   variant="ghost"
                                                   size="icon"
                                                   className="hover:text-green-600 hover:bg-green-100"
                                                   onClick={() =>
-                                                      onDelete(user)
+                                                      onEdit(facility)
                                                   }>
                                                   <UserPen className="size-4" />
                                               </Button>
                                           </TooltipHelper>
-
-                                          <TooltipHelper content="Delete User">
+                                          <TooltipHelper content="Delete facility">
                                               <Button
                                                   variant="ghost"
                                                   size="icon"
                                                   className="hover:text-red-600 hover:bg-red-100"
                                                   onClick={() =>
-                                                      onDelete(user)
+                                                      onDelete(facility)
                                                   }>
                                                   <Trash2 className="size-4" />
                                               </Button>
@@ -178,8 +165,8 @@ const UserTable = ({
                 <div className="flex items-center gap-2 text-sm">
                     <span>
                         {startIdx + 1}-
-                        {Math.min(startIdx + itemsPerPage, users.length)} of{" "}
-                        {users.length}
+                        {Math.min(startIdx + itemsPerPage, facilities.length)}{" "}
+                        of {facilities.length}
                     </span>
                     <Button
                         size="icon"
@@ -201,4 +188,4 @@ const UserTable = ({
     )
 }
 
-export default UserTable
+export default FacilityTable

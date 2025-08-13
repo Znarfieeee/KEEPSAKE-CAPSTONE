@@ -1,16 +1,23 @@
-import React, { useState, useEffect, useRef } from "react"
+import React, { memo, useState, useEffect, useRef } from "react"
 import { FcGoogle } from "react-icons/fc"
 import { useAuth } from "../../context/auth"
 import backendConnection from "../../api/backendApi"
 
-const GoogleButton = ({ className = "", disabled = false }) => {
+const GoogleButton = memo(({ className = "", disabled = false }) => {
     const [isLoading, setIsLoading] = useState(false)
     const [error, setError] = useState(null)
     const { isAuthenticated, checkExistingSession } = useAuth()
     const popupRef = useRef(null)
     const pollTimerRef = useRef(null)
 
-    // Cleanup function for popup and polling
+    // Match with Flask allowed_origins
+    const allowedOrigins = [
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+        "http://localhost:5000",
+        "http://127.0.0.1:5000",
+    ]
+
     const cleanup = () => {
         if (popupRef.current && !popupRef.current.closed) {
             popupRef.current.close()
@@ -21,12 +28,10 @@ const GoogleButton = ({ className = "", disabled = false }) => {
         }
     }
 
-    // Handle messages from the popup window
     useEffect(() => {
         const handleMessage = async event => {
-            // Verify the origin for security (adjust this to match your backend domain)
-            const expectedOrigin = new URL(backendConnection()).origin
-            if (event.origin !== expectedOrigin) {
+            // Allow only from whitelisted origins
+            if (!allowedOrigins.includes(event.origin)) {
                 console.warn(
                     "Received message from unexpected origin:",
                     event.origin
@@ -40,14 +45,11 @@ const GoogleButton = ({ className = "", disabled = false }) => {
                 cleanup()
 
                 if (success) {
-                    console.log("Google auth successful from popup")
                     try {
-                        // Check if we now have a valid session
                         const hasSession = await checkExistingSession()
                         if (hasSession) {
                             console.log("Session validated after Google auth")
                             setError(null)
-                            // The AuthContext will handle navigation based on user role
                         } else {
                             setError(
                                 "Session validation failed after authentication"
@@ -70,14 +72,12 @@ const GoogleButton = ({ className = "", disabled = false }) => {
         }
 
         window.addEventListener("message", handleMessage)
-
         return () => {
             window.removeEventListener("message", handleMessage)
             cleanup()
         }
     }, [checkExistingSession])
 
-    // Poll the popup window to detect when it closes (fallback)
     const startPolling = () => {
         pollTimerRef.current = setInterval(() => {
             if (popupRef.current && popupRef.current.closed) {
@@ -90,11 +90,10 @@ const GoogleButton = ({ className = "", disabled = false }) => {
         }, 1000)
     }
 
-    // Function to clear error after timeout
     const clearErrorAfterTimeout = () => {
         setTimeout(() => {
             setError(null)
-        }, 5000) // 5 seconds
+        }, 5000)
     }
 
     const handleGoogleLogin = async () => {
@@ -104,15 +103,11 @@ const GoogleButton = ({ className = "", disabled = false }) => {
             setIsLoading(true)
             setError(null)
 
-            console.log("Opening Google OAuth popup...")
-
-            // Calculate popup dimensions and position
             const width = 500
             const height = 600
             const left = window.screen.width / 2 - width / 2
             const top = window.screen.height / 2 - height / 2
 
-            // Open popup window
             const googleAuthUrl = `${backendConnection()}/auth/google`
             popupRef.current = window.open(
                 googleAuthUrl,
@@ -127,10 +122,7 @@ const GoogleButton = ({ className = "", disabled = false }) => {
                 )
             }
 
-            // Start polling to detect popup close
             startPolling()
-
-            // Focus the popup window
             popupRef.current.focus()
         } catch (err) {
             console.error("Google login error:", err)
@@ -141,7 +133,6 @@ const GoogleButton = ({ className = "", disabled = false }) => {
         }
     }
 
-    // Cleanup on component unmount
     useEffect(() => {
         return () => cleanup()
     }, [])
@@ -194,6 +185,6 @@ const GoogleButton = ({ className = "", disabled = false }) => {
             )}
         </div>
     )
-}
+})
 
 export default GoogleButton

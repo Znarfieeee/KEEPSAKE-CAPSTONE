@@ -1,11 +1,11 @@
-import React, { useState } from "react"
-import { createFacility } from "../../api/admin/facility"
-import { sanitizeObject } from "../../util/sanitize"
+import React, { useState, useEffect } from "react"
+import { createUser } from "../../../api/admin/users"
+import { sanitizeObject } from "../../../util/sanitize"
 
 // UI Components
-import { showToast } from "../../util/alertHelper"
-import { Button } from "../ui/Button"
-import LoadingButton from "../ui/LoadingButton"
+import { showToast } from "../../../util/alertHelper"
+import { Button } from "../../ui/Button"
+import LoadingButton from "../../ui/LoadingButton"
 import {
     Stepper,
     StepperIndicator,
@@ -13,24 +13,30 @@ import {
     StepperSeparator,
     StepperTrigger,
 } from "@/components/ui/stepper"
-import Checkbox from "../ui/Checkbox"
+import Checkbox from "../../ui/Checkbox"
 
 const initialForm = {
-    facility_name: "",
-    address: "",
-    city: "",
-    zip_code: "",
-    type: "clinic",
-    contact_number: "",
     email: "",
-    website: "",
-    plan: "standard",
-    subscription_expires: "",
+    password: "keepsake123",
+    firstname: "",
+    lastname: "",
+    specialty: "",
+    role: "",
+    license_number: "",
+    phone_number: "",
+    facility_id: "",
+    facility_role: "",
+    status: "active", // Added default status
 }
 
-const steps = ["Facility Info", "Assign Admin", "Plan & Expiry", "Review"]
+const steps = [
+    "Basic Information",
+    "Professional Details",
+    "Subscription & Facility",
+    "Review & Confirm",
+]
 
-const RegisterFacilityModal = ({ open, onClose }) => {
+const RegisterUserModal = ({ open, onClose }) => {
     const [form, setForm] = useState(initialForm)
     const [step, setStep] = useState(0)
     const [loading, setLoading] = useState(false)
@@ -38,8 +44,32 @@ const RegisterFacilityModal = ({ open, onClose }) => {
     // Ref for scroll animation when changing steps
     const contentRef = React.useRef(null)
 
-    const next = () => setStep(s => Math.min(steps.length - 1, s + 1))
-    const prev = () => setStep(s => Math.max(0, s - 1))
+    useEffect(() => {
+        if (contentRef.current) {
+            contentRef.current.scrollTo({ top: 0, behavior: "smooth" })
+        }
+    }, [step])
+
+    // Transition effect when changing steps
+    const goToStep = newStep => {
+        if (newStep > step) {
+            if (
+                step === 0 &&
+                (!form.email || !form.firstname || !form.lastname)
+            ) {
+                showToast("error", "Please fill in all required fields")
+                return
+            }
+            if (step === 1 && (!form.role || !form.specialty)) {
+                showToast("error", "Please fill in all required fields")
+                return
+            }
+        }
+        setStep(newStep)
+    }
+
+    const next = () => goToStep(Math.min(steps.length - 1, step + 1))
+    const prev = () => goToStep(Math.max(0, step - 1))
 
     const reset = () => {
         setForm(initialForm)
@@ -52,21 +82,24 @@ const RegisterFacilityModal = ({ open, onClose }) => {
             setLoading(true)
             const payload = sanitizeObject({
                 ...form,
+                password: "keepsake123", // Default password as specified in initialForm
             })
-            const res = await createFacility(payload)
+
+            const res = await createUser(payload)
 
             if (res.status === "success") {
-                showToast("success", "Facility registered")
-                // Notify other components (e.g., FacilitiesRegistry) to update list
+                showToast("success", "User registered successfully")
+                // Notify other components to update user list
                 window.dispatchEvent(
-                    new CustomEvent("facility-created", { detail: res.data })
+                    new CustomEvent("user-created", { detail: res.data })
                 )
+                reset()
+                onClose()
             } else {
-                showToast("error", res.message || "Failed to register facility")
+                showToast("error", res.message || "Failed to register user")
             }
-
-            reset()
-            onClose()
+        } catch (error) {
+            showToast("error", error.message || "Failed to register user")
         } finally {
             setLoading(false)
         }
@@ -84,16 +117,16 @@ const RegisterFacilityModal = ({ open, onClose }) => {
             {/* modal */}
             <div className="relative bg-white text-black dark:bg-background rounded-lg shadow-lg w-full max-w-xl mx-4 p-6 space-y-6 z-10">
                 <h2 className="text-xl font-semibold mb-2">
-                    Register Facility
+                    Register New User
                 </h2>
 
                 {/* Stepper */}
                 <Stepper
                     value={step + 1}
-                    onValueChange={val => setStep(val - 1)}
+                    onValueChange={val => goToStep(val - 1)}
                     className="mb-4 mx-auto w-full justify-center"
                     orientation="horizontal">
-                    {steps.map((_, idx) => (
+                    {steps.map((title, idx) => (
                         <StepperItem
                             key={idx + 1}
                             step={idx + 1}
@@ -108,177 +141,177 @@ const RegisterFacilityModal = ({ open, onClose }) => {
                     ))}
                 </Stepper>
 
-                {/* Step content */}
+                {/* Step content with transition */}
                 <div
                     ref={contentRef}
-                    className="space-y-3 max-h-[60vh] overflow-y-auto pr-1">
+                    className="space-y-3 max-h-[60vh] overflow-y-auto pr-1 transition-all duration-300">
                     {step === 0 && (
+                        // ... Basic Information step ...
                         <>
-                            {/* Facility Name */}
-                            <div className="flex flex-col form-control">
-                                <label
-                                    htmlFor="facility_name"
-                                    className="block text-sm font-medium">
-                                    Facility Name
-                                </label>
-                                <input
-                                    type="text"
-                                    id="facility_name"
-                                    name="facility_name"
-                                    value={form.facility_name}
-                                    onChange={e =>
-                                        setForm({
-                                            ...form,
-                                            facility_name: e.target.value,
-                                        })
-                                    }
-                                    placeholder="example:  St. Luke's Hospital"
-                                />
-                            </div>
-
-                            {/* Address */}
-                            <div className="flex flex-col form-control">
-                                <label
-                                    htmlFor="address"
-                                    className="block text-sm font-medium">
-                                    Address
-                                </label>
-                                <input
-                                    type="text"
-                                    id="address"
-                                    name="address"
-                                    value={form.address}
-                                    onChange={e =>
-                                        setForm({
-                                            ...form,
-                                            address: e.target.value,
-                                        })
-                                    }
-                                    placeholder="example: 123 Main St"
-                                />
-                            </div>
-
-                            {/* City & Zip */}
-                            <div className="flex gap-2 form-control">
-                                <div className="flex-1">
+                            <div className="space-y-3">
+                                <div className="flex gap-2">
+                                    <div className="flex-1 form-control">
+                                        <label
+                                            htmlFor="firstname"
+                                            className="block text-sm font-medium">
+                                            First Name
+                                        </label>
+                                        <input
+                                            type="text"
+                                            id="firstname"
+                                            name="firstname"
+                                            value={form.firstname}
+                                            onChange={e =>
+                                                setForm({
+                                                    ...form,
+                                                    firstname: e.target.value,
+                                                })
+                                            }
+                                            placeholder="Juan"
+                                            required
+                                        />
+                                    </div>
+                                    <div className="flex-1 form-control">
+                                        <label
+                                            htmlFor="lastname"
+                                            className="block text-sm font-medium">
+                                            Last Name
+                                        </label>
+                                        <input
+                                            type="text"
+                                            id="lastname"
+                                            name="lastname"
+                                            value={form.lastname}
+                                            onChange={e =>
+                                                setForm({
+                                                    ...form,
+                                                    lastname: e.target.value,
+                                                })
+                                            }
+                                            placeholder="De la Cruz"
+                                            required
+                                        />
+                                    </div>
+                                </div>
+                                <div className="form-control">
                                     <label
-                                        htmlFor="city"
+                                        htmlFor="email"
                                         className="block text-sm font-medium">
-                                        City
+                                        Email Address
                                     </label>
                                     <input
-                                        type="text"
-                                        id="city"
-                                        name="city"
-                                        value={form.city}
+                                        type="email"
+                                        id="email"
+                                        name="email"
+                                        value={form.email}
                                         onChange={e =>
                                             setForm({
                                                 ...form,
-                                                city: e.target.value,
+                                                email: e.target.value,
                                             })
                                         }
-                                        placeholder="example: Cebu"
+                                        placeholder="juan@example.com"
+                                        required
                                     />
                                 </div>
-                                <div className="w-36">
+                                <div className="form-control">
                                     <label
-                                        htmlFor="zip_code"
+                                        htmlFor="phone_number"
                                         className="block text-sm font-medium">
-                                        Zip Code
+                                        Phone Number
                                     </label>
                                     <input
-                                        type="text"
-                                        id="zip_code"
-                                        name="zip_code"
-                                        value={form.zip_code}
+                                        type="tel"
+                                        id="phone_number"
+                                        name="phone_number"
+                                        value={form.phone_number}
                                         onChange={e =>
                                             setForm({
                                                 ...form,
-                                                zip_code: e.target.value,
+                                                phone_number: e.target.value,
                                             })
                                         }
-                                        placeholder="example: 6000"
+                                        placeholder="09123456789"
+                                        required
                                     />
                                 </div>
-                            </div>
-
-                            {/* Contact */}
-                            <div className="flex flex-col form-control">
-                                <label
-                                    htmlFor="contact_number"
-                                    className="block text-sm font-medium">
-                                    Contact Number
-                                </label>
-                                <input
-                                    type="text"
-                                    id="contact_number"
-                                    name="contact_number"
-                                    value={form.contact_number}
-                                    onChange={e =>
-                                        setForm({
-                                            ...form,
-                                            contact_number: e.target.value,
-                                        })
-                                    }
-                                    placeholder="example: 0912 345 6789 or (032) 123 4567"
-                                />
                             </div>
                         </>
                     )}
-
                     {step === 1 && (
+                        // ... Professional Details step ...
                         <div className="space-y-3">
-                            <div className="flex flex-col form-control">
+                            <div className="form-control">
                                 <label
-                                    htmlFor="email"
+                                    htmlFor="specialty"
                                     className="block text-sm font-medium">
-                                    Admin Email
-                                </label>
-                                <input
-                                    type="email"
-                                    id="email"
-                                    name="email"
-                                    value={form.email}
-                                    onChange={e =>
-                                        setForm({
-                                            ...form,
-                                            email: e.target.value,
-                                        })
-                                    }
-                                    placeholder="admin@example.com"
-                                />
-                                <p className="text-xs text-muted-foreground mt-1">
-                                    You can invite a new admin by email or
-                                    assign an existing user later.
-                                </p>
-                            </div>
-                            <div className="flex flex-col form-control">
-                                <label
-                                    htmlFor="website"
-                                    className="block text-sm font-medium">
-                                    Website
+                                    Specialty
                                 </label>
                                 <input
                                     type="text"
-                                    id="website"
-                                    name="website"
-                                    value={form.website}
+                                    id="specialty"
+                                    name="specialty"
+                                    value={form.specialty}
                                     onChange={e =>
                                         setForm({
                                             ...form,
-                                            website: e.target.value,
+                                            specialty: e.target.value,
                                         })
                                     }
-                                    placeholder="https://example.com"
+                                    placeholder="e.g., Pediatrician"
+                                />
+                            </div>
+                            <div className="form-control">
+                                <label
+                                    htmlFor="role"
+                                    className="block text-sm font-medium">
+                                    Role
+                                </label>
+                                <select
+                                    id="role"
+                                    name="role"
+                                    value={form.role}
+                                    onChange={e =>
+                                        setForm({
+                                            ...form,
+                                            role: e.target.value,
+                                        })
+                                    }
+                                    required>
+                                    <option value="">Select a role</option>
+                                    <option value="doctor">Doctor</option>
+                                    <option value="nurse">Nurse</option>
+                                    <option value="staff">Staff</option>
+                                    <option value="admin">Admin</option>
+                                </select>
+                            </div>
+                            <div className="form-control">
+                                <label
+                                    htmlFor="license_number"
+                                    className="block text-sm font-medium">
+                                    License Number
+                                </label>
+                                <input
+                                    type="text"
+                                    id="license_number"
+                                    name="license_number"
+                                    value={form.license_number}
+                                    onChange={e =>
+                                        setForm({
+                                            ...form,
+                                            license_number: e.target.value,
+                                        })
+                                    }
+                                    placeholder="Enter professional license number"
                                 />
                                 <p className="text-xs text-muted-foreground mt-1">
-                                    You can leave blank if not applicable.
+                                    Required for medical professionals
                                 </p>
                             </div>
                         </div>
                     )}
-
                     {step === 2 && (
+                        // ... Subscription & Facility step ...
                         <div className="space-y-3 flex flex-col gap-4">
                             <div className="flex flex-col form-control">
                                 <label
@@ -296,11 +329,8 @@ const RegisterFacilityModal = ({ open, onClose }) => {
                                             plan: e.target.value,
                                         })
                                     }>
-                                    <option value="standard">Standard</option>
+                                    <option value="standard">Freemium</option>
                                     <option value="premium">Premium</option>
-                                    <option value="enterprise">
-                                        Enterprise
-                                    </option>
                                 </select>
                             </div>
                             <div className="flex flex-col form-control">
@@ -323,43 +353,58 @@ const RegisterFacilityModal = ({ open, onClose }) => {
                                     }
                                 />
                             </div>
+                            {/* Facility assignment fields can be added here if needed */}
                         </div>
                     )}
-
                     {step === 3 && (
+                        // ... Review & Confirm step ...
                         <div>
                             <div className="space-y-2 text-sm">
                                 <div className="flex justify-between">
                                     <span className="font-medium">
-                                        Facility Name
+                                        Full Name
                                     </span>
-                                    <span>{form.facility_name}</span>
-                                </div>
-                                <div className="flex justify-between">
-                                    <span className="font-medium">Type</span>
-                                    <span className="capitalize">
-                                        {form.type}
+                                    <span>
+                                        {form.firstname} {form.lastname}
                                     </span>
                                 </div>
                                 <div className="flex justify-between">
-                                    <span className="font-medium">Contact</span>
-                                    <span>{form.contact_number}</span>
-                                </div>
-                                <div className="flex justify-between">
-                                    <span className="font-medium">
-                                        Admin Email
-                                    </span>
+                                    <span className="font-medium">Email</span>
                                     <span>{form.email}</span>
                                 </div>
                                 <div className="flex justify-between">
-                                    <span className="font-medium">Plan</span>
+                                    <span className="font-medium">Phone</span>
+                                    <span>{form.phone_number}</span>
+                                </div>
+                                <div className="flex justify-between">
+                                    <span className="font-medium">Role</span>
                                     <span className="capitalize">
-                                        {form.plan}
+                                        {form.role}
                                     </span>
                                 </div>
                                 <div className="flex justify-between">
-                                    <span className="font-medium">Expiry</span>
-                                    <span>{form.subscription_expires}</span>
+                                    <span className="font-medium">
+                                        Specialty
+                                    </span>
+                                    <span>{form.specialty || "N/A"}</span>
+                                </div>
+                                <div className="flex justify-between">
+                                    <span className="font-medium">
+                                        License Number
+                                    </span>
+                                    <span>{form.license_number || "N/A"}</span>
+                                </div>
+                                <div className="flex justify-between">
+                                    <span className="font-medium">Plan</span>
+                                    <span>{form.plan || "N/A"}</span>
+                                </div>
+                                <div className="flex justify-between">
+                                    <span className="font-medium">
+                                        Expiry Date
+                                    </span>
+                                    <span>
+                                        {form.subscription_expires || "N/A"}
+                                    </span>
                                 </div>
                             </div>
                             {/* Confirm Button */}
@@ -414,4 +459,4 @@ const RegisterFacilityModal = ({ open, onClose }) => {
     )
 }
 
-export default RegisterFacilityModal
+export default RegisterUserModal

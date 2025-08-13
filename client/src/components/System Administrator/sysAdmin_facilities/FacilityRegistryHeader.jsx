@@ -1,5 +1,7 @@
 import React, { memo } from "react"
-import { Button } from "../ui/Button"
+
+// UI Components
+import { Button } from "@/components/ui/Button"
 import { PlusCircle, FileDown, BarChart3 } from "lucide-react"
 
 const FacilityRegistryHeader = memo(

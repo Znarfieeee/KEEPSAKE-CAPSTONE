@@ -12,21 +12,36 @@ import {
 // Adjust lang ang labels sa breadcrumbs base sa url address naka indicate
 const SEGMENT_LABELS = {
     "": "Home",
-    // Role-based dashboard labels
+    // General
+    settings: "Settings",
+    help_support: "Help & Support",
+    qr_scanner: "QR Code Scanner",
+
+    // System Admin
     admin: "Dashboard",
-    facility_admin: "Dashboard",
-    pediapro: "Dashboard",
-    keepsaker: "Dashboard",
-    vital_custodian: "Dashboard",
-    // Feature-specific labels
     facilities: "Facilities Registry",
+    users: "User Management",
     sub_billing: "Subscription & Billing",
     tokinv_system: "Token & Invite System",
     audit_logs: "Audit & Logs",
     api_webhooks: "API & Webhooks",
     system_config: "System Configuration",
     maintenance_mode: "Maintenance Mode",
-    users: "User Management",
+
+    // Facility Admin
+    facility_admin: "Dashboard",
+
+    // Doctor
+    pediapro: "Dashboard",
+    appointments: "Appointments",
+    patient_records: "Patient Records",
+    reports: "Reports",
+
+    // Parent
+    keepsaker: "Dashboard",
+
+    // Nurse || Staff
+    vital_custodian: "Dashboard",
 }
 
 function Breadcrumbs() {

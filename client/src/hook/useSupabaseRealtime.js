@@ -224,7 +224,7 @@ export const useUsersRealtime = ({ onUserChange }) => {
         []
     )
 
-    const fetUserFacilityInfo = useCallback(async userId => {
+    const fetchUserFacilityInfo = useCallback(async userId => {
         try {
             const { data, error } = await supabase
                 .from("facility_users")
