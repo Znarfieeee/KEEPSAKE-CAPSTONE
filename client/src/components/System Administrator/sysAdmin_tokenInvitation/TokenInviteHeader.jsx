@@ -2,29 +2,25 @@ import React from "react"
 import { Button } from "@/components/ui/Button"
 import { PlusCircle, Download, BarChart3 } from "lucide-react"
 
-const UserRegistryHeader = ({ onOpenRegister, onExportCSV, onOpenReports }) => {
+const TokenInviteHeader = ({ onOpenInvite, onExportCSV, onOpenReports }) => {
     return (
         <div className="space-y-4">
-            {/* Header with actions */}
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                <h1 className="text-2xl font-bold text-black">
-                    Registered Users
-                </h1>
-
+                <h1>Token Invitations</h1>
                 <div className="flex flex-wrap gap-3">
                     <Button
-                        onClick={onOpenRegister}
+                        onClick={onOpenInvite}
                         className="bg-primary text-white hover:bg-primary/90">
                         <PlusCircle className="h-4 w-4 mr-2" />
-                        Register New User
+                        Invite user
                     </Button>
 
                     <Button
-                        onClick={onExportCSV}
                         variant="outline"
-                        className="border-gray-200">
-                        <Download className="h-4 w-4 mr-2" />
-                        Export to CSV
+                        onClick={onExportCSV}
+                        className="flex items-center gap-2">
+                        <Download className="h-4 w-4" />
+                        Export CSV
                     </Button>
 
                     <Button
@@ -40,4 +36,4 @@ const UserRegistryHeader = ({ onOpenRegister, onExportCSV, onOpenReports }) => {
     )
 }
 
-export default UserRegistryHeader
+export default TokenInviteHeader

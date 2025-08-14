@@ -1,5 +1,7 @@
 import React from "react"
-import { Search } from "lucide-react"
+
+// UI Components
+import { Search, Calendar } from "lucide-react"
 import {
     Select,
     SelectContent,
@@ -7,43 +9,43 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select"
+import { RangeCalendar } from "@/components/ui/calendar-rac"
+import {
+    Popover,
+    PopoverContent,
+    PopoverTrigger,
+} from "@/components/ui/popover"
+import { Button } from "@/components/ui/button"
 
-const UserFilters = ({
+const TokenFilters = ({
     search,
     onSearchChange,
+    roleFilter,
+    onRoleChange,
     statusFilter,
     onStatusChange,
-    typeFilter,
-    onTypeChange,
-    planFilter,
-    onPlanChange,
+    dateRange,
+    onDateRangeChange,
 }) => {
-    const statusOptions = [
-        { value: "all", label: "All Status" },
-        { value: "active", label: "Active" },
-        { value: "inactive", label: "Inactive" },
-    ]
-
-    const typeOptions = [
-        { value: "all", label: "All Types" },
-        { value: "facility admin", label: "Facility Admin" },
+    const roleOptions = [
+        { value: "all", label: "All Roles" },
+        { value: "facility_admin", label: "Facility Admin" },
         { value: "doctor", label: "Doctor" },
         { value: "nurse", label: "Nurse" },
         { value: "staff", label: "Staff" },
         { value: "parent", label: "Parent" },
     ]
 
-    const planOptions = [
-        { value: "all", label: "All Plans" },
-        { value: "false", label: "Freemium" },
-        { value: "true", label: "Premium" },
+    const statusOptions = [
+        { value: "all", label: "All Status" },
+        { value: "active", label: "Active" },
+        { value: "inactive", label: "Inactive" },
     ]
 
     return (
         <div className="flex justify-between items-center">
-            {/* Search */}
             <div className="relative">
-                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-500" />
+                <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-gray-500 " />
                 <input
                     type="text"
                     placeholder="Search users..."
@@ -53,14 +55,14 @@ const UserFilters = ({
                 />
             </div>
             <div className="flex gap-4">
-                {/* Type Filter */}
+                {/* Filter by Role */}
                 <div>
-                    <Select value={typeFilter} onValueChange={onTypeChange}>
+                    <Select value={roleFilter} onValueChange={onRoleChange}>
                         <SelectTrigger className="w-full bg-white">
                             <SelectValue placeholder="Select user type" />
                         </SelectTrigger>
                         <SelectContent>
-                            {typeOptions.map(option => (
+                            {roleOptions.map(option => (
                                 <SelectItem
                                     key={option.value}
                                     value={option.value}>
@@ -70,12 +72,11 @@ const UserFilters = ({
                         </SelectContent>
                     </Select>
                 </div>
-
-                {/* Status Filter */}
+                {/* Filter by status */}
                 <div>
                     <Select value={statusFilter} onValueChange={onStatusChange}>
                         <SelectTrigger className="w-full bg-white">
-                            <SelectValue />
+                            <SelectValue placeholder="Select user type" />
                         </SelectTrigger>
                         <SelectContent>
                             {statusOptions.map(option => (
@@ -88,27 +89,33 @@ const UserFilters = ({
                         </SelectContent>
                     </Select>
                 </div>
-
-                {/* Plan Filter */}
-                <div>
-                    <Select value={planFilter} onValueChange={onPlanChange}>
-                        <SelectTrigger className="w-full bg-white">
-                            <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                            {planOptions.map(option => (
-                                <SelectItem
-                                    key={option.value}
-                                    value={option.value}>
-                                    {option.label}
-                                </SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
-                </div>
+                {/* Filter by calendar range */}
+                <Popover>
+                    <PopoverTrigger asChild>
+                        <Button
+                            variant="outline"
+                            className="w-[240px] bg-white">
+                            <Calendar className="mr-2 h-4 w-4" />
+                            {dateRange?.from && dateRange?.to ? (
+                                <>
+                                    {dateRange.from.toDateString()} -{" "}
+                                    {dateRange.to.toDateString()}
+                                </>
+                            ) : (
+                                <span>Pick a date range</span>
+                            )}
+                        </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                        <RangeCalendar
+                            value={dateRange}
+                            onChange={onDateRangeChange}
+                        />
+                    </PopoverContent>
+                </Popover>
             </div>
         </div>
     )
 }
 
-export default UserFilters
+export default TokenFilters
