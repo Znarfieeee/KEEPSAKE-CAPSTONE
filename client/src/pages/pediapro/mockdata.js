@@ -1,0 +1,91 @@
+export const mockData = {
+    todaysPatients: [
+        {
+            id: 1,
+            name: "Emily Johnson",
+            time: "09:00",
+            type: "Regular Checkup",
+            status: "Urgent",
+        },
+        {
+            id: 2,
+            name: "Noah Williams",
+            time: "10:30",
+            type: "Follow-up",
+            status: "Check-up",
+        },
+        {
+            id: 3,
+            name: "Sophia Davis",
+            time: "14:00",
+            type: "Consultation",
+            status: "Waiting",
+        },
+        {
+            id: 4,
+            name: "Oliver Brown",
+            time: "15:30",
+            type: "Check-up",
+            status: "Completed",
+        },
+    ],
+    upcomingAppointments: [
+        {
+            id: 1,
+            name: "Emily Johnson",
+            date: "2024-05-10",
+            time: "09:00",
+            type: "Vaccination",
+            status: "Upcoming",
+        },
+        {
+            id: 2,
+            name: "Noah Williams",
+            date: "2024-05-11",
+            time: "10:30",
+            type: "Check-up",
+            status: "Check-up",
+        },
+        {
+            id: 3,
+            name: "Sophia Davis",
+            date: "2024-05-11",
+            time: "13:15",
+            type: "Follow-up",
+            status: "Waiting",
+        },
+        {
+            id: 4,
+            name: "Oliver Brown",
+            date: "2024-05-12",
+            time: "14:00",
+            type: "Consultation",
+            status: "Upcoming",
+        },
+    ],
+    reports: [
+        {
+            name: "Monthly Patient Summary",
+            date: "2024-04-01",
+            author: "Dr. Smith",
+        },
+        {
+            name: "Vaccination Status Report",
+            date: "2024-03-15",
+            author: "Dr. Johnson",
+        },
+        {
+            name: "Growth Chart Analysis",
+            date: "2024-03-28",
+            author: "Dr. Lee",
+        },
+    ],
+    stats: {
+        totalPatients: 127,
+        appointments: 34,
+        vaccinations: 89,
+        vaccinationRate: 87,
+        overdueVaccinations: 19,
+        upcomingVaccines: 13,
+    },
+}

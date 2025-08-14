@@ -7,23 +7,23 @@ import React, {
     Suspense,
     useCallback,
 } from "react"
-import { useAuth } from "../../context/auth"
-import { getUserById } from "../../api/admin/users"
+import { useAuth } from "@/context/auth"
+import { getUserById } from "@/api/admin/users"
 import {
     useUsersRealtime,
     useFacilityUsersRealtime,
     supabase,
-} from "../../hook/useSupabaseRealtime"
+} from "@/hook/useSupabaseRealtime"
 
-// Components
-import UserRegistryHeader from "../../components/System Administrator/sysAdmin_users/UserRegistryHeader"
-import UserFilters from "../../components/System Administrator/sysAdmin_users/UserFilters"
-import UserTable from "../../components/System Administrator/sysAdmin_users/UserTable"
-import Unauthorized from "../../components/Unauthorized"
+// UI Components
+import UserRegistryHeader from "@/components/System Administrator/sysAdmin_users/UserRegistryHeader"
+import UserFilters from "@/components/System Administrator/sysAdmin_users/UserFilters"
+import UserTable from "@/components/System Administrator/sysAdmin_users/UserTable"
+import Unauthorized from "@/components/Unauthorized"
 
 // Helper
-import { showToast } from "../../util/alertHelper"
-import { displayRoles } from "../../util/roleHelper"
+import { showToast } from "@/util/alertHelper"
+import { displayRoles } from "@/util/roleHelper"
 
 // Helper function to format last login time
 const formatLastLogin = lastLoginTime => {

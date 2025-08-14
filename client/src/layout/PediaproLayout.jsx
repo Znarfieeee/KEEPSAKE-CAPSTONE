@@ -1,17 +1,18 @@
-import { BiHelpCircle } from "react-icons/bi"
 import React, { useState } from "react"
 import { Outlet, Link } from "react-router-dom"
 
 // UI Components
+import Breadcrumbs from "@/components/ui/Breadcrumbs"
+import { BiHelpCircle } from "react-icons/bi"
 import { TbBrandGoogleAnalytics } from "react-icons/tb"
 import { RiDashboardLine } from "react-icons/ri"
 import { BiCalendar } from "react-icons/bi"
 import { BiCog } from "react-icons/bi"
 import { TbHeartbeat } from "react-icons/tb"
 import { MdQrCodeScanner } from "react-icons/md"
-import Hamburger from "../components/ui/Hamburger"
-import AccountPlaceholder from "../components/AccountPlaceholder"
-import NotificationPlaceholder from "../components/ui/NotificationPlaceholder"
+import Hamburger from "@/components/ui/Hamburger"
+import AccountPlaceholder from "@/components/AccountPlaceholder"
+import NotificationPlaceholder from "@/components/ui/NotificationPlaceholder"
 
 const mainSideNavLinks = [
     {
@@ -122,6 +123,7 @@ function PediaproLayout() {
             {/* Main Content */}
             <main className="pt-16 min-h-screen">
                 <div className="p-6">
+                    <Breadcrumbs />
                     <Outlet />
                 </div>
             </main>

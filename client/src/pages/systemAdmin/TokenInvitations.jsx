@@ -1,33 +1,37 @@
-import React, { useEffect, useState } from "react"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
-import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from "@/components/ui/select"
-import { Button } from "@/components/ui/Button"
-import { Download } from "lucide-react"
-import InvitationForm from "@/components/System Administrator/sysAdmin_tokenInvitation/InvitationForm"
-import InvitationTable from "@/components/System Administrator/sysAdmin_tokenInvitation/InvitationTable"
-import { showToast } from "@/util/alertHelper"
+import React, {
+    useEffect,
+    useState,
+    useMemo,
+    lazy,
+    Suspense,
+    useCallback,
+} from "react"
 import { supabase } from "@/lib/supabaseClient"
 import { useAuth } from "@/context/auth"
-// import { v4 as uuidv4 } from "uuid"
+
+// UI Components
+import { TokenInviteHeader } from "@/components/System Administrator/sysAdmin_tokenInvitation"
+import { TokenFilters } from "@/components/System Administrator/sysAdmin_tokenInvitation"
+import InvitationTable from "@/components/System Administrator/sysAdmin_tokenInvitation/InvitationTable"
+
+// Helper
+import { showToast } from "@/util/alertHelper"
+import { displayRoles } from "@/util/roleHelper"
 
 const TokenInvitations = () => {
+    const { user } = useAuth()
     const [invitations, setInvitations] = useState([])
     const [facilities, setFacilities] = useState([])
-    const [isLoading, setIsLoading] = useState(false)
+    const [loading, setLoading] = useState(true)
     const [filters, setFilters] = useState({
         search: "",
         role: "all",
         status: "all",
         facility: "all",
+        dateRange: { from: undefined, to: undefined },
     })
-    const { user } = useAuth()
+
+    const [showInvitation, setShowInvitation] = useState(false)
 
     // Fetch invitations
     const fetchInvitations = async () => {
@@ -140,7 +144,20 @@ const TokenInvitations = () => {
                 return true
             })()
 
-        return matchesSearch && matchesRole && matchesFacility && matchesStatus
+        // Date range filtering
+        const matchesDateRange =
+            !filters.dateRange.from ||
+            !filters.dateRange.to ||
+            (new Date(inv.created_at) >= filters.dateRange.from &&
+                new Date(inv.created_at) <= filters.dateRange.to)
+
+        return (
+            matchesSearch &&
+            matchesRole &&
+            matchesFacility &&
+            matchesStatus &&
+            matchesDateRange
+        )
     })
 
     // Export to CSV
@@ -175,105 +192,49 @@ const TokenInvitations = () => {
         window.URL.revokeObjectURL(url)
     }
 
+    const handleReports = () => {
+        showToast("info", "Showing reports...")
+    }
+
     return (
-        <div className="container mx-auto py-6">
-            <Card>
-                <CardHeader className="flex flex-row items-center justify-between">
-                    <CardTitle>Token Invitations</CardTitle>
-                    <div className="flex gap-4">
-                        <Button
-                            variant="outline"
-                            onClick={handleExport}
-                            className="flex items-center gap-2">
-                            <Download className="h-4 w-4" />
-                            Export CSV
-                        </Button>
-                        <InvitationForm
-                            facilities={facilities}
-                            onCreateInvitation={handleCreateInvitation}
-                            isLoading={isLoading}
-                        />
-                    </div>
-                </CardHeader>
-                <CardContent>
-                    <div className="mb-6 flex flex-wrap gap-4">
-                        <Input
-                            placeholder="Search by email..."
-                            value={filters.search}
-                            onChange={e =>
-                                setFilters(prev => ({
-                                    ...prev,
-                                    search: e.target.value,
-                                }))
-                            }
-                            className="max-w-xs"
-                        />
-                        <Select
-                            value={filters.role}
-                            onValueChange={value =>
-                                setFilters(prev => ({ ...prev, role: value }))
-                            }>
-                            <SelectTrigger className="w-[180px]">
-                                <SelectValue placeholder="Filter by role" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="all">All Roles</SelectItem>
-                                <SelectItem value="facility_admin">
-                                    Facility Admin
-                                </SelectItem>
-                                <SelectItem value="doctor">Doctor</SelectItem>
-                                <SelectItem value="nurse">Nurse</SelectItem>
-                                <SelectItem value="parent">Parent</SelectItem>
-                            </SelectContent>
-                        </Select>
-                        <Select
-                            value={filters.status}
-                            onValueChange={value =>
-                                setFilters(prev => ({ ...prev, status: value }))
-                            }>
-                            <SelectTrigger className="w-[180px]">
-                                <SelectValue placeholder="Filter by status" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="all">All Status</SelectItem>
-                                <SelectItem value="active">Active</SelectItem>
-                                <SelectItem value="expired">Expired</SelectItem>
-                                <SelectItem value="revoked">Revoked</SelectItem>
-                            </SelectContent>
-                        </Select>
-                        <Select
-                            value={filters.facility}
-                            onValueChange={value =>
-                                setFilters(prev => ({
-                                    ...prev,
-                                    facility: value,
-                                }))
-                            }>
-                            <SelectTrigger className="w-[180px]">
-                                <SelectValue placeholder="Filter by facility" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="all">
-                                    All Facilities
-                                </SelectItem>
-                                {facilities.map(facility => (
-                                    <SelectItem
-                                        key={facility.facility_id}
-                                        value={facility.facility_id}>
-                                        {facility.facility_name}
-                                    </SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
-                    </div>
-                    <InvitationTable
-                        invitations={filteredInvitations}
-                        facilities={facilities}
-                        onRevokeInvitation={handleRevokeInvitation}
-                        isLoading={isLoading}
-                    />
-                </CardContent>
-            </Card>
+        <div className="p-6 px-20 space-y-6">
+            <TokenInviteHeader
+                onOpenInvite={() => setShowInvitation(true)}
+                onExportCSV={handleExport}
+                onOpenReports={handleReports}
+                onRefresh={fetchInvitations}
+            />
+            <TokenFilters
+                search={search}
+                onSearchChange={setSearch}
+                roleChange={roleFilter}
+                onRoleChange={val => {
+                    setRoleFilter(val)
+                    setPage(1)
+                }}
+                statusFilter={statusFilter}
+                onStatusChange={val => {
+                    setStatusFilter(val)
+                    setPage(1)
+                }}
+                dateRange={dateFilter}
+                onDateRangeChange={val => {
+                    setDateFilter(val)
+                    setPage(1)
+                }}
+            />
+            <InvitationTable
+                invitations={filteredInvitations}
+                loading={loading}
+                page={page}
+                setPage={setPage}
+                itemsPerPage={itemsPerPage}
+                setItemsPerPage={setItemsPerPage}
+                onView={handleView}
+                onToggleStatus={handleToggleStatus}
+                onRevokeInvitation={handleRevokeInvitation}
+                onDelete={handleDelete}
+            />
         </div>
     )
 }
