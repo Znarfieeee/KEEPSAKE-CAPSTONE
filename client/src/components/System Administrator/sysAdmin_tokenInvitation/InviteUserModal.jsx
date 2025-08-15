@@ -1,5 +1,5 @@
 import React from "react"
-import { Button } from "@/components/ui/Button"
+import { Button } from "@/components/ui/button"
 import {
     Dialog,
     DialogContent,
@@ -7,7 +7,7 @@ import {
     DialogHeader,
     DialogTitle,
     DialogTrigger,
-} from "@/components/ui/Dialog"
+} from "@/components/ui/dialog"
 import {
     Select,
     SelectContent,
@@ -18,7 +18,7 @@ import {
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 
-const InvitationForm = ({ facilities, onCreateInvitation, isLoading }) => {
+const InviteUserModal = ({ facilities, onCreateInvitation, isLoading }) => {
     const [formData, setFormData] = React.useState({
         email: "",
         role: "",
@@ -47,7 +47,6 @@ const InvitationForm = ({ facilities, onCreateInvitation, isLoading }) => {
         setFormData(prev => ({ ...prev, [field]: value }))
     }
 
-    // Calculate minimum date-time for expiry (current time + 1 hour)
     const minDateTime = () => {
         const date = new Date()
         date.setHours(date.getHours() + 1)
@@ -57,19 +56,15 @@ const InvitationForm = ({ facilities, onCreateInvitation, isLoading }) => {
     return (
         <Dialog open={isOpen} onOpenChange={setIsOpen}>
             <DialogTrigger asChild>
-                <Button className="bg-primary text-white hover:bg-primary/90">
-                    Create New Invitation
-                </Button>
+                <Button>Register New User</Button>
             </DialogTrigger>
-            <DialogContent className="sm:max-w-[425px]">
+            <DialogContent className="sm:max-w-xl">
                 <DialogHeader>
-                    <DialogTitle>Create Invitation</DialogTitle>
-                    {/* <DialogDescription>
-                        Create a new invitation token for a user. The token will
-                        be valid until the specified expiry date.
-                    </DialogDescription> */}
+                    <DialogTitle>Register New User</DialogTitle>
                 </DialogHeader>
+
                 <form onSubmit={handleSubmit} className="space-y-4">
+                    {/* Email */}
                     <div className="space-y-2">
                         <Label htmlFor="email">Email</Label>
                         <Input
@@ -83,9 +78,12 @@ const InvitationForm = ({ facilities, onCreateInvitation, isLoading }) => {
                             required
                         />
                     </div>
+
+                    {/* Role */}
                     <div className="space-y-2">
                         <Label htmlFor="role">Role</Label>
                         <Select
+                            value={formData.role}
                             onValueChange={value => handleChange("role", value)}
                             required>
                             <SelectTrigger>
@@ -101,10 +99,13 @@ const InvitationForm = ({ facilities, onCreateInvitation, isLoading }) => {
                             </SelectContent>
                         </Select>
                     </div>
+
+                    {/* Facility (only if role != parent) */}
                     {formData.role && formData.role !== "parent" && (
                         <div className="space-y-2">
                             <Label htmlFor="facility">Facility</Label>
                             <Select
+                                value={formData.facility_id}
                                 onValueChange={value =>
                                     handleChange("facility_id", value)
                                 }
@@ -124,6 +125,8 @@ const InvitationForm = ({ facilities, onCreateInvitation, isLoading }) => {
                             </Select>
                         </div>
                     )}
+
+                    {/* Expiration Date */}
                     <div className="space-y-2">
                         <Label htmlFor="expires_at">Expires At</Label>
                         <Input
@@ -137,6 +140,7 @@ const InvitationForm = ({ facilities, onCreateInvitation, isLoading }) => {
                             required
                         />
                     </div>
+
                     <DialogFooter>
                         <Button type="submit" disabled={isLoading}>
                             {isLoading ? "Creating..." : "Create Invitation"}
@@ -148,4 +152,4 @@ const InvitationForm = ({ facilities, onCreateInvitation, isLoading }) => {
     )
 }
 
-export default InvitationForm
+export default InviteUserModal
