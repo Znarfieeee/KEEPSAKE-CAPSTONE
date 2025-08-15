@@ -11,6 +11,12 @@ import {
 } from "@/components/ui/select"
 import { RangeCalendar } from "@/components/ui/calendar-rac"
 import {
+    getLocalTimeZone,
+    today,
+    parseDate,
+    CalendarDate,
+} from "@internationalized/date"
+import {
     Popover,
     PopoverContent,
     PopoverTrigger,
@@ -58,7 +64,7 @@ const TokenFilters = ({
                 {/* Filter by Role */}
                 <div>
                     <Select value={roleFilter} onValueChange={onRoleChange}>
-                        <SelectTrigger className="w-full bg-white">
+                        <SelectTrigger className="w-[145px] bg-white">
                             <SelectValue placeholder="Select user type" />
                         </SelectTrigger>
                         <SelectContent>
@@ -75,7 +81,7 @@ const TokenFilters = ({
                 {/* Filter by status */}
                 <div>
                     <Select value={statusFilter} onValueChange={onStatusChange}>
-                        <SelectTrigger className="w-full bg-white">
+                        <SelectTrigger className="w-[115px] bg-white">
                             <SelectValue placeholder="Select user type" />
                         </SelectTrigger>
                         <SelectContent>
@@ -92,25 +98,89 @@ const TokenFilters = ({
                 {/* Filter by calendar range */}
                 <Popover>
                     <PopoverTrigger asChild>
-                        <Button
-                            variant="outline"
-                            className="w-[240px] bg-white">
+                        <Button variant="outline" className="border-gray-200">
                             <Calendar className="mr-2 h-4 w-4" />
-                            {dateRange?.from && dateRange?.to ? (
+                            {dateRange?.from ? (
                                 <>
-                                    {dateRange.from.toDateString()} -{" "}
-                                    {dateRange.to.toDateString()}
+                                    {new Date(
+                                        dateRange.from
+                                    ).toLocaleDateString()}
+                                    {dateRange?.to &&
+                                        ` - ${new Date(
+                                            dateRange.to
+                                        ).toLocaleDateString()}`}
                                 </>
                             ) : (
                                 <span>Pick a date range</span>
                             )}
                         </Button>
                     </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0" align="start">
-                        <RangeCalendar
-                            value={dateRange}
-                            onChange={onDateRangeChange}
-                        />
+                    <PopoverContent className="w-auto p-0" align="end">
+                        <div className="flex flex-col gap-3 p-3">
+                            <RangeCalendar
+                                key={
+                                    dateRange?.from || dateRange?.to
+                                        ? "with-date"
+                                        : "no-date"
+                                }
+                                value={
+                                    dateRange?.from &&
+                                    !isNaN(new Date(dateRange.from))
+                                        ? {
+                                              start: parseDate(
+                                                  new Date(dateRange.from)
+                                                      .toISOString()
+                                                      .slice(0, 10)
+                                              ),
+                                              end:
+                                                  dateRange?.to &&
+                                                  !isNaN(new Date(dateRange.to))
+                                                      ? parseDate(
+                                                            new Date(
+                                                                dateRange.to
+                                                            )
+                                                                .toISOString()
+                                                                .slice(0, 10)
+                                                        )
+                                                      : undefined,
+                                          }
+                                        : undefined
+                                }
+                                onChange={range => {
+                                    if (range) {
+                                        onDateRangeChange({
+                                            from: range.start
+                                                ? new Date(
+                                                      range.start.toString()
+                                                  )
+                                                : undefined,
+                                            to: range.end
+                                                ? new Date(range.end.toString())
+                                                : undefined,
+                                        })
+                                    } else {
+                                        onDateRangeChange({
+                                            from: undefined,
+                                            to: undefined,
+                                        })
+                                    }
+                                }}
+                                className="rounded-md"
+                            />
+                            <div className="flex justify-end px-3 pb-3">
+                                <Button
+                                    className="text-sm bg-red-300 hover:bg-red-400"
+                                    onClick={() => {
+                                        // Clear state → clears calendar selection too
+                                        onDateRangeChange({
+                                            from: undefined,
+                                            to: undefined,
+                                        })
+                                    }}>
+                                    Clear
+                                </Button>
+                            </div>
+                        </div>
                     </PopoverContent>
                 </Popover>
             </div>

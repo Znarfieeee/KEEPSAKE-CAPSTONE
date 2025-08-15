@@ -1,5 +1,5 @@
-import React from "react"
-import { Button } from "@/components/ui/Button"
+import React, { useState } from "react"
+import { Button } from "@/components/ui/button"
 import {
     Dialog,
     DialogContent,
@@ -7,7 +7,7 @@ import {
     DialogHeader,
     DialogTitle,
     DialogTrigger,
-} from "@/components/ui/Dialog"
+} from "@/components/ui/dialog"
 import {
     Select,
     SelectContent,
@@ -17,27 +17,32 @@ import {
 } from "@/components/ui/select"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import SendButton from "../../ui/SendButton"
 
-const InvitationForm = ({ facilities, onCreateInvitation, isLoading }) => {
-    const [formData, setFormData] = React.useState({
+const InviteUserModal = ({ facilities, onCreateInvitation, isLoading }) => {
+    const [formSuccess, setFormSuccess] = useState(false)
+    const [isOpen, setIsOpen] = useState(false)
+    const [formData, setFormData] = useState({
         email: "",
         role: "",
         facility_id: "",
-        expires_at: "",
     })
-    const [isOpen, setIsOpen] = React.useState(false)
 
     const handleSubmit = async e => {
         e.preventDefault()
+        setFormSuccess(false)
         try {
             await onCreateInvitation(formData)
+            setFormSuccess(true)
             setFormData({
                 email: "",
                 role: "",
                 facility_id: "",
-                expires_at: "",
             })
-            setIsOpen(false)
+            setTimeout(() => {
+                setFormSuccess(false)
+                setIsOpen(false)
+            }, 1000)
         } catch (error) {
             console.error("Error creating invitation:", error)
         }
@@ -47,29 +52,18 @@ const InvitationForm = ({ facilities, onCreateInvitation, isLoading }) => {
         setFormData(prev => ({ ...prev, [field]: value }))
     }
 
-    // Calculate minimum date-time for expiry (current time + 1 hour)
-    const minDateTime = () => {
-        const date = new Date()
-        date.setHours(date.getHours() + 1)
-        return date.toISOString().slice(0, 16)
-    }
-
     return (
         <Dialog open={isOpen} onOpenChange={setIsOpen}>
             <DialogTrigger asChild>
-                <Button className="bg-primary text-white hover:bg-primary/90">
-                    Create New Invitation
-                </Button>
+                <Button>Register New User</Button>
             </DialogTrigger>
-            <DialogContent className="sm:max-w-[425px]">
+            <DialogContent className="sm:max-w-xl">
                 <DialogHeader>
-                    <DialogTitle>Create Invitation</DialogTitle>
-                    {/* <DialogDescription>
-                        Create a new invitation token for a user. The token will
-                        be valid until the specified expiry date.
-                    </DialogDescription> */}
+                    <DialogTitle>Register New User</DialogTitle>
                 </DialogHeader>
+
                 <form onSubmit={handleSubmit} className="space-y-4">
+                    {/* Email */}
                     <div className="space-y-2">
                         <Label htmlFor="email">Email</Label>
                         <Input
@@ -83,9 +77,12 @@ const InvitationForm = ({ facilities, onCreateInvitation, isLoading }) => {
                             required
                         />
                     </div>
+
+                    {/* Role */}
                     <div className="space-y-2">
                         <Label htmlFor="role">Role</Label>
                         <Select
+                            value={formData.role}
                             onValueChange={value => handleChange("role", value)}
                             required>
                             <SelectTrigger>
@@ -101,10 +98,13 @@ const InvitationForm = ({ facilities, onCreateInvitation, isLoading }) => {
                             </SelectContent>
                         </Select>
                     </div>
+
+                    {/* Facility (only if role != parent) */}
                     {formData.role && formData.role !== "parent" && (
                         <div className="space-y-2">
                             <Label htmlFor="facility">Facility</Label>
                             <Select
+                                value={formData.facility_id}
                                 onValueChange={value =>
                                     handleChange("facility_id", value)
                                 }
@@ -124,23 +124,11 @@ const InvitationForm = ({ facilities, onCreateInvitation, isLoading }) => {
                             </Select>
                         </div>
                     )}
-                    <div className="space-y-2">
-                        <Label htmlFor="expires_at">Expires At</Label>
-                        <Input
-                            id="expires_at"
-                            type="datetime-local"
-                            min={minDateTime()}
-                            value={formData.expires_at}
-                            onChange={e =>
-                                handleChange("expires_at", e.target.value)
-                            }
-                            required
+                    <DialogFooter className="flex justify-end">
+                        <SendButton
+                            isLoading={isLoading}
+                            isSuccess={formSuccess}
                         />
-                    </div>
-                    <DialogFooter>
-                        <Button type="submit" disabled={isLoading}>
-                            {isLoading ? "Creating..." : "Create Invitation"}
-                        </Button>
                     </DialogFooter>
                 </form>
             </DialogContent>
@@ -148,4 +136,4 @@ const InvitationForm = ({ facilities, onCreateInvitation, isLoading }) => {
     )
 }
 
-export default InvitationForm
+export default InviteUserModal
