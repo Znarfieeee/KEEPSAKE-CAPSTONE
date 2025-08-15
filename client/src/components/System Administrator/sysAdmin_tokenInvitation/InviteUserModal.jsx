@@ -1,4 +1,4 @@
-import React from "react"
+import React, { useState } from "react"
 import { Button } from "@/components/ui/button"
 import {
     Dialog,
@@ -17,27 +17,32 @@ import {
 } from "@/components/ui/select"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import SendButton from "../../ui/SendButton"
 
 const InviteUserModal = ({ facilities, onCreateInvitation, isLoading }) => {
-    const [formData, setFormData] = React.useState({
+    const [formSuccess, setFormSuccess] = useState(false)
+    const [isOpen, setIsOpen] = useState(false)
+    const [formData, setFormData] = useState({
         email: "",
         role: "",
         facility_id: "",
-        expires_at: "",
     })
-    const [isOpen, setIsOpen] = React.useState(false)
 
     const handleSubmit = async e => {
         e.preventDefault()
+        setFormSuccess(false)
         try {
             await onCreateInvitation(formData)
+            setFormSuccess(true)
             setFormData({
                 email: "",
                 role: "",
                 facility_id: "",
-                expires_at: "",
             })
-            setIsOpen(false)
+            setTimeout(() => {
+                setFormSuccess(false)
+                setIsOpen(false)
+            }, 1000)
         } catch (error) {
             console.error("Error creating invitation:", error)
         }
@@ -45,12 +50,6 @@ const InviteUserModal = ({ facilities, onCreateInvitation, isLoading }) => {
 
     const handleChange = (field, value) => {
         setFormData(prev => ({ ...prev, [field]: value }))
-    }
-
-    const minDateTime = () => {
-        const date = new Date()
-        date.setHours(date.getHours() + 1)
-        return date.toISOString().slice(0, 16)
     }
 
     return (
@@ -125,26 +124,11 @@ const InviteUserModal = ({ facilities, onCreateInvitation, isLoading }) => {
                             </Select>
                         </div>
                     )}
-
-                    {/* Expiration Date */}
-                    <div className="space-y-2">
-                        <Label htmlFor="expires_at">Expires At</Label>
-                        <Input
-                            id="expires_at"
-                            type="datetime-local"
-                            min={minDateTime()}
-                            value={formData.expires_at}
-                            onChange={e =>
-                                handleChange("expires_at", e.target.value)
-                            }
-                            required
+                    <DialogFooter className="flex justify-end">
+                        <SendButton
+                            isLoading={isLoading}
+                            isSuccess={formSuccess}
                         />
-                    </div>
-
-                    <DialogFooter>
-                        <Button type="submit" disabled={isLoading}>
-                            {isLoading ? "Creating..." : "Create Invitation"}
-                        </Button>
                     </DialogFooter>
                 </form>
             </DialogContent>
