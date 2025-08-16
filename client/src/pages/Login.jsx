@@ -64,10 +64,6 @@ const Login = () => {
         }
     }
 
-    function fpBtn() {
-        alert("Forget password is clicked!")
-    }
-
     return (
         <>
             <div className="absolute top-8 left-8 z-10">
@@ -117,8 +113,8 @@ const Login = () => {
                             <div className="flex flex-row justify-between items-center">
                                 <label htmlFor="password">Password</label>
                                 <Link
+                                    to="/forgot-password"
                                     className="text-primary hover:text-secondary text-sm transition duration-300 ease-in-out"
-                                    onClick={fpBtn}
                                     tabIndex="-1">
                                     Forget password?
                                 </Link>

@@ -10,6 +10,7 @@ import NotFound from "@/pages/NotFound"
 import AuthSuccess from "@/pages/AuthSuccess"
 import AuthError from "@/pages/AuthError"
 import QrScanner from "@/pages/QrScanner"
+import ForgotPassword from "@/pages/ForgotPassword"
 
 // Admin
 import AdminDashboard from "@/pages/systemAdmin/AdminDashboard"
@@ -59,6 +60,10 @@ function App() {
                 {
                     path: "/login",
                     element: <Login />,
+                },
+                {
+                    path: "/forgot-password",
+                    element: <ForgotPassword />,
                 },
                 {
                     path: "/auth/success",
