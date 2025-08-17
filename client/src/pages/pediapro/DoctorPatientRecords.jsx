@@ -8,7 +8,8 @@ function DoctorPatientRecords() {
     // State for filters
     const [search, setSearch] = useState("")
     const [statusFilter, setStatusFilter] = useState("all")
-    const [categoryFilter, setCategoryFilter] = useState("all")
+    const [sexFilter, setSexFilter] = useState("all")
+    const [ageFilter, setAgeFilter] = useState(null)
     const [dateRange, setDateRange] = useState(null)
 
     // Pagination state
@@ -22,9 +23,11 @@ function DoctorPatientRecords() {
     const [records] = useState([
         {
             id: 1,
-            patientName: "John Doe",
-            category: "General Checkup",
-            date: "2025-08-15",
+            firstname: "John",
+            lastname: "Doe",
+            sex: "Male",
+            age: "8",
+            birthdate: "2017-08-15",
             doctor: "Dr. Smith",
             status: "active",
         },
@@ -45,41 +48,59 @@ function DoctorPatientRecords() {
     }
 
     const handleView = record => {
-        showToast("info", "Viewing record: " + record.patientName)
+        showToast(
+            "info",
+            "Viewing record: " + record.firstname + " " + record.lastname
+        )
     }
 
     const handleEdit = record => {
-        showToast("info", "Editing record: " + record.patientName)
+        showToast(
+            "info",
+            "Editing record: " + record.firstname + " " + record.lastname
+        )
     }
 
     const handleArchive = record => {
-        showToast("info", "Archiving record: " + record.patientName)
+        showToast(
+            "info",
+            "Archiving record: " + record.firstname + " " + record.lastname
+        )
     }
 
     const handleDelete = record => {
-        showToast("info", "Deleting record: " + record.patientName)
+        showToast(
+            "info",
+            "Deleting record: " + record.firstname + " " + record.lastname
+        )
     }
 
     // Filter records
     const filteredRecords = records.filter(record => {
-        const matchesSearch = record.patientName
+        const matchesSearch = (record.firstname + " " + record.lastname)
             .toLowerCase()
             .includes(search.toLowerCase())
         const matchesStatus =
             statusFilter === "all" || record.status === statusFilter
-        const matchesCategory =
-            categoryFilter === "all" || record.category === categoryFilter
+        const matchesSex = sexFilter === "all" || record.sex === sexFilter
+        const matchesAge = !ageFilter || record.age === ageFilter.toString()
         const matchesDate =
             !dateRange?.from ||
             !dateRange?.to ||
-            (new Date(record.date) >= new Date(dateRange.from) &&
-                new Date(record.date) <= new Date(dateRange.to))
+            (new Date(record.birthdate) >= new Date(dateRange.from) &&
+                new Date(record.birthdate) <= new Date(dateRange.to))
 
-        return matchesSearch && matchesStatus && matchesCategory && matchesDate
+        return (
+            matchesSearch &&
+            matchesStatus &&
+            matchesSex &&
+            matchesAge &&
+            matchesDate
+        )
     })
 
     return (
-        <div className="p-6 space-y-6 max-w-[1200px] mx-auto">
+        <div className="p-6 px-20 space-y-6">
             <PatientRecordsHeader
                 onNewRecord={handleNewRecord}
                 onExportCSV={handleExportCSV}
@@ -91,8 +112,10 @@ function DoctorPatientRecords() {
                 onSearchChange={setSearch}
                 statusFilter={statusFilter}
                 onStatusChange={setStatusFilter}
-                categoryFilter={categoryFilter}
-                onCategoryChange={setCategoryFilter}
+                sexFilter={sexFilter}
+                onSexChange={setSexFilter}
+                ageFilter={ageFilter}
+                onAgeChange={setAgeFilter}
                 dateRange={dateRange}
                 onDateRangeChange={setDateRange}
             />

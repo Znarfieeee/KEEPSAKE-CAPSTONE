@@ -1,14 +1,17 @@
 import React from "react"
-import {
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow,
-} from "@/components/ui/table"
+
+// UI Components
 import { Button } from "@/components/ui/button"
-import { MoreVertical, Eye, FileEdit, Archive, Trash2 } from "lucide-react"
+import {
+    MoreVertical,
+    Eye,
+    FileEdit,
+    Archive,
+    Trash2,
+    ArrowRightLeft,
+    UserPen,
+    Ban,
+} from "lucide-react"
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -23,12 +26,16 @@ import {
     PaginationPrevious,
 } from "@/components/ui/pagination"
 
+// Helper
+import { TooltipHelper } from "@/util/TooltipHelper"
+import { NoResults } from "@/components/ui/no-results"
+
 const PatientRecordsTable = ({
     records = [],
     page,
     setPage,
     itemsPerPage,
-    setItemsPerPage,
+    // setItemsPerPage,
     onView,
     onEdit,
     onArchive,
@@ -42,97 +49,110 @@ const PatientRecordsTable = ({
     const handlePrev = () => setPage(p => Math.max(1, p - 1))
     const handleNext = () => setPage(p => Math.min(totalPages, p + 1))
 
-    if (loading) {
-        return <div>Loading...</div>
-    }
-
     return (
-        <div className="space-y-4">
-            <div className="rounded-md border">
-                <Table>
-                    <TableHeader>
-                        <TableRow>
-                            <TableHead className="w-[150px]">
-                                Patient Name
-                            </TableHead>
-                            <TableHead className="w-[100px]">
-                                Category
-                            </TableHead>
-                            <TableHead className="w-[100px]">Date</TableHead>
-                            <TableHead className="w-[100px]">Doctor</TableHead>
-                            <TableHead className="w-[100px]">Status</TableHead>
-                            <TableHead className="w-[100px] text-right">
-                                Actions
-                            </TableHead>
-                        </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                        {currentData.map(record => (
-                            <TableRow key={record.id}>
-                                <TableCell className="font-medium">
-                                    {record.patientName}
-                                </TableCell>
-                                <TableCell>{record.category}</TableCell>
-                                <TableCell>
-                                    {new Date(record.date).toLocaleDateString()}
-                                </TableCell>
-                                <TableCell>{record.doctor}</TableCell>
-                                <TableCell>
-                                    <span
-                                        className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-medium ${
-                                            record.status === "active"
-                                                ? "bg-green-50 text-green-700"
-                                                : "bg-gray-100 text-gray-700"
-                                        }`}>
-                                        {record.status}
-                                    </span>
-                                </TableCell>
-                                <TableCell className="text-right">
-                                    <DropdownMenu>
-                                        <DropdownMenuTrigger asChild>
+        <div className="w-full overflow-x-auto">
+            <table className="w-full text-sm">
+                <thead className="border-b border-gray-300 text-xs uppercase text-muted-foreground">
+                    <tr className="text-left">
+                        <th className="py-3 px-2">Name</th>
+                        <th className="py-3 px-2">Sex</th>
+                        <th className="py-3 px-2">Age</th>
+                        <th className="py-3 px-2">Doctor</th>
+                        <th className="py-3 px-2">Birthdate</th>
+                        <th className="py-3 px-2">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {loading ? (
+                        Array.from({ length: itemsPerPage }).map((_, idx) => (
+                            <tr
+                                key={idx}
+                                className="border-b last:border-none animate-pulse">
+                                {Array.from({ length: 8 }).map((__, cIdx) => (
+                                    <td
+                                        key={cIdx}
+                                        className="p-2 whitespace-nowrap">
+                                        <div className="h-4 bg-gray-300 rounded w-full" />
+                                    </td>
+                                ))}
+                            </tr>
+                        ))
+                    ) : currentData.length === 0 ? (
+                        <NoResults
+                            message="No records found"
+                            suggestion="Try adjusting your search or filter criteria"
+                        />
+                    ) : (
+                        currentData.map(user => (
+                            <tr
+                                key={user.id}
+                                className="border-b border-gray-200 last:border-none">
+                                <td className="p-2 whitespace-nowrap">
+                                    {`${user.firstname} ${user.lastname}`}
+                                </td>
+                                <td className="p-2 whitespace-nowrap">
+                                    {user.sex}
+                                </td>
+                                <td className="p-2 whitespace-nowrap capitalize">
+                                    {user.age}
+                                </td>
+                                <td className="p-2 whitespace-nowrap">
+                                    {user.doctor}
+                                </td>
+                                <td className="p-2 whitespace-nowrap">
+                                    {user.birthdate}
+                                </td>
+                                <td className="p-2 whitespace-nowrap">
+                                    <div className="flex gap-1">
+                                        <TooltipHelper content="View Details">
                                             <Button
                                                 variant="ghost"
-                                                className="h-8 w-8 p-0">
-                                                <MoreVertical className="h-4 w-4" />
+                                                size="icon"
+                                                className="hover:text-blue-600 hover:bg-blue-100"
+                                                onClick={() => onView(user)}>
+                                                <Eye className="size-4" />
                                             </Button>
-                                        </DropdownMenuTrigger>
-                                        <DropdownMenuContent align="end">
-                                            <DropdownMenuItem
-                                                onClick={() => onView(record)}>
-                                                <Eye className="mr-2 h-4 w-4" />
-                                                View
-                                            </DropdownMenuItem>
-                                            <DropdownMenuItem
-                                                onClick={() => onEdit(record)}>
-                                                <FileEdit className="mr-2 h-4 w-4" />
-                                                Edit
-                                            </DropdownMenuItem>
-                                            <DropdownMenuItem
-                                                onClick={() =>
-                                                    onArchive(record)
-                                                }>
-                                                <Archive className="mr-2 h-4 w-4" />
-                                                Archive
-                                            </DropdownMenuItem>
-                                            <DropdownMenuItem
-                                                className="text-red-600"
-                                                onClick={() =>
-                                                    onDelete(record)
-                                                }>
-                                                <Trash2 className="mr-2 h-4 w-4" />
-                                                Delete
-                                            </DropdownMenuItem>
-                                        </DropdownMenuContent>
-                                    </DropdownMenu>
-                                </TableCell>
-                            </TableRow>
-                        ))}
-                    </TableBody>
-                </Table>
-            </div>
+                                        </TooltipHelper>
+
+                                        <TooltipHelper content="Archive">
+                                            <Button
+                                                variant="ghost"
+                                                size="icon"
+                                                className="hover:text-yellow-600 hover:bg-yellow-100"
+                                                onClick={() => onArchive(user)}>
+                                                <Archive className="size-4" />
+                                            </Button>
+                                        </TooltipHelper>
+
+                                        <TooltipHelper content="Edit">
+                                            <Button
+                                                variant="ghost"
+                                                size="icon"
+                                                className="hover:text-green-600 hover:bg-green-100"
+                                                onClick={() => onEdit(user)}>
+                                                <UserPen className="size-4" />
+                                            </Button>
+                                        </TooltipHelper>
+
+                                        <TooltipHelper content="Delete User">
+                                            <Button
+                                                variant="ghost"
+                                                size="icon"
+                                                className="hover:text-red-600 hover:bg-red-100"
+                                                onClick={() => onDelete(user)}>
+                                                <Trash2 className="size-4" />
+                                            </Button>
+                                        </TooltipHelper>
+                                    </div>
+                                </td>
+                            </tr>
+                        ))
+                    )}
+                </tbody>
+            </table>
 
             {/* Pagination */}
-            <div className="flex items-center justify-between">
+            <div className="w-full flex items-center justify-between">
                 <div className="text-sm text-gray-500">
                     Showing {startIdx + 1} to{" "}
                     {Math.min(startIdx + itemsPerPage, records.length)} of{" "}
@@ -140,15 +160,19 @@ const PatientRecordsTable = ({
                 </div>
                 <Pagination>
                     <PaginationContent>
-                        <PaginationItem>
-                            <PaginationPrevious onClick={handlePrev} />
-                        </PaginationItem>
+                        <TooltipHelper content="Previous">
+                            <PaginationItem>
+                                <PaginationPrevious onClick={handlePrev} />
+                            </PaginationItem>
+                        </TooltipHelper>
                         <PaginationItem>
                             Page {page} of {totalPages}
                         </PaginationItem>
-                        <PaginationItem>
-                            <PaginationNext onClick={handleNext} />
-                        </PaginationItem>
+                        <TooltipHelper content="Next">
+                            <PaginationItem>
+                                <PaginationNext onClick={handleNext} />
+                            </PaginationItem>
+                        </TooltipHelper>
                     </PaginationContent>
                 </Pagination>
             </div>

@@ -1,12 +1,15 @@
 import * as React from "react"
+
+// UI Components
 import {
     ChevronLeftIcon,
     ChevronRightIcon,
     MoreHorizontalIcon,
 } from "lucide-react"
-
-import { cn } from "@/lib/utils"
 import { buttonVariants } from "@/components/ui/button"
+
+// Helper
+import { cn } from "@/lib/utils"
 
 function Pagination({ className, ...props }) {
     return (
@@ -14,7 +17,7 @@ function Pagination({ className, ...props }) {
             role="navigation"
             aria-label="pagination"
             data-slot="pagination"
-            className={cn("mx-auto flex w-full justify-center", className)}
+            className={cn("text-sm text-black", className)}
             {...props}
         />
     )
@@ -60,7 +63,6 @@ function PaginationPrevious({ className, ...props }) {
             className={cn("gap-1 px-2.5 sm:pe-4", className)}
             {...props}>
             <ChevronLeftIcon size={16} />
-            <span>Previous</span>
         </PaginationLink>
     )
 }
@@ -72,7 +74,6 @@ function PaginationNext({ className, ...props }) {
             size="default"
             className={cn("gap-1 px-2.5 sm:ps-4", className)}
             {...props}>
-            <span>Next</span>
             <ChevronRightIcon size={16} />
         </PaginationLink>
     )
