@@ -1,4 +1,4 @@
-import React, { useState } from "react"
+import React, { useState, useRef, useEffect } from "react"
 import { Outlet, Link } from "react-router-dom"
 
 // UI Components
@@ -57,7 +57,32 @@ const systemSideNavLinks = [
 
 function PediaproLayout() {
     const [drawerOpen, setDrawerOpen] = useState(false)
+    const sidebarRef = useRef(null)
+    const hamburgerRef = useRef(null)
+
     const toggleDrawer = () => setDrawerOpen(open => !open)
+
+    useEffect(() => {
+        function handleClickOutside(event) {
+            // If clicking the sidebar or hamburger button, do nothing
+            if (
+                sidebarRef.current?.contains(event.target) ||
+                hamburgerRef.current?.contains(event.target)
+            ) {
+                return
+            }
+
+            // If drawer is open and clicking outside, close it
+            if (drawerOpen) {
+                setDrawerOpen(false)
+            }
+        }
+
+        document.addEventListener("mousedown", handleClickOutside)
+        return () => {
+            document.removeEventListener("mousedown", handleClickOutside)
+        }
+    }, [drawerOpen])
 
     return (
         <div className="min-h-screen bg-gray-50">
@@ -65,11 +90,13 @@ function PediaproLayout() {
             <header className="fixed top-0 left-0 right-0 h-16 bg-white shadow-sm z-50">
                 <div className="flex justify-between items-center h-full px-4 md:px-6">
                     <div className="flex items-center gap-4">
-                        <Hamburger
-                            open={drawerOpen}
-                            toggle={toggleDrawer}
-                            className="text-gray-700"
-                        />
+                        <div ref={hamburgerRef}>
+                            <Hamburger
+                                open={drawerOpen}
+                                toggle={toggleDrawer}
+                                className="text-gray-700"
+                            />
+                        </div>
                         <img
                             src="/KEEPSAKE.png"
                             alt="KEEPSAKE smart beginnings"
@@ -85,6 +112,7 @@ function PediaproLayout() {
 
             {/* Sidebar */}
             <aside
+                ref={sidebarRef}
                 className={`fixed top-16 left-0 h-[calc(100vh-4rem)] w-64 text-black bg-secondary/80 backdrop-blur-sm z-50 shadow-lg transition-transform duration-400 ease-in-out transform ${
                     drawerOpen ? "translate-x-0" : "-translate-x-full"
                 }`}>

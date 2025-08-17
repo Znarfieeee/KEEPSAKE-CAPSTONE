@@ -20,7 +20,7 @@ const SEGMENT_LABELS = {
     // System Admin
     admin: "Dashboard",
     facilities: "Facilities Registry",
-    users: "User Management",
+    users: "User Registry",
     sub_billing: "Subscription & Billing",
     tokinv_system: "Token & Invite System",
     audit_logs: "Audit & Logs",
