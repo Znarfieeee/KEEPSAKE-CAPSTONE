@@ -9,6 +9,7 @@
         "keepsaker",
         "lastname",
         "levelname",
+        "patrecord",
         "pediapro",
         "setex",
         "supabase",
