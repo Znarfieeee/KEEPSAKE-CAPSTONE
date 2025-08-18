@@ -70,7 +70,9 @@ def require_role(*required_roles: str):
             user_role = (getattr(request, "current_user", {}) or {}).get("role", "").lower()
 
             # Always allow admins
-            if user_role == "admin" or user_role in normalized_required:
+            # if user_role == "admin" or user_role in normalized_required:
+            
+            if user_role in normalized_required:
                 return f(*args, **kwargs)
 
             # Unauthorized – log and respond
@@ -81,7 +83,7 @@ def require_role(*required_roles: str):
                 user_role,
                 request.remote_addr,
             )
-            return jsonify({"message": "Insufficient permissions", "status": "error"}), 403
+            return jsonify({"message": "You dont have permission to access this route", "status": "error"}), 403
 
         return decorated
 

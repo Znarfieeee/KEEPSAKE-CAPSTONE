@@ -1,5 +1,6 @@
 {
     "cSpell.words": [
+        "bloodtype",
         "dotenv",
         "firstname",
         "gensalt",
@@ -9,7 +10,9 @@
         "keepsaker",
         "lastname",
         "levelname",
+        "patrecord",
         "pediapro",
+        "postgrest",
         "setex",
         "supabase",
         "vite"
