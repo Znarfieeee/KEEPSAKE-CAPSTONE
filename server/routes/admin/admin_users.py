@@ -100,34 +100,34 @@ def add_user():
         )
         
 """ USE THE SUPABASE REAL-TIME 'GET' METHOD TO GET THE LIST OF FACILITIES """
-# @users_bp.route('/admin/users', methods=['GET'])
-# @require_auth
-# @require_role('admin')
-# def get_all_users():
-#     """Get all users with their roles, status, and facility assignments"""
-#     try:
-#         # Get users data from the database
-#         response = supabase.table('users').select('*, facility_users!facility_users_user_id_fkey(*, healthcare_facilities(facility_name))').neq('role', 'admin').execute()
+@users_bp.route('/admin/users', methods=['GET'])
+@require_auth
+@require_role('admin')
+def get_all_users():
+    """Get all users with their roles, status, and facility assignments"""
+    try:
+        # Get users data from the database
+        response = supabase.table('users').select('*, facility_users!facility_users_user_id_fkey(*, healthcare_facilities(facility_name))').neq('role', 'admin').execute()
         
-#         if getattr(response, 'error', None):
-#             current_app.logger.error(f"Failed to fetch users: {response.error}")
-#             return jsonify({
-#                 "status": "error",
-#                 "message": "Failed to fetch users"
-#             }), 500
+        if getattr(response, 'error', None):
+            current_app.logger.error(f"Failed to fetch users: {response.error}")
+            return jsonify({
+                "status": "error",
+                "message": "Failed to fetch users"
+            }), 500
             
-#         return jsonify({
-#             "status": "success",
-#             "data": response.data,
-#             "count": len(response.data)
-#         }), 200
+        return jsonify({
+            "status": "success",
+            "data": response.data,
+            "count": len(response.data)
+        }), 200
 
-#     except Exception as e:
-#         current_app.logger.error(f"Error fetching users: {str(e)}")
-#         return jsonify({
-#             "status": "error",
-#             "message": f"An error occurred while fetching users: {str(e)}"
-#         }), 500
+    except Exception as e:
+        current_app.logger.error(f"Error fetching users: {str(e)}")
+        return jsonify({
+            "status": "error",
+            "message": f"An error occurred while fetching users: {str(e)}"
+        }), 500
 
 @users_bp.route('/admin/users/<user_id>', methods=['GET'])
 @require_auth

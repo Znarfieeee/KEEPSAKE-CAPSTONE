@@ -253,17 +253,17 @@ def delete_facility(facility_id):
         }), 500
 
 # Assign facility admin to facility
-@facility_bp.route('/admin/<facility_id>/add_facility_admin', methods=['POST'])
+@facility_bp.route('/admin/assign-user-to-facility/<facility_id>', methods=['POST'])
 @require_auth
 @require_role('admin')
-def add_facility_admin(facility_id):
+def assign_user_to_facility(facility_id):
     data = request.json or {}
     current_user = request.current_user
     
     email = data.get('email')
-    role = data.get('role', 'facility_admin')
-    start_date = data.get('start_date') # Optional, default current date naa sa stored procedure
-    end_date = data.get('end_date') # Optional rani, if NULL—means permanent
+    role = data.get('role')
+    start_date = data.get('start_date', datetime.datetime.utcnow().isoformat())
+    end_date = data.get('end_date') # Optional, NULL means permanent
     
     try:
         current_app.logger.info(f"AUDIT: Admin {current_user.get('email')} attempting to assign {email} to facility {facility_id} as {role}")
