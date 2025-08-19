@@ -3,6 +3,7 @@ from utils.access_control import require_auth, require_role
 from config.settings import supabase, supabase_service_role_client
 from postgrest.exceptions import APIError as AuthApiError
 from utils.redis_client import get_redis_client
+from utils.invalidate_cache import invalidate_caches
 import json, datetime
 
 # Create blueprint for patient routes
@@ -11,30 +12,6 @@ redis_client = get_redis_client()
 
 PATIENT_CACHE_KEY = "patient_records:all"
 PATIENT_CACHE_PREFIX = "patient_records:"
-
-def invalidate_patient_caches(facility_id=None):
-    """
-    Smart cache invalidation - like clearing specific drawers in a filing cabinet
-    instead of throwing out the whole cabinet.
-    """
-    try:
-        # Always clear the main facilities list
-        redis_client.delete(PATIENT_CACHE_KEY)
-        
-        if facility_id:
-            # Clear specific facility cache
-            facility_key = f"{PATIENT_CACHE_PREFIX}{facility_id}"
-            redis_client.delete(facility_key)
-            
-            # Clear any related pattern-based caches
-            pattern_keys = redis_client.keys(f"{PATIENT_CACHE_PREFIX}{facility_id}:*")
-            if pattern_keys:
-                redis_client.delete(*pattern_keys)
-                
-        current_app.logger.info(f"Cache invalidated for facility: {facility_id or 'all'}")
-        
-    except Exception as e:
-        current_app.logger.error(f"Cache invalidation failed: {str(e)}")
         
 @patrecord_bp.route('/patient_records', methods=['GET'])
 @require_auth
@@ -110,7 +87,7 @@ def add_patient_record():
                 "details": resp.error.message if resp.error else "Unknown",
             }), 400
         
-        invalidate_patient_caches()
+        invalidate_caches('patient')
         
         return jsonify({
             "status": "success",
@@ -129,4 +106,36 @@ def add_patient_record():
             "status": "error",
             "message": f"Error creating patient: {str(e)}",
         }), 500
+
+# Update patient 
+@patrecord_bp.route('/patient_record/<patient_id>', methods=['PUT'])
+@require_auth
+@require_role('facility_admin', 'doctor')
+def update_user(patient_id):
+    try:
+        data = request.json
         
+        resp = supabase.table('patients').update(data).eq('patient_id', patient_id).execute()
+        
+        if getattr(resp, 'error', None):
+            return jsonify({
+                "status": "error",
+                "message": "Failed to update patient",
+                "details": resp.error.message if resp.error else "Unknown"
+            }), 400
+            
+        invalidate_caches('patient', patient_id)
+        
+        return jsonify({
+            "status": "success",
+            "message": "Patient updated successfully!",
+            "data": resp.data[0] if resp.data else None
+        }), 201
+        
+        
+    except AuthApiError as e:
+        current_app.logger.error(f"AUDIT: Exception on update functionality in patients for {patient_id} with IP ADDRESS {request.remote_addr}: {str(e)}")
+        return jsonify({
+            "status": "error",
+            "message": f"API Error: {str(e)}"
+        }), 500

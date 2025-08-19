@@ -15,7 +15,6 @@ import time
 from functools import lru_cache
 from typing import Any, Dict
 
-import requests
 import jwt
 from jwt import PyJWKClient  # type: ignore
 

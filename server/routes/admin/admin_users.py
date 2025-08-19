@@ -3,8 +3,59 @@ from utils.access_control import require_auth, require_role
 from config.settings import supabase, supabase_anon_client
 from gotrue.errors import AuthApiError
 from datetime import datetime
+from utils.invalidate_cache import invalidate_caches
+from utils.redis_client import get_redis_client
+import json
 
 users_bp = Blueprint('users', __name__)
+redis_client = get_redis_client()
+
+USERS_CACHE_KEY = 'users:all'
+USERS_CACHE_PREFIX = 'users:'
+
+""" USE THE SUPABASE REAL-TIME 'GET' METHOD TO GET THE LIST OF FACILITIES """
+@users_bp.route('/admin/users', methods=['GET'])
+@require_auth
+@require_role('admin')
+def get_all_users():
+    """Get all users with their roles, status, and facility assignments"""
+    try:
+        bust_cache = request.args.get('bust_cache', 'false').lower() == 'true'
+        
+        if not bust_cache:
+            cached = redis_client.get(USERS_CACHE_KEY)
+            
+            if cached:
+                cached_data = json.loads(cached)
+                return jsonify({
+                    "status": "success",
+                    "data": cached_data,
+                    "cached": True,
+                    "timestamp": datetime.datetime.utcnow().isoformat()
+                }), 200
+        
+        # Get users data from the database if there's no cache
+        response = supabase.table('users').select('*, facility_users!facility_users_user_id_fkey(*, healthcare_facilities(facility_name))').neq('role', 'admin').execute()
+        
+        if getattr(response, 'error', None):
+            current_app.logger.error(f"Failed to fetch users: {response.error}")
+            return jsonify({
+                "status": "error",
+                "message": "Failed to fetch users"
+            }), 500
+            
+        return jsonify({
+            "status": "success",
+            "data": response.data,
+            "count": len(response.data)
+        }), 200
+
+    except Exception as e:
+        current_app.logger.error(f"Error fetching users: {str(e)}")
+        return jsonify({
+            "status": "error",
+            "message": f"An error occurred while fetching users: {str(e)}"
+        }), 500
 
 @users_bp.route('/admin/add_user', methods=['POST'])
 @require_auth
@@ -38,6 +89,8 @@ def add_user():
             400,
         )
         
+    invalidate_caches('')
+        
     try:
         signup_resp = supabase.auth.sign_up(
             {
@@ -69,6 +122,8 @@ def add_user():
             )
 
         user_id = signup_resp.user.id
+        
+        invalidate_caches('users')
 
         return (
             jsonify({
@@ -98,36 +153,6 @@ def add_user():
             jsonify({"status": "error", "message": f"Failed to create user: {str(e)}"}),
             500,
         )
-        
-""" USE THE SUPABASE REAL-TIME 'GET' METHOD TO GET THE LIST OF FACILITIES """
-@users_bp.route('/admin/users', methods=['GET'])
-@require_auth
-@require_role('admin')
-def get_all_users():
-    """Get all users with their roles, status, and facility assignments"""
-    try:
-        # Get users data from the database
-        response = supabase.table('users').select('*, facility_users!facility_users_user_id_fkey(*, healthcare_facilities(facility_name))').neq('role', 'admin').execute()
-        
-        if getattr(response, 'error', None):
-            current_app.logger.error(f"Failed to fetch users: {response.error}")
-            return jsonify({
-                "status": "error",
-                "message": "Failed to fetch users"
-            }), 500
-            
-        return jsonify({
-            "status": "success",
-            "data": response.data,
-            "count": len(response.data)
-        }), 200
-
-    except Exception as e:
-        current_app.logger.error(f"Error fetching users: {str(e)}")
-        return jsonify({
-            "status": "error",
-            "message": f"An error occurred while fetching users: {str(e)}"
-        }), 500
 
 @users_bp.route('/admin/users/<user_id>', methods=['GET'])
 @require_auth
@@ -143,6 +168,8 @@ def get_user_by_id(user_id):
         
         if response.data:
             user = response.data[0]
+            
+            invalidate_caches('users', user_id)
                 
             return jsonify({
                 "status": "success",
