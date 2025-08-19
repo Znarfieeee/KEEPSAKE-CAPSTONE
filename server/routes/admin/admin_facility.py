@@ -2,6 +2,7 @@ from flask import Blueprint, jsonify, request, current_app
 from utils.access_control import require_auth, require_role
 from config.settings import supabase, supabase_service_role_client
 from utils.redis_client import get_redis_client
+from utils.invalidate_cache import invalidate_caches
 import json
 import datetime
 from postgrest.exceptions import APIError as AuthApiError
@@ -13,34 +14,6 @@ redis_client = get_redis_client()
 FACILITY_CACHE_KEY = "healthcare_facilities:all"
 FACILITY_CACHE_PREFIX = "healthcare_facilities:"
 FACILITY_USERS_CACHE_PREFIX = "facility_users:"
-
-def invalidate_facility_caches(facility_id=None):
-    """
-    Smart cache invalidation - like clearing specific drawers in a filing cabinet
-    instead of throwing out the whole cabinet.
-    """
-    try:
-        # Always clear the main facilities list
-        redis_client.delete(FACILITY_CACHE_KEY)
-        
-        if facility_id:
-            # Clear specific facility cache
-            facility_key = f"{FACILITY_CACHE_PREFIX}{facility_id}"
-            redis_client.delete(facility_key)
-            
-            # Clear facility users cache
-            users_key = f"{FACILITY_USERS_CACHE_PREFIX}{facility_id}"
-            redis_client.delete(users_key)
-            
-            # Clear any related pattern-based caches
-            pattern_keys = redis_client.keys(f"{FACILITY_CACHE_PREFIX}{facility_id}:*")
-            if pattern_keys:
-                redis_client.delete(*pattern_keys)
-                
-        current_app.logger.info(f"Cache invalidated for facility: {facility_id or 'all'}")
-        
-    except Exception as e:
-        current_app.logger.error(f"Cache invalidation failed: {str(e)}")
 
 """ USE THE SUPABASE REAL-TIME 'GET' METHOD TO GET THE LIST OF FACILITIES """
 # Get all list of facilities
@@ -133,7 +106,7 @@ def create_facility():
             }), 400
 
         # Invalidate cache after successful creation
-        invalidate_facility_caches()
+        invalidate_caches('facility')
 
         return jsonify({
             "status": "success",
@@ -162,8 +135,8 @@ def update_facility(facility_id):
         
         resp = supabase.table('healthcare_facilities')\
             .update(data)\
-                .eq('facility_id', facility_id)\
-                .execute()
+            .eq('facility_id', facility_id)\
+            .execute()
                 
         if getattr(resp, 'error', None):
             return jsonify({
@@ -172,7 +145,7 @@ def update_facility(facility_id):
                 "details": resp.error.message if resp.error else "Unknown"
             }), 400
             
-        invalidate_facility_caches(facility_id)
+        invalidate_caches('facility', facility_id)
         
         return jsonify({
             "status": "success",
@@ -239,7 +212,7 @@ def delete_facility(facility_id):
                 "message": f"Facility not found: {str(facility_id)}"
             }), 404
         
-        invalidate_facility_caches(facility_id)
+        invalidate_caches('facility', facility_id)
             
         return jsonify({
             "status": "success",
@@ -325,7 +298,7 @@ def assign_user_to_facility(facility_id):
             if result.get('success'):
                 current_app.logger.info(f"AUDIT: Successfully assigned {email} to facility {facility_id} as {role} by admin {current_user.get('email')}")
                 
-                invalidate_facility_caches(facility_id)
+                invalidate_caches('facility_users', facility_id)
                 
                 return jsonify({
                     "status": "success",
