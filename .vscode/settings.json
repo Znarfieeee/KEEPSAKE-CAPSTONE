@@ -1,21 +1,22 @@
 {
-    "cSpell.words": [
-        "bloodtype",
-        "dotenv",
-        "firstname",
-        "gensalt",
-        "gotrue",
-        "hashpw",
-        "jsonify",
-        "keepsaker",
-        "lastname",
-        "levelname",
-        "patrecord",
-        "pediapro",
-        "postgrest",
-        "setex",
-        "supabase",
-        "vite"
-    ],
-    "postman.settings.dotenv-detection-notification-visibility": false
+  "cSpell.words": [
+    "bloodtype",
+    "dotenv",
+    "firstname",
+    "gensalt",
+    "gotrue",
+    "hashpw",
+    "jsonify",
+    "keepsaker",
+    "lastname",
+    "levelname",
+    "middlename",
+    "patrecord",
+    "pediapro",
+    "postgrest",
+    "setex",
+    "supabase",
+    "vite"
+  ],
+  "postman.settings.dotenv-detection-notification-visibility": false
 }
