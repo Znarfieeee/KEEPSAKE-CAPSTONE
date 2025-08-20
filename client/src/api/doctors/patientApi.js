@@ -1,4 +1,4 @@
-import { axiosConfig } from './axiosConfig'
+import { axiosConfig } from '../axiosConfig'
 import backendConnection from '../backendApi'
 import axios from 'axios'
 
