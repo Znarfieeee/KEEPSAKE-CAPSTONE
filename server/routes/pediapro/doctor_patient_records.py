@@ -14,17 +14,23 @@ PATIENT_CACHE_KEY = "patient_records:all"
 PATIENT_CACHE_PREFIX = "patient_records:"
 
 def prepare_patient_payload(data, created_by):
-    return {
+    # Create payload with required fields
+    payload = {
         "firstname": data.get('firstname'),
         "lastname": data.get('lastname'),
         "date_of_birth": data.get('date_of_birth'),
         "sex": data.get('sex'),
-        "birth_weight": data.get('birth_weight'),
-        "birth_height": data.get('birth_height'),
-        "bloodtype": data.get('bloodtype'),
-        "gestation_weeks": data.get('gestation_weeks'),
         "created_by": created_by,
+        "is_active": True
     }
+    
+    # Add optional fields only if they have values
+    optional_fields = ['birth_weight', 'birth_height', 'bloodtype', 'gestation_weeks']
+    for field in optional_fields:
+        if data.get(field) is not None:
+            payload[field] = data.get(field)
+            
+    return payload
 
 def prepare_delivery_payload(data):
     return {
@@ -126,6 +132,7 @@ def get_patient_records():
             "message": f"Error fetching facilities: {str(e)}",
         }), 500
 
+# Add new patient
 @patrecord_bp.route('/patient_records', methods=['POST'])
 @require_auth
 @require_role('doctor', 'facility_admin')
@@ -134,11 +141,31 @@ def add_patient_record():
         data = request.json or {}
         current_user = request.current_user
         
-        if not data.get('firstname') or not data.get('lastname'):
+        # Validate required fields
+        required_fields = ['firstname', 'lastname', 'date_of_birth', 'sex']
+        missing_fields = [field for field in required_fields if not data.get(field)]
+        
+        if missing_fields:
             return jsonify({
                 "status": "error",
-                "message": "First name and last name are required"
+                "message": f"Missing required fields: {', '.join(missing_fields)}"
             }), 400
+            
+        # Validate sex field
+        if data.get('sex') not in ['male', 'female', 'other']:
+            return jsonify({
+                "status": "error",
+                "message": "Sex must be one of: male, female, other"
+            }), 400
+            
+        # Validate gestation weeks if provided
+        if data.get('gestation_weeks') is not None:
+            weeks = data.get('gestation_weeks')
+            if not isinstance(weeks, int) or weeks <= 0 or weeks > 50:
+                return jsonify({
+                    "status": "error",
+                    "message": "Gestation weeks must be between 1 and 50"
+                }), 400
             
         current_app.logger.info(f"AUDIT: User {current_user.get('email')} attempting to create new patient record")
         
@@ -151,41 +178,90 @@ def add_patient_record():
         screening_payload = prepare_screening_payload(data)
         allergy_payload = prepare_allergy_payload(data, created_by)
         
-        # Execute all database operations
-        patient_resp = supabase.table('patients').insert(patients_payload).execute()
-        if getattr(patient_resp, 'error', None):
-            current_app.logger.error(f"AUDIT: Failed to create patient record: {patient_resp.error.message if patient_resp.error else 'Unknown error'}")
-            return jsonify({
-                "status": "error",
-                "message": "Failed to create patient",
-                "details": patient_resp.error.message if patient_resp.error else "Unknown",
-            }), 400
-            
-        patient_id = patient_resp.data[0].get('patient_id')
-        
-        # Add patient_id to related records
-        delivery_payload['patient_id'] = patient_id
-        anthropometric_payload['patient_id'] = patient_id
-        screening_payload['patient_id'] = patient_id
-        allergy_payload['patient_id'] = patient_id
-        
-        # Execute remaining operations
-        operations = [
-            ('delivery_record', delivery_payload),
-            ('anthropometric_measurements', anthropometric_payload),
-            ('screening_tests', screening_payload),
-            ('allergies', allergy_payload)
-        ]
-        
-        for table_name, payload in operations:
-            resp = supabase.table(table_name).insert(payload).execute()
-            if getattr(resp, 'error', None):
-                current_app.logger.error(f"AUDIT: Failed to create {table_name} record: {resp.error.message if resp.error else 'Unknown error'}")
+        try:
+            # First, create the patient record and get the ID
+            patient_resp = supabase.table('patients').insert(patients_payload).execute()
+            if getattr(patient_resp, 'error', None):
+                current_app.logger.error(f"AUDIT: Failed to create patient record: {patient_resp.error.message if patient_resp.error else 'Unknown error'}")
                 return jsonify({
                     "status": "error",
-                    "message": f"Failed to create {table_name}",
-                    "details": resp.error.message if resp.error else "Unknown",
+                    "message": "Failed to create patient",
+                    "details": patient_resp.error.message if patient_resp.error else "Unknown",
                 }), 400
+
+            if not patient_resp.data or len(patient_resp.data) == 0:
+                return jsonify({
+                    "status": "error",
+                    "message": "Failed to create patient - no data returned"
+                }), 400
+
+            patient_id = patient_resp.data[0].get('patient_id')
+            if not patient_id:
+                return jsonify({
+                    "status": "error",
+                    "message": "Failed to get patient ID"
+                }), 400
+
+            # Now create the audit log entry manually to ensure record_id is set
+            audit_payload = {
+                "user_id": current_user.get('id'),
+                "action_type": "CREATE",
+                "table_name": "patients",
+                "record_id": patient_id,  # Use the patient_id as record_id
+                "patient_id": patient_id,  # Also set the patient_id
+                "new_values": patients_payload,
+                "ip_address": request.remote_addr
+            }
+            
+            audit_resp = supabase.table('audit_logs').insert(audit_payload).execute()
+            if getattr(audit_resp, 'error', None):
+                current_app.logger.error(f"AUDIT: Failed to create audit log: {audit_resp.error.message if audit_resp.error else 'Unknown error'}")
+                
+            # Add patient_id to related records
+            delivery_payload['patient_id'] = patient_id
+            anthropometric_payload['patient_id'] = patient_id
+            screening_payload['patient_id'] = patient_id
+            allergy_payload['patient_id'] = patient_id
+            
+            # Execute remaining operations
+            operations = [
+                ('delivery_record', delivery_payload),
+                ('anthropometric_measurements', anthropometric_payload),
+                ('screening_tests', screening_payload),
+                ('allergies', allergy_payload)
+            ]
+            
+            for table_name, payload in operations:
+                resp = supabase.table(table_name).insert(payload).execute()
+                if getattr(resp, 'error', None):
+                    current_app.logger.error(f"AUDIT: Failed to create {table_name} record: {resp.error.message if resp.error else 'Unknown error'}")
+                    return jsonify({
+                        "status": "error",
+                        "message": f"Failed to create {table_name}",
+                        "details": resp.error.message if resp.error else "Unknown",
+                    }), 400
+                    
+            invalidate_caches('patient')
+            current_app.logger.info(f"AUDIT: Successfully created patient record with ID {patient_id}")
+            
+            return jsonify({
+                "status": "success",
+                "message": "Patient record created successfully",
+                "data": patient_resp.data[0] if patient_resp.data else patients_payload,
+            }), 201
+            
+        except AuthApiError as e:
+            current_app.logger.error(f"AUDIT: Auth API error while creating patient: {str(e)}")
+            return jsonify({
+                "status": "error",
+                "message": f"Auth API Error: {str(e)}",
+            }), 500
+        except Exception as e:
+            current_app.logger.error(f"AUDIT: Unexpected error while creating patient: {str(e)}")
+            return jsonify({
+                "status": "error",
+                "message": f"Unexpected error: {str(e)}",
+            }), 500
         
         invalidate_caches('patient')
         current_app.logger.info(f"AUDIT: Successfully created patient record with ID {patient_id}")

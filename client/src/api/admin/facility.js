@@ -41,13 +41,7 @@ export const deactivateFacility = async (facilityId) => {
   const response = await axios.post(
     `${backendConnection()}/admin/deactivate_facility/${facilityId}`,
     {}, // Empty body since we're not sending data
-    {
-      ...axiosConfig,
-      headers: {
-        ...axiosConfig.headers,
-        Accept: 'application/json',
-      },
-    }
+    axiosConfig
   )
   return response.data
 }

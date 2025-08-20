@@ -4,7 +4,7 @@ import PatientHeader from '@/components/doctors/patient_records/PatientHeader'
 import PatientInformation from '@/components/doctors/patient_records/PatientInformation'
 import ScreeningTests from '@/components/doctors/patient_records/ScreeningTests'
 import PatientRecordsTabs from '@/components/doctors/patient_records/PatientRecordsTabs'
-import { getPatientById } from '@/api/doctors/patientApi' // You'll need to create this API function
+// import { getPatientById } from '@/api/doctors/patient'
 import { patientData } from './patientData' // Temporary for mock data
 
 const DoctorPatientInfo = () => {
