@@ -202,13 +202,21 @@ def add_patient_record():
                     "message": "Failed to get patient ID"
                 }), 400
 
-            # Now create the audit log entry manually to ensure record_id is set
+            try:
+                # Get next record_id from sequence
+                sequence_resp = supabase.rpc('next_audit_record_id').execute()
+                record_id = sequence_resp.data if not getattr(sequence_resp, 'error', None) else None
+            except Exception as seq_error:
+                current_app.logger.error(f"AUDIT: Failed to get next record_id: {str(seq_error)}")
+                record_id = None
+
+            # Create audit log entry
             audit_payload = {
                 "user_id": current_user.get('id'),
                 "action_type": "CREATE",
                 "table_name": "patients",
-                "record_id": patient_id,  # Use the patient_id as record_id
-                "patient_id": patient_id,  # Also set the patient_id
+                "record_id": record_id,  # Will use DB default if None
+                "patient_id": patient_id,
                 "new_values": patients_payload,
                 "ip_address": request.remote_addr
             }
