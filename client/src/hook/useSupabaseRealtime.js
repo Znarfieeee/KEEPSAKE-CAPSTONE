@@ -367,37 +367,33 @@ export const usePatientsRealtime = ({ onPatientChange }) => {
   )
 
   const handleInsert = useCallback(
-    (newFacility) => {
-      const formatted = formatPatients(newFacility)
+    (newPatient) => {
+      const formatted = formatPatients(newPatient)
       onPatientChange({
         type: 'INSERT',
-        facility: formatted,
-        raw: newFacility,
+        patient: formatted,
       })
     },
     [formatPatients, onPatientChange]
   )
 
   const handleUpdate = useCallback(
-    (updatedFacility, oldFacility) => {
-      const formatted = formatPatients(updatedFacility)
+    (updatedPatient, oldPatient) => {
+      const formatted = formatPatients(updatedPatient)
       onPatientChange({
         type: 'UPDATE',
-        facility: formatted,
-        raw: updatedFacility,
-        oldRaw: oldFacility,
+        patient: formatted,
       })
     },
     [formatPatients, onPatientChange]
   )
 
   const handleDelete = useCallback(
-    (deletedFacility) => {
-      const formatted = formatPatients(deletedFacility)
+    (deletedPatient) => {
+      const formatted = formatPatients(deletedPatient)
       onPatientChange({
         type: 'DELETE',
-        facility: formatted,
-        raw: deletedFacility,
+        patient: formatted,
       })
     },
     [formatPatients, onPatientChange]

@@ -48,7 +48,7 @@ const PatientRecordsTabs = () => {
   ]
 
   return (
-    <TabsComponent defaultValue="information" className="w-full">
+    <Tabs defaultValue="information" className="w-full">
       <ScrollArea>
         <TabsList className="text-foreground mb-3 h-auto gap-2 rounded-none border-b bg-transparent px-0 py-1">
           {tabs.map((tab) => (
@@ -65,7 +65,7 @@ const PatientRecordsTabs = () => {
           {tab.content}
         </TabsContent>
       ))}
-    </TabsComponent>
+    </Tabs>
   )
 }
 
