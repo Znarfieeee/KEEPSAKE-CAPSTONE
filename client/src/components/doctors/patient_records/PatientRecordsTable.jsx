@@ -52,7 +52,9 @@ const PatientRecordsTable = ({
             <th className="py-3 px-2">Sex</th>
             <th className="py-3 px-2">Age</th>
             <th className="py-3 px-2">Doctor</th>
-            <th className="py-3 px-2">Birthdate</th>
+            <th className="py-3 px-2">
+              Birthdate <span className="text-xs font-medium text-gray-400">(YYYY-MM-DD)</span>
+            </th>
             <th className="py-3 px-2">Actions</th>
           </tr>
         </thead>
@@ -76,9 +78,7 @@ const PatientRecordsTable = ({
             currentData.map((user) => (
               <tr key={user.id} className="border-b border-gray-200 last:border-none">
                 <td className="p-2 whitespace-nowrap">{`${user.firstname} ${user.lastname}`}</td>
-                <td className="p-2 whitespace-nowrap">
-                  {user.sex.charAt(0).toUpperCase() + user.sex.slice(1).toLowerCase()}
-                </td>
+                <td className="p-2 whitespace-nowrap">{user.sex}</td>
                 <td className="p-2 whitespace-nowrap capitalize">{user.age}</td>
                 <td className="p-2 whitespace-nowrap">
                   {user.doctor ? user.doctor : 'Unassigned'}
