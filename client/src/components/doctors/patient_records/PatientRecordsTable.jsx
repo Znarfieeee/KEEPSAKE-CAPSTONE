@@ -78,7 +78,9 @@ const PatientRecordsTable = ({
             currentData.map((user) => (
               <tr key={user.id} className="border-b border-gray-200 last:border-none">
                 <td className="p-2 whitespace-nowrap">{`${user.firstname} ${user.lastname}`}</td>
-                <td className="p-2 whitespace-nowrap">{user.sex}</td>
+                <td className="p-2 whitespace-nowrap">
+                  {user.sex.charAt(0).toUpperCase() + user.sex.slice(1).toLowerCase()}
+                </td>
                 <td className="p-2 whitespace-nowrap capitalize">{user.age}</td>
                 <td className="p-2 whitespace-nowrap">
                   {user.doctor ? user.doctor : 'Unassigned'}
