@@ -1,7 +1,7 @@
-import React from 'react';
+import React from 'react'
 
 // UI Components
-import { Button } from '@/components/ui/button';
+import { Button } from '@/components/ui/button'
 import {
   MoreVertical,
   Eye,
@@ -11,24 +11,18 @@ import {
   ArrowRightLeft,
   UserPen,
   Ban,
-} from 'lucide-react';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
+} from 'lucide-react'
 import {
   Pagination,
   PaginationContent,
   PaginationItem,
   PaginationNext,
   PaginationPrevious,
-} from '@/components/ui/pagination';
+} from '@/components/ui/pagination'
 
 // Helper
-import { TooltipHelper } from '@/util/TooltipHelper';
-import { NoResults } from '@/components/ui/no-results';
+import { TooltipHelper } from '@/util/TooltipHelper'
+import { NoResults } from '@/components/ui/no-results'
 
 const PatientRecordsTable = ({
   records = [],
@@ -42,12 +36,12 @@ const PatientRecordsTable = ({
   onDelete,
   loading = false,
 }) => {
-  const totalPages = Math.ceil(records.length / itemsPerPage) || 1;
-  const startIdx = (page - 1) * itemsPerPage;
-  const currentData = records.slice(startIdx, startIdx + itemsPerPage);
+  const totalPages = Math.ceil(records.length / itemsPerPage) || 1
+  const startIdx = (page - 1) * itemsPerPage
+  const currentData = records.slice(startIdx, startIdx + itemsPerPage)
 
-  const handlePrev = () => setPage((p) => Math.max(1, p - 1));
-  const handleNext = () => setPage((p) => Math.min(totalPages, p + 1));
+  const handlePrev = () => setPage((p) => Math.max(1, p - 1))
+  const handleNext = () => setPage((p) => Math.min(totalPages, p + 1))
 
   return (
     <div className="w-full overflow-x-auto">
@@ -58,7 +52,9 @@ const PatientRecordsTable = ({
             <th className="py-3 px-2">Sex</th>
             <th className="py-3 px-2">Age</th>
             <th className="py-3 px-2">Doctor</th>
-            <th className="py-3 px-2">Birthdate</th>
+            <th className="py-3 px-2">
+              Birthdate <span className="text-xs font-medium text-gray-400">(YYYY-MM-DD)</span>
+            </th>
             <th className="py-3 px-2">Actions</th>
           </tr>
         </thead>
@@ -82,9 +78,13 @@ const PatientRecordsTable = ({
             currentData.map((user) => (
               <tr key={user.id} className="border-b border-gray-200 last:border-none">
                 <td className="p-2 whitespace-nowrap">{`${user.firstname} ${user.lastname}`}</td>
-                <td className="p-2 whitespace-nowrap">{user.sex}</td>
+                <td className="p-2 whitespace-nowrap">
+                  {user.sex.charAt(0).toUpperCase() + user.sex.slice(1).toLowerCase()}
+                </td>
                 <td className="p-2 whitespace-nowrap capitalize">{user.age}</td>
-                <td className="p-2 whitespace-nowrap">{user.doctor}</td>
+                <td className="p-2 whitespace-nowrap">
+                  {user.doctor ? user.doctor : 'Unassigned'}
+                </td>
                 <td className="p-2 whitespace-nowrap">{user.birthdate}</td>
                 <td className="p-2 whitespace-nowrap">
                   <div className="flex gap-1">
@@ -164,7 +164,7 @@ const PatientRecordsTable = ({
         </Pagination>
       </div>
     </div>
-  );
-};
+  )
+}
 
-export default PatientRecordsTable;
+export default PatientRecordsTable
