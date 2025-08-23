@@ -1,7 +1,7 @@
-import React from 'react';
+import React from 'react'
 
 // UI Components
-import { Button } from '@/components/ui/button';
+import { Button } from '@/components/ui/button'
 import {
   MoreVertical,
   Eye,
@@ -11,24 +11,18 @@ import {
   ArrowRightLeft,
   UserPen,
   Ban,
-} from 'lucide-react';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
+} from 'lucide-react'
 import {
   Pagination,
   PaginationContent,
   PaginationItem,
   PaginationNext,
   PaginationPrevious,
-} from '@/components/ui/pagination';
+} from '@/components/ui/pagination'
 
 // Helper
-import { TooltipHelper } from '@/util/TooltipHelper';
-import { NoResults } from '@/components/ui/no-results';
+import { TooltipHelper } from '@/util/TooltipHelper'
+import { NoResults } from '@/components/ui/no-results'
 
 const PatientRecordsTable = ({
   records = [],
@@ -42,12 +36,12 @@ const PatientRecordsTable = ({
   onDelete,
   loading = false,
 }) => {
-  const totalPages = Math.ceil(records.length / itemsPerPage) || 1;
-  const startIdx = (page - 1) * itemsPerPage;
-  const currentData = records.slice(startIdx, startIdx + itemsPerPage);
+  const totalPages = Math.ceil(records.length / itemsPerPage) || 1
+  const startIdx = (page - 1) * itemsPerPage
+  const currentData = records.slice(startIdx, startIdx + itemsPerPage)
 
-  const handlePrev = () => setPage((p) => Math.max(1, p - 1));
-  const handleNext = () => setPage((p) => Math.min(totalPages, p + 1));
+  const handlePrev = () => setPage((p) => Math.max(1, p - 1))
+  const handleNext = () => setPage((p) => Math.min(totalPages, p + 1))
 
   return (
     <div className="w-full overflow-x-auto">
@@ -164,7 +158,7 @@ const PatientRecordsTable = ({
         </Pagination>
       </div>
     </div>
-  );
-};
+  )
+}
 
-export default PatientRecordsTable;
+export default PatientRecordsTable
