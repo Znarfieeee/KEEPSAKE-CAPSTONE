@@ -19,11 +19,13 @@ import Unauthorized from '@/components/Unauthorized'
 // Helper
 import { showToast } from '@/util/alertHelper'
 
-// const AddPatientModal = lazy(() => import('@/components/doctors/patient_records/AddPatientModal'))
+const AddPatientModal = lazy(() => import('@/components/doctors/patient_records/AddPatientModal'))
 
-// const EditPatientModal = lazy(() => import('@/components/doctors/patient_records/EditPatientModal'))
+const EditPatientModal = lazy(() => import('@/components/doctors/patient_records/EditPatientModal'))
 
-// const PatientDetailModal = lazy(() => import('@/components/doctors/patient_records/PatientDetailModal'))
+const PatientDetailModal = lazy(() =>
+  import('@/components/doctors/patient_records/PatientDetailModal')
+)
 
 function DoctorPatientRecords() {
   const user = useAuth()
@@ -327,9 +329,10 @@ function DoctorPatientRecords() {
     })
   }, [patients, search, statusFilter, sexFilter, ageFilter, dateRange])
 
-  //   if (user.role !== 'facility_admin' && user.role !== 'doctor') {
-  //     return <Unauthorized />
-  //   }
+  // Comment because there's an error ...
+  if (user.role !== 'facility_admin' && user.role !== 'doctor') {
+    return <Unauthorized />
+  }
 
   return (
     <div className="p-6 px-20 space-y-6">
