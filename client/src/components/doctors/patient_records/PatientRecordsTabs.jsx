@@ -5,24 +5,30 @@ import { FileText, Syringe, Pill } from 'lucide-react'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area'
 
+import PatientInformation from '@/components/doctors/patient_records/PatientInformation'
+import ScreeningTests from '@/components/doctors/patient_records/ScreeningTests'
+
 const TabItem = ({ value, icon: Icon, children }) => (
   <TabsTrigger
     value={value}
-    className="hover:bg-accent hover:text-foreground data-[state=active]:after:bg-primary data-[state=active]:hover:bg-accent relative after:absolute after:inset-x-0 after:bottom-0 after:-mb-1 after:h-0.5 data-[state=active]:bg-transparent data-[state=active]:shadow-none"
+    className="bg-muted overflow-hidden rounded-b-none border-x border-t data-[state=active]:z-10 data-[state=active]:shadow-none"
   >
     {Icon && <Icon className="-ms-0.5 me-1.5 opacity-60" size={16} aria-hidden="true" />}
     {children}
   </TabsTrigger>
 )
 
-const PatientRecordsTabs = () => {
+const PatientRecordsTabs = ({ patient }) => {
   const tabs = [
     {
       value: 'information',
       label: 'INFORMATION',
       icon: FileText,
       content: (
-        <div className="space-y-4">{/* Content for Information tab will be injected here */}</div>
+        <div>
+          <PatientInformation patient={patient} />
+          <ScreeningTests screenings={patient?.screenings || []} />
+        </div>
       ),
     },
     {
@@ -30,7 +36,7 @@ const PatientRecordsTabs = () => {
       label: 'IMMUNIZATION',
       icon: Syringe,
       content: (
-        <div className="space-y-4">
+        <div>
           <p className="text-muted-foreground">Immunization records will be displayed here</p>
         </div>
       ),
@@ -40,7 +46,7 @@ const PatientRecordsTabs = () => {
       label: 'PRESCRIPTION',
       icon: Pill,
       content: (
-        <div className="space-y-4">
+        <div>
           <p className="text-muted-foreground">Prescription history will be displayed here</p>
         </div>
       ),
@@ -50,7 +56,7 @@ const PatientRecordsTabs = () => {
   return (
     <Tabs defaultValue="information" className="w-full">
       <ScrollArea>
-        <TabsList className="text-foreground mb-3 h-auto gap-2 rounded-none border-b bg-transparent px-0 py-1">
+        <TabsList className="before:bg-border relative h-auto w-full gap-0.5 bg-transparent p-0 before:absolute before:inset-x-0 before:bottom-0 before:h-px">
           {tabs.map((tab) => (
             <TabItem key={tab.value} value={tab.value} icon={tab.icon}>
               {tab.label}
@@ -61,7 +67,7 @@ const PatientRecordsTabs = () => {
       </ScrollArea>
 
       {tabs.map((tab) => (
-        <TabsContent key={tab.value} value={tab.value} className="mt-6">
+        <TabsContent key={tab.value} value={tab.value}>
           {tab.content}
         </TabsContent>
       ))}

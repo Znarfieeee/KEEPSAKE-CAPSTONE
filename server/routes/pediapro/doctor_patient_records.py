@@ -531,6 +531,32 @@ def get_patient_record_by_id(patient_id):
         
         patient_data = resp.data
         
+        try:
+            age_resp = supabase.rpc('calculate_age', {'date_of_birth': patient_data['date_of_birth']}).execute()
+            
+            if age_resp.data is not None: 
+                age_data = age_resp.data
+                
+                patient_data['age_info'] = {
+                    'formatted_age': age_data.get('formatted_age', 'Unknown'),
+                    'years': age_data.get('years', 0),
+                    'months': age_data.get('months', 0),
+                    'days': age_data.get('days', 0),
+                    'total_days': age_data.get('total_days', 0),
+                    'calculated_on': age_data.get('calculated_on')
+                }
+                
+                patient_data['age'] = age_data.get('formatted_age')
+                
+            else:
+                current_app.logger.warning(f"Age calculation returned null for patient {patient_id}")
+                patient_data['calculated_age'] = None
+        except Exception as age_error:
+            current_app.logger.error(f"Error calculating age for patient {patient_id}: {str(age_error)}")
+            # Don't fail the entire request if age calculation fails
+            patient_data['calculated_age'] = None
+            
+            
         # Optionally include related records
         if include_related:
             related_data = {}

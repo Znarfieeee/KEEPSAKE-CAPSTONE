@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
-import PatientHeader from '@/components/doctors/patient_records/PatientHeader'
-import PatientInformation from '@/components/doctors/patient_records/PatientInformation'
-import ScreeningTests from '@/components/doctors/patient_records/ScreeningTests'
+import { useParams, useNavigate, Link } from 'react-router-dom'
+
+// UI Components
+import { IoMdArrowBack } from 'react-icons/io'
+
 import PatientRecordsTabs from '@/components/doctors/patient_records/PatientRecordsTabs'
-// import { getPatientById } from '@/api/doctors/patient'
-import { patientData } from './patientData' // Temporary for mock data
+import { getPatientById } from '@/api/doctors/patient'
+import LoadingSkeleton from '@/components/doctors/patient_records/LoadingSkeleton'
 
 const DoctorPatientInfo = () => {
   const { patientId } = useParams()
@@ -18,10 +19,12 @@ const DoctorPatientInfo = () => {
     const fetchPatientData = async () => {
       try {
         setLoading(true)
-        // TODO: Replace this with actual API call when backend is ready
-        // const data = await getPatientById(patientId);
-        const data = patientData // Using mock data for now
-        setPatient(data)
+        const response = await getPatientById(patientId)
+        if (response.status === 'success' && response.data) {
+          setPatient(response.data)
+        } else {
+          throw new Error('Invalid response format')
+        }
       } catch (err) {
         setError('Failed to fetch patient data')
         console.error('Error fetching patient data:', err)
@@ -34,7 +37,7 @@ const DoctorPatientInfo = () => {
   }, [patientId])
 
   if (loading) {
-    return <div className="flex justify-center items-center h-screen">Loading...</div>
+    return <LoadingSkeleton />
   }
 
   if (error || !patient) {
@@ -51,40 +54,23 @@ const DoctorPatientInfo = () => {
     )
   }
 
-  // Mock screening data - this should come from your backend
-  const screeningTests = [
-    {
-      date: '09-19-2019',
-      description: 'EXPANDED NEWBORN SCREENING',
-      remarks: 'INITIAL',
-    },
-    {
-      date: '9-19-2019',
-      description: 'RED ORANGE REFLEX',
-      remarks: '',
-    },
-    {
-      date: '09-20-2023',
-      description: 'NEWBORN HEARING SCREENING',
-      right: 'PASSED',
-      left: 'PASSED',
-    },
-    {
-      date: '09-20-2019',
-      description: 'PULSE OXIMETRY SCREENING FOR CCHD',
-      right: 'POSITIVE',
-      left: 'POSITIVE',
-    },
-  ]
-
   return (
     <div className="container mx-auto px-4 py-6">
-      <PatientHeader patient={patient} />
+      {/* Patient Header */}
+      <div className="flex justify-between items-center mb-6">
+        <Link
+          to="/pediapro/patient_records"
+          className="flex items-center gap-2 text-black hover:text-primary transition duration-300 ease-in-out"
+        >
+          <IoMdArrowBack className="text-2xl" />
+          <span className="text-2xl font-bold">
+            {patient.firstname} {patient.lastname}
+          </span>
+        </Link>
+      </div>
 
       <div className="space-y-6">
-        <PatientInformation patient={patient} />
-        <ScreeningTests screenings={screeningTests} />
-        <PatientRecordsTabs />
+        <PatientRecordsTabs patient={patient} />
       </div>
     </div>
   )

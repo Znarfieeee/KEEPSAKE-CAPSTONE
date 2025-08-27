@@ -17,7 +17,7 @@ const PatientInformation = ({ patient }) => {
           </div>
           <div>
             <label className="text-sm text-gray-600">AGE</label>
-            <p className="font-medium">{`${patient.age} ${patient.ageUnit}` || '—'}</p>
+            <p className="font-medium">{`${patient.age}` || '—'}</p>
           </div>
           <div>
             <label className="text-sm text-gray-600">SEX</label>
@@ -41,7 +41,7 @@ const PatientInformation = ({ patient }) => {
           </div>
           <div>
             <label className="text-sm text-gray-600">BIRTHDATE</label>
-            <p className="font-medium">{formatDate(patient.birthdate)}</p>
+            <p className="font-medium">{formatDate(patient.date_of_birth)}</p>
           </div>
           <div>
             <label className="text-sm text-gray-600">GESTATION WEEKS</label>
