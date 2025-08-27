@@ -1,7 +1,7 @@
 import React from 'react'
 
 // UI Components
-import { FileText, Syringe, Pill } from 'lucide-react'
+import { FileText, Syringe, Pill, Stethoscope, IdCard } from 'lucide-react'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area'
 
@@ -11,7 +11,7 @@ import ScreeningTests from '@/components/doctors/patient_records/ScreeningTests'
 const TabItem = ({ value, icon: Icon, children }) => (
   <TabsTrigger
     value={value}
-    className="bg-muted overflow-hidden rounded-b-none border-x border-t data-[state=active]:z-10 data-[state=active]:shadow-none"
+    className="bg-muted overflow-hidden rounded-b-none border-x border-t border-gray-200 data-[state=active]:z-10 data-[state=active]:shadow-none"
   >
     {Icon && <Icon className="-ms-0.5 me-1.5 opacity-60" size={16} aria-hidden="true" />}
     {children}
@@ -27,6 +27,15 @@ const PatientRecordsTabs = ({ patient }) => {
       content: (
         <div>
           <PatientInformation patient={patient} />
+        </div>
+      ),
+    },
+    {
+      value: 'screening',
+      label: 'SCREENING',
+      icon: Stethoscope,
+      content: (
+        <div>
           <ScreeningTests screenings={patient?.screenings || []} />
         </div>
       ),
@@ -56,7 +65,7 @@ const PatientRecordsTabs = ({ patient }) => {
   return (
     <Tabs defaultValue="information" className="w-full">
       <ScrollArea>
-        <TabsList className="before:bg-border relative h-auto w-full gap-0.5 bg-transparent p-0 before:absolute before:inset-x-0 before:bottom-0 before:h-px">
+        <TabsList className="before:bg-border ml-8 relative h-auto w-max gap-0.5 bg-transparent p-0 before:absolute before:inset-x-0 before:bottom-0 before:h-px">
           {tabs.map((tab) => (
             <TabItem key={tab.value} value={tab.value} icon={tab.icon}>
               {tab.label}

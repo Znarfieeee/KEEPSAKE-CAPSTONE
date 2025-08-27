@@ -7,7 +7,7 @@ const PatientInformation = ({ patient }) => {
   }
 
   return (
-    <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
+    <div className="bg-white rounded-b-lg shadow-sm p-6 mb-6">
       <h2 className="text-lg font-semibold mb-4">PATIENT'S INFORMATION</h2>
       <div className="grid grid-cols-2 gap-6">
         <div className="space-y-4">
