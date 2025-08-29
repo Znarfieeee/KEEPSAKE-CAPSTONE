@@ -6,7 +6,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area'
 
 import PatientInformation from '@/components/doctors/patient_records/PatientInformation'
-import Vitals from '@/components/doctors/patient_records/Vitals'
+import PatientVitals from '@/components/doctors/patient_records/PatientVitals'
+import PatientImmunization from '@/components/doctors/patient_records/PatientImmunization'
+import PatientPrescription from '@/components/doctors/patient_records/PatientPrescriptions'
 
 const TabItem = ({ value, icon: Icon, children }) => (
   <TabsTrigger
@@ -36,7 +38,7 @@ const PatientRecordsTabs = ({ patient }) => {
       icon: Stethoscope,
       content: (
         <div>
-          <Vitals patient={patient} />
+          <PatientVitals patient={patient} />
         </div>
       ),
     },
@@ -46,7 +48,7 @@ const PatientRecordsTabs = ({ patient }) => {
       icon: Syringe,
       content: (
         <div>
-          <p className="text-muted-foreground">Immunization records will be displayed here</p>
+          <PatientImmunization patient={patient} />
         </div>
       ),
     },
@@ -56,7 +58,7 @@ const PatientRecordsTabs = ({ patient }) => {
       icon: Pill,
       content: (
         <div>
-          <p className="text-muted-foreground">Prescription history will be displayed here</p>
+          <PatientPrescription />
         </div>
       ),
     },

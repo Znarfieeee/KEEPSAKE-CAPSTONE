@@ -11,7 +11,7 @@ const LoadingSkeleton = () => {
 
       {/* Tabs Skeleton */}
       <div className="flex gap-4 mb-6 border-b">
-        {[1, 2, 3].map((tab) => (
+        {[1, 2, 3, 4].map((tab) => (
           <div key={tab} className="h-10 w-32 bg-gray-200 rounded"></div>
         ))}
       </div>

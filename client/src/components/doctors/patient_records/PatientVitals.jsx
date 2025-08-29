@@ -1,6 +1,6 @@
 import React from 'react'
 
-const Vitals = ({ patient }) => {
+const PatientVitals = ({ patient }) => {
   return (
     <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
       <div className="mb-10">
@@ -204,4 +204,4 @@ const Vitals = ({ patient }) => {
   )
 }
 
-export default Vitals
+export default PatientVitals
