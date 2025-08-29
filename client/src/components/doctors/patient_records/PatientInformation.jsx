@@ -4,7 +4,7 @@ const PatientInformation = ({ patient }) => {
   return (
     <div className="bg-white rounded-b-lg shadow-sm p-6 mb-6">
       <div className="mb-10">
-        <h2 className="text-lg font-semibold mb-4 mt-4">PATIENT'S INFORMATION</h2>
+        <h2 className="text-lg font-semibold my-4">PATIENT'S INFORMATION</h2>
         <div className="grid grid-cols-3 gap-6">
           <div className="space-y-4">
             <div>
@@ -39,16 +39,12 @@ const PatientInformation = ({ patient }) => {
         </div>
       </div>
       <div className="mb-10">
-        <h2 className="text-lg font-semibold mb-4 mt-4">CONTACT INFORMATION</h2>
+        <h2 className="text-lg font-semibold mb-4 mt-4">PARENT CONTACT INFORMATION</h2>
         <div className="grid grid-cols-3 gap-6">
           <div className="space-y-4">
             <div>
-              <label className="text-sm text-gray-600">MOTHER'S NAME</label>
-              <p className="font-medium">{patient.firstname || '—'}</p>
-            </div>
-            <div>
-              <label className="text-sm text-gray-600">BIRTHDATE</label>
-              <p className="font-medium">{patient.date_of_birth}</p>
+              <label className="text-sm text-gray-600">6mal</label>
+              <p className="font-medium">UNYA NANI KAY WA PAKO KAHIBAW unsa akong ibutang</p>
             </div>
           </div>
         </div>

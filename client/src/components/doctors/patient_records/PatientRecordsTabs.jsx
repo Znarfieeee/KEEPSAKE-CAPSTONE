@@ -6,7 +6,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area'
 
 import PatientInformation from '@/components/doctors/patient_records/PatientInformation'
-import ScreeningTests from '@/components/doctors/patient_records/ScreeningTests'
+import Vitals from '@/components/doctors/patient_records/Vitals'
 
 const TabItem = ({ value, icon: Icon, children }) => (
   <TabsTrigger
@@ -36,7 +36,7 @@ const PatientRecordsTabs = ({ patient }) => {
       icon: Stethoscope,
       content: (
         <div>
-          <ScreeningTests patient={patient} />
+          <Vitals patient={patient} />
         </div>
       ),
     },
