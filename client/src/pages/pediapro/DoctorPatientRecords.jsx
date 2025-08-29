@@ -15,20 +15,21 @@ import PatientRecordsHeader from '@/components/doctors/patient_records/PatientRe
 import PatientRecordFilters from '@/components/doctors/patient_records/PatientRecordFilters'
 import PatientRecordsTable from '@/components/doctors/patient_records/PatientRecordsTable'
 import Unauthorized from '@/components/Unauthorized'
+import { Button } from '@/components/ui/Button'
 
 // Helper
 import { showToast } from '@/util/alertHelper'
 
-const AddPatientModal = lazy(() => import('@/components/doctors/patient_records/AddPatientModal'))
+// const AddPatientModal = lazy(() => import('@/components/doctors/patient_records/AddPatientModal'))
 
-const EditPatientModal = lazy(() => import('@/components/doctors/patient_records/EditPatientModal'))
+// const EditPatientModal = lazy(() => import('@/components/doctors/patient_records/EditPatientModal'))
 
-const PatientDetailModal = lazy(() =>
-  import('@/components/doctors/patient_records/PatientDetailModal')
-)
+// const PatientDetailModal = lazy(() =>
+//   import('@/components/doctors/patient_records/PatientDetailModal')
+// )
 
 function DoctorPatientRecords() {
-  const user = useAuth()
+  const { user } = useAuth()
   const [patients, setPatients] = useState([])
   const [loading, setLoading] = useState(true)
 
@@ -329,8 +330,8 @@ function DoctorPatientRecords() {
     })
   }, [patients, search, statusFilter, sexFilter, ageFilter, dateRange])
 
-  // Comment because there's an error ...
-  if (user.role !== 'facility_admin' && user.role !== 'doctor') {
+  // Check if user is authorized
+  if (user?.role !== 'doctor') {
     return <Unauthorized />
   }
 
