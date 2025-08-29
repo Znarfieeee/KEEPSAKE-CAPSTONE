@@ -20,7 +20,7 @@ const TabItem = ({ value, icon: Icon, children }) => (
   </TabsTrigger>
 )
 
-const PatientRecordsTabs = ({ patient }) => {
+const PatientRecordsTabs = ({ patient, viewPrescription }) => {
   const tabs = [
     {
       value: 'information',
@@ -58,7 +58,7 @@ const PatientRecordsTabs = ({ patient }) => {
       icon: Pill,
       content: (
         <div>
-          <PatientPrescription />
+          <PatientPrescription onView={viewPrescription} />
         </div>
       ),
     },
