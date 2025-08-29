@@ -58,15 +58,21 @@ const DoctorPatientInfo = () => {
     <div className="container mx-auto px-4 py-6">
       {/* Patient Header */}
       <div className="flex justify-between items-center mb-6">
-        <Link
-          to="/pediapro/patient_records"
-          className="flex items-center gap-2 text-black hover:text-primary transition duration-300 ease-in-out"
-        >
-          <IoMdArrowBack className="text-2xl" />
-          <span className="text-2xl font-bold">
-            {patient.firstname} {patient.lastname}
-          </span>
-        </Link>
+        <div className="flex items-center gap-2 text-black ">
+          <Link
+            to="/pediapro/patient_records"
+            className="hover:text-primary transition duration-300 ease-in-out"
+          >
+            <IoMdArrowBack className="text-2xl" />
+          </Link>
+
+          <div className="flex items-center gap-2">
+            <span className="text-2xl font-bold">
+              {patient.firstname.toUpperCase()} {patient.middlename ? patient.middlename : ''}{' '}
+              {patient.lastname.toUpperCase()}
+            </span>
+          </div>
+        </div>
       </div>
 
       <div className="space-y-6">

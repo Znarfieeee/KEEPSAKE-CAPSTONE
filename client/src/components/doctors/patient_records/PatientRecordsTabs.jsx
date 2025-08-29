@@ -1,7 +1,7 @@
 import React from 'react'
 
 // UI Components
-import { FileText, Syringe, Pill, Stethoscope, IdCard } from 'lucide-react'
+import { FileText, Syringe, Pill, Stethoscope } from 'lucide-react'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area'
 
@@ -31,12 +31,12 @@ const PatientRecordsTabs = ({ patient }) => {
       ),
     },
     {
-      value: 'screening',
-      label: 'SCREENING',
+      value: 'vitals',
+      label: 'Vitals',
       icon: Stethoscope,
       content: (
         <div>
-          <ScreeningTests screenings={patient?.screenings || []} />
+          <ScreeningTests patient={patient} />
         </div>
       ),
     },
