@@ -47,21 +47,49 @@ const SEGMENT_LABELS = {
   vital_custodian: 'Dashboard',
 }
 
+const DASHBOARD_SEGMENTS = ['admin', 'facility_admin', 'pediapro', 'keepsaker', 'vital_custodian']
+
 function Breadcrumbs() {
   const location = useLocation()
   const segments = location.pathname.split('/').filter(Boolean)
 
   if (segments.length === 0) return null // at root
 
+  const filteredSegments = []
+
+  for (let i = 0; i < segments.length; i++) {
+    const seg = segments[i]
+
+    // Skip dashboard segments when they're the first segment and we have more segments
+    // This prevents "Dashboard > Patient Records" type hierarchies
+    if (i === 0 && DASHBOARD_SEGMENTS.includes(seg) && segments.length > 1) {
+      continue
+    }
+
+    filteredSegments.push(seg)
+  }
+
+  // Rebuild the path accounting for skipped dashboard segments
   let pathAcc = ''
+  let originalIndex = 0
 
   return (
     <Breadcrumb className="mb-4 ml-10 text-sm text-gray-400">
       <BreadcrumbList>
-        {segments.map((seg, idx) => {
-          pathAcc += `/${seg}`
-          const isLast = idx === segments.length - 1
+        {filteredSegments.map((seg, idx) => {
+          // Build path correctly, accounting for skipped dashboard segments
+          if (idx === 0 && originalIndex === 0 && DASHBOARD_SEGMENTS.includes(segments[0])) {
+            // If we skipped a dashboard segment, include it in the path
+            pathAcc += `/${segments[0]}/${seg}`
+            originalIndex = 2
+          } else {
+            pathAcc += `/${seg}`
+            originalIndex++
+          }
+
+          const isLast = idx === filteredSegments.length - 1
           const label = SEGMENT_LABELS[seg] || seg
+
           return (
             <React.Fragment key={idx}>
               <BreadcrumbItem className="hover:text-black hover:underline duration-300 transition-colors">

@@ -2,7 +2,7 @@ import React from 'react'
 
 const PatientVitals = ({ patient }) => {
   return (
-    <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
+    <div className="bg-white rounded-lg shadow-sm p-6">
       <div className="mb-10">
         <h2 className="text-lg font-semibold my-4">DELIVERY RECORD</h2>
         <div className="grid grid-cols-3 gap-6">
@@ -84,44 +84,42 @@ const PatientVitals = ({ patient }) => {
           </div>
         </div>
 
-        <h3 className="text-md font-semibold mt-10 mb-4">VACCINATIONS & MEDICATIONS</h3>
+        <h3 className="text-md font-semibold mt-10 mb-4">ALLERGIES</h3>
         <div className="grid grid-cols-2 gap-6">
-          <div className="space-y-4">
-            <div>
-              <label className="text-sm text-gray-600">BCG VACCINATION DATE</label>
-              <p className="font-medium">
-                {patient.related_records?.delivery?.bcg_vaccination_date}
-              </p>
-            </div>
-            <div>
-              <label className="text-sm text-gray-600">BCG VACCINATION LOCATION</label>
-              <p className="font-medium">
-                {patient.related_records?.delivery?.bcg_vaccination_location || '—'}
-              </p>
-            </div>
-            <div>
-              <label className="text-sm text-gray-600">HEPATITIS B DATE</label>
-              <p className="font-medium">{patient.related_records?.delivery?.hepatitis_b_date}</p>
-            </div>
-          </div>
-          <div className="space-y-4">
-            <div>
-              <label className="text-sm text-gray-600">HEPATITIS B LOCATION</label>
-              <p className="font-medium">
-                {patient.related_records?.delivery?.hepatitis_b_location || '—'}
-              </p>
-            </div>
-            <div>
-              <label className="text-sm text-gray-600">VITAMIN K DATE</label>
-              <p className="font-medium">{patient.related_records?.delivery?.vitamin_k_date}</p>
-            </div>
-            <div>
-              <label className="text-sm text-gray-600">VITAMIN K LOCATION</label>
-              <p className="font-medium">
-                {patient.related_records?.delivery?.vitamin_k_location || '—'}
-              </p>
-            </div>
-          </div>
+          {patient.related_records?.allergies?.length > 0 ? (
+            patient.related_records.allergies.map((allergy) => (
+              <div key={allergy.allergy_id} className="bg-gray-50 p-4 rounded-lg">
+                <div className="space-y-2">
+                  <div>
+                    <label className="text-sm text-gray-600">ALLERGEN</label>
+                    <p className="font-medium">{allergy.allergen || '—'}</p>
+                  </div>
+                  <div>
+                    <label className="text-sm text-gray-600">REACTION TYPE</label>
+                    <p className="font-medium">{allergy.reaction_type || '—'}</p>
+                  </div>
+                  <div>
+                    <label className="text-sm text-gray-600">SEVERITY</label>
+                    <p className="font-medium capitalize">
+                      {allergy.severity?.replace('_', ' ') || '—'}
+                    </p>
+                  </div>
+                  <div>
+                    <label className="text-sm text-gray-600">DATE IDENTIFIED</label>
+                    <p className="font-medium">{allergy.date_identified || '—'}</p>
+                  </div>
+                  {allergy.notes && (
+                    <div>
+                      <label className="text-sm text-gray-600">NOTES</label>
+                      <p className="font-medium">{allergy.notes}</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            ))
+          ) : (
+            <p className="col-span-2 text-sm text-gray-500 italic">No allergies recorded</p>
+          )}
         </div>
       </div>
       <div className="w-full">

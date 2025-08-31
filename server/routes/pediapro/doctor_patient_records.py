@@ -93,11 +93,27 @@ def prepare_allergy_payload(data, patient_id, recorded_by):
         "recorded_by": recorded_by,
     }
 
+def prepare_prescription_payload(data, patient_id, patient_age, recorded_by):
+    return {
+        'patient_id': patient_id,
+        'doctor_id': recorded_by,
+        'facility_id': data.get('facility_id'), # Fetch from facility_users or from frontend
+        'prescription_date': datetime.utcnow().isoformat(),
+        'findings': data.get('findings'),
+        'consultation_type': data.get('consultation_type'),
+        'consultation_notes': data.get('consultation_notes'),
+        'doctor_instructions': data.get('doctor_instructions'),
+        'return_date': data.get('return_date'),
+        'patient_age_at_time': patient_age,
+        'created_by': recorded_by,
+        'created_at': datetime.utcnow().isoformat(),
+    }
+
 def has_related_data(data, fields):
     """Check if any of the specified fields have non-empty values"""
     return any(data.get(field) for field in fields if data.get(field) not in [None, '', []])
 
-def upsert_related_record(table_name, payload, patient_id):
+async def upsert_related_record(table_name, payload, patient_id):
     """
     Upsert pattern: Try to update first, insert if no records exist
     Think of this like React's useEffect with dependency array - 
@@ -105,15 +121,15 @@ def upsert_related_record(table_name, payload, patient_id):
     """
     try:
         # First check if record exists
-        existing = supabase.table(table_name).select('*').eq('patient_id', patient_id).execute()
+        existing = await supabase.table(table_name).select('*').eq('patient_id', patient_id).execute()
         
         if existing.data and len(existing.data) > 0:
             # Update existing record
-            resp = supabase.table(table_name).update(payload).eq('patient_id', patient_id).execute()
+            resp = await supabase.table(table_name).update(payload).eq('patient_id', patient_id).execute()
             current_app.logger.info(f"Updated existing {table_name} record for patient {patient_id}")
         else:
             # Insert new record
-            resp = supabase.table(table_name).insert(payload).execute()
+            resp = await supabase.table(table_name).insert(payload).execute()
             current_app.logger.info(f"Created new {table_name} record for patient {patient_id}")
             
         return resp
@@ -246,10 +262,11 @@ def add_patient_record():
                 "message": "Patient record created successfully. Use dedicated endpoints for additional data (delivery, measurements, etc.)",
                 "data": patient_resp.data[0],
                 "next_steps": {
-                    "delivery_record": f"/api/patient_record/{patient_id}/delivery",
-                    "anthropometric_data": f"/api/patient_record/{patient_id}/anthropometric",
-                    "screening_tests": f"/api/patient_record/{patient_id}/screening",
-                    "allergies": f"/api/patient_record/{patient_id}/allergies"
+                    "delivery_record": f"/patient_record/{patient_id}/delivery",
+                    "anthropometric_data": f"/patient_record/{patient_id}/anthropometric",
+                    "screening_tests": f"/patient_record/{patient_id}/screening",
+                    "allergies": f"/patient_record/{patient_id}/allergies",
+                    "allergies": f"/patient_record/{patient_id}/prescription",                    
                 }
             }), 201
             
@@ -282,14 +299,14 @@ def add_patient_record():
 @patrecord_bp.route('/patient_record/<patient_id>/delivery', methods=['POST', 'PUT'])
 @require_auth
 @require_role('doctor', 'facility_admin')
-def manage_delivery_record(patient_id):
+async def manage_delivery_record(patient_id):
     """Dedicated route for delivery records - like a focused React component"""
     try:
         data = request.json or {}
         current_user = request.current_user
         
         # Verify patient exists
-        patient_check = supabase.table('patients').select('patient_id').eq('patient_id', patient_id).single().execute()
+        patient_check = await supabase.table('patients').select('patient_id').eq('patient_id', patient_id).single().execute()
         if not patient_check.data:
             return jsonify({
                 "status": "error",
@@ -323,14 +340,14 @@ def manage_delivery_record(patient_id):
 @patrecord_bp.route('/patient_record/<patient_id>/anthropometric', methods=['POST', 'PUT'])
 @require_auth
 @require_role('doctor', 'facility_admin')
-def manage_anthropometric_record(patient_id):
+async def manage_anthropometric_record(patient_id):
     """Dedicated route for anthropometric records"""
     try:
         data = request.json or {}
         current_user = request.current_user
         
         # Verify patient exists
-        patient_check = supabase.table('patients').select('patient_id').eq('patient_id', patient_id).single().execute()
+        patient_check = await supabase.table('patients').select('patient_id').eq('patient_id', patient_id).single().execute()
         if not patient_check.data:
             return jsonify({
                 "status": "error",
@@ -365,14 +382,14 @@ def manage_anthropometric_record(patient_id):
 @patrecord_bp.route('/patient_record/<patient_id>/screening', methods=['POST', 'PUT'])
 @require_auth
 @require_role('doctor', 'facility_admin')
-def manage_screening_record(patient_id):
+async def manage_screening_record(patient_id):
     """Dedicated route for screening test records"""
     try:
         data = request.json or {}
         current_user = request.current_user
         
         # Verify patient exists
-        patient_check = supabase.table('patients').select('patient_id').eq('patient_id', patient_id).single().execute()
+        patient_check = await supabase.table('patients').select('patient_id').eq('patient_id', patient_id).single().execute()
         if not patient_check.data:
             return jsonify({
                 "status": "error",
@@ -402,18 +419,18 @@ def manage_screening_record(patient_id):
             "status": "error",
             "message": f"Error managing screening record: {str(e)}"
         }), 500
-
+        
 @patrecord_bp.route('/patient_record/<patient_id>/allergies', methods=['POST', 'PUT'])
 @require_auth
 @require_role('doctor', 'facility_admin')
-def manage_allergy_record(patient_id):
+async def manage_allergy_record(patient_id):
     """Dedicated route for allergy records"""
     try:
         data = request.json or {}
         current_user = request.current_user
         
         # Verify patient exists
-        patient_check = supabase.table('patients').select('patient_id').eq('patient_id', patient_id).single().execute()
+        patient_check = await supabase.table('patients').select('patient_id').eq('patient_id', patient_id).single().execute()
         if not patient_check.data:
             return jsonify({
                 "status": "error",
@@ -444,8 +461,58 @@ def manage_allergy_record(patient_id):
             "status": "error",
             "message": f"Error managing allergy record: {str(e)}"
         }), 500
+        
+@patrecord_bp.route('/patient_record/<patient_id>/prescriptions', methods=['POST', 'PUT'])
+@require_auth
+@require_role('doctor', 'facility_admin')
+async def manage_rx_record(patient_id):
+    try:
+        data = request.json or {}
+        current_user = request.current_user
+        
+        patient_check = await supabase.table('patients, date_of_birth').select('patient_id').eq('patient_id', patient_id).single().execute()
+        if not patient_check.data:
+            return jsonify({
+                "status": "error",
+                "message": "Patient not found"
+            }), 404
+            
+        try:
+            age_resp = await supabase.rpc('calculate_age', {'date_of_birth': patient_check['date_of_birth']}).execute()
+            
+            if age_resp.data is not None:
+                patient_age = age_resp.data
+        except Exception as age_error:
+            current_app.logger.error(f"Error calculating age for patient {patient_id}: {str(age_error)}")
+            # Don't fail the entire request if age calculation fails
+            patient_check['calculated_age'] = None
+            
+        
+        recorded_by = current_user.get('id')
+        rx_payload = prepare_prescription_payload(data, patient_id, patient_age, recorded_by)
+        resp = upsert_related_record('prescriptions', rx_payload, patient_id)
+        
+        if getattr(resp, 'error', None):
+            return jsonify({
+                'status': 'error',
+                'message': 'Failed to save prescription record',
+                'details': resp.error.message if resp.error else 'Unknown'
+            }), 400
+            
+        invalidate_caches('patient', patient_id)
+        
+        return jsonify({
+            'status': 'success',
+            'message': 'Prescription record saved successfully',
+            'data': resp.data
+        }), 200
+        
+    except Exception as e:
+        return jsonify({
+            'status': 'error', 
+            'message': f"Error managing prescription record: {str(e)}"
+        }), 500     
 
-# Update patient - simplified to only handle patient table
 @patrecord_bp.route('/patient_record/<patient_id>', methods=['PUT'])
 @require_auth
 @require_role('facility_admin', 'doctor')
@@ -579,7 +646,11 @@ def get_patient_record_by_id(patient_id):
             # Get allergies
             allergy_resp = supabase.table('allergies').select('*').eq('patient_id', patient_id).execute()
             if allergy_resp.data:
-                related_data['allergies'] = allergy_resp.data
+                related_data['allergies'] = allergy_resp.data[0] if screening_resp.data else None
+                
+            rx_resp = supabase.table('prescriptions').select('*').eq('patient_id', patient_id).execute()
+            if rx_resp.data:
+                related_data['prescriptions'] = rx_resp.data[0] if screening_resp.data else None
             
             patient_data['related_records'] = related_data
             

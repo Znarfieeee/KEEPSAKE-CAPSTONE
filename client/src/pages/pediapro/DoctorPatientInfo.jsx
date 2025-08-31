@@ -54,6 +54,10 @@ const DoctorPatientInfo = () => {
     )
   }
 
+  const handlePrescriptionView = () => {
+    alert('Viewing prescription')
+  }
+
   return (
     <div className="container mx-auto px-4 py-6">
       {/* Patient Header */}
@@ -76,7 +80,7 @@ const DoctorPatientInfo = () => {
       </div>
 
       <div className="space-y-6">
-        <PatientRecordsTabs patient={patient} />
+        <PatientRecordsTabs patient={patient} viewPrescription={handlePrescriptionView} />
       </div>
     </div>
   )
