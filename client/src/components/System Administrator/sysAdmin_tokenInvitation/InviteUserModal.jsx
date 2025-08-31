@@ -20,6 +20,7 @@ import {
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import SendButton from '@/components/ui/SendButton'
+import { PlusCircle } from 'lucide-react'
 
 const InviteUserModal = ({ facilities, onCreateInvitation, isLoading }) => {
   const [formSuccess, setFormSuccess] = useState(false)
@@ -57,7 +58,10 @@ const InviteUserModal = ({ facilities, onCreateInvitation, isLoading }) => {
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogTrigger asChild>
-        <Button>Register New User</Button>
+        <Button>
+          <PlusCircle className="h-4 w-4 mr-2" />
+          Register New User
+        </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-xl">
         <DialogHeader>
