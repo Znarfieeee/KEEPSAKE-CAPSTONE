@@ -3,24 +3,12 @@ import React, { useState, lazy, Suspense } from 'react'
 // UI Components
 import { TooltipHelper } from '@/util/TooltipHelper'
 import { Button } from '@/components/ui/button'
-import { Eye, Search, PlusCircle } from 'lucide-react'
-import AddPatientPrescriptionModal from './AddPatientPrescriptionModal'
+import { Eye, Search } from 'lucide-react'
+// import AddPatientPrescriptionModal from './AddPatientPrescriptionModal'
 
-// const AddPatientPrescriptionModal = lazy(() =>
-//   import('./AddPatientPrescriptionModal').then((module) => ({
-//     default: module.default,
-//   }))
-// )
+const AddPatientPrescriptionModal = lazy(() => import('./AddPatientPrescriptionModal'))
 
 const PatientPrescription = ({ patient, onView, search, onSearchChange }) => {
-  const [showAddModal, setShowAddModal] = useState(false)
-
-  const handleAddPrescription = (data) => {
-    console.log('New prescription data:', data)
-    setShowAddModal(false)
-    // TODO: Add API call to save prescription
-  }
-
   return (
     <div className="bg-white rounded-b-lg shadow-sm p-6 mb-6">
       <div className="w-full overflow-x-auto">
@@ -36,19 +24,7 @@ const PatientPrescription = ({ patient, onView, search, onSearchChange }) => {
             />
           </div>
           <div className="relative flex-1 lg:flex-none">
-            <Button
-              onClick={() => setShowAddModal(true)}
-              className="bg-primary text-white hover:bg-primary/90"
-            >
-              <PlusCircle className="h-4 w-4 mr-2" />
-              Add Prescription
-            </Button>
-            <AddPatientPrescriptionModal
-              id="btn2"
-              open={showAddModal}
-              onClose={() => setShowAddModal(false)}
-              onSave={handleAddPrescription}
-            />
+            <AddPatientPrescriptionModal />
           </div>
         </div>
         <table className="w-full text-sm">
