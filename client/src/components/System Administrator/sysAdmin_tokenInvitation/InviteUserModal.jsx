@@ -12,7 +12,6 @@ import {
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import SendButton from '@/components/ui/SendButton'
-import { PlusCircle } from 'lucide-react'
 
 const InviteUserModal = ({ facilities, onCreateInvitation, isLoading, setIsOpen }) => {
     const [formSuccess, setFormSuccess] = useState(false)
