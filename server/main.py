@@ -5,6 +5,7 @@ from routes.admin_routes import admin_bp
 from routes.admin.admin_facility import facility_bp
 from routes.admin.admin_users import users_bp
 from routes.pediapro.doctor_patient_records import patrecord_bp
+from routes.pediapro.doctor_patient_prescriptions import patrx_bp
 from flask_cors import CORS
 from datetime import timedelta
 import os, sys, json
@@ -29,6 +30,7 @@ app.register_blueprint(admin_bp)
 app.register_blueprint(facility_bp)
 app.register_blueprint(users_bp)
 app.register_blueprint(patrecord_bp)
+app.register_blueprint(patrx_bp)
 
 # Redis session configuration with enhanced error handling
 def setup_redis_session():

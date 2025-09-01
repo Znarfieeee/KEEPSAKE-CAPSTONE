@@ -25,6 +25,7 @@ VALID_ROLES = {
     "nurse",
     "staff",
     "parent",
+    "guardian"
 }
 
 def _normalize_roles(roles: Iterable[str]):

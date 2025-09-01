@@ -37,7 +37,7 @@ const PatientPrescription = ({
                             <DialogTrigger asChild>
                                 <Button>
                                     <PlusCircle className="h-4 w-4 mr-2" />
-                                    Invite User
+                                    Add Prescription
                                 </Button>
                             </DialogTrigger>
                             <Suspense fallback={null}>
