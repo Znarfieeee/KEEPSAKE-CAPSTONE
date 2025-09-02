@@ -113,7 +113,7 @@ def has_related_data(data, fields):
     """Check if any of the specified fields have non-empty values"""
     return any(data.get(field) for field in fields if data.get(field) not in [None, '', []])
 
-async def upsert_related_record(table_name, payload, patient_id):
+def upsert_related_record(table_name, payload, patient_id):
     """
     Upsert pattern: Try to update first, insert if no records exist
     Think of this like React's useEffect with dependency array - 
@@ -121,15 +121,15 @@ async def upsert_related_record(table_name, payload, patient_id):
     """
     try:
         # First check if record exists
-        existing = await supabase.table(table_name).select('*').eq('patient_id', patient_id).execute()
+        existing = supabase.table(table_name).select('*').eq('patient_id', patient_id).execute()
         
         if existing.data and len(existing.data) > 0:
             # Update existing record
-            resp = await supabase.table(table_name).update(payload).eq('patient_id', patient_id).execute()
+            resp = supabase.table(table_name).update(payload).eq('patient_id', patient_id).execute()
             current_app.logger.info(f"Updated existing {table_name} record for patient {patient_id}")
         else:
             # Insert new record
-            resp = await supabase.table(table_name).insert(payload).execute()
+            resp = supabase.table(table_name).insert(payload).execute()
             current_app.logger.info(f"Created new {table_name} record for patient {patient_id}")
             
         return resp
@@ -299,14 +299,14 @@ def add_patient_record():
 @patrecord_bp.route('/patient_record/<patient_id>/delivery', methods=['POST', 'PUT'])
 @require_auth
 @require_role('doctor', 'facility_admin')
-async def manage_delivery_record(patient_id):
+def manage_delivery_record(patient_id):
     """Dedicated route for delivery records - like a focused React component"""
     try:
         data = request.json or {}
         current_user = request.current_user
         
         # Verify patient exists
-        patient_check = await supabase.table('patients').select('patient_id').eq('patient_id', patient_id).single().execute()
+        patient_check = supabase.table('patients').select('patient_id').eq('patient_id', patient_id).single().execute()
         if not patient_check.data:
             return jsonify({
                 "status": "error",
@@ -340,14 +340,14 @@ async def manage_delivery_record(patient_id):
 @patrecord_bp.route('/patient_record/<patient_id>/anthropometric', methods=['POST', 'PUT'])
 @require_auth
 @require_role('doctor', 'facility_admin')
-async def manage_anthropometric_record(patient_id):
+def manage_anthropometric_record(patient_id):
     """Dedicated route for anthropometric records"""
     try:
         data = request.json or {}
         current_user = request.current_user
         
         # Verify patient exists
-        patient_check = await supabase.table('patients').select('patient_id').eq('patient_id', patient_id).single().execute()
+        patient_check = supabase.table('patients').select('patient_id').eq('patient_id', patient_id).single().execute()
         if not patient_check.data:
             return jsonify({
                 "status": "error",
@@ -382,14 +382,14 @@ async def manage_anthropometric_record(patient_id):
 @patrecord_bp.route('/patient_record/<patient_id>/screening', methods=['POST', 'PUT'])
 @require_auth
 @require_role('doctor', 'facility_admin')
-async def manage_screening_record(patient_id):
+def manage_screening_record(patient_id):
     """Dedicated route for screening test records"""
     try:
         data = request.json or {}
         current_user = request.current_user
         
         # Verify patient exists
-        patient_check = await supabase.table('patients').select('patient_id').eq('patient_id', patient_id).single().execute()
+        patient_check = supabase.table('patients').select('patient_id').eq('patient_id', patient_id).single().execute()
         if not patient_check.data:
             return jsonify({
                 "status": "error",
@@ -423,14 +423,14 @@ async def manage_screening_record(patient_id):
 @patrecord_bp.route('/patient_record/<patient_id>/allergies', methods=['POST', 'PUT'])
 @require_auth
 @require_role('doctor', 'facility_admin')
-async def manage_allergy_record(patient_id):
+def manage_allergy_record(patient_id):
     """Dedicated route for allergy records"""
     try:
         data = request.json or {}
         current_user = request.current_user
         
         # Verify patient exists
-        patient_check = await supabase.table('patients').select('patient_id').eq('patient_id', patient_id).single().execute()
+        patient_check = supabase.table('patients').select('patient_id').eq('patient_id', patient_id).single().execute()
         if not patient_check.data:
             return jsonify({
                 "status": "error",
@@ -465,12 +465,12 @@ async def manage_allergy_record(patient_id):
 @patrecord_bp.route('/patient_record/<patient_id>/prescriptions', methods=['POST', 'PUT'])
 @require_auth
 @require_role('doctor', 'facility_admin')
-async def manage_rx_record(patient_id):
+def manage_rx_record(patient_id):
     try:
         data = request.json or {}
         current_user = request.current_user
         
-        patient_check = await supabase.table('patients, date_of_birth').select('patient_id').eq('patient_id', patient_id).single().execute()
+        patient_check = supabase.table('patients, date_of_birth').select('patient_id').eq('patient_id', patient_id).single().execute()
         if not patient_check.data:
             return jsonify({
                 "status": "error",
@@ -478,7 +478,7 @@ async def manage_rx_record(patient_id):
             }), 404
             
         try:
-            age_resp = await supabase.rpc('calculate_age', {'date_of_birth': patient_check['date_of_birth']}).execute()
+            age_resp = supabase.rpc('calculate_age', {'date_of_birth': patient_check['date_of_birth']}).execute()
             
             if age_resp.data is not None:
                 patient_age = age_resp.data
