@@ -460,58 +460,7 @@ def manage_allergy_record(patient_id):
         return jsonify({
             "status": "error",
             "message": f"Error managing allergy record: {str(e)}"
-        }), 500
-        
-@patrecord_bp.route('/patient_record/<patient_id>/prescriptions', methods=['POST', 'PUT'])
-@require_auth
-@require_role('doctor', 'facility_admin')
-def manage_rx_record(patient_id):
-    try:
-        data = request.json or {}
-        current_user = request.current_user
-        
-        patient_check = supabase.table('patients, date_of_birth').select('patient_id').eq('patient_id', patient_id).single().execute()
-        if not patient_check.data:
-            return jsonify({
-                "status": "error",
-                "message": "Patient not found"
-            }), 404
-            
-        try:
-            age_resp = supabase.rpc('calculate_age', {'date_of_birth': patient_check['date_of_birth']}).execute()
-            
-            if age_resp.data is not None:
-                patient_age = age_resp.data
-        except Exception as age_error:
-            current_app.logger.error(f"Error calculating age for patient {patient_id}: {str(age_error)}")
-            # Don't fail the entire request if age calculation fails
-            patient_check['calculated_age'] = None
-            
-        
-        recorded_by = current_user.get('id')
-        rx_payload = prepare_prescription_payload(data, patient_id, patient_age, recorded_by)
-        resp = upsert_related_record('prescriptions', rx_payload, patient_id)
-        
-        if getattr(resp, 'error', None):
-            return jsonify({
-                'status': 'error',
-                'message': 'Failed to save prescription record',
-                'details': resp.error.message if resp.error else 'Unknown'
-            }), 400
-            
-        invalidate_caches('patient', patient_id)
-        
-        return jsonify({
-            'status': 'success',
-            'message': 'Prescription record saved successfully',
-            'data': resp.data
-        }), 200
-        
-    except Exception as e:
-        return jsonify({
-            'status': 'error', 
-            'message': f"Error managing prescription record: {str(e)}"
-        }), 500     
+        }), 500   
 
 @patrecord_bp.route('/patient_record/<patient_id>', methods=['PUT'])
 @require_auth
