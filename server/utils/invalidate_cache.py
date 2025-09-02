@@ -20,7 +20,16 @@ CACHE_KEYS = {
     'users': {
         'all': "users:all",
         'prefix': "users:"
+    },
+    'patient_prescription': {
+        'all': "patient_prescription:all",
+        'prefix': "patient_prescription:"
+    },
+    'prescription_med': {
+        'all': "prescription_med:all",
+        'prefix': "prescription_med:"
     }
+    
 }
 
 def invalidate_caches(cache_type, resource_id=None):
