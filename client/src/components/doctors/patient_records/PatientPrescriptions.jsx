@@ -26,7 +26,7 @@ const PatientPrescription = ({
                         <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-gray-500" />
                         <input
                             type="text"
-                            placeholder="Search patients..."
+                            placeholder="Search prescription..."
                             value={search}
                             onChange={(e) => onSearchChange(e.target.value)}
                             className="h-10 w-full rounded-md border border-gray-200 bg-white pl-9 pr-4 text-sm placeholder:text-gray-500 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
