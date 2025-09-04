@@ -10,7 +10,14 @@ redis_client = get_redis_client()
 
 PRESCRIPTION_CACHE_KEY = 'patient_prescription:all'
 PRESCRIPTION_CACHE_PREFIX = 'patient_prescription:'
-PRESCRIPTION_MEDICATION_= 'prescription_med:'
+PRESCRIPTION_MEDICATION_PREFIX = 'prescription_med:'
+CACHE_EXPIRY = 300  # 5 minutes
+
+def cache_key_for_patient(patient_id):
+    return f"{PRESCRIPTION_CACHE_PREFIX}{patient_id}"
+
+def cache_key_for_medication(rx_id):
+    return f"{PRESCRIPTION_MEDICATION_PREFIX}{rx_id}"
 
 
 def prepare_prescription_payload( data, patient_id, created_by, pat_age):
@@ -88,19 +95,22 @@ def get_all_patient_rx(patient_id):
     try:
         bust_cache = request.args.get('bust_cache', 'false').lower() == 'true'
         
-        if not bust_cache: 
-            cached = redis_client.get(PRESCRIPTION_CACHE_KEY + patient_id)
-            
-            if cached:
-                cached_data = json.loads(cached)
-                current_app.logger.info(f"Cache hit for patient {patient_id}")
-                return jsonify({
-                    'status': 'success',
-                    'cached': True,
-                    'data': cached_data,
-                    "timestamp": datetime.datetime.utcnow().isoformat()
-                    
-                }), 200
+        cache_key = cache_key_for_patient(patient_id)
+        
+        if not bust_cache:
+            try:
+                cached = redis_client.get(cache_key)
+                if cached:
+                    cached_data = json.loads(cached)
+                    current_app.logger.info(f"Cache hit for patient {patient_id}")
+                    return jsonify({
+                        'status': 'success',
+                        'cached': True,
+                        'data': cached_data,
+                        'timestamp': datetime.datetime.utcnow().isoformat()
+                    }), 200
+            except Exception as cache_error:
+                current_app.logger.warning(f"Cache retrieval failed for {cache_key}: {str(cache_error)}")
                 
         rx_resp = supabase.table('prescriptions')\
             .select('*')\
@@ -145,7 +155,20 @@ def get_all_patient_rx(patient_id):
             resp.append(rx)
         
         # Cache the constructed response
-        redis_client.setex(PRESCRIPTION_CACHE_KEY + patient_id, 300, json.dumps(resp))
+        try:
+            redis_client.setex(cache_key_for_patient(patient_id), CACHE_EXPIRY, json.dumps(resp))
+            
+            # Cache individual medications
+            for rx in prescriptions:
+                rx_id = rx.get('rx_id')
+                if rx_id and rx.get('medications'):
+                    redis_client.setex(
+                        cache_key_for_medication(rx_id),
+                        CACHE_EXPIRY,
+                        json.dumps(rx['medications'])
+                    )
+        except Exception as cache_error:
+            current_app.logger.warning(f"Cache update failed: {str(cache_error)}")
         
         return jsonify({
             'status': 'success',
