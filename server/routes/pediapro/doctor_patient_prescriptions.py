@@ -4,6 +4,7 @@ from utils.access_control import require_auth, require_role
 from utils.redis_client import get_redis_client
 from utils.invalidate_cache import invalidate_caches
 import json, datetime
+from utils.sanitize import sanitize_medical_data, sanitize_request_data
 
 patrx_bp = Blueprint('patrx', __name__)
 redis_client = get_redis_client()
@@ -91,6 +92,7 @@ def upsert_related_record(table_name, payload, patient_id, rx_id=None):
 @patrx_bp.route('/patient_record/<patient_id>/prescriptions', methods=['GET'])
 @require_auth
 @require_role('facility_admin', 'doctor', 'nurse', 'parent', 'guardian')
+@sanitize_medical_data('patient')
 def get_all_patient_rx(patient_id):
     try:
         bust_cache = request.args.get('bust_cache', 'false').lower() == 'true'
@@ -194,9 +196,12 @@ def get_all_patient_rx(patient_id):
 @patrx_bp.route('/patient_record/<patient_id>/prescriptions', methods=['POST', 'PUT'])
 @require_auth
 @require_role('facility_admin', 'doctor')
+@sanitize_medical_data('medication')
 def create_patient_prescription(patient_id):
     try:
-        data = request.json
+        raw_data = request.json
+        data = sanitize_request_data(raw_data)
+        
         current_user = request.current_user
         
         created_by = current_user.get('id')
@@ -301,4 +306,4 @@ def create_patient_prescription(patient_id):
         return jsonify({
             'status': 'error',
             'message': 'An unexpected error occurred while creating prescription'
-        }), 500
+        }), 500 

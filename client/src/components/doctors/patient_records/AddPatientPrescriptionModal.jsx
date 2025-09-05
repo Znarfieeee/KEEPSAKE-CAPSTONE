@@ -5,7 +5,13 @@ import { format } from 'date-fns'
 import { Button } from '@/components/ui/button'
 import { Calendar } from '@/components/ui/calendar'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
-import { DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import {
+    DialogContent,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+    DialogClose,
+} from '@/components/ui/dialog'
 import {
     Select,
     SelectContent,
@@ -17,7 +23,10 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { PlusCircle, Trash2, AlertCircle, Pill } from 'lucide-react'
-import { DialogClose } from '../../ui/dialog'
+
+// Helper
+import { sanitizeObject } from '@/util/sanitize'
+import { showToast } from '../../../util/alertHelper'
 
 // Common medications database (can be moved to a separate file)
 const COMMON_MEDICATIONS = [
@@ -66,17 +75,29 @@ const DURATION_OPTIONS = [
     { value: 'until_finished', label: 'Until finished' },
 ]
 
+const initialForm = {
+    findings: '',
+    consultation_type: '',
+    consultation_notes: '',
+    doctor_instructions: '',
+    return_date: '',
+    medications: [
+        {
+            medication_name: '',
+            dosage: '',
+            frequency: '',
+            duration: '',
+            special_instructions: '',
+            quantity: 1,
+            refills_authorized: 0,
+        },
+    ],
+}
+
 const AddPatientPrescriptionModal = ({ onSave }) => {
     const [isLoading, setIsLoading] = useState(false)
     const [errors, setErrors] = useState({})
-    const [formData, setFormData] = useState({
-        findings: '',
-        consultation_type: '',
-        consultation_notes: '',
-        doctor_instructions: '',
-        return_date: undefined,
-        medications: [{ name: '', dosage: '', frequency: '', duration: '', notes: '' }],
-    })
+    const [formData, setFormData] = useState(initialForm)
 
     const validateMedication = (med, index) => {
         const medErrors = {}
@@ -101,6 +122,10 @@ const AddPatientPrescriptionModal = ({ onSave }) => {
         return Object.keys(newErrors).length === 0
     }
 
+    const reset = () => {
+        setFormData(initialForm)
+    }
+
     const handleSubmit = async (e) => {
         e.preventDefault()
 
@@ -108,18 +133,18 @@ const AddPatientPrescriptionModal = ({ onSave }) => {
             return
         }
 
-        setIsLoading(true)
         try {
-            await onSave(formData)
-            // Reset form on success
-            setFormData({
-                findings: '',
-                consultation_type: '',
-                consultation_notes: '',
-                doctor_instructions: '',
-                return_date: undefined,
-                medications: [{ name: '', dosage: '', frequency: '', duration: '', notes: '' }],
-            })
+            setIsLoading(true)
+            const payload = sanitizeObject({ ...formData })
+            const res = await onSave(payload)
+
+            if (res.status === 'success') {
+                showToast('success', 'Prescription added')
+            } else {
+                showToast('error', res.message || 'Failed to add prescription')
+            }
+
+            reset()
             setErrors({})
         } catch (error) {
             console.error('Error saving prescription:', error)
@@ -162,7 +187,6 @@ const AddPatientPrescriptionModal = ({ onSave }) => {
             return { ...prev, medications: newMeds }
         })
 
-        // Clear specific field error when user starts typing
         setErrors((prev) => {
             const newErrors = { ...prev }
             if (newErrors[`medication_${index}`]) {
