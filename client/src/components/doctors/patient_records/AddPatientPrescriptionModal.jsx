@@ -183,9 +183,14 @@ const AddPatientPrescriptionModal = ({ onSave }) => {
     }
 
     return (
-        <DialogContent className="sm:max-w-3xl max-h-[90vh] overflow-y-auto" showCloseButton>
+        <DialogContent
+            className="sm:max-w-3xl max-h-[90vh] overflow-y-auto"
+            showCloseButton={false}
+        >
             <DialogHeader>
-                <DialogTitle className="flex items-center gap-2">Add New Prescription</DialogTitle>
+                <DialogTitle className="flex items-center gap-2 mb-6 text-xl">
+                    Add New Prescription
+                </DialogTitle>
             </DialogHeader>
             <form className="space-y-6" onSubmit={handleSubmit}>
                 {/* Consultation Type */}

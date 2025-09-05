@@ -8,14 +8,7 @@ import { Dialog, DialogTrigger } from '@/components/ui/dialog'
 
 const AddPatientPrescriptionModal = lazy(() => import('./AddPatientPrescriptionModal'))
 
-const PatientPrescription = ({
-    patient,
-    onView,
-    search,
-    onSearchChange,
-    isLoading,
-    prescription,
-}) => {
+const PatientPrescription = ({ onView, search, onSearchChange, isLoading, prescription = [] }) => {
     const [isOpen, setIsOpen] = useState()
 
     return (
@@ -54,15 +47,22 @@ const PatientPrescription = ({
                 <table className="w-full text-sm">
                     <thead className="border-b border-b-gray-300 text-xs uppercase text-muted-foreground">
                         <tr className="text-left">
-                            <th className="py-3 px-2 w-[20%]">Date</th>
-                            <th className="py-3 px-2 w-[55%]">Findings</th>
-                            <th className="py-3 px-2 w-[15%]">Status</th>
-                            <th className="py-3 px-2 w-[10%]">Actions</th>
+                            <th className="py-3 px-2 w-[20%]">DATE</th>
+                            <th className="py-3 px-2 w-[35%]">FINDINGS</th>
+                            <th className="py-3 px-2 w-[20%]">RETURN DATE</th>
+                            <th className="py-3 px-2 w-[15%]">STATUS</th>
+                            <th className="py-3 px-2 w-[10%]">ACTIONS</th>
                         </tr>
                     </thead>
                     <tbody>
-                        {patient?.related_records?.prescriptions?.length > 0 ? (
-                            patient.related_records.prescriptions.map((rx) => (
+                        {isLoading ? (
+                            <tr>
+                                <td colSpan="4" className="p-2 text-center">
+                                    Loading prescriptions...
+                                </td>
+                            </tr>
+                        ) : prescription?.length > 0 ? (
+                            prescription.map((rx) => (
                                 <tr
                                     key={rx.rx_id}
                                     className="border-b border-gray-200 last:border-none"
@@ -71,6 +71,7 @@ const PatientPrescription = ({
                                         {rx.prescription_date}
                                     </td>
                                     <td className="p-2 whitespace-nowrap">{rx.findings}</td>
+                                    <td className="p-2 whitespace-nowrap">{rx.return_date}</td>
                                     <td className="p-2 whitespace-nowrap">{rx.status}</td>
                                     <td className="p-2 whitespace-nowrap">
                                         <TooltipHelper content="View Details">
@@ -96,15 +97,6 @@ const PatientPrescription = ({
                     </tbody>
                 </table>
             </div>
-            {/* <Suspense fallback={null}>
-        {showAddModal && (
-          <AddPatientPrescriptionModal
-            open={showAddModal}
-            onClose={() => setShowAddModal(false)}
-            onSave={handleAddPrescription}
-          />
-        )}
-      </Suspense> */}
         </div>
     )
 }
