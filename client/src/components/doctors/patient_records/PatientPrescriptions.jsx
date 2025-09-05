@@ -1,6 +1,7 @@
 import React, { useState, lazy, Suspense } from 'react'
 
 // UI Components
+import { NoResults } from '@/components/ui/no-results'
 import { TooltipHelper } from '@/util/TooltipHelper'
 import { Button } from '@/components/ui/button'
 import { Eye, Search, PlusCircle } from 'lucide-react'
@@ -8,14 +9,7 @@ import { Dialog, DialogTrigger } from '@/components/ui/dialog'
 
 const AddPatientPrescriptionModal = lazy(() => import('./AddPatientPrescriptionModal'))
 
-const PatientPrescription = ({
-    patient,
-    onView,
-    search,
-    onSearchChange,
-    isLoading,
-    prescription,
-}) => {
+const PatientPrescription = ({ onView, search, onSearchChange, isLoading, prescription = [] }) => {
     const [isOpen, setIsOpen] = useState()
 
     return (
@@ -43,7 +37,6 @@ const PatientPrescription = ({
                             <Suspense fallback={null}>
                                 <AddPatientPrescriptionModal
                                     prescription={prescription}
-                                    // onCreateInvitation={onCreateInvitation}
                                     isLoading={isLoading}
                                     setIsOpen={setIsOpen}
                                 />
@@ -55,14 +48,21 @@ const PatientPrescription = ({
                     <thead className="border-b border-b-gray-300 text-xs uppercase text-muted-foreground">
                         <tr className="text-left">
                             <th className="py-3 px-2 w-[20%]">Date</th>
-                            <th className="py-3 px-2 w-[55%]">Findings</th>
+                            <th className="py-3 px-2 w-[35%]">Findings</th>
+                            <th className="py-3 px-2 w-[20%]">Return Date</th>
                             <th className="py-3 px-2 w-[15%]">Status</th>
                             <th className="py-3 px-2 w-[10%]">Actions</th>
                         </tr>
                     </thead>
                     <tbody>
-                        {patient?.related_records?.prescriptions?.length > 0 ? (
-                            patient.related_records.prescriptions.map((rx) => (
+                        {isLoading ? (
+                            <tr>
+                                <td colSpan="4" className="p-2 text-center">
+                                    Loading prescriptions...
+                                </td>
+                            </tr>
+                        ) : prescription?.length > 0 ? (
+                            prescription.map((rx) => (
                                 <tr
                                     key={rx.rx_id}
                                     className="border-b border-gray-200 last:border-none"
@@ -71,6 +71,7 @@ const PatientPrescription = ({
                                         {rx.prescription_date}
                                     </td>
                                     <td className="p-2 whitespace-nowrap">{rx.findings}</td>
+                                    <td className="p-2 whitespace-nowrap">{rx.return_date}</td>
                                     <td className="p-2 whitespace-nowrap">{rx.status}</td>
                                     <td className="p-2 whitespace-nowrap">
                                         <TooltipHelper content="View Details">
@@ -87,24 +88,18 @@ const PatientPrescription = ({
                                 </tr>
                             ))
                         ) : (
-                            <tr>
-                                <td colSpan="4" className="p-2 text-center text-gray-500 italic">
-                                    No prescriptions
-                                </td>
-                            </tr>
+                            <NoResults
+                                message={search ? 'No prescriptions found' : 'No prescriptions yet'}
+                                suggestion={
+                                    search
+                                        ? 'Try adjusting your search criteria'
+                                        : 'Add a prescription using the button above'
+                                }
+                            />
                         )}
                     </tbody>
                 </table>
             </div>
-            {/* <Suspense fallback={null}>
-        {showAddModal && (
-          <AddPatientPrescriptionModal
-            open={showAddModal}
-            onClose={() => setShowAddModal(false)}
-            onSave={handleAddPrescription}
-          />
-        )}
-      </Suspense> */}
         </div>
     )
 }

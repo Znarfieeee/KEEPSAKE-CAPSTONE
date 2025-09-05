@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState, useMemo } from 'react'
 
 // UI Components
 import { FileText, Syringe, Pill, Stethoscope } from 'lucide-react'
@@ -9,12 +9,6 @@ import PatientInformation from '@/components/doctors/patient_records/PatientInfo
 import PatientVitals from '@/components/doctors/patient_records/PatientVitals'
 import PatientImmunization from '@/components/doctors/patient_records/PatientImmunization'
 import PatientPrescription from '@/components/doctors/patient_records/PatientPrescriptions'
-
-import {
-    getAllPrescriptions,
-    addPrescription,
-    updatePrescription,
-} from '@/api/doctors/prescription'
 
 const TabItem = ({ value, icon: Icon, children }) => (
     <TabsTrigger
@@ -27,27 +21,30 @@ const TabItem = ({ value, icon: Icon, children }) => (
 )
 
 const PatientRecordsTabs = ({ patient, viewPrescription }) => {
-    const [prescriptions, setPrescriptions] = useState(null)
+    const [prescriptions, setPrescriptions] = useState([])
     const [isLoading, setIsLoading] = useState(false)
-    const [searchQuery, setSearchQuery] = useState('')
+    const [search, setSearch] = useState('')
 
     useEffect(() => {
-        const fetchPrescriptions = async () => {
-            if (!patient?.patient_id) return
-
-            setIsLoading(true)
-            try {
-                const response = await getAllPrescriptions(patient.patient_id)
-                setPrescriptions(response.data || [])
-            } catch (error) {
-                console.error('Error fetching prescriptions:', error)
-            } finally {
-                setIsLoading(false)
-            }
+        if (patient?.related_records?.prescriptions) {
+            setPrescriptions([patient.related_records.prescriptions])
         }
+    }, [patient?.related_records?.prescriptions])
 
-        fetchPrescriptions()
-    }, [patient?.patient_id])
+    // Filter prescriptions based on search query
+    const filteredPrescriptions = useMemo(() => {
+        return prescriptions.filter((rx) => {
+            const searchLower = search.toLowerCase()
+            return (
+                searchLower === '' ||
+                rx.findings?.toLowerCase().includes(searchLower) ||
+                rx.prescription_date?.toLowerCase().includes(searchLower) ||
+                rx.status?.toLowerCase().includes(searchLower) ||
+                rx.return_date?.toLowerCase().includes(searchLower) ||
+                rx.consultation_notes?.toLowerCase().includes(searchLower)
+            )
+        })
+    }, [prescriptions, search])
 
     const tabs = [
         {
@@ -86,7 +83,13 @@ const PatientRecordsTabs = ({ patient, viewPrescription }) => {
             icon: Pill,
             content: (
                 <div>
-                    <PatientPrescription onView={viewPrescription} prescription={prescriptions} />
+                    <PatientPrescription
+                        onView={viewPrescription}
+                        prescription={filteredPrescriptions}
+                        isLoading={isLoading}
+                        search={search}
+                        onSearchChange={(value) => setSearch(value)}
+                    />
                 </div>
             ),
         },
