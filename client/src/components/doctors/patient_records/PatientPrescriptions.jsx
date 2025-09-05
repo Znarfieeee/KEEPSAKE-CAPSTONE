@@ -1,6 +1,7 @@
 import React, { useState, lazy, Suspense } from 'react'
 
 // UI Components
+import { NoResults } from '@/components/ui/no-results'
 import { TooltipHelper } from '@/util/TooltipHelper'
 import { Button } from '@/components/ui/button'
 import { Eye, Search, PlusCircle } from 'lucide-react'
@@ -36,7 +37,6 @@ const PatientPrescription = ({ onView, search, onSearchChange, isLoading, prescr
                             <Suspense fallback={null}>
                                 <AddPatientPrescriptionModal
                                     prescription={prescription}
-                                    // onCreateInvitation={onCreateInvitation}
                                     isLoading={isLoading}
                                     setIsOpen={setIsOpen}
                                 />
@@ -47,11 +47,11 @@ const PatientPrescription = ({ onView, search, onSearchChange, isLoading, prescr
                 <table className="w-full text-sm">
                     <thead className="border-b border-b-gray-300 text-xs uppercase text-muted-foreground">
                         <tr className="text-left">
-                            <th className="py-3 px-2 w-[20%]">DATE</th>
-                            <th className="py-3 px-2 w-[35%]">FINDINGS</th>
-                            <th className="py-3 px-2 w-[20%]">RETURN DATE</th>
-                            <th className="py-3 px-2 w-[15%]">STATUS</th>
-                            <th className="py-3 px-2 w-[10%]">ACTIONS</th>
+                            <th className="py-3 px-2 w-[20%]">Date</th>
+                            <th className="py-3 px-2 w-[35%]">Findings</th>
+                            <th className="py-3 px-2 w-[20%]">Return Date</th>
+                            <th className="py-3 px-2 w-[15%]">Status</th>
+                            <th className="py-3 px-2 w-[10%]">Actions</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -88,11 +88,14 @@ const PatientPrescription = ({ onView, search, onSearchChange, isLoading, prescr
                                 </tr>
                             ))
                         ) : (
-                            <tr>
-                                <td colSpan="4" className="p-2 text-center text-gray-500 italic">
-                                    No prescriptions
-                                </td>
-                            </tr>
+                            <NoResults
+                                message={search ? 'No prescriptions found' : 'No prescriptions yet'}
+                                suggestion={
+                                    search
+                                        ? 'Try adjusting your search criteria'
+                                        : 'Add a prescription using the button above'
+                                }
+                            />
                         )}
                     </tbody>
                 </table>
