@@ -18,8 +18,7 @@ export const getAllPrescriptions = async (patientId) => {
 export const addPrescription = async (patientId, prescriptionData) => {
     try {
         const response = await axios.post(
-            `
-            ${backendConnection()}/patient_record/${patientId}/prescriptions`,
+            `${backendConnection()}/patient_record/${patientId}/prescriptions`,
             prescriptionData,
             axiosConfig
         )
@@ -33,8 +32,7 @@ export const addPrescription = async (patientId, prescriptionData) => {
 export const updatePrescription = async (patientId, prescriptionData) => {
     try {
         const response = await axios.put(
-            `
-            ${backendConnection()}/patient_record/${patientId}/prescriptions`,
+            `${backendConnection()}/patient_record/${patientId}/prescriptions`,
             prescriptionData,
             axiosConfig
         )

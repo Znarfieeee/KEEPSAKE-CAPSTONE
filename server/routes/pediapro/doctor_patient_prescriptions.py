@@ -278,7 +278,7 @@ def create_patient_prescription(patient_id):
         else:
             new_prescription['medications'] = []
             
-        invalidate_caches('prescription', patient_id)
+        invalidate_caches('patient_prescription', patient_id)
         
         return jsonify({
             'status': 'success',

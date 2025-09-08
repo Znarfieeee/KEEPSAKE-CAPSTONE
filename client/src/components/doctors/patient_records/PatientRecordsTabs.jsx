@@ -25,23 +25,47 @@ const PatientRecordsTabs = ({ patient, viewPrescription }) => {
     const [isLoading, setIsLoading] = useState(false)
     const [search, setSearch] = useState('')
 
+    const handlePrescriptionAdded = (newPrescription) => {
+        setPrescriptions((prev) => [newPrescription, ...prev])
+    }
+
     useEffect(() => {
         if (patient?.related_records?.prescriptions) {
-            setPrescriptions([patient.related_records.prescriptions])
+            // Ensure we're working with an array and format the data
+            const prescriptionData = Array.isArray(patient.related_records.prescriptions)
+                ? patient.related_records.prescriptions
+                : [patient.related_records.prescriptions].filter(Boolean)
+            setPrescriptions(prescriptionData)
+        } else {
+            setPrescriptions([])
         }
     }, [patient?.related_records?.prescriptions])
 
-    // Filter prescriptions based on search query
+    // Filter prescriptions based on search query with improved error handling
     const filteredPrescriptions = useMemo(() => {
+        if (!Array.isArray(prescriptions)) {
+            console.warn('Prescriptions is not an array:', prescriptions)
+            return []
+        }
+
         return prescriptions.filter((rx) => {
+            if (!rx) return false
             const searchLower = search.toLowerCase()
+
+            // Create an array of searchable fields
+            const searchableFields = [
+                rx.findings,
+                rx.prescription_date,
+                rx.status,
+                rx.return_date,
+                rx.consultation_notes,
+                rx.medications?.map((med) => med.medication_name)?.join(' '), // Include medication names in search
+            ].filter(Boolean) // Remove any undefined/null values
+
+            // Return true if any field includes the search term
             return (
                 searchLower === '' ||
-                rx.findings?.toLowerCase().includes(searchLower) ||
-                rx.prescription_date?.toLowerCase().includes(searchLower) ||
-                rx.status?.toLowerCase().includes(searchLower) ||
-                rx.return_date?.toLowerCase().includes(searchLower) ||
-                rx.consultation_notes?.toLowerCase().includes(searchLower)
+                searchableFields.some((field) => String(field).toLowerCase().includes(searchLower))
             )
         })
     }, [prescriptions, search])
@@ -89,6 +113,8 @@ const PatientRecordsTabs = ({ patient, viewPrescription }) => {
                         isLoading={isLoading}
                         search={search}
                         onSearchChange={(value) => setSearch(value)}
+                        patient={patient}
+                        onPrescriptionAdded={handlePrescriptionAdded}
                     />
                 </div>
             ),
