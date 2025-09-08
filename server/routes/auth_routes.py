@@ -487,12 +487,21 @@ def login():
             
             user_metadata = auth_response.user.user_metadata or {}
             
+            get_facility_id = supabase.table('facility_users')\
+                .select('facility_id')\
+                .eq('user_id', auth_response.user.id)\
+                .single()\
+                .execute()
+                
+            facility_id = get_facility_id.data['facility_id']
+                
             # Get user's last sign in time from Supabase auth
             last_sign_in = auth_response.user.last_sign_in_at.isoformat()
             
             user_data = {
                 'id': auth_response.user.id,
                 'email': auth_response.user.email,
+                'facility_id': facility_id, 
                 'role': user_metadata.get('role'),
                 'firstname': user_metadata.get('firstname', ''),
                 'lastname': user_metadata.get('lastname', ''),
@@ -670,6 +679,7 @@ def get_session():
             "specialty": session_data.get("specialty"),
             "license_number": session_data.get("license_number"),
             "phone_number": session_data.get("phone_number"),
+            "facility_id": session_data.get("facility_id"),
             "last_sign_in_at": session_data.get("last_sign_in_at")
         }
 
