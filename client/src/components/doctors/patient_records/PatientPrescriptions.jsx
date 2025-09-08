@@ -8,9 +8,45 @@ import { Eye, Search, PlusCircle } from 'lucide-react'
 import { Dialog, DialogTrigger } from '@/components/ui/dialog'
 
 const AddPatientPrescriptionModal = lazy(() => import('./AddPatientPrescriptionModal'))
+const PatientPrescriptionDetailModal = lazy(() => import('./PatientPrescriptionDetailModal'))
 
-const PatientPrescription = ({ onView, search, onSearchChange, isLoading, prescription = [] }) => {
-    const [isOpen, setIsOpen] = useState()
+const PatientPrescription = ({
+    onView,
+    search,
+    onSearchChange,
+    isLoading,
+    prescription = [],
+    patient,
+    onPrescriptionAdded,
+}) => {
+    const [isOpen, setIsOpen] = useState(false)
+    const [selectedPrescription, setSelectedPrescription] = useState(null)
+    const [isDetailModalOpen, setIsDetailModalOpen] = useState(false)
+
+    const handleViewPrescription = (rx) => {
+        setSelectedPrescription(rx)
+        setIsDetailModalOpen(true)
+    }
+
+    // Enhanced date formatter with error handling
+    const formatDate = (dateString) => {
+        if (!dateString) return '—'
+        try {
+            const date = new Date(dateString)
+            if (isNaN(date.getTime())) return '—' // Invalid date
+            return date.toLocaleDateString('en-US', {
+                year: 'numeric',
+                month: 'short',
+                day: 'numeric',
+            })
+        } catch (error) {
+            console.error('Error formatting date:', error)
+            return '—'
+        }
+    }
+
+    // Ensure prescriptions is always an array
+    const prescriptionArray = Array.isArray(prescription) ? prescription : []
 
     return (
         <div className="bg-white rounded-b-lg shadow-sm p-6 mb-6">
@@ -36,9 +72,13 @@ const PatientPrescription = ({ onView, search, onSearchChange, isLoading, prescr
                             </DialogTrigger>
                             <Suspense fallback={null}>
                                 <AddPatientPrescriptionModal
-                                    prescription={prescription}
+                                    prescription={{ patient_id: patient?.patient_id }}
                                     isLoading={isLoading}
                                     setIsOpen={setIsOpen}
+                                    onSuccess={(newPrescription) => {
+                                        // Add the new prescription to the existing list
+                                        onPrescriptionAdded?.(newPrescription)
+                                    }}
                                 />
                             </Suspense>
                         </Dialog>
@@ -61,25 +101,42 @@ const PatientPrescription = ({ onView, search, onSearchChange, isLoading, prescr
                                     Loading prescriptions...
                                 </td>
                             </tr>
-                        ) : prescription?.length > 0 ? (
-                            prescription.map((rx) => (
+                        ) : prescriptionArray.length > 0 ? (
+                            prescriptionArray.map((rx) => (
                                 <tr
                                     key={rx.rx_id}
-                                    className="border-b border-gray-200 last:border-none"
+                                    className="border-b border-gray-200 last:border-none hover:bg-gray-50"
                                 >
                                     <td className="p-2 whitespace-nowrap">
-                                        {rx.prescription_date}
+                                        {formatDate(rx.prescription_date)}
                                     </td>
-                                    <td className="p-2 whitespace-nowrap">{rx.findings}</td>
-                                    <td className="p-2 whitespace-nowrap">{rx.return_date}</td>
-                                    <td className="p-2 whitespace-nowrap">{rx.status}</td>
+                                    <td className="p-2 whitespace-nowrap">
+                                        <div className="max-w-md overflow-hidden text-ellipsis">
+                                            {rx.findings || '—'}
+                                        </div>
+                                    </td>
+                                    <td className="p-2 whitespace-nowrap">
+                                        {formatDate(rx.return_date)}
+                                    </td>
+                                    <td className="p-2 whitespace-nowrap">
+                                        <span
+                                            className={`px-2 py-1 rounded-full text-xs 
+                                            ${
+                                                rx.status === 'active'
+                                                    ? 'bg-green-100 text-green-800'
+                                                    : 'bg-gray-100 text-gray-800'
+                                            }`}
+                                        >
+                                            {rx.status || '—'}
+                                        </span>
+                                    </td>
                                     <td className="p-2 whitespace-nowrap">
                                         <TooltipHelper content="View Details">
                                             <Button
                                                 variant="ghost"
                                                 size="icon"
                                                 className="hover:text-blue-600 hover:bg-blue-100"
-                                                onClick={() => onView(rx)}
+                                                onClick={() => handleViewPrescription(rx)}
                                             >
                                                 <Eye className="size-4" />
                                             </Button>
@@ -100,6 +157,15 @@ const PatientPrescription = ({ onView, search, onSearchChange, isLoading, prescr
                     </tbody>
                 </table>
             </div>
+
+            {/* Detail Modal */}
+            <Suspense fallback={null}>
+                <PatientPrescriptionDetailModal
+                    open={isDetailModalOpen}
+                    onClose={() => setIsDetailModalOpen(false)}
+                    prescription={selectedPrescription}
+                />
+            </Suspense>
         </div>
     )
 }

@@ -1,6 +1,7 @@
 import datetime
 import json
 import logging
+import redis
 from typing import Optional, Dict, Any
 from utils.redis_client import redis_client
 
@@ -33,6 +34,7 @@ def store_session_data(session_id: str, user_data: Dict[str, Any]) -> str:
             'specialty': str(user_data.get('specialty', '')),
             'license_number': str(user_data.get('license_number', '')),
             'phone_number': str(user_data.get('phone_number', '')),
+            'facility_id': str(user_data.get('facility_id', '')),
             'access_token': str(user_data.get('access_token', '')) if user_data.get('access_token') else None,
             'refresh_token': str(user_data.get('refresh_token', '')) if user_data.get('refresh_token') else None,
             'expires_at': str(user_data.get('expires_at', '')),
@@ -55,7 +57,7 @@ def store_session_data(session_id: str, user_data: Dict[str, Any]) -> str:
         logger.info(f"Session {session_id} stored successfully for user {session_data.get('email')}")
         return session_id
         
-    except (redis.RedisError, json.JSONEncodeError, UnicodeError) as e:
+    except (Exception, json.JSONEncodeError, UnicodeError) as e:
         logger.error(f"Failed to store session data for session {session_id}: {e}")
         raise SessionError(f"Could not store session: {e}")
     except Exception as e:
@@ -87,7 +89,7 @@ def get_session_data(session_id: str) -> Optional[Dict[str, Any]]:
             redis_client.delete(redis_key)
             return None
             
-    except redis.RedisError as e:
+    except Exception as e:
         logger.error(f"Redis error retrieving session {session_id}: {e}")
         return None
     except UnicodeDecodeError as e:
@@ -178,7 +180,7 @@ def cleanup_expired_sessions() -> int:
                 session_data = redis_client.get(key)
                 if session_data:
                     json.loads(session_data)  # Validate JSON
-            except (json.JSONDecodeError, UnicodeDecodeError, redis.ResponseError):
+            except (json.JSONDecodeError, UnicodeDecodeError, Exception):
                 # Delete corrupted session
                 redis_client.delete(key)
                 cleaned_count += 1

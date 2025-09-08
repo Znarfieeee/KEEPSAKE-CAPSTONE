@@ -9,81 +9,82 @@ import { getPatientById } from '@/api/doctors/patient'
 import LoadingSkeleton from '@/components/doctors/patient_records/LoadingSkeleton'
 
 const DoctorPatientInfo = () => {
-  const { patientId } = useParams()
-  const navigate = useNavigate()
-  const [patient, setPatient] = useState(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState(null)
+    const { patientId } = useParams()
+    const navigate = useNavigate()
+    const [patient, setPatient] = useState(null)
+    const [loading, setLoading] = useState(true)
+    const [error, setError] = useState(null)
 
-  useEffect(() => {
-    const fetchPatientData = async () => {
-      try {
-        setLoading(true)
-        const response = await getPatientById(patientId)
-        if (response.status === 'success' && response.data) {
-          setPatient(response.data)
-        } else {
-          throw new Error('Invalid response format')
+    useEffect(() => {
+        const fetchPatientData = async () => {
+            try {
+                setLoading(true)
+                const response = await getPatientById(patientId)
+                if (response.status === 'success' && response.data) {
+                    setPatient(response.data)
+                } else {
+                    throw new Error('Invalid response format')
+                }
+            } catch (err) {
+                setError('Failed to fetch patient data')
+                console.error('Error fetching patient data:', err)
+            } finally {
+                setLoading(false)
+            }
         }
-      } catch (err) {
-        setError('Failed to fetch patient data')
-        console.error('Error fetching patient data:', err)
-      } finally {
-        setLoading(false)
-      }
+
+        fetchPatientData()
+    }, [patientId])
+
+    if (loading) {
+        return <LoadingSkeleton />
     }
 
-    fetchPatientData()
-  }, [patientId])
+    if (error || !patient) {
+        return (
+            <div className="flex flex-col items-center justify-center h-screen">
+                <p className="text-red-500 mb-4">{error || 'Patient not found'}</p>
+                <button
+                    onClick={() => navigate('/pediapro/patient_records')}
+                    className="text-blue-500 hover:underline"
+                >
+                    Return to Patient Records
+                </button>
+            </div>
+        )
+    }
 
-  if (loading) {
-    return <LoadingSkeleton />
-  }
+    const handlePrescriptionView = () => {
+        alert('Viewing prescription')
+    }
 
-  if (error || !patient) {
     return (
-      <div className="flex flex-col items-center justify-center h-screen">
-        <p className="text-red-500 mb-4">{error || 'Patient not found'}</p>
-        <button
-          onClick={() => navigate('/pediapro/patient_records')}
-          className="text-blue-500 hover:underline"
-        >
-          Return to Patient Records
-        </button>
-      </div>
-    )
-  }
+        <div className="container mx-auto px-4 py-6">
+            {/* Patient Header */}
+            <div className="flex justify-between items-center mb-6">
+                <div className="flex items-center gap-2 text-black ">
+                    <Link
+                        to="/pediapro/patient_records"
+                        className="hover:text-primary transition duration-300 ease-in-out"
+                    >
+                        <IoMdArrowBack className="text-2xl" />
+                    </Link>
 
-  const handlePrescriptionView = () => {
-    alert('Viewing prescription')
-  }
+                    <div className="flex items-center gap-2">
+                        <span className="text-2xl font-bold">
+                            {patient.firstname.toUpperCase()}{' '}
+                            {patient.middlename ? patient.middlename : ''}{' '}
+                            {patient.lastname.toUpperCase()}
+                        </span>
+                    </div>
+                </div>
+            </div>
 
-  return (
-    <div className="container mx-auto px-4 py-6">
-      {/* Patient Header */}
-      <div className="flex justify-between items-center mb-6">
-        <div className="flex items-center gap-2 text-black ">
-          <Link
-            to="/pediapro/patient_records"
-            className="hover:text-primary transition duration-300 ease-in-out"
-          >
-            <IoMdArrowBack className="text-2xl" />
-          </Link>
-
-          <div className="flex items-center gap-2">
-            <span className="text-2xl font-bold">
-              {patient.firstname.toUpperCase()} {patient.middlename ? patient.middlename : ''}{' '}
-              {patient.lastname.toUpperCase()}
-            </span>
-          </div>
+            <div className="space-y-6">
+                <PatientRecordsTabs patient={patient} viewPrescription={handlePrescriptionView} />
+            </div>
         </div>
-      </div>
-
-      <div className="space-y-6">
-        <PatientRecordsTabs patient={patient} viewPrescription={handlePrescriptionView} />
-      </div>
-    </div>
-  )
+    )
 }
 
 export default DoctorPatientInfo

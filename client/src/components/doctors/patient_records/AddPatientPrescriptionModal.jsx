@@ -1,11 +1,19 @@
-import React, { useState } from 'react'
+import React, { useState, useCallback, useMemo, useRef, memo } from 'react'
 import { format } from 'date-fns'
+import { addPrescription } from '@/api/doctors/prescription'
+import { useAuth } from '@/context/auth'
 
 // UI Components
 import { Button } from '@/components/ui/button'
 import { Calendar } from '@/components/ui/calendar'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
-import { DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import {
+    DialogContent,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+    DialogClose,
+} from '@/components/ui/dialog'
 import {
     Select,
     SelectContent,
@@ -17,9 +25,12 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { PlusCircle, Trash2, AlertCircle, Pill } from 'lucide-react'
-import { DialogClose } from '../../ui/dialog'
 
-// Common medications database (can be moved to a separate file)
+// Helper
+import { sanitizeObject } from '@/util/sanitize'
+import { showToast } from '../../../util/alertHelper'
+
+// Constants - Move outside component to prevent recreating on each render
 const COMMON_MEDICATIONS = [
     'Acetaminophen',
     'Ibuprofen',
@@ -66,106 +77,285 @@ const DURATION_OPTIONS = [
     { value: 'until_finished', label: 'Until finished' },
 ]
 
-const AddPatientPrescriptionModal = ({ onSave }) => {
+const CONSULTATION_TYPES = [
+    { id: 1, name: 'Initial Visit' },
+    { id: 2, name: 'Follow-up' },
+    { id: 3, name: 'Well-Child Visit' },
+    { id: 4, name: 'Sick Visit' },
+    { id: 5, name: 'Vaccination' },
+    { id: 6, name: 'Growth and Development Check' },
+    { id: 7, name: 'Emergency Visit' },
+    { id: 8, name: 'Post Treatment' },
+    { id: 9, name: 'Specialist Referral' },
+    { id: 10, name: 'Telemedicine' },
+]
+
+const initialMedication = {
+    medication_name: '',
+    dosage: '',
+    frequency: '',
+    duration: '',
+    special_instructions: '',
+    quantity: 1,
+    refills_authorized: 0,
+}
+
+const initialForm = {
+    findings: '',
+    consultation_type: 1,
+    consultation_notes: '',
+    doctor_instructions: '',
+    return_date: null,
+    medications: [{ ...initialMedication }],
+}
+
+// Optimized Medication Component - Memoized to prevent unnecessary re-renders
+const MedicationForm = memo(
+    ({ medication, index, errors, onUpdate, onRemove, canRemove, suggestions }) => {
+        // Use refs to avoid re-renders on input changes
+        const inputRefs = useRef({})
+
+        const handleInputChange = useCallback(
+            (field, value) => {
+                onUpdate(index, field, value)
+            },
+            [index, onUpdate]
+        )
+
+        const handleRemove = useCallback(() => {
+            onRemove(index)
+        }, [index, onRemove])
+
+        // Memoize prescription preview
+        const prescriptionPreview = useMemo(() => {
+            if (
+                !medication.medication_name ||
+                !medication.dosage ||
+                !medication.frequency ||
+                !medication.duration
+            ) {
+                return null
+            }
+
+            const frequencyLabel = FREQUENCY_OPTIONS.find(
+                (f) => f.value === medication.frequency
+            )?.label.toLowerCase()
+            const durationLabel = DURATION_OPTIONS.find(
+                (d) => d.value === medication.duration
+            )?.label.toLowerCase()
+
+            return (
+                <div className="bg-blue-50 border border-blue-200 rounded-md p-3">
+                    <p className="text-sm text-blue-800 font-medium">Prescription Preview:</p>
+                    <p className="text-sm text-blue-700">
+                        <strong>{medication.medication_name}</strong> {medication.dosage},{' '}
+                        {frequencyLabel}, for {durationLabel}
+                        {medication.special_instructions && (
+                            <span className="block mt-1 italic">
+                                Special instructions: {medication.special_instructions}
+                            </span>
+                        )}
+                    </p>
+                </div>
+            )
+        }, [medication])
+
+        const medicationErrors = errors[`medication_${index}`] || {}
+        return (
+            <div className="border rounded-lg p-4 space-y-4 relative">
+                <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium text-gray-600">
+                        Medication {index + 1}
+                    </span>
+                    {canRemove && (
+                        <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            onClick={handleRemove}
+                            className="h-8 w-8 text-red-500 hover:text-red-700"
+                        >
+                            <Trash2 className="h-4 w-4" />
+                        </Button>
+                    )}
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {/* Medication Name */}
+                    <div className="space-y-2">
+                        <Label>Medication Name *</Label>
+                        <div className="relative">
+                            <Input
+                                ref={(el) => (inputRefs.current.medication_name = el)}
+                                placeholder="Enter medication name"
+                                value={medication.medication_name}
+                                onChange={(e) =>
+                                    handleInputChange('medication_name', e.target.value)
+                                }
+                                className={medicationErrors.medication_name ? 'border-red-500' : ''}
+                                list={`medications-${index}`}
+                            />
+                            <datalist id={`medications-${index}`}>
+                                {suggestions.map((suggestion) => (
+                                    <option key={suggestion} value={suggestion} />
+                                ))}
+                            </datalist>
+                        </div>
+                        {medicationErrors.medication_name && (
+                            <p className="text-red-500 text-sm flex items-center gap-1">
+                                <AlertCircle className="h-3 w-3" />
+                                {medicationErrors.medication_name}
+                            </p>
+                        )}
+                    </div>
+
+                    {/* Dosage */}
+                    <div className="space-y-2">
+                        <Label>Dosage & Strength *</Label>
+                        <Input
+                            placeholder="e.g., 500mg, 10ml, 1 tablet"
+                            value={medication.dosage}
+                            onChange={(e) => handleInputChange('dosage', e.target.value)}
+                            className={medicationErrors.dosage ? 'border-red-500' : ''}
+                        />
+                        {medicationErrors.dosage && (
+                            <p className="text-red-500 text-sm flex items-center gap-1">
+                                <AlertCircle className="h-3 w-3" />
+                                {medicationErrors.dosage}
+                            </p>
+                        )}
+                    </div>
+
+                    {/* Frequency */}
+                    <div className="space-y-2">
+                        <Label>Frequency *</Label>
+                        <Select
+                            value={medication.frequency}
+                            onValueChange={(value) => handleInputChange('frequency', value)}
+                        >
+                            <SelectTrigger
+                                className={medicationErrors.frequency ? 'border-red-500' : ''}
+                            >
+                                <SelectValue placeholder="Select frequency" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {FREQUENCY_OPTIONS.map((option) => (
+                                    <SelectItem key={option.value} value={option.value}>
+                                        {option.label}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                        {medicationErrors.frequency && (
+                            <p className="text-red-500 text-sm flex items-center gap-1">
+                                <AlertCircle className="h-3 w-3" />
+                                {medicationErrors.frequency}
+                            </p>
+                        )}
+                    </div>
+
+                    {/* Duration */}
+                    <div className="space-y-2">
+                        <Label>Duration *</Label>
+                        <Select
+                            value={medication.duration}
+                            onValueChange={(value) => handleInputChange('duration', value)}
+                        >
+                            <SelectTrigger
+                                className={medicationErrors.duration ? 'border-red-500' : ''}
+                            >
+                                <SelectValue placeholder="Select duration" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {DURATION_OPTIONS.map((option) => (
+                                    <SelectItem key={option.value} value={option.value}>
+                                        {option.label}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                        {medicationErrors.duration && (
+                            <p className="text-red-500 text-sm flex items-center gap-1">
+                                <AlertCircle className="h-3 w-3" />
+                                {medicationErrors.duration}
+                            </p>
+                        )}
+                    </div>
+                </div>
+
+                {/* Special Instructions */}
+                <div className="space-y-2">
+                    <Label>Special Instructions</Label>
+                    <Textarea
+                        placeholder="e.g., Take with food, Avoid alcohol, Monitor blood pressure..."
+                        value={medication.special_instructions}
+                        onChange={(e) => handleInputChange('special_instructions', e.target.value)}
+                        rows={2}
+                        className="resize-none"
+                    />
+                </div>
+
+                {/* Prescription Preview */}
+                {prescriptionPreview}
+            </div>
+        )
+    }
+)
+
+MedicationForm.displayName = 'MedicationForm'
+
+const AddPatientPrescriptionModal = ({ prescription, setIsOpen, onSuccess }) => {
     const [isLoading, setIsLoading] = useState(false)
     const [errors, setErrors] = useState({})
-    const [formData, setFormData] = useState({
-        findings: '',
-        consultation_type: '',
-        consultation_notes: '',
-        doctor_instructions: '',
-        return_date: undefined,
-        medications: [{ name: '', dosage: '', frequency: '', duration: '', notes: '' }],
-    })
+    const [formData, setFormData] = useState(initialForm)
 
-    const validateMedication = (med, index) => {
+    // Memoize medication suggestions to avoid recalculating on every render
+    const getMedicationSuggestions = useCallback((input) => {
+        if (!input || input.length < 2) return []
+        const inputLower = input.toLowerCase()
+        return COMMON_MEDICATIONS.filter((med) => med.toLowerCase().includes(inputLower)).slice(
+            0,
+            5
+        )
+    }, [])
+
+    // Debounced validation to avoid excessive validation calls
+    const validateMedication = useCallback((med, index) => {
         const medErrors = {}
-        if (!med.name.trim()) medErrors.name = 'Medication name is required'
-        if (!med.dosage.trim()) medErrors.dosage = 'Dosage is required'
+        if (!med.medication_name?.trim()) medErrors.medication_name = 'Medication name is required'
+        if (!med.dosage?.trim()) medErrors.dosage = 'Dosage is required'
         if (!med.frequency) medErrors.frequency = 'Frequency is required'
         if (!med.duration) medErrors.duration = 'Duration is required'
 
         return Object.keys(medErrors).length > 0 ? { [`medication_${index}`]: medErrors } : {}
-    }
+    }, [])
 
-    const validateForm = () => {
-        let newErrors = {}
-
-        // Validate medications
-        formData.medications.forEach((med, index) => {
+    const validateForm = useCallback(() => {
+        const newErrors = formData.medications.reduce((acc, med, index) => {
             const medErrors = validateMedication(med, index)
-            newErrors = { ...newErrors, ...medErrors }
-        })
+            return { ...acc, ...medErrors }
+        }, {})
 
         setErrors(newErrors)
         return Object.keys(newErrors).length === 0
-    }
+    }, [formData.medications, validateMedication])
 
-    const handleSubmit = async (e) => {
-        e.preventDefault()
-
-        if (!validateForm()) {
-            return
-        }
-
-        setIsLoading(true)
-        try {
-            await onSave(formData)
-            // Reset form on success
-            setFormData({
-                findings: '',
-                consultation_type: '',
-                consultation_notes: '',
-                doctor_instructions: '',
-                return_date: undefined,
-                medications: [{ name: '', dosage: '', frequency: '', duration: '', notes: '' }],
-            })
-            setErrors({})
-        } catch (error) {
-            console.error('Error saving prescription:', error)
-        } finally {
-            setIsLoading(false)
-        }
-    }
-
-    const handleChange = (field, value) => {
+    // Optimized form handlers
+    const handleChange = useCallback((field, value) => {
         setFormData((prev) => ({ ...prev, [field]: value }))
-    }
+    }, [])
 
-    const addMedication = () => {
-        setFormData((prev) => ({
-            ...prev,
-            medications: [
-                ...prev.medications,
-                { name: '', dosage: '', frequency: '', duration: '', notes: '' },
-            ],
-        }))
-    }
-
-    const removeMedication = (index) => {
-        setFormData((prev) => ({
-            ...prev,
-            medications: prev.medications.filter((_, i) => i !== index),
-        }))
-        // Clear errors for removed medication
-        setErrors((prev) => {
-            const newErrors = { ...prev }
-            delete newErrors[`medication_${index}`]
-            return newErrors
-        })
-    }
-
-    const updateMedication = (index, field, value) => {
+    const updateMedication = useCallback((index, field, value) => {
         setFormData((prev) => {
             const newMeds = [...prev.medications]
             newMeds[index] = { ...newMeds[index], [field]: value }
             return { ...prev, medications: newMeds }
         })
 
-        // Clear specific field error when user starts typing
+        // Clear errors for this field
         setErrors((prev) => {
             const newErrors = { ...prev }
-            if (newErrors[`medication_${index}`]) {
+            if (newErrors[`medication_${index}`]?.[field]) {
                 delete newErrors[`medication_${index}`][field]
                 if (Object.keys(newErrors[`medication_${index}`]).length === 0) {
                     delete newErrors[`medication_${index}`]
@@ -173,14 +363,112 @@ const AddPatientPrescriptionModal = ({ onSave }) => {
             }
             return newErrors
         })
-    }
+    }, [])
 
-    const getMedicationSuggestions = (input) => {
-        if (!input || input.length < 2) return []
-        return COMMON_MEDICATIONS.filter((med) =>
-            med.toLowerCase().includes(input.toLowerCase())
-        ).slice(0, 5)
-    }
+    const addMedication = useCallback(() => {
+        setFormData((prev) => ({
+            ...prev,
+            medications: [...prev.medications, { ...initialMedication }],
+        }))
+    }, [])
+
+    const removeMedication = useCallback((index) => {
+        setFormData((prev) => ({
+            ...prev,
+            medications: prev.medications.filter((_, i) => i !== index),
+        }))
+
+        // Clear errors for removed medication
+        setErrors((prev) => {
+            const newErrors = { ...prev }
+            delete newErrors[`medication_${index}`]
+            return newErrors
+        })
+    }, [])
+
+    const addCommonMedication = useCallback(
+        (medication) => {
+            const lastMedIndex = formData.medications.length - 1
+            const lastMed = formData.medications[lastMedIndex]
+
+            if (lastMed.medication_name === '') {
+                updateMedication(lastMedIndex, 'medication_name', medication)
+            } else {
+                setFormData((prev) => ({
+                    ...prev,
+                    medications: [
+                        ...prev.medications,
+                        { ...initialMedication, medication_name: medication },
+                    ],
+                }))
+            }
+        },
+        [formData.medications, updateMedication]
+    )
+
+    const { user } = useAuth()
+
+    const reset = useCallback(() => {
+        setFormData(initialForm)
+        setErrors({})
+    }, [])
+
+    const handleSubmit = useCallback(
+        async (e) => {
+            e.preventDefault()
+
+            if (!validateForm()) return
+            if (!prescription?.patient_id) {
+                showToast('error', 'Patient ID is required')
+                return
+            }
+
+            try {
+                setIsLoading(true)
+
+                const formattedData = {
+                    ...formData,
+                    facility_id: user?.facility_id || user?.current_facility_id,
+                    return_date: formData.return_date
+                        ? format(formData.return_date, 'yyyy-MM-dd')
+                        : null,
+                    medications: formData.medications.map((med) => ({
+                        ...med,
+                        special_instructions: med.special_instructions || '',
+                    })),
+                }
+                const payload = sanitizeObject(formattedData)
+                const res = await addPrescription(prescription.patient_id, payload)
+
+                if (res.status === 'success') {
+                    showToast('success', 'Prescription added successfully')
+                    reset()
+                    setIsOpen?.(false)
+                } else {
+                    showToast('error', res.message || 'Failed to add prescription')
+                }
+            } catch (error) {
+                console.error('Error saving prescription:', error)
+                showToast('error', 'Failed to save prescription. Please try again.')
+            } finally {
+                setIsLoading(false)
+            }
+        },
+        [
+            formData,
+            prescription?.patient_id,
+            validateForm,
+            reset,
+            setIsOpen,
+            user?.facility_id,
+            user?.current_facility_id,
+        ]
+    )
+
+    // Memoize medication suggestions for each medication
+    const medicationSuggestions = useMemo(() => {
+        return formData.medications.map((med) => getMedicationSuggestions(med.medication_name))
+    }, [formData.medications, getMedicationSuggestions])
 
     return (
         <DialogContent
@@ -192,27 +480,27 @@ const AddPatientPrescriptionModal = ({ onSave }) => {
                     Add New Prescription
                 </DialogTitle>
             </DialogHeader>
+
             <form className="space-y-6" onSubmit={handleSubmit}>
                 {/* Consultation Type */}
                 <div className="space-y-2">
                     <Label htmlFor="consultation_type">Consultation Type *</Label>
                     <Select
-                        value={formData.consultation_type}
-                        onValueChange={(value) => handleChange('consultation_type', value)}
+                        value={formData.consultation_type.toString()}
+                        onValueChange={(value) =>
+                            handleChange('consultation_type', parseInt(value, 10))
+                        }
                         required
                     >
                         <SelectTrigger>
                             <SelectValue placeholder="Select consultation type" />
                         </SelectTrigger>
                         <SelectContent>
-                            <SelectItem value="Routine Checkup">Routine Checkup</SelectItem>
-                            <SelectItem value="Acute Illness">Acute Illness</SelectItem>
-                            <SelectItem value="Chronic Condition">Chronic Condition</SelectItem>
-                            <SelectItem value="Vaccination">Vaccination</SelectItem>
-                            <SelectItem value="Follow-up / Post Treatment">
-                                Follow-up / Post Treatment
-                            </SelectItem>
-                            <SelectItem value="Emergency / Urgent">Emergency / Urgent</SelectItem>
+                            {CONSULTATION_TYPES.map((type) => (
+                                <SelectItem key={type.id} value={type.id.toString()}>
+                                    {type.name}
+                                </SelectItem>
+                            ))}
                         </SelectContent>
                     </Select>
                 </div>
@@ -262,197 +550,16 @@ const AddPatientPrescriptionModal = ({ onSave }) => {
 
                     <div className="space-y-4">
                         {formData.medications.map((med, index) => (
-                            <div key={index} className="border rounded-lg p-4 space-y-4 relative">
-                                <div className="flex items-center justify-between">
-                                    <span className="text-sm font-medium text-gray-600">
-                                        Medication {index + 1}
-                                    </span>
-                                    {formData.medications.length > 1 && (
-                                        <Button
-                                            type="button"
-                                            variant="ghost"
-                                            size="icon"
-                                            onClick={() => removeMedication(index)}
-                                            className="h-8 w-8 text-red-500 hover:text-red-700"
-                                        >
-                                            <Trash2 className="h-4 w-4" />
-                                        </Button>
-                                    )}
-                                </div>
-
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    {/* Medication Name */}
-                                    <div className="space-y-2">
-                                        <Label>Medication Name *</Label>
-                                        <div className="relative">
-                                            <Input
-                                                placeholder="Enter medication name"
-                                                value={med.name}
-                                                onChange={(e) =>
-                                                    updateMedication(index, 'name', e.target.value)
-                                                }
-                                                className={
-                                                    errors[`medication_${index}`]?.name
-                                                        ? 'border-red-500'
-                                                        : ''
-                                                }
-                                                list={`medications-${index}`}
-                                            />
-                                            <datalist id={`medications-${index}`}>
-                                                {getMedicationSuggestions(med.name).map(
-                                                    (suggestion) => (
-                                                        <option
-                                                            key={suggestion}
-                                                            value={suggestion}
-                                                        />
-                                                    )
-                                                )}
-                                            </datalist>
-                                        </div>
-                                        {errors[`medication_${index}`]?.name && (
-                                            <p className="text-red-500 text-sm flex items-center gap-1">
-                                                <AlertCircle className="h-3 w-3" />
-                                                {errors[`medication_${index}`].name}
-                                            </p>
-                                        )}
-                                    </div>
-
-                                    {/* Dosage */}
-                                    <div className="space-y-2">
-                                        <Label>Dosage & Strength *</Label>
-                                        <Input
-                                            placeholder="e.g., 500mg, 10ml, 1 tablet"
-                                            value={med.dosage}
-                                            onChange={(e) =>
-                                                updateMedication(index, 'dosage', e.target.value)
-                                            }
-                                            className={
-                                                errors[`medication_${index}`]?.dosage
-                                                    ? 'border-red-500'
-                                                    : ''
-                                            }
-                                        />
-                                        {errors[`medication_${index}`]?.dosage && (
-                                            <p className="text-red-500 text-sm flex items-center gap-1">
-                                                <AlertCircle className="h-3 w-3" />
-                                                {errors[`medication_${index}`].dosage}
-                                            </p>
-                                        )}
-                                    </div>
-
-                                    {/* Frequency */}
-                                    <div className="space-y-2">
-                                        <Label>Frequency *</Label>
-                                        <Select
-                                            value={med.frequency}
-                                            onValueChange={(value) =>
-                                                updateMedication(index, 'frequency', value)
-                                            }
-                                        >
-                                            <SelectTrigger
-                                                className={
-                                                    errors[`medication_${index}`]?.frequency
-                                                        ? 'border-red-500'
-                                                        : ''
-                                                }
-                                            >
-                                                <SelectValue placeholder="Select frequency" />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                {FREQUENCY_OPTIONS.map((option) => (
-                                                    <SelectItem
-                                                        key={option.value}
-                                                        value={option.value}
-                                                    >
-                                                        {option.label}
-                                                    </SelectItem>
-                                                ))}
-                                            </SelectContent>
-                                        </Select>
-                                        {errors[`medication_${index}`]?.frequency && (
-                                            <p className="text-red-500 text-sm flex items-center gap-1">
-                                                <AlertCircle className="h-3 w-3" />
-                                                {errors[`medication_${index}`].frequency}
-                                            </p>
-                                        )}
-                                    </div>
-
-                                    {/* Duration */}
-                                    <div className="space-y-2">
-                                        <Label>Duration *</Label>
-                                        <Select
-                                            value={med.duration}
-                                            onValueChange={(value) =>
-                                                updateMedication(index, 'duration', value)
-                                            }
-                                        >
-                                            <SelectTrigger
-                                                className={
-                                                    errors[`medication_${index}`]?.duration
-                                                        ? 'border-red-500'
-                                                        : ''
-                                                }
-                                            >
-                                                <SelectValue placeholder="Select duration" />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                {DURATION_OPTIONS.map((option) => (
-                                                    <SelectItem
-                                                        key={option.value}
-                                                        value={option.value}
-                                                    >
-                                                        {option.label}
-                                                    </SelectItem>
-                                                ))}
-                                            </SelectContent>
-                                        </Select>
-                                        {errors[`medication_${index}`]?.duration && (
-                                            <p className="text-red-500 text-sm flex items-center gap-1">
-                                                <AlertCircle className="h-3 w-3" />
-                                                {errors[`medication_${index}`].duration}
-                                            </p>
-                                        )}
-                                    </div>
-                                </div>
-
-                                {/* Special Instructions */}
-                                <div className="space-y-2">
-                                    <Label>Special Instructions</Label>
-                                    <Textarea
-                                        placeholder="e.g., Take with food, Avoid alcohol, Monitor blood pressure..."
-                                        value={med.notes}
-                                        onChange={(e) =>
-                                            updateMedication(index, 'notes', e.target.value)
-                                        }
-                                        rows={2}
-                                        className="resize-none"
-                                    />
-                                </div>
-
-                                {/* Medication Summary Preview */}
-                                {med.name && med.dosage && med.frequency && med.duration && (
-                                    <div className="bg-blue-50 border border-blue-200 rounded-md p-3">
-                                        <p className="text-sm text-blue-800 font-medium">
-                                            Prescription Preview:
-                                        </p>
-                                        <p className="text-sm text-blue-700">
-                                            <strong>{med.name}</strong> {med.dosage},{' '}
-                                            {FREQUENCY_OPTIONS.find(
-                                                (f) => f.value === med.frequency
-                                            )?.label.toLowerCase()}
-                                            , for{' '}
-                                            {DURATION_OPTIONS.find(
-                                                (d) => d.value === med.duration
-                                            )?.label.toLowerCase()}
-                                            {med.notes && (
-                                                <span className="block mt-1 italic">
-                                                    Special instructions: {med.notes}
-                                                </span>
-                                            )}
-                                        </p>
-                                    </div>
-                                )}
-                            </div>
+                            <MedicationForm
+                                key={index}
+                                medication={med}
+                                index={index}
+                                errors={errors}
+                                onUpdate={updateMedication}
+                                onRemove={removeMedication}
+                                canRemove={formData.medications.length > 1}
+                                suggestions={medicationSuggestions[index] || []}
+                            />
                         ))}
                     </div>
 
@@ -468,22 +575,7 @@ const AddPatientPrescriptionModal = ({ onSave }) => {
                                     type="button"
                                     variant="outline"
                                     size="sm"
-                                    onClick={() => {
-                                        const lastMedIndex = formData.medications.length - 1
-                                        const lastMed = formData.medications[lastMedIndex]
-                                        if (lastMed.name === '') {
-                                            updateMedication(lastMedIndex, 'name', medication)
-                                        } else {
-                                            addMedication()
-                                            setTimeout(() => {
-                                                updateMedication(
-                                                    formData.medications.length,
-                                                    'name',
-                                                    medication
-                                                )
-                                            }, 0)
-                                        }
-                                    }}
+                                    onClick={() => addCommonMedication(medication)}
                                     className="text-xs"
                                 >
                                     + {medication}

@@ -1,34 +1,34 @@
-import React, { useState } from "react"
-import { createFacility } from "../../../api/admin/facility"
-import { sanitizeObject } from "../../../util/sanitize"
+import React, { useState } from 'react'
+import { createFacility } from '../../../api/admin/facility'
+import { sanitizeObject } from '../../../util/sanitize'
 
 // UI Components
-import { showToast } from "../../../util/alertHelper"
-import { Button } from "../../ui/Button"
-import LoadingButton from "../../ui/LoadingButton"
+import { showToast } from '../../../util/alertHelper'
+import { Button } from '../../ui/Button'
+import LoadingButton from '../../ui/LoadingButton'
 import {
     Stepper,
     StepperIndicator,
     StepperItem,
     StepperSeparator,
     StepperTrigger,
-} from "@/components/ui/stepper"
-import Checkbox from "../../ui/Checkbox"
+} from '@/components/ui/stepper'
+import Checkbox from '../../ui/Checkbox'
 
 const initialForm = {
-    facility_name: "",
-    address: "",
-    city: "",
-    zip_code: "",
-    type: "clinic",
-    contact_number: "",
-    email: "",
-    website: "",
-    plan: "standard",
-    subscription_expires: "",
+    facility_name: '',
+    address: '',
+    city: '',
+    zip_code: '',
+    type: 'clinic',
+    contact_number: '',
+    email: '',
+    website: '',
+    plan: 'standard',
+    subscription_expires: '',
 }
 
-const steps = ["Facility Info", "Assign Admin", "Plan & Expiry", "Review"]
+const steps = ['Facility Info', 'Assign Admin', 'Plan & Expiry', 'Review']
 
 const RegisterFacilityModal = ({ open, onClose }) => {
     const [form, setForm] = useState(initialForm)
@@ -38,8 +38,8 @@ const RegisterFacilityModal = ({ open, onClose }) => {
     // Ref for scroll animation when changing steps
     const contentRef = React.useRef(null)
 
-    const next = () => setStep(s => Math.min(steps.length - 1, s + 1))
-    const prev = () => setStep(s => Math.max(0, s - 1))
+    const next = () => setStep((s) => Math.min(steps.length - 1, s + 1))
+    const prev = () => setStep((s) => Math.max(0, s - 1))
 
     const reset = () => {
         setForm(initialForm)
@@ -47,7 +47,9 @@ const RegisterFacilityModal = ({ open, onClose }) => {
         setIsConfirmed(false)
     }
 
-    const handleSubmit = async () => {
+    const handleSubmit = async (e) => {
+        e.preventDefault()
+
         try {
             setLoading(true)
             const payload = sanitizeObject({
@@ -55,14 +57,12 @@ const RegisterFacilityModal = ({ open, onClose }) => {
             })
             const res = await createFacility(payload)
 
-            if (res.status === "success") {
-                showToast("success", "Facility registered")
+            if (res.status === 'success') {
+                showToast('success', 'Facility registered')
                 // Notify other components (e.g., FacilitiesRegistry) to update list
-                window.dispatchEvent(
-                    new CustomEvent("facility-created", { detail: res.data })
-                )
+                window.dispatchEvent(new CustomEvent('facility-created', { detail: res.data }))
             } else {
-                showToast("error", res.message || "Failed to register facility")
+                showToast('error', res.message || 'Failed to register facility')
             }
 
             reset()
@@ -77,48 +77,42 @@ const RegisterFacilityModal = ({ open, onClose }) => {
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center">
             {/* overlay */}
-            <div
-                className="absolute inset-0 bg-black/50 backdrop-blur-sm"
-                onClick={onClose}
-            />
+            <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
             {/* modal */}
             <div className="relative bg-white text-black dark:bg-background rounded-lg shadow-lg w-full max-w-xl mx-4 p-6 space-y-6 z-10">
-                <h2 className="text-xl font-semibold mb-2">
-                    Register Facility
-                </h2>
+                <h2 className="text-xl font-semibold mb-2">Register Facility</h2>
 
                 {/* Stepper */}
                 <Stepper
                     value={step + 1}
-                    onValueChange={val => setStep(val - 1)}
+                    onValueChange={(val) => setStep(val - 1)}
                     className="mb-4 mx-auto w-full justify-center"
-                    orientation="horizontal">
+                    orientation="horizontal"
+                >
                     {steps.map((_, idx) => (
                         <StepperItem
                             key={idx + 1}
                             step={idx + 1}
-                            className="flex-1 text-white data-[state=checked]:text-white">
+                            className="flex-1 text-white data-[state=checked]:text-white"
+                        >
                             <StepperTrigger asChild>
                                 <StepperIndicator />
                             </StepperTrigger>
-                            {idx < steps.length - 1 && (
-                                <StepperSeparator className="bg-white/20" />
-                            )}
+                            {idx < steps.length - 1 && <StepperSeparator className="bg-white/20" />}
                         </StepperItem>
                     ))}
                 </Stepper>
 
                 {/* Step content */}
-                <div
-                    ref={contentRef}
-                    className="space-y-3 max-h-[60vh] overflow-y-auto pr-1">
+                <div ref={contentRef} className="space-y-3 max-h-[60vh] overflow-y-auto pr-1">
                     {step === 0 && (
                         <>
                             {/* Facility Name */}
                             <div className="flex flex-col form-control">
                                 <label
                                     htmlFor="facility_name"
-                                    className="block text-sm font-medium">
+                                    className="block text-sm font-medium"
+                                >
                                     Facility Name
                                 </label>
                                 <input
@@ -126,7 +120,7 @@ const RegisterFacilityModal = ({ open, onClose }) => {
                                     id="facility_name"
                                     name="facility_name"
                                     value={form.facility_name}
-                                    onChange={e =>
+                                    onChange={(e) =>
                                         setForm({
                                             ...form,
                                             facility_name: e.target.value,
@@ -138,9 +132,7 @@ const RegisterFacilityModal = ({ open, onClose }) => {
 
                             {/* Address */}
                             <div className="flex flex-col form-control">
-                                <label
-                                    htmlFor="address"
-                                    className="block text-sm font-medium">
+                                <label htmlFor="address" className="block text-sm font-medium">
                                     Address
                                 </label>
                                 <input
@@ -148,7 +140,7 @@ const RegisterFacilityModal = ({ open, onClose }) => {
                                     id="address"
                                     name="address"
                                     value={form.address}
-                                    onChange={e =>
+                                    onChange={(e) =>
                                         setForm({
                                             ...form,
                                             address: e.target.value,
@@ -161,9 +153,7 @@ const RegisterFacilityModal = ({ open, onClose }) => {
                             {/* City & Zip */}
                             <div className="flex gap-2 form-control">
                                 <div className="flex-1">
-                                    <label
-                                        htmlFor="city"
-                                        className="block text-sm font-medium">
+                                    <label htmlFor="city" className="block text-sm font-medium">
                                         City
                                     </label>
                                     <input
@@ -171,7 +161,7 @@ const RegisterFacilityModal = ({ open, onClose }) => {
                                         id="city"
                                         name="city"
                                         value={form.city}
-                                        onChange={e =>
+                                        onChange={(e) =>
                                             setForm({
                                                 ...form,
                                                 city: e.target.value,
@@ -181,9 +171,7 @@ const RegisterFacilityModal = ({ open, onClose }) => {
                                     />
                                 </div>
                                 <div className="w-36">
-                                    <label
-                                        htmlFor="zip_code"
-                                        className="block text-sm font-medium">
+                                    <label htmlFor="zip_code" className="block text-sm font-medium">
                                         Zip Code
                                     </label>
                                     <input
@@ -191,7 +179,7 @@ const RegisterFacilityModal = ({ open, onClose }) => {
                                         id="zip_code"
                                         name="zip_code"
                                         value={form.zip_code}
-                                        onChange={e =>
+                                        onChange={(e) =>
                                             setForm({
                                                 ...form,
                                                 zip_code: e.target.value,
@@ -206,7 +194,8 @@ const RegisterFacilityModal = ({ open, onClose }) => {
                             <div className="flex flex-col form-control">
                                 <label
                                     htmlFor="contact_number"
-                                    className="block text-sm font-medium">
+                                    className="block text-sm font-medium"
+                                >
                                     Contact Number
                                 </label>
                                 <input
@@ -214,7 +203,7 @@ const RegisterFacilityModal = ({ open, onClose }) => {
                                     id="contact_number"
                                     name="contact_number"
                                     value={form.contact_number}
-                                    onChange={e =>
+                                    onChange={(e) =>
                                         setForm({
                                             ...form,
                                             contact_number: e.target.value,
@@ -229,9 +218,7 @@ const RegisterFacilityModal = ({ open, onClose }) => {
                     {step === 1 && (
                         <div className="space-y-3">
                             <div className="flex flex-col form-control">
-                                <label
-                                    htmlFor="email"
-                                    className="block text-sm font-medium">
+                                <label htmlFor="email" className="block text-sm font-medium">
                                     Admin Email
                                 </label>
                                 <input
@@ -239,7 +226,7 @@ const RegisterFacilityModal = ({ open, onClose }) => {
                                     id="email"
                                     name="email"
                                     value={form.email}
-                                    onChange={e =>
+                                    onChange={(e) =>
                                         setForm({
                                             ...form,
                                             email: e.target.value,
@@ -248,14 +235,12 @@ const RegisterFacilityModal = ({ open, onClose }) => {
                                     placeholder="admin@example.com"
                                 />
                                 <p className="text-xs text-muted-foreground mt-1">
-                                    You can invite a new admin by email or
-                                    assign an existing user later.
+                                    You can invite a new admin by email or assign an existing user
+                                    later.
                                 </p>
                             </div>
                             <div className="flex flex-col form-control">
-                                <label
-                                    htmlFor="website"
-                                    className="block text-sm font-medium">
+                                <label htmlFor="website" className="block text-sm font-medium">
                                     Website
                                 </label>
                                 <input
@@ -263,7 +248,7 @@ const RegisterFacilityModal = ({ open, onClose }) => {
                                     id="website"
                                     name="website"
                                     value={form.website}
-                                    onChange={e =>
+                                    onChange={(e) =>
                                         setForm({
                                             ...form,
                                             website: e.target.value,
@@ -281,32 +266,30 @@ const RegisterFacilityModal = ({ open, onClose }) => {
                     {step === 2 && (
                         <div className="space-y-3 flex flex-col gap-4">
                             <div className="flex flex-col form-control">
-                                <label
-                                    htmlFor="plan"
-                                    className="block text-sm font-medium">
+                                <label htmlFor="plan" className="block text-sm font-medium">
                                     Plan
                                 </label>
                                 <select
                                     id="plan"
                                     name="plan"
                                     value={form.plan}
-                                    onChange={e =>
+                                    onChange={(e) =>
                                         setForm({
                                             ...form,
                                             plan: e.target.value,
                                         })
-                                    }>
+                                    }
+                                >
                                     <option value="standard">Standard</option>
                                     <option value="premium">Premium</option>
-                                    <option value="enterprise">
-                                        Enterprise
-                                    </option>
+                                    <option value="enterprise">Enterprise</option>
                                 </select>
                             </div>
                             <div className="flex flex-col form-control">
                                 <label
                                     htmlFor="subscription_expires"
-                                    className="block text-sm font-medium">
+                                    className="block text-sm font-medium"
+                                >
                                     Expiry Date
                                 </label>
                                 <input
@@ -314,11 +297,10 @@ const RegisterFacilityModal = ({ open, onClose }) => {
                                     id="subscription_expires"
                                     name="subscription_expires"
                                     value={form.subscription_expires}
-                                    onChange={e =>
+                                    onChange={(e) =>
                                         setForm({
                                             ...form,
-                                            subscription_expires:
-                                                e.target.value,
+                                            subscription_expires: e.target.value,
                                         })
                                     }
                                 />
@@ -330,32 +312,24 @@ const RegisterFacilityModal = ({ open, onClose }) => {
                         <div>
                             <div className="space-y-2 text-sm">
                                 <div className="flex justify-between">
-                                    <span className="font-medium">
-                                        Facility Name
-                                    </span>
+                                    <span className="font-medium">Facility Name</span>
                                     <span>{form.facility_name}</span>
                                 </div>
                                 <div className="flex justify-between">
                                     <span className="font-medium">Type</span>
-                                    <span className="capitalize">
-                                        {form.type}
-                                    </span>
+                                    <span className="capitalize">{form.type}</span>
                                 </div>
                                 <div className="flex justify-between">
                                     <span className="font-medium">Contact</span>
                                     <span>{form.contact_number}</span>
                                 </div>
                                 <div className="flex justify-between">
-                                    <span className="font-medium">
-                                        Admin Email
-                                    </span>
+                                    <span className="font-medium">Admin Email</span>
                                     <span>{form.email}</span>
                                 </div>
                                 <div className="flex justify-between">
                                     <span className="font-medium">Plan</span>
-                                    <span className="capitalize">
-                                        {form.plan}
-                                    </span>
+                                    <span className="capitalize">{form.plan}</span>
                                 </div>
                                 <div className="flex justify-between">
                                     <span className="font-medium">Expiry</span>
@@ -367,9 +341,7 @@ const RegisterFacilityModal = ({ open, onClose }) => {
                                 <Checkbox
                                     name="isConfirmed"
                                     checked={isConfirmed}
-                                    onChange={() =>
-                                        setIsConfirmed(!isConfirmed)
-                                    }
+                                    onChange={() => setIsConfirmed(!isConfirmed)}
                                     label="I confirm that the information is correct."
                                 />
                             </div>
@@ -382,7 +354,8 @@ const RegisterFacilityModal = ({ open, onClose }) => {
                     <Button
                         className="bg-red-500 hover:bg-red-700 transition-all duration-300"
                         size="sm"
-                        onClick={onClose}>
+                        onClick={onClose}
+                    >
                         Cancel
                     </Button>
                     <div className="ml-auto flex gap-2">
@@ -403,7 +376,8 @@ const RegisterFacilityModal = ({ open, onClose }) => {
                                 className="bg-primary text-white hover:bg-primary/90 ease-in-out delay-30 transition-all duration-300"
                                 onClick={handleSubmit}
                                 disabled={!isConfirmed}
-                                isLoading={loading}>
+                                isLoading={loading}
+                            >
                                 Submit
                             </LoadingButton>
                         )}
