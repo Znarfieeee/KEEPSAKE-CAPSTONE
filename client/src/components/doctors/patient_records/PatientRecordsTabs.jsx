@@ -108,7 +108,6 @@ const PatientRecordsTabs = ({ patient, viewPrescription }) => {
             content: (
                 <div>
                     <PatientPrescription
-                        onView={viewPrescription}
                         prescription={filteredPrescriptions}
                         isLoading={isLoading}
                         search={search}

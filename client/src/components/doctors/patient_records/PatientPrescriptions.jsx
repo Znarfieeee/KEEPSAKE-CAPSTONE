@@ -8,6 +8,7 @@ import { Eye, Search, PlusCircle } from 'lucide-react'
 import { Dialog, DialogTrigger } from '@/components/ui/dialog'
 
 const AddPatientPrescriptionModal = lazy(() => import('./AddPatientPrescriptionModal'))
+const PatientPrescriptionDetailModal = lazy(() => import('./PatientPrescriptionDetailModal'))
 
 const PatientPrescription = ({
     onView,
@@ -18,7 +19,14 @@ const PatientPrescription = ({
     patient,
     onPrescriptionAdded,
 }) => {
-    const [isOpen, setIsOpen] = useState()
+    const [isOpen, setIsOpen] = useState(false)
+    const [selectedPrescription, setSelectedPrescription] = useState(null)
+    const [isDetailModalOpen, setIsDetailModalOpen] = useState(false)
+
+    const handleViewPrescription = (rx) => {
+        setSelectedPrescription(rx)
+        setIsDetailModalOpen(true)
+    }
 
     // Enhanced date formatter with error handling
     const formatDate = (dateString) => {
@@ -128,7 +136,7 @@ const PatientPrescription = ({
                                                 variant="ghost"
                                                 size="icon"
                                                 className="hover:text-blue-600 hover:bg-blue-100"
-                                                onClick={() => onView(rx)}
+                                                onClick={() => handleViewPrescription(rx)}
                                             >
                                                 <Eye className="size-4" />
                                             </Button>
@@ -149,6 +157,15 @@ const PatientPrescription = ({
                     </tbody>
                 </table>
             </div>
+
+            {/* Detail Modal */}
+            <Suspense fallback={null}>
+                <PatientPrescriptionDetailModal
+                    open={isDetailModalOpen}
+                    onClose={() => setIsDetailModalOpen(false)}
+                    prescription={selectedPrescription}
+                />
+            </Suspense>
         </div>
     )
 }
