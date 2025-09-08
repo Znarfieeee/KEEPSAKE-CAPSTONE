@@ -4,7 +4,7 @@ from utils.access_control import require_auth, require_role
 from utils.redis_client import get_redis_client
 from utils.invalidate_cache import invalidate_caches
 import json, datetime
-from utils.sanitize import sanitize_medical_data, sanitize_request_data
+from utils.sanitize import sanitize_request_data
 
 patrx_bp = Blueprint('patrx', __name__)
 redis_client = get_redis_client()
@@ -63,21 +63,14 @@ def upsert_related_record(table_name, payload, patient_id, rx_id=None):
             current_app.logger.info(f"Created new medications for prescription {rx_id}")
             return result
         else:
-            # For prescriptions table
+            # For prescriptions table - always create a new prescription
             try:
-                existing = supabase.table(table_name).select('*').eq('patient_id', patient_id).execute()
-                
-                if existing.data and len(existing.data) > 0:
-                    # Update existing prescription
-                    result = supabase.table(table_name).update(payload).eq('patient_id', patient_id).execute()
-                    current_app.logger.info(f"Updated existing {table_name} record for patient {patient_id}")
-                else:
-                    # Insert new prescription
-                    result = supabase.table(table_name).insert(payload).execute()
-                    current_app.logger.info(f"Created new {table_name} record for patient {patient_id}")
+                # Always insert new prescription
+                result = supabase.table(table_name).insert(payload).execute()
+                current_app.logger.info(f"Created new {table_name} record for patient {patient_id}")
                 
                 if not result.data:
-                    raise Exception(f"Failed to {'update' if existing.data else 'create'} {table_name}")
+                    raise Exception(f"Failed to create {table_name}")
                 return result
                 
             except Exception as table_error:
@@ -92,7 +85,6 @@ def upsert_related_record(table_name, payload, patient_id, rx_id=None):
 @patrx_bp.route('/patient_record/<patient_id>/prescriptions', methods=['GET'])
 @require_auth
 @require_role('facility_admin', 'doctor', 'nurse', 'parent', 'guardian')
-@sanitize_medical_data('patient')
 def get_all_patient_rx(patient_id):
     try:
         bust_cache = request.args.get('bust_cache', 'false').lower() == 'true'
@@ -196,7 +188,6 @@ def get_all_patient_rx(patient_id):
 @patrx_bp.route('/patient_record/<patient_id>/prescriptions', methods=['POST', 'PUT'])
 @require_auth
 @require_role('facility_admin', 'doctor')
-@sanitize_medical_data('medication')
 def create_patient_prescription(patient_id):
     try:
         raw_data = request.json
@@ -225,6 +216,7 @@ def create_patient_prescription(patient_id):
         prescription_payload = prepare_prescription_payload(data, patient_id, created_by, pat_age)
         
         rx_resp = upsert_related_record('prescriptions', prescription_payload, patient_id)
+        
         
         if not rx_resp.data:
             return jsonify({
@@ -286,7 +278,7 @@ def create_patient_prescription(patient_id):
         else:
             new_prescription['medications'] = []
             
-        invalidate_caches('prescription', rx_id)
+        invalidate_caches('prescription', patient_id)
         
         return jsonify({
             'status': 'success',

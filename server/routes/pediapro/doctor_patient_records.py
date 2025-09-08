@@ -599,7 +599,7 @@ def get_patient_record_by_id(patient_id):
                 
             rx_resp = supabase.table('prescriptions').select('*').eq('patient_id', patient_id).execute()
             if rx_resp.data:
-                related_data['prescriptions'] = rx_resp.data[0] if screening_resp.data else None
+                related_data['prescriptions'] = rx_resp.data if screening_resp.data else None
             
             patient_data['related_records'] = related_data
             
