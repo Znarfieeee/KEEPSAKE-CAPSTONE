@@ -4,8 +4,9 @@ import React, { useState, lazy, Suspense } from 'react'
 import { NoResults } from '@/components/ui/no-results'
 import { TooltipHelper } from '@/util/TooltipHelper'
 import { Button } from '@/components/ui/button'
-import { Eye, Search, PlusCircle } from 'lucide-react'
+import { Eye, Search, PlusCircle, Share2 } from 'lucide-react'
 import { Dialog, DialogTrigger } from '@/components/ui/dialog'
+import { showToast } from '../../../util/alertHelper'
 
 const AddPatientPrescriptionModal = lazy(() => import('./AddPatientPrescriptionModal'))
 const PatientPrescriptionDetailModal = lazy(() => import('./PatientPrescriptionDetailModal'))
@@ -139,6 +140,18 @@ const PatientPrescription = ({
                                                 onClick={() => handleViewPrescription(rx)}
                                             >
                                                 <Eye className="size-4" />
+                                            </Button>
+                                        </TooltipHelper>
+                                        <TooltipHelper content="Share Prescription">
+                                            <Button
+                                                variant="ghost"
+                                                size="icon"
+                                                className="hover:text-green-600 hover:bg-green-100"
+                                                onClick={() => {
+                                                    showToast('success', 'Sharing via QR Code')
+                                                }}
+                                            >
+                                                <Share2 className="size-4" />
                                             </Button>
                                         </TooltipHelper>
                                     </td>
