@@ -17,7 +17,7 @@ import { Button } from '@/components/ui/Button'
 import { showToast } from '@/util/alertHelper'
 
 // Import modals
-import AddPatientModal from '@/components/doctors/patient_records/AddPatientModal'
+import StepperAddPatientModal from '@/components/doctors/patient_records/StepperAddPatientModal'
 // const EditPatientModal = lazy(() => import('@/components/doctors/patient_records/EditPatientModal'))
 // const PatientDetailModal = lazy(() => import('@/components/doctors/patient_records/PatientDetailModal'))
 
@@ -383,7 +383,10 @@ function DoctorPatientRecords() {
 
             {/* Modals */}
             {showAddModal && (
-                <AddPatientModal open={showAddModal} onClose={() => setShowAddModal(false)} />
+                <StepperAddPatientModal
+                    open={showAddModal}
+                    onClose={() => setShowAddModal(false)}
+                />
             )}
         </div>
     )

@@ -18,6 +18,7 @@ def prepare_patient_payload(data, created_by):
     payload = {
         "firstname": data.get('firstname'),
         "lastname": data.get('lastname'),
+        "middlename": data.get('middlename'),
         "date_of_birth": data.get('date_of_birth'),
         "sex": data.get('sex'),
         "created_by": created_by,

@@ -1,18 +1,35 @@
 import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@/components/ui/select'
 
 const DeliverySection = ({ form, updateForm }) => {
     return (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-2">
                 <Label className="text-sm font-medium">Type of Delivery</Label>
-                <Input
-                    className="border-input"
-                    placeholder="Enter delivery type"
+                <Select
                     value={form.type_of_delivery}
-                    onChange={(e) => updateForm('type_of_delivery', e.target.value)}
-                />
+                    onValueChange={(v) => updateForm('type_of_delivery', v)}
+                >
+                    <SelectTrigger className="border-input">
+                        <SelectValue placeholder="Select delivery type" />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="normal">Normal Delivery</SelectItem>
+                        <SelectItem value="cesarean">Cesarean Section</SelectItem>
+                        <SelectItem value="vacuum">Vacuum Assisted</SelectItem>
+                        <SelectItem value="forceps">Forceps Assisted</SelectItem>
+                        <SelectItem value="vbac">VBAC (Vaginal Birth After Cesarean)</SelectItem>
+                        <SelectItem value="water">Water Birth</SelectItem>
+                    </SelectContent>
+                </Select>
             </div>
             <div className="space-y-2">
                 <Label className="text-sm font-medium">Apgar Score</Label>

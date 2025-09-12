@@ -1,5 +1,6 @@
 import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
+import { Calendar } from '@/components/ui/calendar'
 import {
     Select,
     SelectContent,
@@ -7,7 +8,10 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select'
-import { User } from 'lucide-react'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { Button } from '@/components/ui/button'
+import { CalendarIcon, User } from 'lucide-react'
+import { format } from 'date-fns'
 
 const BasicInfoSection = ({ form, updateForm }) => {
     return (
@@ -28,6 +32,15 @@ const BasicInfoSection = ({ form, updateForm }) => {
                     />
                 </div>
                 <div className="space-y-2">
+                    <Label className="text-sm font-medium">Middle Name</Label>
+                    <Input
+                        className="border-input"
+                        placeholder="Enter middle name"
+                        value={form.middlename}
+                        onChange={(e) => updateForm('middlename', e.target.value)}
+                    />
+                </div>
+                <div className="space-y-2">
                     <Label className="text-sm font-medium">Last Name *</Label>
                     <Input
                         className="border-input"
@@ -38,12 +51,42 @@ const BasicInfoSection = ({ form, updateForm }) => {
                 </div>
                 <div className="space-y-2">
                     <Label className="text-sm font-medium">Date of Birth *</Label>
-                    <Input
-                        type="date"
-                        className="border-input"
-                        value={form.date_of_birth}
-                        onChange={(e) => updateForm('date_of_birth', e.target.value)}
-                    />
+                    <Popover>
+                        <PopoverTrigger asChild>
+                            <Button
+                                variant={'outline'}
+                                className={`w-full justify-start text-left font-normal ${
+                                    !form.date_of_birth && 'text-muted-foreground'
+                                }`}
+                            >
+                                <CalendarIcon className="mr-2 h-4 w-4" />
+                                {form.date_of_birth ? (
+                                    format(new Date(form.date_of_birth), 'MMM d, yyyy')
+                                ) : (
+                                    <span>Pick a date</span>
+                                )}
+                            </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0" align="start">
+                            <Calendar
+                                mode="single"
+                                selected={
+                                    form.date_of_birth ? new Date(form.date_of_birth) : undefined
+                                }
+                                onSelect={(date) => {
+                                    // Format the date as YYYY-MM-DD for storage
+                                    const formattedDate = date ? format(date, 'yyyy-MM-dd') : ''
+                                    updateForm('date_of_birth', formattedDate)
+                                }}
+                                initialFocus
+                                ISOWeek
+                                captionLayout="dropdown"
+                                fromYear={1900}
+                                toYear={new Date().getFullYear()}
+                                showYearPicker
+                            />
+                        </PopoverContent>
+                    </Popover>
                 </div>
                 <div className="space-y-2">
                     <Label className="text-sm font-medium">Sex *</Label>

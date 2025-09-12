@@ -3,11 +3,10 @@ import { cn } from '@/lib/utils'
 
 const AccordionSection = ({
     title,
-    icon: Icon,
+    // icon: Icon,
     isOpen,
     onToggle,
     children,
-    info,
     isIncluded,
     onIncludeToggle,
 }) => (

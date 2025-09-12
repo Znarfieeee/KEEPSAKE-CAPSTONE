@@ -1,19 +1,25 @@
 from flask import Flask, jsonify, request, make_response
+from flask_cors import CORS
+from datetime import timedelta
+import os, sys, json
+from flask_session import Session # type: ignore
+
+# Utilities & Configs
 from config.settings import settings_bp
+from config.settings import supabase_anon_client
+from utils.audit_logger import configure_audit_logger
+from utils.redis_client import get_redis_client, clear_corrupted_sessions
+
+
+
 from routes.auth_routes import auth_bp
 from routes.admin_routes import admin_bp
 from routes.admin.admin_facility import facility_bp
 from routes.admin.admin_users import users_bp
 from routes.pediapro.doctor_patient_records import patrecord_bp
 from routes.pediapro.doctor_patient_prescriptions import patrx_bp
-from flask_cors import CORS
-from datetime import timedelta
-import os, sys, json
-from flask_session import Session # type: ignore
-from utils.redis_client import get_redis_client, clear_corrupted_sessions
-from config.settings import supabase_anon_client
-from utils.audit_logger import configure_audit_logger
 from routes.auth_routes import init_google_oauth
+from routes.pediapro.doctor_appointments import appointment_bp
 
 app = Flask("keepsake")
 
@@ -31,6 +37,7 @@ app.register_blueprint(facility_bp)
 app.register_blueprint(users_bp)
 app.register_blueprint(patrecord_bp)
 app.register_blueprint(patrx_bp)
+app.register_blueprint(appointment_bp)
 
 # Redis session configuration with enhanced error handling
 def setup_redis_session():
