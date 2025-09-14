@@ -304,6 +304,7 @@ const ScheduleAppointmentModal = ({ onSuccess, currentUser, facilityId, doctorId
                                         placeholder="Search patient by name"
                                         value={formData.patientName}
                                         onChange={(e) => handlePatientNameChange(e.target.value)}
+                                        autoComplete="off"
                                         className={cn(
                                             errors.patientName && 'border-red-500',
                                             'pr-10'
@@ -320,27 +321,46 @@ const ScheduleAppointmentModal = ({ onSuccess, currentUser, facilityId, doctorId
 
                             {/* Patient Suggestions Dropdown */}
                             {showSuggestions && patientSuggestions.length > 0 && (
-                                <div className="absolute z-50 left-0 right-0 top-full w-full min-w-[8rem] overflow-hidden rounded-md border bg-popover text-popover-foreground shadow-md animate-in fade-in-0 zoom-in-95 mt-1">
-                                    <ScrollArea className="max-h-[200px]">
-                                        {patientSuggestions.map((patient) => (
-                                            <div
-                                                key={patient.patient_id}
-                                                onClick={() => handlePatientSelect(patient)}
-                                                className="relative flex w-full cursor-default select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-accent hover:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50"
-                                            >
-                                                <div className="flex justify-between items-center w-full gap-4">
-                                                    <span className="font-medium">
-                                                        {patient.full_name}
-                                                    </span>
-                                                    <span className="text-sm text-muted-foreground">
-                                                        {format(
-                                                            new Date(patient.date_of_birth),
-                                                            'PP'
-                                                        )}
-                                                    </span>
+                                <div className="absolute z-50 left-0 right-0 top-full w-full overflow-hidden rounded-lg border bg-white shadow-lg ring-1 ring-black ring-opacity-5 animate-in fade-in-0 zoom-in-95 mt-1">
+                                    <ScrollArea className="max-h-[280px]">
+                                        <div className="py-1">
+                                            {patientSuggestions.map((patient) => (
+                                                <div
+                                                    key={patient.patient_id}
+                                                    onClick={() => handlePatientSelect(patient)}
+                                                    className="group cursor-pointer"
+                                                >
+                                                    <div className="flex items-center w-full p-3 group-hover:bg-gray-50 transition-colors">
+                                                        <div className="flex-1">
+                                                            <div className="font-medium text-gray-900">
+                                                                {patient.full_name}
+                                                            </div>
+                                                            <div className="flex items-center gap-2 text-sm text-gray-500 mt-0.5">
+                                                                <span className="font-medium">
+                                                                    {patient.sex
+                                                                        .charAt(0)
+                                                                        .toUpperCase() +
+                                                                        patient.sex
+                                                                            .slice(1)
+                                                                            .toLowerCase()}
+                                                                </span>
+                                                                <span className="text-gray-300">
+                                                                    •
+                                                                </span>
+                                                                <span>
+                                                                    {format(
+                                                                        new Date(
+                                                                            patient.date_of_birth
+                                                                        ),
+                                                                        'MMM d, yyyy'
+                                                                    )}
+                                                                </span>
+                                                            </div>
+                                                        </div>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                        ))}
+                                            ))}
+                                        </div>
                                     </ScrollArea>
                                 </div>
                             )}

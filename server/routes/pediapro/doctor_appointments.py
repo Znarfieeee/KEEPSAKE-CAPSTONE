@@ -22,7 +22,7 @@ def prepare_appointments_payload(data, is_update=False):
     
     # Required fields for creation (not all required for updates)
     if not is_update:
-        required_fields = ['patient_id', 'facility_id', 'doctor_id', 'scheduled_by', 'appointment_date']
+        required_fields = ['patient_id', 'facility_id', 'scheduled_by', 'appointment_date']
         missing_fields = [field for field in required_fields if not data.get(field)]
         
         if missing_fields:
@@ -33,6 +33,7 @@ def prepare_appointments_payload(data, is_update=False):
         'patient_id': 'patient_id',
         'facility_id': 'facility_id', 
         'doctor_id': 'doctor_id',
+        'doctor_name': 'doctor_name',  # New field for doctor name
         'scheduled_by': 'scheduled_by',
         'appointment_date': 'appointment_date',  # timestamp with time zone
         'appointment_time': 'appointment_time',  # time without time zone
@@ -79,12 +80,12 @@ def get_appointments():
                     'timestamp': datetime.datetime.utcnow().isoformat()
                 }), 200
         
-        # Fetch from database with proper joins
+        # Fetch from database with proper joins - doctor is now optional
         resp = supabase.table('appointments')\
             .select('''
                 *,
                 patients!appointments_patient_id_fkey(patient_id, firstname, lastname, date_of_birth),
-                doctor:users!appointments_doctor_id_fkey(user_id, firstname, lastname, specialty),
+                doctor:users!inner(user_id, firstname, lastname, specialty),
                 facility:healthcare_facilities!appointments_facility_id_fkey(facility_id, facility_name, address),
                 scheduled_user:users!appointments_scheduled_by_fkey(user_id, firstname, lastname)
             ''')\
@@ -142,11 +143,11 @@ def get_appointments_by_patient_id(patient_id):
                     'timestamp': datetime.datetime.utcnow().isoformat()
                 }), 200
         
-        # Get appointments for the patient with related data
+        # Get appointments for the patient with related data - doctor is now optional
         resp = supabase.table('appointments')\
             .select('''
                 *,
-                doctor:users!appointments_doctor_id_fkey(user_id, firstname, lastname, specialty),
+                doctor:users!inner(user_id, firstname, lastname, specialty),
                 facility:healthcare_facilities!appointments_facility_id_fkey(facility_id, facility_name, address, contact_number),
                 scheduled_user:users!appointments_scheduled_by_fkey(user_id, firstname, lastname)
             ''')\
@@ -203,12 +204,12 @@ def get_appointments_by_facility_id(facility_id):
                     'timestamp': datetime.datetime.utcnow().isoformat()
                 }), 200
         
-        # Get appointments for the facility with related data
+        # Get appointments for the facility with related data - doctor is now optional
         resp = supabase.table('appointments')\
             .select('''
                 *,
                 patients!appointments_patient_id_fkey(patient_id, firstname, lastname, date_of_birth),
-                doctor:users!appointments_doctor_id_fkey(user_id, firstname, lastname, specialty),
+                doctor:users!inner(user_id, firstname, lastname, specialty),
                 scheduled_user:users!appointments_scheduled_by_fkey(user_id, firstname, lastname)
             ''')\
             .eq('facility_id', facility_id)\
@@ -264,7 +265,7 @@ def get_appointments_by_doctor_id(doctor_id):
                     'timestamp': datetime.datetime.utcnow().isoformat()
                 }), 200
         
-        # Get appointments for the doctor with related data
+        # Get appointments for the doctor with related data - doctor is now optional
         resp = supabase.table('appointments')\
             .select('''
                 *,
@@ -301,6 +302,7 @@ def get_appointments_by_doctor_id(doctor_id):
             "message": f"Error fetching appointments: {str(e)}",
         }), 500
 
+# Search patient's by name
 @appointment_bp.route('/search_patients', methods=['GET'])
 @require_auth
 @require_role('facility_admin', 'doctor', 'nurse', 'staff')
@@ -370,6 +372,125 @@ def search_patients():
         return jsonify({
             "status": "error",
             "message": f"Error searching for patients: {str(e)}",
+        }), 500
+        
+@appointment_bp.route('/doctors/available', methods=['GET'])
+@require_auth
+@require_role('facility_admin', 'doctor', 'nurse', 'staff')
+def get_available_doctors():
+    """Get doctors available in the current user's facilities"""
+    try:
+        current_user = request.current_user
+        user_id = current_user.get('id')
+        
+        # Get facilities where the current user works
+        user_facilities_resp = supabase.table('facility_users')\
+            .select('facility_id')\
+            .eq('user_id', user_id)\
+            .is_('end_date', 'null')\
+            .execute()
+        
+        if getattr(user_facilities_resp, 'error', None):
+            return jsonify({
+                "status": "error",
+                "message": "Failed to fetch user facilities"
+            }), 400
+        
+        if not user_facilities_resp.data:
+            return jsonify({
+                "status": "success",
+                "data": [],
+                "message": "No facilities found for current user"
+            }), 200
+        
+        facility_ids = [f['facility_id'] for f in user_facilities_resp.data]
+        
+        # Get doctors from the same facilities
+        doctors_resp = supabase.table('facility_users')\
+            .select('''
+                user_id,
+                facility_id,
+                users!facility_users_user_id_fkey(
+                    user_id,
+                    firstname,
+                    lastname,
+                    specialty,
+                    license_number
+                ),
+                healthcare_facilities!facility_users_facility_id_fkey(
+                    facility_id,
+                    facility_name
+                )
+            ''')\
+            .in_('facility_id', facility_ids)\
+            .eq('role', 'doctor')\
+            .is_('end_date', 'null')\
+            .execute()
+        
+        if getattr(doctors_resp, 'error', None):
+            return jsonify({
+                "status": "error",
+                "message": "Failed to fetch doctors"
+            }), 400
+        
+        # Format the response
+        formatted_doctors = []
+        for doc in doctors_resp.data:
+            user_data = doc.get('users', {})
+            facility_data = doc.get('healthcare_facilities', {})
+            
+            formatted_doctors.append({
+                'doctor_id': user_data.get('user_id'),
+                'full_name': f"{user_data.get('firstname', '')} {user_data.get('lastname', '')}".strip(),
+                'specialty': user_data.get('specialty'),
+                'license_number': user_data.get('license_number'),
+                'facility_id': facility_data.get('facility_id'),
+                'facility_name': facility_data.get('facility_name')
+            })
+        
+        # Remove duplicates (doctors who work at multiple facilities)
+        seen_doctors = {}
+        unique_doctors = []
+        for doctor in formatted_doctors:
+            doc_id = doctor['doctor_id']
+            if doc_id not in seen_doctors:
+                seen_doctors[doc_id] = doctor
+                unique_doctors.append(doctor)
+            else:
+                # If doctor works at multiple facilities, combine facility info
+                existing = seen_doctors[doc_id]
+                if isinstance(existing.get('facilities'), list):
+                    existing['facilities'].append({
+                        'facility_id': doctor['facility_id'],
+                        'facility_name': doctor['facility_name']
+                    })
+                else:
+                    existing['facilities'] = [
+                        {
+                            'facility_id': existing['facility_id'],
+                            'facility_name': existing['facility_name']
+                        },
+                        {
+                            'facility_id': doctor['facility_id'],
+                            'facility_name': doctor['facility_name']
+                        }
+                    ]
+                    # Remove single facility fields
+                    del existing['facility_id']
+                    del existing['facility_name']
+        
+        current_app.logger.info(f"AUDIT: User {current_user.get('email')} fetched available doctors")
+        
+        return jsonify({
+            "status": "success",
+            "data": unique_doctors
+        }), 200
+        
+    except Exception as e:
+        current_app.logger.error(f"AUDIT: Error fetching available doctors: {str(e)}")
+        return jsonify({
+            "status": "error",
+            "message": f"Error fetching available doctors: {str(e)}"
         }), 500
 
 @appointment_bp.route('/appointments', methods=['POST'])
