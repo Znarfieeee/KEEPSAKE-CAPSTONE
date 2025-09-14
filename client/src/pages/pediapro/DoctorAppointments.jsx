@@ -19,7 +19,7 @@ const ScheduleAppointmentModal = lazy(() =>
     import('@/components/doctors/appointments/ScheduleAppointmentModal')
 )
 
-const DoctorAppointments = ({ onOpenRegister }) => {
+const DoctorAppointments = () => {
     // State management
     const [appointments, setAppointments] = useState([])
     const [loading, setLoading] = useState(true)

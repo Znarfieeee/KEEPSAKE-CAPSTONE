@@ -51,6 +51,19 @@ export const getAppointmentsByFacility = async (facilityId) => {
     }
 }
 
+export const searchPatientByName = async (searchTerm) => {
+    try {
+        const response = await axios.get(
+            `${backendConnection()}/search_patients?name=${encodeURIComponent(searchTerm)}`,
+            axiosConfig
+        )
+        return response.data
+    } catch (error) {
+        console.error('Search patient by name error: ', error)
+        throw error
+    }
+}
+
 export const scheduleAppointment = async (appointmentData) => {
     try {
         const response = await axios.post(
@@ -84,6 +97,7 @@ export default {
     getAppointmentsByPatient,
     getAppointmentsByDoctor,
     getAppointmentsByFacility,
+    searchPatientByName,
     scheduleAppointment,
     updateAppointment,
 }

@@ -1,5 +1,5 @@
-import React, { useState } from 'react'
-import { scheduleAppointment } from '@/api/doctors/appointment'
+import React, { useState, useRef, useEffect } from 'react'
+import { scheduleAppointment, searchPatientByName } from '@/api/doctors/appointment'
 
 // UI Components
 import {
@@ -9,13 +9,7 @@ import {
     DialogFooter,
     DialogClose,
 } from '@/components/ui/dialog'
-import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from '@/components/ui/select'
+
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Calendar } from '@/components/ui/calendar'
@@ -32,22 +26,98 @@ import { cn } from '@/util/utils'
 import { format } from 'date-fns'
 import TooltipHelper from '@/util/TooltipHelper'
 
-/**
- * ScheduleAppointmentModal Component
- * Modal for scheduling new appointments with form validation and submission
- */
-const ScheduleAppointmentModal = ({ onSuccess }) => {
+const ScheduleAppointmentModal = ({ onSuccess, currentUser, facilityId, doctorId }) => {
     // Form state management
     const [formData, setFormData] = useState({
         patientName: '',
-        appointmentDate: new Date(),
-        appointmentTime: '',
+        patient_id: null,
+        firstname: '',
+        lastname: '',
+        appointment_date: new Date(),
+        appointment_time: '',
         reason: '',
         notes: '',
     })
 
+    const [patientSuggestions, setPatientSuggestions] = useState([])
+    const [isSearching, setIsSearching] = useState(false)
+    const [showSuggestions, setShowSuggestions] = useState(false)
+    const searchTimeoutRef = useRef(null)
+    const searchContainerRef = useRef(null)
     const [loading, setLoading] = useState(false)
     const [errors, setErrors] = useState({})
+
+    // Function to search for patients via API endpoint
+    const searchPatients = async (searchTerm) => {
+        if (!searchTerm.trim()) {
+            setPatientSuggestions([])
+            setShowSuggestions(false)
+            setIsSearching(false)
+            return
+        }
+
+        setIsSearching(true)
+        try {
+            const response = await searchPatientByName(searchTerm)
+
+            if (response.status === 'success' && response.data) {
+                setPatientSuggestions(response.data)
+                setShowSuggestions(true)
+            } else {
+                setPatientSuggestions([])
+                // setShowSuggestions(false)
+            }
+        } catch (error) {
+            console.error('Error searching for patients:', error)
+            setPatientSuggestions([])
+            // setShowSuggestions(false)
+        } finally {
+            setIsSearching(false)
+        }
+    }
+
+    // Handle patient name input with debounce
+    const handlePatientNameChange = (value) => {
+        setFormData((prev) => ({
+            ...prev,
+            patientName: value,
+            patient_id: null, // Clear patient_id when name changes
+        }))
+
+        if (searchTimeoutRef.current) {
+            clearTimeout(searchTimeoutRef.current)
+        }
+
+        // Show suggestions as soon as user starts typing
+        setShowSuggestions(true)
+
+        searchTimeoutRef.current = setTimeout(() => {
+            searchPatients(value)
+        }, 500)
+    }
+
+    // Handle patient selection from suggestions
+    const handlePatientSelect = (patient) => {
+        setFormData((prev) => ({
+            ...prev,
+            patientName: `${patient.full_name}`,
+            patient_id: patient.patient_id,
+        }))
+        setPatientSuggestions([])
+        setShowSuggestions(false)
+    }
+
+    // Click outside handler to close suggestions
+    useEffect(() => {
+        const handleClickOutside = (event) => {
+            if (searchContainerRef.current && !searchContainerRef.current.contains(event.target)) {
+                setShowSuggestions(false)
+            }
+        }
+
+        document.addEventListener('mousedown', handleClickOutside)
+        return () => document.removeEventListener('mousedown', handleClickOutside)
+    }, [])
 
     /**
      * Handle input changes and clear related errors
@@ -78,31 +148,31 @@ const ScheduleAppointmentModal = ({ onSuccess }) => {
             newErrors.patientName = 'Patient name is required'
         }
 
-        if (!formData.appointmentDate) {
-            newErrors.appointmentDate = 'Appointment date is required'
+        if (!formData.appointment_date) {
+            newErrors.appointment_date = 'Appointment date is required'
         } else {
             // Check if appointment date is in the past
             const today = new Date()
             today.setHours(0, 0, 0, 0)
-            const selectedDate = new Date(formData.appointmentDate)
+            const selectedDate = new Date(formData.appointment_date)
             selectedDate.setHours(0, 0, 0, 0)
 
             if (selectedDate < today) {
-                newErrors.appointmentDate = 'Appointment date cannot be in the past'
+                newErrors.appointment_date = 'Appointment date cannot be in the past'
             }
         }
 
-        if (!formData.appointmentTime) {
-            newErrors.appointmentTime = 'Appointment time is required'
+        if (!formData.appointment_time) {
+            newErrors.appointment_time = 'Appointment time is required'
         } else {
             // Validate time format and business hours
             const timeRegex = /^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/
-            if (!timeRegex.test(formData.appointmentTime)) {
-                newErrors.appointmentTime = 'Invalid time format'
+            if (!timeRegex.test(formData.appointment_time)) {
+                newErrors.appointment_time = 'Invalid time format'
             } else {
-                const [hours] = formData.appointmentTime.split(':').map(Number)
+                const [hours] = formData.appointment_time.split(':').map(Number)
                 if (hours < 8 || hours > 18) {
-                    newErrors.appointmentTime = 'Please select a time between 8:00 AM and 6:00 PM'
+                    newErrors.appointment_time = 'Please select a time between 8:00 AM and 6:00 PM'
                 }
             }
         }
@@ -122,10 +192,12 @@ const ScheduleAppointmentModal = ({ onSuccess }) => {
      */
     const isFormValid = () => {
         return (
-            formData.patientName.trim() &&
-            formData.appointmentDate &&
-            formData.appointmentTime &&
-            formData.reason.trim() &&
+            formData.patientName &&
+            String(formData.patientName).trim() &&
+            formData.appointment_date &&
+            formData.appointment_time &&
+            formData.reason &&
+            String(formData.reason).trim() &&
             Object.keys(errors).length === 0
         )
     }
@@ -136,12 +208,17 @@ const ScheduleAppointmentModal = ({ onSuccess }) => {
     const resetForm = () => {
         setFormData({
             patientName: '',
-            appointmentDate: new Date(),
-            appointmentTime: '',
+            patient_id: null,
+            firstname: '',
+            lastname: '',
+            appointment_date: new Date(),
+            appointment_time: '',
             reason: '',
             notes: '',
         })
         setErrors({})
+        setPatientSuggestions([])
+        setShowSuggestions(false)
     }
 
     /**
@@ -158,13 +235,24 @@ const ScheduleAppointmentModal = ({ onSuccess }) => {
         try {
             setLoading(true)
 
-            // Prepare data for API
+            // Prepare data for API - matching backend expectations
             const submitData = {
-                ...formData,
-                patientName: formData.patientName.trim(),
+                patient_id: formData.patient_id,
+                facility_id: facilityId,
+                doctor_id: doctorId,
+                appointment_date: formData.appointment_date.toISOString().split('T')[0], // Format as YYYY-MM-DD
+                appointment_time: formData.appointment_time,
                 reason: formData.reason.trim(),
                 notes: formData.notes.trim(),
-                appointmentDate: formData.appointmentDate.toISOString().split('T')[0], // Format as YYYY-MM-DD
+                // Backend expects scheduled_by to be set automatically from current user
+            }
+
+            // Only include patient_id if we have a matched patient, otherwise let backend handle patient creation
+            if (!formData.patient_id) {
+                // If no patient_id, include the patient name components for potential creation
+                submitData.firstname = formData.firstname
+                submitData.lastname = formData.lastname
+                submitData.patientName = formData.patientName.trim()
             }
 
             // Sanitize the data if sanitizeObject function is available
@@ -205,17 +293,58 @@ const ScheduleAppointmentModal = ({ onSuccess }) => {
 
             <form onSubmit={handleSubmit} className="space-y-6 py-4">
                 <div className="space-y-4">
-                    {/* Patient Name */}
+                    {/* Patient Name with Search */}
                     <div className="grid gap-2">
                         <Label htmlFor="patientName">Patient Name *</Label>
-                        <Input
-                            id="patientName"
-                            placeholder="Enter patient's full name"
-                            value={formData.patientName}
-                            onChange={(e) => handleInputChange('patientName', e.target.value)}
-                            className={cn(errors.patientName && 'border-red-500')}
-                            required
-                        />
+                        <div className="space-y-2 relative" ref={searchContainerRef}>
+                            <div className="flex gap-2">
+                                <div className="flex-1">
+                                    <Input
+                                        id="patientName"
+                                        placeholder="Search patient by name"
+                                        value={formData.patientName}
+                                        onChange={(e) => handlePatientNameChange(e.target.value)}
+                                        className={cn(
+                                            errors.patientName && 'border-red-500',
+                                            'pr-10'
+                                        )}
+                                        required
+                                    />
+                                </div>
+                                {isSearching && (
+                                    <div className="flex items-center">
+                                        <div className="size-4 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Patient Suggestions Dropdown */}
+                            {showSuggestions && patientSuggestions.length > 0 && (
+                                <div className="absolute z-50 left-0 right-0 top-full w-full min-w-[8rem] overflow-hidden rounded-md border bg-popover text-popover-foreground shadow-md animate-in fade-in-0 zoom-in-95 mt-1">
+                                    <ScrollArea className="max-h-[200px]">
+                                        {patientSuggestions.map((patient) => (
+                                            <div
+                                                key={patient.patient_id}
+                                                onClick={() => handlePatientSelect(patient)}
+                                                className="relative flex w-full cursor-default select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-accent hover:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50"
+                                            >
+                                                <div className="flex justify-between items-center w-full gap-4">
+                                                    <span className="font-medium">
+                                                        {patient.full_name}
+                                                    </span>
+                                                    <span className="text-sm text-muted-foreground">
+                                                        {format(
+                                                            new Date(patient.date_of_birth),
+                                                            'PP'
+                                                        )}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </ScrollArea>
+                                </div>
+                            )}
+                        </div>
                         {errors.patientName && (
                             <p className="text-sm text-red-600">{errors.patientName}</p>
                         )}
@@ -228,17 +357,17 @@ const ScheduleAppointmentModal = ({ onSuccess }) => {
                             <div className="flex max-sm:flex-col">
                                 <Calendar
                                     mode="single"
-                                    selected={formData.appointmentDate}
+                                    selected={formData.appointment_date}
                                     onSelect={(date) => {
                                         if (date) {
-                                            handleInputChange('appointmentDate', date)
+                                            handleInputChange('appointment_date', date)
                                             // Reset time when date changes
-                                            handleInputChange('appointmentTime', '')
+                                            handleInputChange('appointment_time', '')
                                         }
                                     }}
                                     className={cn(
                                         'p-2 sm:pe-5',
-                                        errors.appointmentDate && 'border-red-500'
+                                        errors.appointment_date && 'border-red-500'
                                     )}
                                     disabled={[
                                         {
@@ -254,7 +383,7 @@ const ScheduleAppointmentModal = ({ onSuccess }) => {
                                                 <div className="flex h-5 shrink-0 items-center px-5">
                                                     <p className="text-sm font-medium">
                                                         {format(
-                                                            formData.appointmentDate,
+                                                            formData.appointment_date,
                                                             'EEEE, d'
                                                         )}
                                                     </p>
@@ -280,8 +409,9 @@ const ScheduleAppointmentModal = ({ onSuccess }) => {
                                                     ].map((timeSlot) => (
                                                         <Button
                                                             key={timeSlot}
+                                                            type="button"
                                                             variant={
-                                                                formData.appointmentTime ===
+                                                                formData.appointment_time ===
                                                                 timeSlot
                                                                     ? 'default'
                                                                     : 'outline'
@@ -290,7 +420,7 @@ const ScheduleAppointmentModal = ({ onSuccess }) => {
                                                             className="w-full border-gray-200"
                                                             onClick={() =>
                                                                 handleInputChange(
-                                                                    'appointmentTime',
+                                                                    'appointment_time',
                                                                     timeSlot
                                                                 )
                                                             }
@@ -305,9 +435,9 @@ const ScheduleAppointmentModal = ({ onSuccess }) => {
                                 </div>
                             </div>
                         </div>
-                        {(errors.appointmentDate || errors.appointmentTime) && (
+                        {(errors.appointment_date || errors.appointment_time) && (
                             <p className="text-sm text-red-600">
-                                {errors.appointmentDate || errors.appointmentTime}
+                                {errors.appointment_date || errors.appointment_time}
                             </p>
                         )}
                     </div>

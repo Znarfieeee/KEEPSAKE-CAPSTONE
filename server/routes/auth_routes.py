@@ -718,8 +718,6 @@ def refresh_token():
                     "status": "error",
                     "message": "Session expired"
                 }), 401
-                
-            print(f"Debug - Attempting to refresh with token: {refresh_token}")
             
             # Create a new session with the refresh token
             auth_response = supabase.auth.refresh_session({
@@ -732,9 +730,7 @@ def refresh_token():
                     "status": "error",
                     "message": "Failed to refresh session"
                 }), 401
-                
-            print(f"Debug - Got new session from Supabase: {auth_response.session.access_token[:20]}...")
-                
+                           
             # Update the tokens in Redis
             supabase_tokens = {
                 'access_token': auth_response.session.access_token,
@@ -770,8 +766,7 @@ def refresh_token():
                     path="/",
                     domain=None  # Let browser set automatically
                 )
-            print(f"Debug - Set cookies: session_id and {REFRESH_COOKIE}")
-            
+          
             return response, 200
             
         except AuthApiError as auth_error:
