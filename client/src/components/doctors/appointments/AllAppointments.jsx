@@ -2,6 +2,20 @@ import React, { useState, useMemo } from 'react'
 import { Filter, Search, RotateCcw, Eye, Calendar, Clock, User } from 'lucide-react'
 import { cn, getStatusBadgeColor } from '@/util/utils'
 
+// Helper function to calculate age from date of birth
+const calculateAge = (dateOfBirth) => {
+    const today = new Date()
+    const birthDate = new Date(dateOfBirth)
+    let age = today.getFullYear() - birthDate.getFullYear()
+    const monthDiff = today.getMonth() - birthDate.getMonth()
+
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+        age--
+    }
+
+    return age
+}
+
 const AllAppointments = ({ appointments, onRefresh, loading = false }) => {
     const [searchTerm, setSearchTerm] = useState('')
     const [statusFilter, setStatusFilter] = useState('all')
@@ -181,15 +195,18 @@ const AllAppointments = ({ appointments, onRefresh, loading = false }) => {
                                             </div>
                                             <div>
                                                 <div className="text-sm font-medium text-gray-900">
-                                                    {appointment.patient?.full_name ||
-                                                        `${appointment.patient?.firstname || ''} ${
-                                                            appointment.patient?.lastname || ''
+                                                    {appointment.patient_name ||
+                                                        `${appointment.patients?.firstname || ''} ${
+                                                            appointment.patients?.lastname || ''
                                                         }`.trim() ||
                                                         'Unknown Patient'}
                                                 </div>
-                                                {appointment.patient?.age && (
+                                                {appointment.patients?.date_of_birth && (
                                                     <div className="text-sm text-gray-500">
-                                                        {appointment.patient.age} years old
+                                                        {calculateAge(
+                                                            appointment.patients.date_of_birth
+                                                        )}{' '}
+                                                        years old
                                                     </div>
                                                 )}
                                             </div>

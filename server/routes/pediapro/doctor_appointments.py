@@ -13,6 +13,43 @@ redis_client = get_redis_client()
 APPOINTMENT_CACHE_KEY = 'appointments:all'
 APPOINTMENT_CACHE_PREFIX = 'appointments:'
 
+def populate_patient_name(appointment_data):
+    """
+    Helper function to populate patient_name from patient data if it's null
+    """
+    if appointment_data.get('patient_name') is None and appointment_data.get('patients'):
+        patient = appointment_data['patients']
+        # Construct full name from patient data
+        full_name_parts = [patient.get('firstname', '')]
+        if patient.get('middlename'):
+            full_name_parts.append(patient.get('middlename'))
+        full_name_parts.append(patient.get('lastname', ''))
+        appointment_data['patient_name'] = ' '.join(filter(None, full_name_parts))
+    return appointment_data
+
+def populate_doctor_name(appointment_data):
+    """
+    Helper function to populate doctor_name from doctor data if it's null
+    """
+    if appointment_data.get('doctor_name') is None and appointment_data.get('doctor'):
+        doctor = appointment_data['doctor']
+        doctor_name = f"{doctor.get('firstname', '')} {doctor.get('lastname', '')}"
+        appointment_data['doctor_name'] = doctor_name.strip()
+    return appointment_data
+
+def process_appointment_data(appointments_data):
+    """
+    Process appointment data to ensure patient_name and doctor_name are populated
+    """
+    processed_data = []
+    for appointment in appointments_data:
+        # Populate patient_name if null
+        appointment = populate_patient_name(appointment)
+        # Populate doctor_name if null
+        appointment = populate_doctor_name(appointment)
+        processed_data.append(appointment)
+    return processed_data
+
 def prepare_appointments_payload(data, is_update=False):
     """
     Prepare appointment payload with required and optional fields.
@@ -73,21 +110,24 @@ def get_appointments():
             cached = redis_client.get(APPOINTMENT_CACHE_KEY)
             if cached:
                 cached_data = json.loads(cached)
+                # Process cached data to populate missing names
+                processed_data = process_appointment_data(cached_data)
                 return jsonify({
                     'status': 'success',
-                    'data': cached_data,
+                    'data': processed_data,
                     'cached': True,
                     'timestamp': datetime.datetime.utcnow().isoformat()
                 }), 200
         
-        # Fetch from database with proper joins - doctor is now optional
+        # Fetch from database with proper joins using explicit foreign key relationships
         resp = supabase.table('appointments')\
             .select('''
                 *,
-                patients!appointments_patient_id_fkey(patient_id, firstname, lastname, date_of_birth),
-                doctor:users!inner(user_id, firstname, lastname, specialty),
+                patients!appointments_patient_id_fkey(patient_id, firstname, lastname, middlename, date_of_birth),
+                doctor:users!appointments_doctor_id_fkey(user_id, firstname, lastname, specialty),
                 facility:healthcare_facilities!appointments_facility_id_fkey(facility_id, facility_name, address),
-                scheduled_user:users!appointments_scheduled_by_fkey(user_id, firstname, lastname)
+                scheduled_by:users!appointments_scheduled_by_fkey(user_id, firstname, lastname),
+                updated_by:users!appointments_updated_by_fkey(user_id, firstname, lastname)
             ''')\
             .order('appointment_date', desc=True)\
             .execute()
@@ -100,14 +140,17 @@ def get_appointments():
                 "details": resp.error.message
             }), 400
         
-        # Cache the results for 5 minutes
-        redis_client.setex(APPOINTMENT_CACHE_KEY, 300, json.dumps(resp.data))
+        # Process data to populate missing names
+        processed_data = process_appointment_data(resp.data)
+        
+        # Cache the processed results for 5 minutes
+        redis_client.setex(APPOINTMENT_CACHE_KEY, 300, json.dumps(processed_data))
         
         current_app.logger.info(f"AUDIT: User {current_user.get('email')} fetched all appointments")
         
         return jsonify({
             "status": "success",
-            "data": resp.data,
+            "data": processed_data,
             "cached": False,
             "timestamp": datetime.datetime.utcnow().isoformat()
         }), 200
@@ -136,24 +179,35 @@ def get_appointments_by_patient_id(patient_id):
             cached = redis_client.get(cache_key)
             if cached:
                 cached_data = json.loads(cached)
+                # Process cached data to populate missing names
+                processed_data = process_appointment_data(cached_data)
                 return jsonify({
                     'status': 'success',
-                    'data': cached_data,
+                    'data': processed_data,
                     'cached': True,
                     'timestamp': datetime.datetime.utcnow().isoformat()
                 }), 200
         
-        # Get appointments for the patient with related data - doctor is now optional
+        # Debug: Log the patient_id being queried
+        current_app.logger.info(f"DEBUG: Querying appointments for patient_id: {patient_id}")
+        
+        # Get appointments for the patient with related data using explicit foreign key relationships
         resp = supabase.table('appointments')\
             .select('''
                 *,
-                doctor:users!inner(user_id, firstname, lastname, specialty),
+                patients!appointments_patient_id_fkey(patient_id, firstname, lastname, middlename, date_of_birth),
+                doctor:users!appointments_doctor_id_fkey(user_id, firstname, lastname, specialty),
                 facility:healthcare_facilities!appointments_facility_id_fkey(facility_id, facility_name, address, contact_number),
-                scheduled_user:users!appointments_scheduled_by_fkey(user_id, firstname, lastname)
+                scheduled_by:users!appointments_scheduled_by_fkey(user_id, firstname, lastname),
+                updated_by:users!appointments_updated_by_fkey(user_id, firstname, lastname)
             ''')\
             .eq('patient_id', patient_id)\
             .order('appointment_date', desc=True)\
             .execute()
+        
+        # Debug: Log the raw response
+        current_app.logger.info(f"DEBUG: Raw Supabase response data length: {len(resp.data) if resp.data else 0}")
+        current_app.logger.info(f"DEBUG: Supabase error: {getattr(resp, 'error', None)}")
         
         if getattr(resp, 'error', None):
             current_app.logger.error(f"AUDIT: Failed to fetch appointments for patient {patient_id}: {resp.error.message}")
@@ -163,18 +217,33 @@ def get_appointments_by_patient_id(patient_id):
                 "details": resp.error.message
             }), 400
         
-        # Cache the results for 5 minutes
-        redis_client.setex(cache_key, 300, json.dumps(resp.data))
+        # Debug: Log raw data before processing
+        if resp.data and len(resp.data) > 0:
+            current_app.logger.info(f"DEBUG: First appointment raw data keys: {list(resp.data[0].keys())}")
+        
+        # Process data to populate missing names
+        processed_data = process_appointment_data(resp.data)
+        
+        # Debug: Log processed data
+        current_app.logger.info(f"DEBUG: Processed data length: {len(processed_data)}")
+        if processed_data and len(processed_data) > 0:
+            current_app.logger.info(f"DEBUG: First processed appointment keys: {list(processed_data[0].keys())}")
+        
+        # Cache the processed results for 5 minutes
+        redis_client.setex(cache_key, 300, json.dumps(processed_data))
         
         return jsonify({
             "status": "success",
-            "data": resp.data,
+            "data": processed_data,
             "cached": False,
             "timestamp": datetime.datetime.utcnow().isoformat()
         }), 200
     
     except Exception as e:
         current_app.logger.error(f"AUDIT: Error fetching appointments for patient {patient_id}: {str(e)}")
+        # Debug: Log the full exception traceback
+        import traceback
+        current_app.logger.error(f"DEBUG: Full traceback: {traceback.format_exc()}")
         return jsonify({
             "status": "error",
             "message": f"Error fetching appointments: {str(e)}",
@@ -197,20 +266,23 @@ def get_appointments_by_facility_id(facility_id):
             cached = redis_client.get(cache_key)
             if cached:
                 cached_data = json.loads(cached)
+                # Process cached data to populate missing names
+                processed_data = process_appointment_data(cached_data)
                 return jsonify({
                     'status': 'success',
-                    'data': cached_data,
+                    'data': processed_data,
                     'cached': True,
                     'timestamp': datetime.datetime.utcnow().isoformat()
                 }), 200
         
-        # Get appointments for the facility with related data - doctor is now optional
+        # Get appointments for the facility with related data using explicit foreign key relationships
         resp = supabase.table('appointments')\
             .select('''
                 *,
-                patients!appointments_patient_id_fkey(patient_id, firstname, lastname, date_of_birth),
-                doctor:users!inner(user_id, firstname, lastname, specialty),
-                scheduled_user:users!appointments_scheduled_by_fkey(user_id, firstname, lastname)
+                patients!appointments_patient_id_fkey(patient_id, firstname, lastname, middlename, date_of_birth),
+                doctor:users!appointments_doctor_id_fkey(user_id, firstname, lastname, specialty),
+                scheduled_by:users!appointments_scheduled_by_fkey(user_id, firstname, lastname),
+                updated_by:users!appointments_updated_by_fkey(user_id, firstname, lastname)
             ''')\
             .eq('facility_id', facility_id)\
             .order('appointment_date', desc=True)\
@@ -224,12 +296,15 @@ def get_appointments_by_facility_id(facility_id):
                 "details": resp.error.message
             }), 400
         
-        # Cache the results for 5 minutes
-        redis_client.setex(cache_key, 300, json.dumps(resp.data))
+        # Process data to populate missing names
+        processed_data = process_appointment_data(resp.data)
+        
+        # Cache the processed results for 5 minutes
+        redis_client.setex(cache_key, 300, json.dumps(processed_data))
         
         return jsonify({
             "status": "success",
-            "data": resp.data,
+            "data": processed_data,
             "cached": False,
             "timestamp": datetime.datetime.utcnow().isoformat()
         }), 200
@@ -258,9 +333,11 @@ def get_appointments_by_doctor_id(doctor_id):
             cached = redis_client.get(cache_key)
             if cached:
                 cached_data = json.loads(cached)
+                # Process cached data to populate missing names
+                processed_data = process_appointment_data(cached_data)
                 return jsonify({
                     'status': 'success',
-                    'data': cached_data,
+                    'data': processed_data,
                     'cached': True,
                     'timestamp': datetime.datetime.utcnow().isoformat()
                 }), 200
@@ -269,7 +346,8 @@ def get_appointments_by_doctor_id(doctor_id):
         resp = supabase.table('appointments')\
             .select('''
                 *,
-                patients!appointments_patient_id_fkey(patient_id, firstname, lastname, date_of_birth),
+                patients!appointments_patient_id_fkey(patient_id, firstname, lastname, middlename, date_of_birth),
+                doctor:users!appointments_doctor_id_fkey(user_id, firstname, lastname, specialty),
                 facility:healthcare_facilities!appointments_facility_id_fkey(facility_id, facility_name, address),
                 scheduled_user:users!appointments_scheduled_by_fkey(user_id, firstname, lastname)
             ''')\
@@ -285,12 +363,15 @@ def get_appointments_by_doctor_id(doctor_id):
                 "details": resp.error.message
             }), 400
         
-        # Cache the results for 5 minutes
-        redis_client.setex(cache_key, 300, json.dumps(resp.data))
+        # Process data to populate missing names
+        processed_data = process_appointment_data(resp.data)
+        
+        # Cache the processed results for 5 minutes
+        redis_client.setex(cache_key, 300, json.dumps(processed_data))
         
         return jsonify({
             "status": "success",
-            "data": resp.data,
+            "data": processed_data,
             "cached": False,
             "timestamp": datetime.datetime.utcnow().isoformat()
         }), 200
@@ -503,11 +584,69 @@ def schedule_appointment():
         data = sanitize_request_data(raw_data)
         current_user = request.current_user
         
+        current_user_id = current_user.get('id')
+        
         # Add the user who scheduled the appointment
         data['scheduled_by'] = current_user.get('id')
         
         current_app.logger.info(f"AUDIT: User {current_user.get('email')} attempting to schedule appointment")
         
+        facility_response = supabase.table('facility_users')\
+            .select('facility_id')\
+            .eq('user_id', current_user_id)\
+            .single()\
+            .execute()
+            
+        if getattr(facility_response, 'error', None):
+            current_app.logger.error(f"AUDIT: Failed to get facility id: {facility_response.error.message}")
+            return jsonify({
+                "status": "error",
+                "message": "Failed to get facility information",
+                "details": facility_response.error.message,
+            }), 400
+            
+        facility_id = facility_response.data.get('facility_id')
+        if not facility_id:
+            return jsonify({
+                "status": "error",
+                "message": "No facility found for current user"
+            }), 400
+            
+        # Add facility_id to the appointment data if not already present
+        if 'facility_id' not in data:
+            data['facility_id'] = facility_id
+        
+        
+        
+        # Get patient details if patient_id is provided
+        if data.get('patient_id'):
+            patient_resp = supabase.table('patients')\
+                .select('firstname, lastname, middlename')\
+                .eq('patient_id', data['patient_id'])\
+                .single()\
+                .execute()
+                
+            if not getattr(patient_resp, 'error', None) and patient_resp.data:
+                patient = patient_resp.data
+                # Construct full name
+                full_name_parts = [patient.get('firstname', '')]
+                if patient.get('middlename'):
+                    full_name_parts.append(patient.get('middlename'))
+                full_name_parts.append(patient.get('lastname', ''))
+                data['patient_name'] = ' '.join(full_name_parts)
+
+        # Get doctor's full name if doctor_id is provided
+        if data.get('doctor_id'):
+            doctor_resp = supabase.table('users')\
+                .select('firstname, lastname')\
+                .eq('user_id', data['doctor_id'])\
+                .single()\
+                .execute()
+                
+            if not getattr(doctor_resp, 'error', None) and doctor_resp.data:
+                doctor = doctor_resp.data
+                data['doctor_name'] = f"{doctor.get('firstname', '')} {doctor.get('lastname', '')}"
+
         # Prepare the appointment payload
         try:
             appointments_payload = prepare_appointments_payload(data, is_update=False)
@@ -517,6 +656,23 @@ def schedule_appointment():
                 "message": str(ve)
             }), 400
         
+        # If doctor_id is provided, verify the doctor exists and is active in the facility
+        if appointments_payload.get('doctor_id'):
+            doctor_check = supabase.table('facility_users')\
+                .select('user_id')\
+                .eq('user_id', appointments_payload['doctor_id'])\
+                .eq('facility_id', appointments_payload['facility_id'])\
+                .eq('role', 'doctor')\
+                .is_('end_date', 'null')\
+                .single()\
+                .execute()
+                
+            if getattr(doctor_check, 'error', None) or not doctor_check.data:
+                return jsonify({
+                    "status": "error",
+                    "message": "Selected doctor is not active in this facility",
+                }), 400
+
         # Insert the appointment
         appointments_resp = supabase.table('appointments')\
             .insert(appointments_payload)\
@@ -582,6 +738,35 @@ def update_appointment(appointment_id):
         
         # Add the user who updated the appointment
         data['updated_by'] = current_user.get('id')
+
+        # Get patient details if patient_id is provided
+        if data.get('patient_id'):
+            patient_resp = supabase.table('patients')\
+                .select('firstname, lastname, middlename')\
+                .eq('patient_id', data['patient_id'])\
+                .single()\
+                .execute()
+                
+            if not getattr(patient_resp, 'error', None) and patient_resp.data:
+                patient = patient_resp.data
+                # Construct full name
+                full_name_parts = [patient.get('firstname', '')]
+                if patient.get('middlename'):
+                    full_name_parts.append(patient.get('middlename'))
+                full_name_parts.append(patient.get('lastname', ''))
+                data['patient_name'] = ' '.join(full_name_parts)
+
+        # Get doctor's full name if doctor_id is provided
+        if data.get('doctor_id'):
+            doctor_resp = supabase.table('users')\
+                .select('firstname, lastname')\
+                .eq('user_id', data['doctor_id'])\
+                .single()\
+                .execute()
+                
+            if not getattr(doctor_resp, 'error', None) and doctor_resp.data:
+                doctor = doctor_resp.data
+                data['doctor_name'] = f"{doctor.get('firstname', '')} {doctor.get('lastname', '')}"
         
         # Prepare the update payload
         try:

@@ -1,5 +1,9 @@
 import React, { useState, useRef, useEffect } from 'react'
-import { scheduleAppointment, searchPatientByName } from '@/api/doctors/appointment'
+import {
+    scheduleAppointment,
+    searchPatientByName,
+    getAvailableDoctors,
+} from '@/api/doctors/appointment'
 
 // UI Components
 import {
@@ -9,7 +13,14 @@ import {
     DialogFooter,
     DialogClose,
 } from '@/components/ui/dialog'
-
+import {
+    Select,
+    SelectTrigger,
+    SelectValue,
+    SelectContent,
+    SelectGroup,
+    SelectItem,
+} from '@/components/ui/select'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Calendar } from '@/components/ui/calendar'
@@ -26,7 +37,7 @@ import { cn } from '@/util/utils'
 import { format } from 'date-fns'
 import TooltipHelper from '@/util/TooltipHelper'
 
-const ScheduleAppointmentModal = ({ onSuccess, currentUser, facilityId, doctorId }) => {
+const ScheduleAppointmentModal = ({ onSuccess, facilityId, doctorId }) => {
     // Form state management
     const [formData, setFormData] = useState({
         patientName: '',
@@ -37,6 +48,7 @@ const ScheduleAppointmentModal = ({ onSuccess, currentUser, facilityId, doctorId
         appointment_time: '',
         reason: '',
         notes: '',
+        doctor_id: doctorId || '', // Initialize with provided doctorId or empty string for any available doctor
     })
 
     const [patientSuggestions, setPatientSuggestions] = useState([])
@@ -46,6 +58,26 @@ const ScheduleAppointmentModal = ({ onSuccess, currentUser, facilityId, doctorId
     const searchContainerRef = useRef(null)
     const [loading, setLoading] = useState(false)
     const [errors, setErrors] = useState({})
+    const [doctors, setDoctors] = useState([])
+
+    useEffect(() => {
+        const fetchDoctors = async () => {
+            try {
+                setLoading(true)
+                const response = await getAvailableDoctors()
+                // Check if the response has data property and it's an array
+                const doctorsList = response?.data || []
+                setDoctors(Array.isArray(doctorsList) ? doctorsList : [])
+            } catch (err) {
+                console.error('Error fetching doctors:', err)
+                setDoctors([])
+            } finally {
+                setLoading(false)
+            }
+        }
+
+        fetchDoctors()
+    }, [])
 
     // Function to search for patients via API endpoint
     const searchPatients = async (searchTerm) => {
@@ -215,6 +247,7 @@ const ScheduleAppointmentModal = ({ onSuccess, currentUser, facilityId, doctorId
             appointment_time: '',
             reason: '',
             notes: '',
+            doctor_id: doctorId || '', // Reset to initial doctor if provided, otherwise empty string
         })
         setErrors({})
         setPatientSuggestions([])
@@ -239,12 +272,11 @@ const ScheduleAppointmentModal = ({ onSuccess, currentUser, facilityId, doctorId
             const submitData = {
                 patient_id: formData.patient_id,
                 facility_id: facilityId,
-                doctor_id: doctorId,
-                appointment_date: formData.appointment_date.toISOString().split('T')[0], // Format as YYYY-MM-DD
+                doctor_id: formData.doctor_id || null, // Send null if empty string (Any Available Doctor)
+                appointment_date: formData.appointment_date.toISOString().split('T')[0],
                 appointment_time: formData.appointment_time,
                 reason: formData.reason.trim(),
                 notes: formData.notes.trim(),
-                // Backend expects scheduled_by to be set automatically from current user
             }
 
             // Only include patient_id if we have a matched patient, otherwise let backend handle patient creation
@@ -367,6 +399,39 @@ const ScheduleAppointmentModal = ({ onSuccess, currentUser, facilityId, doctorId
                         </div>
                         {errors.patientName && (
                             <p className="text-sm text-red-600">{errors.patientName}</p>
+                        )}
+                    </div>
+
+                    <div className="grid gap-2 w-full">
+                        <Label htmlFor="doctor">Doctor</Label>
+                        <Select
+                            value={formData.doctor_id}
+                            onValueChange={(value) => handleInputChange('doctor_id', value)}
+                            className="w-full"
+                        >
+                            <SelectTrigger
+                                className={cn('w-full', errors.doctor_id && 'border-red-500')}
+                            >
+                                <SelectValue placeholder="Select a doctor" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectGroup>
+                                    <SelectItem value="any">Any Available Doctor</SelectItem>
+                                    {doctors.map((doctor) => (
+                                        <SelectItem
+                                            key={doctor.doctor_id || doctor.user_id}
+                                            value={doctor.doctor_id || doctor.user_id}
+                                        >
+                                            {`${doctor.full_name}${
+                                                doctor.specialty ? ` - ${doctor.specialty}` : ''
+                                            }`}
+                                        </SelectItem>
+                                    ))}
+                                </SelectGroup>
+                            </SelectContent>
+                        </Select>
+                        {errors.doctor_id && (
+                            <p className="text-sm text-red-600">{errors.doctor_id}</p>
                         )}
                     </div>
 

@@ -64,6 +64,16 @@ export const searchPatientByName = async (searchTerm) => {
     }
 }
 
+export const getAvailableDoctors = async () => {
+    try {
+        const response = await axios.get(`${backendConnection()}/doctors/available`, axiosConfig)
+        return response.data
+    } catch (error) {
+        console.error('Error getting available doctors: ', error)
+        throw error
+    }
+}
+
 export const scheduleAppointment = async (appointmentData) => {
     try {
         const response = await axios.post(
