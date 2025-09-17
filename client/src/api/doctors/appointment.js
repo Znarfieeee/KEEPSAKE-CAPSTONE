@@ -102,6 +102,33 @@ export const updateAppointment = async (appointmentId, appointmentData) => {
     }
 }
 
+export const updateAppointmentStatus = async (appointmentId, status, notes = '') => {
+    try {
+        const response = await axios.patch(
+            `${backendConnection()}/appointments/${appointmentId}/status`,
+            { status, notes },
+            axiosConfig
+        )
+        return response.data
+    } catch (error) {
+        console.error('Update appointment status error:', error)
+        throw error
+    }
+}
+
+export const cancelAppointment = async (appointmentId) => {
+    try {
+        const response = await axios.delete(
+            `${backendConnection()}/appointments/${appointmentId}`,
+            axiosConfig
+        )
+        return response.data
+    } catch (error) {
+        console.error('Cancel appointment error:', error)
+        throw error
+    }
+}
+
 export default {
     getAppointments,
     getAppointmentsByPatient,
@@ -110,4 +137,6 @@ export default {
     searchPatientByName,
     scheduleAppointment,
     updateAppointment,
+    updateAppointmentStatus,
+    cancelAppointment,
 }

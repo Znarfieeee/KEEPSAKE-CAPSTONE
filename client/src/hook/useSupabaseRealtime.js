@@ -409,21 +409,29 @@ export const usePatientsRealtime = ({ onPatientChange }) => {
     })
 }
 
-export const useAppointmentsRealtime = ({ onAppointmentChange, doctorId }) => {
+export const useAppointmentsRealtime = ({ onAppointmentChange, doctorId, facilityId }) => {
     const formatAppointment = useCallback(
         (raw) => ({
-            id: raw.appointment_id,
+            appointment_id: raw.appointment_id,
+            id: raw.appointment_id, // Keep both for compatibility
             patient_id: raw.patient_id,
             doctor_id: raw.doctor_id,
-            name: `${raw.patient_firstname} ${raw.patient_lastname}`,
-            type: raw.appointment_type,
-            status: raw.status,
-            time: new Date(raw.appointment_date).toLocaleString(),
+            doctor_name: raw.doctor_name,
+            patient_name: raw.patient_name,
+            facility_id: raw.facility_id,
             appointment_date: raw.appointment_date,
+            appointment_time: raw.appointment_time,
             reason: raw.reason,
             notes: raw.notes,
+            status: raw.status || 'scheduled',
+            scheduled_by: raw.scheduled_by,
+            updated_by: raw.updated_by,
             created_at: raw.created_at,
             updated_at: raw.updated_at,
+            // These will be populated from joins if needed
+            patients: null,
+            doctor: null,
+            facility: null,
         }),
         []
     )
@@ -465,13 +473,21 @@ export const useAppointmentsRealtime = ({ onAppointmentChange, doctorId }) => {
         [formatAppointment, onAppointmentChange]
     )
 
+    // Create filter based on available parameters
+    let filter = null
+    if (doctorId) {
+        filter = `doctor_id=eq.${doctorId}`
+    } else if (facilityId) {
+        filter = `facility_id=eq.${facilityId}`
+    }
+
     return useSupabaseRealtime({
         table: 'appointments',
         onInsert: handleInsert,
         onUpdate: handleUpdate,
         onDelete: handleDelete,
-        filter: `doctor_id=eq.${doctorId}`,
-        dependencies: [onAppointmentChange, doctorId],
+        filter: filter,
+        dependencies: [onAppointmentChange, doctorId, facilityId],
     })
 }
 

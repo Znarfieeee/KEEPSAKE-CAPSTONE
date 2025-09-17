@@ -1,6 +1,17 @@
-import React, { useState, useMemo } from 'react'
-import { Filter, Search, RotateCcw, Eye, Calendar, Clock, User } from 'lucide-react'
+import React, { useState, useMemo, Suspense, lazy } from 'react'
+
+// UI Components
+import { Filter, Search, RotateCcw, Eye, Calendar, Clock, User, Edit } from 'lucide-react'
 import { cn, getStatusBadgeColor } from '@/util/utils'
+import { Button } from '@/components/ui/button'
+import { Dialog, DialogTrigger } from '@/components/ui/dialog'
+
+// Helper
+import TooltipHelper from '@/util/TooltipHelper'
+
+// Lazy load modal components
+const ViewAppointmentModal = lazy(() => import('./ViewAppointmentModal'))
+const RescheduleAppointmentModal = lazy(() => import('./RescheduleAppointmentModal'))
 
 // Helper function to calculate age from date of birth
 const calculateAge = (dateOfBirth) => {
@@ -20,6 +31,9 @@ const AllAppointments = ({ appointments, onRefresh, loading = false }) => {
     const [searchTerm, setSearchTerm] = useState('')
     const [statusFilter, setStatusFilter] = useState('all')
     const [showFilters, setShowFilters] = useState(false)
+    const [selectedAppointment, setSelectedAppointment] = useState(null)
+    const [showViewModal, setShowViewModal] = useState(false)
+    const [showRescheduleModal, setShowRescheduleModal] = useState(false)
 
     // Filter and search appointments
     const filteredAppointments = useMemo(() => {
@@ -36,6 +50,7 @@ const AllAppointments = ({ appointments, onRefresh, loading = false }) => {
                 searchTerm === '' ||
                 patientName.toLowerCase().includes(searchTerm.toLowerCase()) ||
                 appointment.reason?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                appointment.doctor_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
                 appointment.doctor?.full_name?.toLowerCase().includes(searchTerm.toLowerCase())
 
             // Status filter
@@ -52,27 +67,26 @@ const AllAppointments = ({ appointments, onRefresh, loading = false }) => {
         setShowFilters(false)
     }
 
-    const getAppointmentActions = (appointment) => {
-        const baseActions = [
-            {
-                icon: Eye,
-                label: 'View Details',
-                onClick: () => console.log('View appointment:', appointment.id),
-                className: 'text-blue-600 hover:text-blue-800',
-            },
-        ]
+    const handleViewAppointment = (appointment) => {
+        setSelectedAppointment(appointment)
+        setShowViewModal(true)
+    }
 
-        // Add status-specific actions
-        if (appointment.status?.toLowerCase() === 'scheduled') {
-            baseActions.push({
-                icon: RotateCcw,
-                label: 'Reschedule',
-                onClick: () => console.log('Reschedule appointment:', appointment.id),
-                className: 'text-yellow-600 hover:text-yellow-800',
-            })
-        }
+    const handleRescheduleAppointment = (appointment) => {
+        setSelectedAppointment(appointment)
+        setShowRescheduleModal(true)
+    }
 
-        return baseActions
+    const handleRescheduleSuccess = (response) => {
+        setShowRescheduleModal(false)
+        setSelectedAppointment(null)
+        onRefresh?.()
+    }
+
+    const closeModals = () => {
+        setShowViewModal(false)
+        setShowRescheduleModal(false)
+        setSelectedAppointment(null)
     }
 
     const statusOptions = [
@@ -105,7 +119,7 @@ const AllAppointments = ({ appointments, onRefresh, loading = false }) => {
                                 className={cn(
                                     'flex items-center px-3 py-2 border rounded-lg hover:bg-gray-50 transition-colors',
                                     statusFilter !== 'all'
-                                        ? 'border-blue-300 bg-blue-50 text-blue-700'
+                                        ? 'border-secondary bg-secondary text-primary'
                                         : 'border-gray-200'
                                 )}
                             >
@@ -122,7 +136,7 @@ const AllAppointments = ({ appointments, onRefresh, loading = false }) => {
                                             className={cn(
                                                 'w-full text-left px-4 py-2 hover:bg-gray-50 first:rounded-t-lg last:rounded-b-lg',
                                                 statusFilter === option.value &&
-                                                    'bg-blue-50 text-blue-700'
+                                                    'bg-secondary/50 text-primary'
                                             )}
                                         >
                                             {option.label}
@@ -140,7 +154,7 @@ const AllAppointments = ({ appointments, onRefresh, loading = false }) => {
                                 placeholder="Search appointments..."
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
-                                className="pl-10 pr-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 w-64"
+                                className="pl-10 pr-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent w-64"
                             />
                         </div>
 
@@ -185,13 +199,13 @@ const AllAppointments = ({ appointments, onRefresh, loading = false }) => {
                         <tbody className="bg-white divide-y divide-gray-200">
                             {filteredAppointments.map((appointment) => (
                                 <tr
-                                    key={appointment.id}
+                                    key={appointment.appointment_id || appointment.id}
                                     className="hover:bg-gray-50 transition-colors"
                                 >
                                     <td className="px-6 py-4">
                                         <div className="flex items-center">
-                                            <div className="h-10 w-10 bg-blue-100 rounded-full flex items-center justify-center mr-3">
-                                                <User className="h-5 w-5 text-blue-600" />
+                                            <div className="h-10 w-10 bg-gradient-to-br from-blue-100 to-blue-200 rounded-full flex items-center justify-center mr-3">
+                                                <User className="h-5 w-5 text-primary" />
                                             </div>
                                             <div>
                                                 <div className="text-sm font-medium text-gray-900">
@@ -257,21 +271,31 @@ const AllAppointments = ({ appointments, onRefresh, loading = false }) => {
                                         </span>
                                     </td>
                                     <td className="px-6 py-4">
-                                        <div className="flex items-center space-x-2">
-                                            {getAppointmentActions(appointment).map(
-                                                (action, index) => (
-                                                    <button
-                                                        key={index}
-                                                        onClick={action.onClick}
-                                                        className={cn(
-                                                            'p-1 rounded hover:bg-gray-100 transition-colors',
-                                                            action.className
-                                                        )}
-                                                        title={action.label}
+                                        <div className="flex gap-1">
+                                            <TooltipHelper content="View Details">
+                                                <Button
+                                                    variant="ghost"
+                                                    size="icon"
+                                                    className="hover:text-blue-600 hover:bg-blue-100"
+                                                    onClick={() => handleViewAppointment(appointment)}
+                                                >
+                                                    <Eye className="size-4" />
+                                                </Button>
+                                            </TooltipHelper>
+
+                                            {/* Only show reschedule for scheduled appointments */}
+                                            {(appointment.status?.toLowerCase() === 'scheduled' ||
+                                              appointment.status?.toLowerCase() === 'confirmed') && (
+                                                <TooltipHelper content="Reschedule Appointment">
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="icon"
+                                                        className="hover:text-yellow-600 hover:bg-yellow-100"
+                                                        onClick={() => handleRescheduleAppointment(appointment)}
                                                     >
-                                                        <action.icon className="h-4 w-4" />
-                                                    </button>
-                                                )
+                                                        <Edit className="size-4" />
+                                                    </Button>
+                                                </TooltipHelper>
                                             )}
                                         </div>
                                     </td>
@@ -293,6 +317,27 @@ const AllAppointments = ({ appointments, onRefresh, loading = false }) => {
                     </div>
                 )}
             </div>
+
+            {/* View Appointment Modal */}
+            <Dialog open={showViewModal} onOpenChange={setShowViewModal}>
+                <Suspense fallback={<div className="flex items-center justify-center p-8"><div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div></div>}>
+                    <ViewAppointmentModal
+                        appointment={selectedAppointment}
+                        onClose={closeModals}
+                    />
+                </Suspense>
+            </Dialog>
+
+            {/* Reschedule Appointment Modal */}
+            <Dialog open={showRescheduleModal} onOpenChange={setShowRescheduleModal}>
+                <Suspense fallback={<div className="flex items-center justify-center p-8"><div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div></div>}>
+                    <RescheduleAppointmentModal
+                        appointment={selectedAppointment}
+                        onSuccess={handleRescheduleSuccess}
+                        onClose={closeModals}
+                    />
+                </Suspense>
+            </Dialog>
         </div>
     )
 }

@@ -157,7 +157,7 @@ const CalendarGrid = ({ appointments = [], className }) => {
 
         if (hasEmergency) return 'bg-red-500'
         if (hasFollowup) return 'bg-yellow-400'
-        return 'bg-blue-600'
+        return 'bg-primary'
     }
 
     const monthNames = [
@@ -243,10 +243,10 @@ const CalendarGrid = ({ appointments = [], className }) => {
                                     // Previous/next month days
                                     'text-gray-400': !dayData.isCurrentMonth,
                                     // Today's date
-                                    'bg-blue-100 text-blue-700 font-semibold':
+                                    'bg-secondary text-primary font-semibold':
                                         isToday(dayData.date) && dayData.isCurrentMonth,
                                     // Days with appointments
-                                    'bg-blue-600 text-white':
+                                    'bg-accent text-white':
                                         appointmentCount > 0 &&
                                         !isToday(dayData.date) &&
                                         dayData.isCurrentMonth,
@@ -268,7 +268,7 @@ const CalendarGrid = ({ appointments = [], className }) => {
                                     <div
                                         className={cn(
                                             'w-2 h-2 rounded-full',
-                                            indicatorColor || 'bg-blue-600'
+                                            indicatorColor || 'bg-primary'
                                         )}
                                     />
                                     {appointmentCount > 1 && (
@@ -287,7 +287,7 @@ const CalendarGrid = ({ appointments = [], className }) => {
             <div className="mt-4 pt-4 border-t border-gray-200">
                 <div className="flex flex-wrap items-center gap-4 text-xs">
                     <div className="flex items-center space-x-1">
-                        <div className="w-3 h-3 bg-blue-600 rounded-full"></div>
+                        <div className="w-3 h-3 bg-primary rounded-full"></div>
                         <span>
                             Regular (
                             {appointmentStats.consultation +

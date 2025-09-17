@@ -182,30 +182,15 @@ const ScheduleAppointmentModal = ({ onSuccess, facilityId, doctorId }) => {
 
         if (!formData.appointment_date) {
             newErrors.appointment_date = 'Appointment date is required'
-        } else {
-            // Check if appointment date is in the past
-            const today = new Date()
-            today.setHours(0, 0, 0, 0)
-            const selectedDate = new Date(formData.appointment_date)
-            selectedDate.setHours(0, 0, 0, 0)
-
-            if (selectedDate < today) {
-                newErrors.appointment_date = 'Appointment date cannot be in the past'
-            }
         }
 
         if (!formData.appointment_time) {
             newErrors.appointment_time = 'Appointment time is required'
         } else {
-            // Validate time format and business hours
+            // Validate time format only
             const timeRegex = /^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/
             if (!timeRegex.test(formData.appointment_time)) {
                 newErrors.appointment_time = 'Invalid time format'
-            } else {
-                const [hours] = formData.appointment_time.split(':').map(Number)
-                if (hours < 8 || hours > 18) {
-                    newErrors.appointment_time = 'Please select a time between 8:00 AM and 6:00 PM'
-                }
             }
         }
 
@@ -272,8 +257,8 @@ const ScheduleAppointmentModal = ({ onSuccess, facilityId, doctorId }) => {
             const submitData = {
                 patient_id: formData.patient_id,
                 facility_id: facilityId,
-                doctor_id: formData.doctor_id || null, // Send null if empty string (Any Available Doctor)
-                appointment_date: formData.appointment_date.toISOString().split('T')[0],
+                doctor_id: formData.doctor_id === 'any' || formData.doctor_id === '' ? null : formData.doctor_id, // Send null for 'any' or empty
+                appointment_date: formData.appointment_date.toISOString(),
                 appointment_time: formData.appointment_time,
                 reason: formData.reason.trim(),
                 notes: formData.notes.trim(),
@@ -353,7 +338,7 @@ const ScheduleAppointmentModal = ({ onSuccess, facilityId, doctorId }) => {
 
                             {/* Patient Suggestions Dropdown */}
                             {showSuggestions && patientSuggestions.length > 0 && (
-                                <div className="absolute z-50 left-0 right-0 top-full w-full overflow-hidden rounded-lg border bg-white shadow-lg ring-1 ring-black ring-opacity-5 animate-in fade-in-0 zoom-in-95 mt-1">
+                                <div className="absolute z-50 left-0 right-0 top-full w-full overflow-hidden rounded-lg bg-white shadow-lg animate-in fade-in-0 zoom-in-95 mt-1">
                                     <ScrollArea className="max-h-[280px]">
                                         <div className="py-1">
                                             {patientSuggestions.map((patient) => (
@@ -454,11 +439,8 @@ const ScheduleAppointmentModal = ({ onSuccess, facilityId, doctorId }) => {
                                         'p-2 sm:pe-5',
                                         errors.appointment_date && 'border-red-500'
                                     )}
-                                    disabled={[
-                                        {
-                                            before: new Date(),
-                                        },
-                                    ]}
+                                    // Allow any date selection, including past dates
+                                    disabled={[]}
                                     required
                                 />
                                 <div className="relative w-full max-sm:h-48 sm:w-40">
@@ -475,12 +457,20 @@ const ScheduleAppointmentModal = ({ onSuccess, facilityId, doctorId }) => {
                                                 </div>
                                                 <div className="grid gap-1.5 px-5 max-sm:grid-cols-2">
                                                     {[
+                                                        '06:00',
+                                                        '06:30',
+                                                        '07:00',
+                                                        '07:30',
+                                                        '08:00',
+                                                        '08:30',
                                                         '09:00',
                                                         '09:30',
                                                         '10:00',
                                                         '10:30',
                                                         '11:00',
                                                         '11:30',
+                                                        '12:00',
+                                                        '12:30',
                                                         '13:00',
                                                         '13:30',
                                                         '14:00',
@@ -491,6 +481,18 @@ const ScheduleAppointmentModal = ({ onSuccess, facilityId, doctorId }) => {
                                                         '16:30',
                                                         '17:00',
                                                         '17:30',
+                                                        '18:00',
+                                                        '18:30',
+                                                        '19:00',
+                                                        '19:30',
+                                                        '20:00',
+                                                        '20:30',
+                                                        '21:00',
+                                                        '21:30',
+                                                        '22:00',
+                                                        '22:30',
+                                                        '23:00',
+                                                        '23:30',
                                                     ].map((timeSlot) => (
                                                         <Button
                                                             key={timeSlot}

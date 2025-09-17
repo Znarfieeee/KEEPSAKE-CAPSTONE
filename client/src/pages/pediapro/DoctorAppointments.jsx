@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, lazy, Suspense } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '@/context/auth'
 import { getAppointmentsByDoctor } from '@/api/doctors/appointment'
-import { useAppointmentsRealtime } from '@/hook/useSupabaseRealtime'
+import { useAppointmentsRealtime, supabase } from '@/hook/useSupabaseRealtime'
 
 // UI Components
 import TodaySchedule from '@/components/doctors/appointments/TodaySchedule'
@@ -34,23 +34,46 @@ const DoctorAppointments = () => {
      * Handle real-time appointment changes from Supabase
      * Updates the appointments state based on the change type
      */
-    const handleAppointmentChange = useCallback(({ type, appointment }) => {
+    const handleAppointmentChange = useCallback(({ type, appointment, raw }) => {
         setAppointments((prevAppointments) => {
             let updatedAppointments = [...prevAppointments]
+            const appointmentId = appointment.appointment_id || appointment.id
 
             switch (type) {
                 case 'INSERT':
-                    updatedAppointments = [...prevAppointments, appointment]
+                    // Check if appointment already exists to prevent duplicates
+                    const exists = prevAppointments.some((app) => {
+                        const currentId = app.appointment_id || app.id
+                        return currentId === appointmentId
+                    })
+                    if (!exists) {
+                        updatedAppointments = [appointment, ...prevAppointments]
+                        console.log('New appointment added:', appointment.patient_name || 'Unknown Patient')
+                    }
                     break
                 case 'UPDATE':
-                    updatedAppointments = prevAppointments.map((app) =>
-                        app.id === appointment.id ? appointment : app
-                    )
+                    updatedAppointments = prevAppointments.map((app) => {
+                        const currentId = app.appointment_id || app.id
+                        if (currentId === appointmentId) {
+                            console.log('Appointment updated:', appointment.patient_name || 'Unknown Patient')
+                            return {
+                                ...app,
+                                ...appointment,
+                                // Preserve any additional data that might not be in the realtime update
+                                patients: app.patients || appointment.patients,
+                                doctor: app.doctor || appointment.doctor,
+                                facility: app.facility || appointment.facility,
+                            }
+                        }
+                        return app
+                    })
                     break
                 case 'DELETE':
-                    updatedAppointments = prevAppointments.filter(
-                        (app) => app.id !== appointment.id
-                    )
+                    updatedAppointments = prevAppointments.filter((app) => {
+                        const currentId = app.appointment_id || app.id
+                        return currentId !== appointmentId
+                    })
+                    console.log('Appointment deleted:', appointment.patient_name || 'Unknown Patient')
                     break
                 default:
                     console.warn('Unknown appointment change type:', type)
@@ -69,7 +92,7 @@ const DoctorAppointments = () => {
     // Initialize Supabase realtime subscription
     useAppointmentsRealtime({
         onAppointmentChange: handleAppointmentChange,
-        doctorId: user?.id,
+        doctorId: user?.id, // This will filter appointments for this specific doctor
     })
 
     /**
@@ -87,6 +110,7 @@ const DoctorAppointments = () => {
             setLoading(true)
             setError(null)
 
+            console.log('Fetching appointments for doctor:', user.id)
             const response = await getAppointmentsByDoctor(user.id)
 
             if (response.status === 'success' && response.data) {
@@ -97,6 +121,7 @@ const DoctorAppointments = () => {
                         new Date(`${b.appointment_date} ${b.appointment_time || '00:00'}`)
                 )
 
+                console.log(`Loaded ${sortedAppointments.length} appointments`)
                 setAppointments(sortedAppointments)
             } else {
                 throw new Error(response.message || 'Failed to fetch appointments')
@@ -152,33 +177,52 @@ const DoctorAppointments = () => {
     /**
      * Handle appointment actions (check-in, cancel, etc.)
      */
-    const handleAppointmentAction = useCallback(async (action, appointment) => {
+    const handleAppointmentAction = useCallback(async (action, appointment, response) => {
         try {
-            switch (action) {
-                case 'checkin':
-                    // Handle check-in logic here
-                    console.log('Checking in appointment:', appointment.id)
-                    showToast(
-                        'success',
-                        `Checked in ${appointment.patient?.full_name || 'Patient'}`
-                    )
-                    break
-                case 'cancel':
-                    // Handle cancel logic here
-                    console.log('Cancelling appointment:', appointment.id)
-                    showToast(
-                        'info',
-                        `Cancelled appointment for ${appointment.patient?.full_name || 'Patient'}`
-                    )
-                    break
-                default:
-                    console.warn('Unknown appointment action:', action)
+            // Update the local state with the new appointment data
+            if (response && response.status === 'success' && response.data) {
+                setAppointments((prevAppointments) => {
+                    return prevAppointments.map((app) => {
+                        const appointmentId = app.appointment_id || app.id
+                        const targetId = appointment.appointment_id || appointment.id
+
+                        if (appointmentId === targetId) {
+                            // For cancelled appointments, mark them as cancelled instead of removing
+                            if (action === 'cancel') {
+                                return { ...app, status: 'cancelled', updated_at: new Date().toISOString() }
+                            }
+                            // For other actions, update with response data, preserving existing related data
+                            return {
+                                ...app,
+                                ...response.data,
+                                // Preserve joined data that might not be in the response
+                                patients: app.patients || response.data.patients,
+                                doctor: app.doctor || response.data.doctor,
+                                facility: app.facility || response.data.facility,
+                                updated_at: new Date().toISOString()
+                            }
+                        }
+                        return app
+                    })
+                })
             }
+
+            // Log the action for debugging
+            const patientName = appointment.patient_name ||
+                               appointment.patients?.firstname + ' ' + appointment.patients?.lastname ||
+                               appointment.patient?.full_name ||
+                               'Patient'
+
+            console.log(`${action.toUpperCase()} completed for appointment:`, appointment.appointment_id || appointment.id)
+            console.log(`Patient: ${patientName}, Status: ${response?.data?.status || 'unknown'}`)
+
         } catch (error) {
             console.error('Error handling appointment action:', error)
-            showToast('error', 'Failed to perform action. Please try again.')
+            showToast('error', 'Failed to update appointment locally. Refreshing data...')
+            // Refresh appointments to ensure data consistency
+            fetchAppointments()
         }
-    }, [])
+    }, [fetchAppointments])
 
     // Show loading skeleton while fetching data
     if (loading) {
@@ -208,7 +252,7 @@ const DoctorAppointments = () => {
 
                 <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
                     <DialogTrigger asChild>
-                        <Button className="flex items-center px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 transition-colors">
+                        <Button className="flex items-center px-4 py-2 bg-primary text-white text-sm rounded-lg hover:bg-primary/80 transition-colors">
                             <PlusCircle className="h-4 w-4 mr-2" />
                             Add Appointment
                         </Button>
