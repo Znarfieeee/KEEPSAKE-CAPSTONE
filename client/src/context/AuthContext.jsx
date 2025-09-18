@@ -1,14 +1,9 @@
 /* eslint-disable no-unused-vars */
-import { useState, useEffect, useRef, useCallback } from "react"
-import { useNavigate } from "react-router-dom"
-import {
-    login,
-    logout,
-    getSession,
-    refreshSession as refreshToken,
-} from "../api/auth"
-import { AuthContext } from "./auth"
-import { showToast } from "../util/alertHelper"
+import { useState, useEffect, useRef, useCallback } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { login, logout, getSession, refreshSession as refreshToken } from '../api/auth'
+import { AuthContext } from './auth'
+import { showToast } from '../util/alertHelper'
 
 export const AuthProvider = ({ children }) => {
     const [user, setUser] = useState(null)
@@ -31,7 +26,7 @@ export const AuthProvider = ({ children }) => {
     const refreshPromiseRef = useRef(null) // Prevent concurrent refresh calls
 
     const clearAllTimers = useCallback(() => {
-        ;[refreshTimerRef, idleTimerRef].forEach(timer => {
+        ;[refreshTimerRef, idleTimerRef].forEach((timer) => {
             if (timer.current) {
                 clearTimeout(timer.current)
                 clearInterval(timer.current)
@@ -41,25 +36,25 @@ export const AuthProvider = ({ children }) => {
     }, [])
 
     const navigateOnLogin = useCallback(
-        role => {
+        (role) => {
             switch (role) {
-                case "admin":
-                    navigate("/admin")
+                case 'admin':
+                    navigate('/admin')
                     break
-                case "doctor":
-                    navigate("/pediapro")
+                case 'doctor':
+                    navigate('/pediapro')
                     break
-                case "parent":
-                    navigate("/keepsaker")
+                case 'parent':
+                    navigate('/keepsaker')
                     break
-                case "vital_custodian":
-                    navigate("/vital_custodian")
+                case 'vital_custodian':
+                    navigate('/vital_custodian')
                     break
-                case "facility_admin":
-                    navigate("/facility_admin")
+                case 'facility_admin':
+                    navigate('/facility_admin')
                     break
                 default:
-                    navigate("/")
+                    navigate('/')
             }
         },
         [navigate]
@@ -68,7 +63,7 @@ export const AuthProvider = ({ children }) => {
     const checkExistingSession = useCallback(async () => {
         try {
             const data = await getSession()
-            if (data.status === "success") {
+            if (data.status === 'success') {
                 setUser(data.user)
                 setIsAuthenticated(true)
                 return true
@@ -93,29 +88,23 @@ export const AuthProvider = ({ children }) => {
                     setIsRefreshing(true)
                     const data = await refreshToken()
 
-                    if (data.status === "success") {
+                    if (data.status === 'success') {
                         setUser(data.user)
                         setIsAuthenticated(true)
                         lastRefreshRef.current = Date.now()
-                        setSessionStatus("active")
+                        setSessionStatus('active')
                         return true
                     }
 
                     if (isAuthenticated) {
-                        showToast(
-                            "warning",
-                            "Session expired. Please log in again."
-                        )
+                        showToast('warning', 'Session expired. Please log in again.')
                         await signOut(true)
                     }
                     return false
                 } catch (_) {
                     // Silent failure for security
                     if (isAuthenticated) {
-                        showToast(
-                            "warning",
-                            "Session expired. Please log in again."
-                        )
+                        showToast('warning', 'Session expired. Please log in again.')
                         await signOut(true)
                     }
                     return false
@@ -138,27 +127,27 @@ export const AuthProvider = ({ children }) => {
 
                 const hasExistingSession = await checkExistingSession()
                 if (hasExistingSession) {
-                    return { success: true, message: "Already logged in" }
+                    return { success: true, message: 'Already logged in' }
                 }
 
                 const response = await login(email, password)
 
-                if (response.status === "success") {
-                    showToast("success", "Login successful")
+                if (response.status === 'success') {
+                    showToast('success', 'Login successful')
                     setUser(response.user)
                     setIsAuthenticated(true)
                     lastRefreshRef.current = Date.now()
-                    setSessionStatus("active")
+                    setSessionStatus('active')
 
                     navigateOnLogin(response.user.role)
                     return response
                 } else {
-                    showToast("error", "Invalid credentials")
-                    return { success: false, message: "Invalid credentials" }
+                    showToast('error', 'Invalid credentials')
+                    return { success: false, message: 'Invalid credentials' }
                 }
             } catch {
-                showToast("error", "Authentication failed")
-                return { success: false, message: "Authentication failed" }
+                showToast('error', 'Authentication failed')
+                return { success: false, message: 'Authentication failed' }
             } finally {
                 setLoading(false)
             }
@@ -177,9 +166,9 @@ export const AuthProvider = ({ children }) => {
                 if (!silent) {
                     try {
                         await logout()
-                        showToast("success", "Logout successful")
+                        showToast('success', 'Logout successful')
                     } catch (_) {
-                        showToast("info", "You have been logged out!")
+                        showToast('info', 'You have been logged out!')
                     }
                 } else {
                     try {
@@ -190,16 +179,15 @@ export const AuthProvider = ({ children }) => {
                 }
             } catch {
                 // Silent failure but ensure user is logged out locally
-                if (!silent)
-                    return showToast("info", "You have been logged out!")
-                showToast("info", "You have been logged out")
+                if (!silent) return showToast('info', 'You have been logged out!')
+                showToast('info', 'You have been logged out')
             } finally {
                 setLoading(false)
                 setUser(null)
                 setIsAuthenticated(false)
-                setSessionStatus("expired")
+                setSessionStatus('expired')
                 refreshPromiseRef.current = null
-                navigate("/login")
+                navigate('/login')
             }
         },
         [clearAllTimers]
@@ -215,14 +203,14 @@ export const AuthProvider = ({ children }) => {
 
         lastActivityRef.current = now
         isActiveRef.current = true
-        setSessionStatus("active")
+        setSessionStatus('active')
 
         if (idleTimerRef.current) clearTimeout(idleTimerRef.current)
 
         idleTimerRef.current = setTimeout(() => {
             if (isAuthenticated && isActiveRef.current) {
-                setSessionStatus("expired")
-                showToast("info", "Logging out due to inactivity")
+                setSessionStatus('expired')
+                showToast('info', 'Logging out due to inactivity')
                 signOut(true)
             }
         }, IDLE_LOGOUT_TIME)
@@ -231,11 +219,11 @@ export const AuthProvider = ({ children }) => {
     useEffect(() => {
         if (!isAuthenticated) return
 
-        const events = ["mousemove", "keydown", "click", "scroll", "touchstart"]
-        events.forEach(e => window.addEventListener(e, handleActivity))
+        const events = ['mousemove', 'keydown', 'click', 'scroll', 'touchstart']
+        events.forEach((e) => window.addEventListener(e, handleActivity))
 
         return () => {
-            events.forEach(e => window.removeEventListener(e, handleActivity))
+            events.forEach((e) => window.removeEventListener(e, handleActivity))
         }
     }, [isAuthenticated, handleActivity])
 
@@ -243,7 +231,7 @@ export const AuthProvider = ({ children }) => {
         if (!isAuthenticated) return
 
         clearAllTimers()
-        console.log("Session Management")
+        console.log('Session Management')
         refreshTimerRef.current = setInterval(async () => {
             const now = Date.now()
             const timeSinceLastRefresh = now - lastRefreshRef.current
@@ -268,7 +256,7 @@ export const AuthProvider = ({ children }) => {
     ])
 
     const btnClicked = () => {
-        alert("Button clicked")
+        alert('Button clicked')
     }
 
     useEffect(() => {
@@ -282,16 +270,16 @@ export const AuthProvider = ({ children }) => {
                     if (!refreshedSession) {
                         setUser(null)
                         setIsAuthenticated(false)
-                        setSessionStatus("expired")
+                        setSessionStatus('expired')
                     }
                 } else {
                     lastRefreshRef.current = Date.now()
-                    setSessionStatus("active")
+                    setSessionStatus('active')
                 }
             } catch (_) {
                 setUser(null)
                 setIsAuthenticated(false)
-                setSessionStatus("expired")
+                setSessionStatus('expired')
             } finally {
                 setLoading(false)
             }
@@ -302,7 +290,7 @@ export const AuthProvider = ({ children }) => {
 
     useEffect(() => {
         const handleVisibilityChange = () => {
-            if (document.visibilityState === "visible" && isAuthenticated) {
+            if (document.visibilityState === 'visible' && isAuthenticated) {
                 handleActivity()
 
                 const now = Date.now()
@@ -314,18 +302,9 @@ export const AuthProvider = ({ children }) => {
             }
         }
 
-        document.addEventListener("visibilitychange", handleVisibilityChange)
-        return () =>
-            document.removeEventListener(
-                "visibilitychange",
-                handleVisibilityChange
-            )
-    }, [
-        isAuthenticated,
-        handleActivity,
-        runRefreshSession,
-        VISIBILITY_REFRESH_THRESHOLD,
-    ])
+        document.addEventListener('visibilitychange', handleVisibilityChange)
+        return () => document.removeEventListener('visibilitychange', handleVisibilityChange)
+    }, [isAuthenticated, handleActivity, runRefreshSession, VISIBILITY_REFRESH_THRESHOLD])
 
     useEffect(() => {
         const handleOnline = () => {
@@ -334,8 +313,8 @@ export const AuthProvider = ({ children }) => {
             }
         }
 
-        window.addEventListener("online", handleOnline)
-        return () => window.removeEventListener("online", handleOnline)
+        window.addEventListener('online', handleOnline)
+        return () => window.removeEventListener('online', handleOnline)
     }, [isAuthenticated, runRefreshSession])
 
     const contextValue = {
@@ -356,8 +335,8 @@ export const AuthProvider = ({ children }) => {
         btnClicked,
 
         // Utility functions for components that need session info
-        isSessionActive: () => sessionStatus === "active",
-        isSessionWarning: () => sessionStatus === "warning",
+        isSessionActive: () => sessionStatus === 'active',
+        isSessionWarning: () => sessionStatus === 'warning',
 
         // Session timing info (for components that might show countdown timers)
         sessionTiming: {
@@ -368,9 +347,5 @@ export const AuthProvider = ({ children }) => {
         },
     }
 
-    return (
-        <AuthContext.Provider value={contextValue}>
-            {children}
-        </AuthContext.Provider>
-    )
+    return <AuthContext.Provider value={contextValue}>{children}</AuthContext.Provider>
 }

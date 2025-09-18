@@ -1,72 +1,122 @@
-import React, { useState } from "react"
-import Breadcrumbs from "../components/ui/Breadcrumbs"
-import { Outlet, Link } from "react-router-dom"
+import React, { useState } from 'react'
+import Breadcrumbs from '../components/ui/Breadcrumbs'
+import { Outlet, Link } from 'react-router-dom'
 
 // UI Components
-import { FiKey } from "react-icons/fi"
-import { AiOutlineCreditCard } from "react-icons/ai"
-import { TbActivityHeartbeat } from "react-icons/tb"
-import { BsBuilding } from "react-icons/bs"
-import { CgFileDocument } from "react-icons/cg"
-import { RiDashboardLine } from "react-icons/ri"
-import { AiOutlineTool } from "react-icons/ai"
-import { BiCog } from "react-icons/bi"
-import Hamburger from "../components/ui/Hamburger"
-import AccountPlaceholder from "../components/AccountPlaceholder"
-import NotificationPlaceholder from "../components/ui/NotificationPlaceholder"
+import { FiKey, FiUsers, FiCalendar } from 'react-icons/fi'
+import { AiOutlineCreditCard, AiOutlineTool } from 'react-icons/ai'
+import { TbActivityHeartbeat, TbHeartbeat, TbBrandGoogleAnalytics } from 'react-icons/tb'
+import { BsBuilding, BsClipboardData } from 'react-icons/bs'
+import { HiOutlineIdentification, HiOutlineUserGroup } from 'react-icons/hi'
+import { MdQrCodeScanner, MdOutlineVaccines, MdOutlineHealthAndSafety } from 'react-icons/md'
+import { CgFileDocument } from 'react-icons/cg'
+import { RiDashboardLine, RiUserAddLine } from 'react-icons/ri'
+import { BiCog } from 'react-icons/bi'
+import Hamburger from '../components/ui/Hamburger'
+import AccountPlaceholder from '../components/AccountPlaceholder'
+import NotificationPlaceholder from '../components/ui/NotificationPlaceholder'
 
 const mainSideNavLinks = [
     {
         icon: <RiDashboardLine className="text-xl" />,
-        title: "Dashboard",
-        to: "/admin",
+        title: 'Dashboard',
+        to: '/facility_admin',
     },
     {
-        icon: <BsBuilding className="text-xl" />,
-        title: "Facilities Registry",
-        to: "/admin/facilities",
+        icon: <FiUsers className="text-xl" />,
+        title: 'Staff Records',
+        to: '/facility_admin/staff',
     },
     {
-        icon: <AiOutlineCreditCard className="text-xl" />,
-        title: "Subscription & Billing",
-        to: "/admin/sub_billing",
+        icon: <FiCalendar className="text-xl" />,
+        title: 'Appointments',
+        to: '/facility_admin/appointments',
     },
     {
-        icon: <FiKey className="text-xl" />,
-        title: "Token & Invite System",
-        to: "/admin/tokinv_system",
+        icon: <RiUserAddLine className="text-xl" />,
+        title: 'User Invitations',
+        to: '/facility_admin/invitations',
+    },
+    {
+        icon: <MdQrCodeScanner className="text-xl" />,
+        title: 'QR Code Scanner',
+        to: '/qr_scanner',
+    },
+]
+
+const healthRecordsLinks = [
+    {
+        icon: <TbHeartbeat className="text-xl" />,
+        title: 'Patient Records',
+        to: '/facility_admin/patients',
+    },
+    {
+        icon: <MdOutlineVaccines className="text-xl" />,
+        title: 'Vaccinations',
+        to: '/facility_admin/vaccinations',
+    },
+    {
+        icon: <BsClipboardData className="text-xl" />,
+        title: 'Screening Tests',
+        to: '/facility_admin/screening',
+    },
+    {
+        icon: <MdOutlineHealthAndSafety className="text-xl" />,
+        title: 'Allergies',
+        to: '/facility_admin/allergies',
     },
 ]
 
 const monitoringSideNavLinks = [
     {
+        icon: <HiOutlineUserGroup className="text-xl" />,
+        title: 'Parent Access',
+        to: '/facility_admin/parent-access',
+    },
+    {
+        icon: <TbBrandGoogleAnalytics className="text-xl" />,
+        title: 'Reports',
+        to: '/facility_admin/reports',
+    },
+    {
         icon: <CgFileDocument className="text-xl" />,
-        title: "Audit & Logs",
-        to: "/admin/audit_logs",
+        title: 'Audit & Logs',
+        to: '/facility_admin/audit',
     },
     {
         icon: <TbActivityHeartbeat className="text-xl" />,
-        title: "Api & Webhooks",
-        to: "/admin/api_webhooks",
+        title: 'Api & Webhooks',
+        to: '/facility_admin/api_webhooks',
     },
 ]
 
 const systemSideNavLinks = [
     {
         icon: <BiCog className="text-xl" />,
-        title: "System Configuration",
-        to: "/admin/system_config",
+        title: 'System Configuration',
+        to: '/facility_admin/system_config',
     },
     {
         icon: <AiOutlineTool className="text-xl" />,
-        title: "Maintenance Mode",
-        to: "/admin/maintenance_mode",
+        title: 'Maintenance Mode',
+        to: '/facility_admin/maintenance_mode',
     },
 ]
 
 function FacilityAdminLayout() {
     const [drawerOpen, setDrawerOpen] = useState(false)
-    const toggleDrawer = () => setDrawerOpen(open => !open)
+    const [expandedSections, setExpandedSections] = useState({
+        patients: false,
+    })
+
+    const toggleDrawer = () => setDrawerOpen((open) => !open)
+
+    const toggleSection = (section) => {
+        setExpandedSections((prev) => ({
+            ...prev,
+            [section]: !prev[section],
+        }))
+    }
 
     return (
         <div className="min-h-screen bg-gray-50">
@@ -95,46 +145,70 @@ function FacilityAdminLayout() {
             {/* Sidebar */}
             <aside
                 className={`fixed top-16 left-0 h-[calc(100vh-4rem)] w-64 text-black bg-secondary/80 backdrop-blur-sm z-50 shadow-lg transition-transform duration-400 ease-in-out transform ${
-                    drawerOpen ? "translate-x-0" : "-translate-x-full"
-                }`}>
+                    drawerOpen ? 'translate-x-0' : '-translate-x-full'
+                }`}
+            >
                 <nav className="h-full py-6">
                     <div className="mt-5">
-                        <span className="text-sm font-semibold text-tertiary px-8">
-                            Main
-                        </span>
+                        <span className="text-sm font-semibold text-tertiary px-8">Main</span>
                         {mainSideNavLinks.map((link, index) => (
                             <Link
                                 key={index}
                                 to={link.to}
-                                className="flex items-center gap-4 px-8 py-3 text-black hover:bg-gray-100 duration-300 delay-30 transition-colors">
+                                className="flex items-center gap-4 px-8 py-3 text-black hover:bg-gray-100 duration-300 delay-30 transition-colors"
+                            >
                                 {link.icon}
                                 <span className="text-sm">{link.title}</span>
                             </Link>
                         ))}
                     </div>
+
+                    {/* Patient Records Section with Toggle */}
                     <div className="mt-5">
-                        <span className="text-sm font-semibold text-tertiary px-8">
-                            Monitoring
-                        </span>
+                        <button
+                            onClick={() => toggleSection('patients')}
+                            className="w-full flex items-center justify-between px-8 py-2 text-sm font-semibold text-tertiary hover:bg-gray-50"
+                        >
+                            <span>Patient Records</span>
+                            <span className="text-xs">{expandedSections.patients ? '−' : '+'}</span>
+                        </button>
+                        {expandedSections.patients && (
+                            <div className="mt-1">
+                                {healthRecordsLinks.map((link, index) => (
+                                    <Link
+                                        key={index}
+                                        to={link.to}
+                                        className="flex items-center gap-4 px-8 py-3 text-black hover:bg-gray-100 duration-300 delay-30 transition-colors"
+                                    >
+                                        {link.icon}
+                                        <span className="text-sm">{link.title}</span>
+                                    </Link>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+
+                    <div className="mt-5">
+                        <span className="text-sm font-semibold text-tertiary px-8">Monitoring</span>
                         {monitoringSideNavLinks.map((link, index) => (
                             <Link
                                 key={index}
                                 to={link.to}
-                                className="flex items-center gap-4 px-8 py-3 text-black hover:bg-gray-100 duration-300 delay-30 transition-colors">
+                                className="flex items-center gap-4 px-8 py-3 text-black hover:bg-gray-100 duration-300 delay-30 transition-colors"
+                            >
                                 {link.icon}
                                 <span className="text-sm">{link.title}</span>
                             </Link>
                         ))}
                     </div>
                     <div className="mt-5">
-                        <span className="text-sm font-semibold text-tertiary px-8">
-                            System
-                        </span>
+                        <span className="text-sm font-semibold text-tertiary px-8">System</span>
                         {systemSideNavLinks.map((link, index) => (
                             <Link
                                 key={index}
                                 to={link.to}
-                                className="flex items-center gap-4 px-8 py-3 text-black hover:bg-gray-100 duration-300 delay-30 transition-colors">
+                                className="flex items-center gap-4 px-8 py-3 text-black hover:bg-gray-100 duration-300 delay-30 transition-colors"
+                            >
                                 {link.icon}
                                 <span className="text-sm">{link.title}</span>
                             </Link>

@@ -24,6 +24,10 @@ import {
     AlertCircle,
     RefreshCw,
     Hash,
+    Phone,
+    Mail,
+    Building2,
+    Shield,
 } from 'lucide-react'
 import { TooltipHelper } from '@/util/TooltipHelper'
 
@@ -45,32 +49,58 @@ const getStatusColor = (status) => {
 
 // Prescription Header Component
 const PrescriptionHeader = ({ prescription }) => (
-    <div className="text-center border-b-2 border-primary pb-4 mb-6">
-        <div className="flex items-center justify-center gap-3 mb-2">
-            <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center">
-                <Stethoscope className="w-6 h-6 text-primary" />
-            </div>
-            <div>
-                <h1 className="text-2xl font-bold text-primary">Medical Prescription</h1>
-                <p className="text-sm text-muted-foreground">Healthcare Center</p>
+    <div className="mb-6">
+        {/* Medical Facility Header */}
+        <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-6 rounded-t-lg border-b-4 border-blue-600">
+            <div className="flex justify-between items-start">
+                <div className="flex items-start gap-4">
+                    <div className="w-16 h-16 bg-white rounded-lg shadow-md flex items-center justify-center">
+                        <Shield className="w-10 h-10 text-blue-600" />
+                    </div>
+                    <div>
+                        <h1 className="text-3xl font-bold text-blue-900">KEEPSAKE MEDICAL CENTER</h1>
+                        <p className="text-blue-700 font-medium">Excellence in Healthcare</p>
+                        <div className="flex items-center gap-4 mt-2 text-sm text-blue-600">
+                            <span className="flex items-center gap-1">
+                                <Phone className="w-3 h-3" />
+                                +1 (555) 123-4567
+                            </span>
+                            <span className="flex items-center gap-1">
+                                <Mail className="w-3 h-3" />
+                                info@keepsake.health
+                            </span>
+                        </div>
+                    </div>
+                </div>
+                <div className="text-right">
+                    <div className="bg-white px-3 py-1 rounded-full shadow-sm mb-2">
+                        <span className="text-xs font-bold text-blue-600">RX #{prescription.rx_id || 'PENDING'}</span>
+                    </div>
+                    <p className="text-xs text-blue-700">
+                        {formatDate(prescription.prescription_date)}
+                    </p>
+                </div>
             </div>
         </div>
 
-        {/* Doctor and clinic info */}
-        <div className="flex justify-between items-center text-sm">
-            <div className="text-left">
-                <p className="font-semibold">
-                    Dr. {prescription.doctor_name || 'Medical Professional'}
-                </p>
-                <p className="text-muted-foreground">Licensed Physician</p>
-            </div>
-            <div className="text-right">
-                <p className="font-mono text-xs">
-                    License: MD-{prescription.doctor_license || '123456'}
-                </p>
-                <p className="text-xs text-muted-foreground">
-                    Date: {formatDate(prescription.prescription_date)}
-                </p>
+        {/* Doctor Information Bar */}
+        <div className="bg-white border-x border-gray-200 px-6 py-3">
+            <div className="flex justify-between items-center">
+                <div className="flex items-center gap-3">
+                    <Stethoscope className="w-5 h-5 text-blue-600" />
+                    <div>
+                        <p className="font-bold text-gray-900">
+                            Dr. {prescription.doctor_name || 'Medical Professional'}, MD
+                        </p>
+                        <p className="text-xs text-gray-600">
+                            License #: {prescription.doctor_license || 'MD-789456'} | DEA #: {prescription.dea_number || 'BM1234567'}
+                        </p>
+                    </div>
+                </div>
+                <div className="text-right">
+                    <p className="text-xs font-medium text-gray-700">Valid for 30 days</p>
+                    <p className="text-xs text-gray-500">From date of issue</p>
+                </div>
             </div>
         </div>
     </div>
@@ -78,58 +108,34 @@ const PrescriptionHeader = ({ prescription }) => (
 
 // Patient Info Section
 const PatientInfo = ({ prescription }) => (
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6 p-4 bg-gray-50 rounded-lg border">
-        <div>
-            <h3 className="font-semibold text-sm text-primary mb-2 flex items-center gap-2">
-                <User className="w-4 h-4" />
-                Patient Information
-            </h3>
-            <div className="space-y-1 text-sm">
-                <p>
-                    <span className="font-medium">Name:</span> {prescription.patient_name || '—'}
-                </p>
-                <p>
-                    <span className="font-medium">Age:</span>{' '}
-                    {prescription.patient_age_at_time
-                        ? `${prescription.patient_age_at_time} years`
-                        : '—'}
-                </p>
-                <p>
-                    <span className="font-medium">Date:</span>{' '}
-                    {formatDate(prescription.prescription_date)}
-                </p>
-            </div>
-        </div>
-        <div>
-            <h3 className="font-semibold text-sm text-primary mb-2 flex items-center gap-2">
-                <Activity className="w-4 h-4" />
-                Consultation Details
-            </h3>
-            <div className="space-y-1 text-sm">
-                <p>
-                    <span className="font-medium">Type:</span>{' '}
-                    {prescription.consultation_type || 'Standard Consultation'}
-                </p>
-                {prescription.return_date && (
-                    <p>
-                        <span className="font-medium">Return:</span>{' '}
-                        {formatDate(prescription.return_date)}
+    <div className="bg-white border-x border-gray-200 px-6 py-4 mb-1">
+        <div className="border-2 border-blue-100 rounded-lg p-4 bg-blue-50/30">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div>
+                    <label className="text-xs font-bold text-gray-600 uppercase tracking-wide">Patient Name</label>
+                    <p className="text-lg font-bold text-gray-900 mt-1">
+                        {prescription.patient_name || 'Not Specified'}
                     </p>
-                )}
-                {prescription.status && (
-                    <div className="flex items-center gap-2">
-                        <span className="font-medium">Status:</span>
-                        <div className="flex items-center gap-1">
-                            <span
-                                className={`w-2 h-2 rounded-full ${getStatusColor(
-                                    prescription.status
-                                )}`}
-                            />
-                            <span className="capitalize">{prescription.status}</span>
-                        </div>
-                    </div>
-                )}
+                </div>
+                <div>
+                    <label className="text-xs font-bold text-gray-600 uppercase tracking-wide">Age / DOB</label>
+                    <p className="text-lg font-bold text-gray-900 mt-1">
+                        {prescription.patient_age_at_time ? `${prescription.patient_age_at_time} years` : 'Not Specified'}
+                    </p>
+                </div>
+                <div>
+                    <label className="text-xs font-bold text-gray-600 uppercase tracking-wide">Patient ID</label>
+                    <p className="text-lg font-bold text-gray-900 mt-1">
+                        #{prescription.patient_id || 'N/A'}
+                    </p>
+                </div>
             </div>
+            {prescription.patient_address && (
+                <div className="mt-3 pt-3 border-t border-blue-100">
+                    <label className="text-xs font-bold text-gray-600 uppercase tracking-wide">Address</label>
+                    <p className="text-sm text-gray-700 mt-1">{prescription.patient_address}</p>
+                </div>
+            )}
         </div>
     </div>
 )
@@ -139,13 +145,13 @@ const MedicalFindings = ({ findings }) => {
     if (!findings) return null
 
     return (
-        <div className="mb-6">
-            <h3 className="font-semibold text-base mb-3 flex items-center gap-2 text-primary">
-                <FileText className="w-4 h-4" />
-                Clinical Findings
-            </h3>
-            <div className="bg-blue-50 border-l-4 border-blue-400 p-4 rounded-r-lg">
-                <p className="text-blue-800 leading-relaxed">{findings}</p>
+        <div className="bg-white border-x border-gray-200 px-6 py-3">
+            <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                <h3 className="text-xs font-bold text-gray-600 uppercase tracking-wide mb-2 flex items-center gap-2">
+                    <FileText className="w-3 h-3" />
+                    Diagnosis / Clinical Findings
+                </h3>
+                <p className="text-gray-800 leading-relaxed font-medium">{findings}</p>
             </div>
         </div>
     )
@@ -153,58 +159,61 @@ const MedicalFindings = ({ findings }) => {
 
 // Enhanced Medication Item Component
 const MedicationItem = ({ medication, index }) => (
-    <div className="border border-gray-300 rounded-lg p-4 bg-white shadow-sm">
-        <div className="flex items-center justify-between mb-3">
-            <h4 className="font-bold text-lg flex items-center gap-2">
-                <span className="w-6 h-6 bg-primary text-white rounded-full flex items-center justify-center text-xs">
+    <div className="border-b border-gray-200 pb-4 mb-4 last:border-0 last:pb-0 last:mb-0">
+        <div className="flex items-start gap-4">
+            <div className="flex-shrink-0">
+                <div className="w-8 h-8 bg-blue-600 text-white rounded-full flex items-center justify-center font-bold text-sm">
                     {index + 1}
-                </span>
-                {medication.medication_name || 'Medication Name Not Specified'}
-            </h4>
-        </div>
-
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm mb-3">
-            <div className="flex flex-col">
-                <span className="font-semibold text-gray-600">Dosage</span>
-                <span className="font-mono text-base">{medication.dosage || '—'}</span>
-            </div>
-            <div className="flex flex-col">
-                <span className="font-semibold text-gray-600">Frequency</span>
-                <span className="font-mono text-base">{medication.frequency || '—'}</span>
-            </div>
-            <div className="flex flex-col">
-                <span className="font-semibold text-gray-600">Duration</span>
-                <span className="font-mono text-base">{medication.duration || '—'}</span>
-            </div>
-            <div className="flex flex-col">
-                <span className="font-semibold text-gray-600">Quantity</span>
-                <span className="font-mono text-base">{medication.quantity || '—'}</span>
-            </div>
-        </div>
-
-        {medication.refills_authorized && (
-            <div className="mb-3">
-                <span className="inline-block bg-green-100 text-green-800 px-2 py-1 rounded text-xs font-medium">
-                    Refills: {medication.refills_authorized}
-                </span>
-            </div>
-        )}
-
-        {medication.special_instructions && (
-            <div className="border-t pt-3">
-                <div className="flex items-start gap-2">
-                    <AlertCircle className="w-4 h-4 text-amber-600 mt-0.5 flex-shrink-0" />
-                    <div>
-                        <span className="font-medium text-amber-800 text-xs block">
-                            Special Instructions:
-                        </span>
-                        <p className="text-amber-700 text-sm mt-1">
-                            {medication.special_instructions}
-                        </p>
-                    </div>
                 </div>
             </div>
-        )}
+            <div className="flex-1">
+                <div className="flex items-baseline justify-between mb-2">
+                    <h4 className="text-lg font-bold text-gray-900">
+                        {medication.medication_name || 'Medication Name Not Specified'}
+                    </h4>
+                    {medication.refills_authorized > 0 && (
+                        <span className="bg-green-100 text-green-700 px-2 py-1 rounded-full text-xs font-bold">
+                            {medication.refills_authorized} Refills
+                        </span>
+                    )}
+                </div>
+
+                <div className="bg-gray-50 rounded-lg p-3 mb-2">
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        <div>
+                            <p className="text-xs text-gray-500 uppercase font-semibold">Dosage</p>
+                            <p className="font-bold text-gray-900">{medication.dosage || '—'}</p>
+                        </div>
+                        <div>
+                            <p className="text-xs text-gray-500 uppercase font-semibold">Frequency</p>
+                            <p className="font-bold text-gray-900">{medication.frequency || '—'}</p>
+                        </div>
+                        <div>
+                            <p className="text-xs text-gray-500 uppercase font-semibold">Duration</p>
+                            <p className="font-bold text-gray-900">{medication.duration || '—'}</p>
+                        </div>
+                        <div>
+                            <p className="text-xs text-gray-500 uppercase font-semibold">Quantity</p>
+                            <p className="font-bold text-gray-900">{medication.quantity || '—'}</p>
+                        </div>
+                    </div>
+                </div>
+
+                {medication.special_instructions && (
+                    <div className="bg-amber-50 border-l-4 border-amber-400 p-3 rounded-r">
+                        <div className="flex items-start gap-2">
+                            <AlertCircle className="w-4 h-4 text-amber-600 mt-0.5 flex-shrink-0" />
+                            <div>
+                                <p className="text-xs font-bold text-amber-700 uppercase">Special Instructions</p>
+                                <p className="text-sm text-amber-800 mt-1">
+                                    {medication.special_instructions}
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                )}
+            </div>
+        </div>
     </div>
 )
 
@@ -213,13 +222,13 @@ const DoctorInstructions = ({ instructions }) => {
     if (!instructions) return null
 
     return (
-        <div className="mb-6">
-            <h3 className="font-semibold text-base mb-3 flex items-center gap-2 text-primary">
-                <AlertCircle className="w-4 h-4" />
-                Doctor's Instructions
-            </h3>
-            <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
-                <p className="text-amber-800 leading-relaxed font-medium">{instructions}</p>
+        <div className="bg-white border-x border-gray-200 px-6 py-3">
+            <div className="bg-yellow-50 rounded-lg p-4 border-2 border-yellow-200">
+                <h3 className="text-xs font-bold text-gray-600 uppercase tracking-wide mb-2 flex items-center gap-2">
+                    <AlertCircle className="w-3 h-3 text-yellow-600" />
+                    Doctor's Instructions / Notes
+                </h3>
+                <p className="text-gray-800 leading-relaxed font-medium">{instructions}</p>
             </div>
         </div>
     )
@@ -227,25 +236,56 @@ const DoctorInstructions = ({ instructions }) => {
 
 // Prescription Footer
 const PrescriptionFooter = ({ prescription }) => (
-    <div className="border-t-2 border-gray-200 pt-4 mt-6">
-        <div className="flex justify-between items-end">
-            <div className="text-xs text-muted-foreground">
-                {prescription.consultation_notes && (
-                    <div className="mb-2">
-                        <span className="font-medium">Notes:</span>
-                        <p className="max-w-md">{prescription.consultation_notes}</p>
+    <div className="bg-white border-x border-b border-gray-200 px-6 py-4 rounded-b-lg">
+        <div className="border-t-2 border-gray-200 pt-4">
+            {prescription.consultation_notes && (
+                <div className="mb-4 p-3 bg-gray-50 rounded-lg">
+                    <p className="text-xs font-bold text-gray-600 uppercase tracking-wide mb-1">Additional Notes</p>
+                    <p className="text-sm text-gray-700">{prescription.consultation_notes}</p>
+                </div>
+            )}
+
+            <div className="flex justify-between items-start">
+                <div className="space-y-2">
+                    <div className="text-xs text-gray-500">
+                        <p className="font-bold text-gray-600">Important Information:</p>
+                        <ul className="mt-1 space-y-0.5">
+                            <li>• This prescription is valid for 30 days from the date of issue</li>
+                            <li>• Keep this document for your records</li>
+                            <li>• Present to licensed pharmacy only</li>
+                        </ul>
                     </div>
-                )}
-                <p>This prescription is valid for 30 days from the date of issue.</p>
-                <p>Generated on: {formatDateTime(prescription.created_at)}</p>
+                    <div className="text-xs text-gray-400">
+                        <p>Generated: {formatDateTime(prescription.created_at)}</p>
+                        <p>Document ID: RX-{prescription.rx_id || 'PENDING'}</p>
+                    </div>
+                </div>
+
+                <div className="text-center">
+                    <div className="border-2 border-gray-300 border-dashed rounded-lg p-4 min-w-[200px]">
+                        <p className="text-xs text-gray-500 mb-2">Physician Signature</p>
+                        <div className="h-12 flex items-center justify-center">
+                            <p className="font-signature text-2xl text-blue-800">
+                                Dr. {prescription.doctor_name || 'Medical Professional'}
+                            </p>
+                        </div>
+                        <div className="border-t border-gray-400 mt-2 pt-2">
+                            <p className="text-xs font-bold text-gray-700">
+                                {prescription.doctor_name || 'Medical Professional'}, MD
+                            </p>
+                            <p className="text-xs text-gray-500">Licensed Physician</p>
+                        </div>
+                    </div>
+                </div>
             </div>
-            <div className="text-right">
-                <div className="border-t border-gray-400 w-48 mb-1"></div>
-                <p className="text-sm font-semibold">
-                    Dr. {prescription.doctor_name || 'Medical Professional'}
-                </p>
-                <p className="text-xs text-muted-foreground">Digital Signature</p>
-            </div>
+
+            {prescription.return_date && (
+                <div className="mt-4 p-3 bg-blue-50 border-2 border-blue-200 rounded-lg text-center">
+                    <p className="text-sm font-bold text-blue-800">
+                        Follow-up Appointment: {formatDate(prescription.return_date)}
+                    </p>
+                </div>
+            )}
         </div>
     </div>
 )
@@ -296,52 +336,64 @@ const PatientPrescriptionDetailModal = ({ open, prescription, onClose }) => {
             style.type = 'text/css'
             style.id = 'prescription-print-style'
             style.innerHTML = `
+                @import url('https://fonts.googleapis.com/css2?family=Kalam:wght@700&display=swap');
+
+                .font-signature {
+                    font-family: 'Kalam', cursive;
+                }
+
                 @media print {
                     /* Hide everything except printable area */
-                    body * { 
-                        visibility: hidden !important; 
+                    body * {
+                        visibility: hidden !important;
                     }
-                    
+
                     /* Show only prescription content */
-                    .prescription-printable, 
-                    .prescription-printable * { 
-                        visibility: visible !important; 
+                    .prescription-printable,
+                    .prescription-printable * {
+                        visibility: visible !important;
                     }
-                    
+
                     /* Position prescription content */
-                    .prescription-printable { 
-                        position: absolute !important; 
-                        left: 0 !important; 
-                        top: 0 !important; 
-                        width: 100% !important; 
-                        padding: 20px !important;
+                    .prescription-printable {
+                        position: absolute !important;
+                        left: 0 !important;
+                        top: 0 !important;
+                        width: 100% !important;
+                        padding: 0 !important;
                         margin: 0 !important;
                         box-shadow: none !important;
                         border: none !important;
+                        background: white !important;
                     }
-                    
+
                     /* Ensure proper spacing and layout */
                     .prescription-printable * {
                         box-shadow: none !important;
                     }
-                    
+
                     /* Page break settings */
                     @page {
                         margin: 0.5in;
                         size: A4;
                     }
-                    
+
                     /* Avoid breaking inside medication items */
                     .medication-item {
                         break-inside: avoid !important;
                         page-break-inside: avoid !important;
                     }
-                    
+
                     /* Ensure colors print properly */
                     * {
                         -webkit-print-color-adjust: exact !important;
                         color-adjust: exact !important;
                         print-color-adjust: exact !important;
+                    }
+
+                    /* Maintain layout structure */
+                    .max-w-4xl {
+                        max-width: 100% !important;
                     }
                 }
             `
@@ -437,47 +489,59 @@ const PatientPrescriptionDetailModal = ({ open, prescription, onClose }) => {
                 </div>
 
                 {/* Printable prescription content */}
-                <div className="prescription-printable p-6 bg-white h-[calc(95vh-80px)] flex flex-col">
-                    <PrescriptionHeader prescription={prescription} />
+                <div className="prescription-printable bg-gray-100 h-[calc(95vh-80px)] overflow-y-auto">
+                    <div className="max-w-4xl mx-auto my-4">
+                        <div className="bg-white shadow-xl rounded-lg">
+                            <PrescriptionHeader prescription={prescription} />
 
-                    <PatientInfo prescription={prescription} />
+                            <PatientInfo prescription={prescription} />
 
-                    <MedicalFindings findings={prescription.findings} />
+                            <MedicalFindings findings={prescription.findings} />
 
-                    <DoctorInstructions instructions={prescription.doctor_instructions} />
+                            <DoctorInstructions instructions={prescription.doctor_instructions} />
 
-                    {/* Medications Section - flexible height */}
-                    <div className="flex-1 min-h-0 mb-4">
-                        <h3 className="font-semibold text-base mb-3 flex items-center gap-2 text-primary border-b pb-2">
-                            <Pill className="w-4 h-4" />
-                            Prescribed Medications
-                            {medications.length > 0 && (
-                                <span className="bg-primary/10 text-primary text-sm px-2 py-1 rounded-full">
-                                    {medications.length} item{medications.length !== 1 ? 's' : ''}
-                                </span>
-                            )}
-                        </h3>
-
-                        <div className="h-full overflow-y-auto space-y-3">
-                            {medications.length > 0 ? (
-                                medications.map((medication, index) => (
-                                    <div key={medication.id || index} className="medication-item">
-                                        <MedicationItem medication={medication} index={index} />
+                            {/* Medications Section */}
+                            <div className="bg-white border-x border-gray-200 px-6 py-4">
+                                <div className="bg-white rounded-lg">
+                                    <div className="flex items-center justify-between mb-4 pb-2 border-b-2 border-blue-600">
+                                        <h3 className="text-lg font-bold text-blue-900 flex items-center gap-2">
+                                            <div className="w-8 h-8 bg-blue-600 text-white rounded-lg flex items-center justify-center">
+                                                <Pill className="w-5 h-5" />
+                                            </div>
+                                            PRESCRIBED MEDICATIONS
+                                        </h3>
+                                        {medications.length > 0 && (
+                                            <span className="bg-blue-100 text-blue-700 text-sm px-3 py-1 rounded-full font-bold">
+                                                {medications.length} Item{medications.length !== 1 ? 's' : ''}
+                                            </span>
+                                        )}
                                     </div>
-                                ))
-                            ) : (
-                                <div className="text-center py-6 text-muted-foreground border-2 border-dashed border-gray-200 rounded-lg">
-                                    <Pill className="w-10 h-10 mx-auto mb-2 opacity-50" />
-                                    <p className="font-medium">No medications prescribed</p>
-                                    <p className="text-sm">
-                                        This consultation did not require medication
-                                    </p>
+
+                                    <div className="space-y-2">
+                                        {medications.length > 0 ? (
+                                            medications.map((medication, index) => (
+                                                <MedicationItem
+                                                    key={medication.id || index}
+                                                    medication={medication}
+                                                    index={index}
+                                                />
+                                            ))
+                                        ) : (
+                                            <div className="text-center py-8 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
+                                                <Pill className="w-12 h-12 mx-auto mb-3 text-gray-400" />
+                                                <p className="font-bold text-gray-600">No Medications Prescribed</p>
+                                                <p className="text-sm text-gray-500 mt-1">
+                                                    This consultation did not require medication
+                                                </p>
+                                            </div>
+                                        )}
+                                    </div>
                                 </div>
-                            )}
+                            </div>
+
+                            <PrescriptionFooter prescription={prescription} />
                         </div>
                     </div>
-
-                    <PrescriptionFooter prescription={prescription} />
                 </div>
             </DialogContent>
         </Dialog>

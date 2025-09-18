@@ -1,4 +1,4 @@
-import React, { useState, lazy, Suspense } from 'react'
+import React, { useState, useEffect, lazy, Suspense } from 'react'
 
 // UI Components
 import { NoResults } from '@/components/ui/no-results'
@@ -12,7 +12,6 @@ const AddPatientPrescriptionModal = lazy(() => import('./AddPatientPrescriptionM
 const PatientPrescriptionDetailModal = lazy(() => import('./PatientPrescriptionDetailModal'))
 
 const PatientPrescription = ({
-    onView,
     search,
     onSearchChange,
     isLoading,
@@ -23,10 +22,26 @@ const PatientPrescription = ({
     const [isOpen, setIsOpen] = useState(false)
     const [selectedPrescription, setSelectedPrescription] = useState(null)
     const [isDetailModalOpen, setIsDetailModalOpen] = useState(false)
+    const [localPrescriptions, setLocalPrescriptions] = useState(prescription)
+
+    // Sync external prescription changes with local state
+    useEffect(() => {
+        setLocalPrescriptions(prescription)
+    }, [prescription])
 
     const handleViewPrescription = (rx) => {
         setSelectedPrescription(rx)
         setIsDetailModalOpen(true)
+    }
+
+    const handlePrescriptionAdded = (newPrescription) => {
+        // Add new prescription to local state immediately
+        setLocalPrescriptions(prev => [newPrescription, ...prev])
+        // Close modal
+        setIsOpen(false)
+        // Call parent callback if provided
+        onPrescriptionAdded?.(newPrescription)
+        showToast('success', 'Prescription added successfully!')
     }
 
     // Enhanced date formatter with error handling
@@ -46,8 +61,22 @@ const PatientPrescription = ({
         }
     }
 
-    // Ensure prescriptions is always an array
-    const prescriptionArray = Array.isArray(prescription) ? prescription : []
+    // Filter prescriptions based on search term
+    const filteredPrescriptions = Array.isArray(localPrescriptions)
+        ? localPrescriptions.filter(rx => {
+            if (!search) return true
+            const searchLower = search.toLowerCase()
+            return (
+                rx.findings?.toLowerCase().includes(searchLower) ||
+                rx.status?.toLowerCase().includes(searchLower) ||
+                (rx.prescription_date && formatDate(rx.prescription_date).toLowerCase().includes(searchLower)) ||
+                (rx.return_date && formatDate(rx.return_date).toLowerCase().includes(searchLower))
+            )
+        })
+        : []
+
+    // Use filtered prescriptions for rendering
+    const prescriptionArray = filteredPrescriptions
 
     return (
         <div className="bg-white rounded-b-lg shadow-sm p-6 mb-6">
@@ -76,10 +105,7 @@ const PatientPrescription = ({
                                     prescription={{ patient_id: patient?.patient_id }}
                                     isLoading={isLoading}
                                     setIsOpen={setIsOpen}
-                                    onSuccess={(newPrescription) => {
-                                        // Add the new prescription to the existing list
-                                        onPrescriptionAdded?.(newPrescription)
-                                    }}
+                                    onSuccess={handlePrescriptionAdded}
                                 />
                             </Suspense>
                         </Dialog>
@@ -98,7 +124,7 @@ const PatientPrescription = ({
                     <tbody>
                         {isLoading ? (
                             <tr>
-                                <td colSpan="4" className="p-2 text-center">
+                                <td colSpan="5" className="p-2 text-center">
                                     Loading prescriptions...
                                 </td>
                             </tr>
@@ -158,14 +184,18 @@ const PatientPrescription = ({
                                 </tr>
                             ))
                         ) : (
-                            <NoResults
-                                message={search ? 'No prescriptions found' : 'No prescriptions yet'}
-                                suggestion={
-                                    search
-                                        ? 'Try adjusting your search criteria'
-                                        : 'Add a prescription using the button above'
-                                }
-                            />
+                            <tr>
+                                <td colSpan="5" className="p-8">
+                                    <NoResults
+                                        message={search ? 'No prescriptions found' : 'No prescriptions yet'}
+                                        suggestion={
+                                            search
+                                                ? 'Try adjusting your search criteria'
+                                                : 'Add a prescription using the button above'
+                                        }
+                                    />
+                                </td>
+                            </tr>
                         )}
                     </tbody>
                 </table>
