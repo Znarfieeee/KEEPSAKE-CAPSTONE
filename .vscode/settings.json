@@ -6,6 +6,7 @@
         "cchd",
         "dotenv",
         "firstname",
+        "fusers",
         "gensalt",
         "gotrue",
         "hashpw",

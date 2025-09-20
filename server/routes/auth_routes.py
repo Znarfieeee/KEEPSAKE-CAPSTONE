@@ -432,6 +432,7 @@ def login():
                 update_session_activity(session_id)
                 user_data = {
                     'id': existing_session.get('user_id'),
+                    'facility_id': existing_session.get('facility_id'),
                     'email': existing_session.get('email'),
                     'role': existing_session.get('role'),
                     'firstname': existing_session.get('firstname'),

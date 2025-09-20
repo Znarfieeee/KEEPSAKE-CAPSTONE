@@ -33,7 +33,7 @@ const SEGMENT_LABELS = {
 
     // Facility Admin
     facility_admin: 'Dashboard',
-    staff: 'Staff Records',
+    facility_users: 'Facility Users',
     appointments: 'Appointments',
     invitations: 'User Invitations',
     patients: 'Patient Records',

@@ -1,12 +1,12 @@
-import React, { useState } from 'react'
-import Breadcrumbs from '../components/ui/Breadcrumbs'
+import React, { useState, useRef, useEffect } from 'react'
 import { Outlet, Link } from 'react-router-dom'
 
 // UI Components
-import { FiKey, FiUsers, FiCalendar } from 'react-icons/fi'
-import { AiOutlineCreditCard, AiOutlineTool } from 'react-icons/ai'
+import Breadcrumbs from '../components/ui/Breadcrumbs'
+import { FiCalendar } from 'react-icons/fi'
+import { AiOutlineTool } from 'react-icons/ai'
 import { TbActivityHeartbeat, TbHeartbeat, TbBrandGoogleAnalytics } from 'react-icons/tb'
-import { BsBuilding, BsClipboardData } from 'react-icons/bs'
+import { BsClipboardData } from 'react-icons/bs'
 import { HiOutlineIdentification, HiOutlineUserGroup } from 'react-icons/hi'
 import { MdQrCodeScanner, MdOutlineVaccines, MdOutlineHealthAndSafety } from 'react-icons/md'
 import { CgFileDocument } from 'react-icons/cg'
@@ -23,9 +23,9 @@ const mainSideNavLinks = [
         to: '/facility_admin',
     },
     {
-        icon: <FiUsers className="text-xl" />,
-        title: 'Staff Records',
-        to: '/facility_admin/staff',
+        icon: <HiOutlineIdentification className="text-xl" />,
+        title: 'Facility Users',
+        to: '/facility_admin/facility_users',
     },
     {
         icon: <FiCalendar className="text-xl" />,
@@ -105,11 +105,35 @@ const systemSideNavLinks = [
 
 function FacilityAdminLayout() {
     const [drawerOpen, setDrawerOpen] = useState(false)
+    const sidebarRef = useRef(null)
+    const hamburgerRef = useRef(null)
     const [expandedSections, setExpandedSections] = useState({
         patients: false,
     })
 
     const toggleDrawer = () => setDrawerOpen((open) => !open)
+
+    useEffect(() => {
+        function handleClickOutside(event) {
+            // If clicking the sidebar or hamburger button, do nothing
+            if (
+                sidebarRef.current?.contains(event.target) ||
+                hamburgerRef.current?.contains(event.target)
+            ) {
+                return
+            }
+
+            // If drawer is open and clicking outside, close it
+            if (drawerOpen) {
+                setDrawerOpen(false)
+            }
+        }
+
+        document.addEventListener('mousedown', handleClickOutside)
+        return () => {
+            document.removeEventListener('mousedown', handleClickOutside)
+        }
+    }, [drawerOpen])
 
     const toggleSection = (section) => {
         setExpandedSections((prev) => ({
@@ -124,11 +148,13 @@ function FacilityAdminLayout() {
             <header className="fixed top-0 left-0 right-0 h-16 bg-white shadow-sm z-50">
                 <div className="flex justify-between items-center h-full px-4 md:px-6">
                     <div className="flex items-center gap-4">
-                        <Hamburger
-                            open={drawerOpen}
-                            toggle={toggleDrawer}
-                            className="text-gray-700"
-                        />
+                        <div ref={hamburgerRef}>
+                            <Hamburger
+                                open={drawerOpen}
+                                toggle={toggleDrawer}
+                                className="text-gray-700"
+                            />
+                        </div>
                         <img
                             src="/KEEPSAKE.png"
                             alt="KEEPSAKE smart beginnings"
@@ -144,6 +170,7 @@ function FacilityAdminLayout() {
 
             {/* Sidebar */}
             <aside
+                ref={sidebarRef}
                 className={`fixed top-16 left-0 h-[calc(100vh-4rem)] w-64 text-black bg-secondary/80 backdrop-blur-sm z-50 shadow-lg transition-transform duration-400 ease-in-out transform ${
                     drawerOpen ? 'translate-x-0' : '-translate-x-full'
                 }`}

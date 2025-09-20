@@ -25,6 +25,7 @@ import MaintenancePage from '@/pages/systemAdmin/MaintenancePage'
 
 // Facility_admin
 import FacilityAdminDashboard from '@/pages/facilityAdmin/FacilityAdminDashboard'
+import FadminFacilityUsersRegistry from './pages/facilityAdmin/FadminFacilityUsersRegistry'
 
 // Doctor
 import DoctorDashboard from '@/pages/pediapro/DoctorDashboard'
@@ -134,8 +135,8 @@ function App() {
                         },
                         // Main Navigation (from mainSideNavLinks)
                         {
-                            path: 'staff',
-                            element: <div>Staff Records Page</div>,
+                            path: 'facility_users',
+                            element: <FadminFacilityUsersRegistry />,
                         },
                         {
                             path: 'appointments',

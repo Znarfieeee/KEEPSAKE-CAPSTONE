@@ -337,7 +337,7 @@ def assign_user_to_facility(facility_id):
 # Get all users for a specific facility
 @facility_bp.route('/admin/facilities/<facility_id>/users', methods=['GET'])
 @require_auth
-@require_role('admin')
+@require_role('admin', 'facility_admin')
 def get_facility_users(facility_id):
     """
     Get all users for a specific facility

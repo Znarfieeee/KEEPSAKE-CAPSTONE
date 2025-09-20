@@ -20,6 +20,7 @@ from routes.pediapro.doctor_patient_records import patrecord_bp
 from routes.pediapro.doctor_patient_prescriptions import patrx_bp
 from routes.auth_routes import init_google_oauth
 from routes.pediapro.doctor_appointments import appointment_bp
+from routes.facility_admin.facility_users import fusers_bp
 
 app = Flask("keepsake")
 
@@ -38,6 +39,7 @@ app.register_blueprint(users_bp)
 app.register_blueprint(patrecord_bp)
 app.register_blueprint(patrx_bp)
 app.register_blueprint(appointment_bp)
+app.register_blueprint(fusers_bp)
 
 # Redis session configuration with enhanced error handling
 def setup_redis_session():
