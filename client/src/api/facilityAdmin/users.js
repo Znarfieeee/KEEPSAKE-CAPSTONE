@@ -1,305 +1,167 @@
-import backendConnection from '../backendApi';
-import axios from 'axios';
-import { axiosConfig } from '../axiosConfig';
+import backendConnection from '../backendApi'
+import axios from 'axios'
+import { axiosConfig } from '../axiosConfig'
 
-const BASE_URL = `${backendConnection()}/facility_admin`;
-
-/**
- * Facility Admin User Management API
- * Handles CRUD operations for users within a facility
- */
-
-/**
- * Get all users in the current facility
- * @returns {Promise<Object>} Response with users array
- */
 export const getFacilityUsers = async () => {
-  try {
-    const response = await axios.get(`${BASE_URL}/users`, axiosConfig);
-    return {
-      success: true,
-      data: response.data.users || [],
-      message: 'Users fetched successfully'
-    };
-  } catch (error) {
-    console.error('Error fetching facility users:', error);
-    return {
-      success: false,
-      data: [],
-      error: error.response?.data?.message || 'Failed to fetch users'
-    };
-  }
-};
+    try {
+        const response = await axios.get(`${backendConnection()}/facility_users`, axiosConfig)
+        return response.data
+    } catch (error) {
+        console.error('Error fetching facility users:', error)
+        throw error
+    }
+}
 
-/**
- * Get a specific user by ID within the facility
- * @param {string} userId - User ID
- * @returns {Promise<Object>} Response with user data
- */
 export const getFacilityUserById = async (userId) => {
-  try {
-    const response = await axios.get(`${BASE_URL}/users/${userId}`, axiosConfig);
-    return {
-      success: true,
-      data: response.data.user,
-      message: 'User fetched successfully'
-    };
-  } catch (error) {
-    console.error('Error fetching user:', error);
-    return {
-      success: false,
-      data: null,
-      error: error.response?.data?.message || 'Failed to fetch user'
-    };
-  }
-};
+    try {
+        const response = await axios.get(
+            `${backendConnection()}/facility_users/${userId}`,
+            axiosConfig
+        )
+        return response.data
+    } catch (error) {
+        console.error('Error fetching user:', error)
+        throw error
+    }
+}
 
-/**
- * Create a new user in the facility
- * @param {Object} userData - User data object
- * @returns {Promise<Object>} Response with created user
- */
 export const createFacilityUser = async (userData) => {
-  try {
-    const response = await axios.post(`${BASE_URL}/users`, userData, axiosConfig);
-    return {
-      success: true,
-      data: response.data.user,
-      message: response.data.message || 'User created successfully'
-    };
-  } catch (error) {
-    console.error('Error creating user:', error);
-    return {
-      success: false,
-      data: null,
-      error: error.response?.data?.message || 'Failed to create user'
-    };
-  }
-};
+    try {
+        const response = await axios.post(
+            `${backendConnection()}/facility_users`,
+            userData,
+            axiosConfig
+        )
+        return response.data
+    } catch (error) {
+        console.error('Error creating user:', error)
+        throw error
+    }
+}
 
-/**
- * Update an existing user in the facility
- * @param {string} userId - User ID
- * @param {Object} userData - Updated user data
- * @returns {Promise<Object>} Response with updated user
- */
 export const updateFacilityUser = async (userId, userData) => {
-  try {
-    const response = await axios.put(
-      `${BASE_URL}/users/${userId}`,
-      userData,
-      axiosConfig
-    );
-    return {
-      success: true,
-      data: response.data.user,
-      message: response.data.message || 'User updated successfully'
-    };
-  } catch (error) {
-    console.error('Error updating user:', error);
-    return {
-      success: false,
-      data: null,
-      error: error.response?.data?.message || 'Failed to update user'
-    };
-  }
-};
+    try {
+        const response = await axios.put(
+            `${backendConnection()}/facility_users/${userId}`,
+            userData,
+            axiosConfig
+        )
+        return response.data
+    } catch (error) {
+        console.error('Error updating user:', error)
+        throw error
+    }
+}
 
-/**
- * Delete a user from the facility (soft delete)
- * @param {string} userId - User ID
- * @returns {Promise<Object>} Response confirming deletion
- */
 export const deleteFacilityUser = async (userId) => {
-  try {
-    const response = await axios.delete(`${BASE_URL}/users/${userId}`, axiosConfig);
-    return {
-      success: true,
-      data: null,
-      message: response.data.message || 'User deleted successfully'
-    };
-  } catch (error) {
-    console.error('Error deleting user:', error);
-    return {
-      success: false,
-      data: null,
-      error: error.response?.data?.message || 'Failed to delete user'
-    };
-  }
-};
+    try {
+        const response = await axios.delete(
+            `${backendConnection()}/facility_users/${userId}`,
+            axiosConfig
+        )
+        return response.data
+    } catch (error) {
+        console.error('Error deleting user:', error)
+        throw error
+    }
+}
 
-/**
- * Activate a user account
- * @param {string} userId - User ID
- * @returns {Promise<Object>} Response with updated user
- */
 export const activateFacilityUser = async (userId) => {
-  try {
-    const response = await axios.patch(
-      `${BASE_URL}/users/${userId}/activate`,
-      {},
-      axiosConfig
-    );
-    return {
-      success: true,
-      data: response.data.user,
-      message: response.data.message || 'User activated successfully'
-    };
-  } catch (error) {
-    console.error('Error activating user:', error);
-    return {
-      success: false,
-      data: null,
-      error: error.response?.data?.message || 'Failed to activate user'
-    };
-  }
-};
+    try {
+        const response = await axios.patch(
+            `${backendConnection()}/facility_users/${userId}/activate`,
+            {},
+            axiosConfig
+        )
+        return response.data
+    } catch (error) {
+        console.error('Error activating user:', error)
+        throw error
+    }
+}
 
-/**
- * Deactivate a user account
- * @param {string} userId - User ID
- * @returns {Promise<Object>} Response with updated user
- */
 export const deactivateFacilityUser = async (userId) => {
-  try {
-    const response = await axios.patch(
-      `${BASE_URL}/users/${userId}/deactivate`,
-      {},
-      axiosConfig
-    );
-    return {
-      success: true,
-      data: response.data.user,
-      message: response.data.message || 'User deactivated successfully'
-    };
-  } catch (error) {
-    console.error('Error deactivating user:', error);
-    return {
-      success: false,
-      data: null,
-      error: error.response?.data?.message || 'Failed to deactivate user'
-    };
-  }
-};
+    try {
+        const response = await axios.patch(
+            `${backendConnection()}/facility_users/${userId}/deactivate`,
+            {},
+            axiosConfig
+        )
+        return response.data
+    } catch (error) {
+        console.error('Error deactivating user:', error)
+        throw error
+    }
+}
 
-/**
- * Resend invitation email to a user
- * @param {string} userId - User ID
- * @returns {Promise<Object>} Response confirming email sent
- */
 export const resendUserInvitation = async (userId) => {
-  try {
-    const response = await axios.post(
-      `${BASE_URL}/users/${userId}/resend-invitation`,
-      {},
-      axiosConfig
-    );
-    return {
-      success: true,
-      data: null,
-      message: response.data.message || 'Invitation email sent successfully'
-    };
-  } catch (error) {
-    console.error('Error resending invitation:', error);
-    return {
-      success: false,
-      data: null,
-      error: error.response?.data?.message || 'Failed to resend invitation'
-    };
-  }
-};
+    try {
+        const response = await axios.post(
+            `${backendConnection()}/facility_users/${userId}/resend-invitation`,
+            {},
+            axiosConfig
+        )
+        return response.data
+    } catch (error) {
+        console.error('Error resending invitation:', error)
+        throw error
+    }
+}
 
-/**
- * Reset user password
- * @param {string} userId - User ID
- * @returns {Promise<Object>} Response confirming password reset
- */
 export const resetUserPassword = async (userId) => {
-  try {
-    const response = await axios.post(
-      `${BASE_URL}/users/${userId}/reset-password`,
-      {},
-      axiosConfig
-    );
-    return {
-      success: true,
-      data: null,
-      message: response.data.message || 'Password reset email sent successfully'
-    };
-  } catch (error) {
-    console.error('Error resetting password:', error);
-    return {
-      success: false,
-      data: null,
-      error: error.response?.data?.message || 'Failed to reset password'
-    };
-  }
-};
+    try {
+        const response = await axios.post(
+            `${backendConnection()}/facility_users/${userId}/reset-password`,
+            {},
+            axiosConfig
+        )
+        return response.data
+    } catch (error) {
+        console.error('Error resetting password:', error)
+        throw error
+    }
+}
 
-/**
- * Get user statistics for the facility
- * @returns {Promise<Object>} Response with user statistics
- */
 export const getFacilityUserStats = async () => {
-  try {
-    const response = await axios.get(`${BASE_URL}/users/stats`, axiosConfig);
-    return {
-      success: true,
-      data: response.data.stats,
-      message: 'Statistics fetched successfully'
-    };
-  } catch (error) {
-    console.error('Error fetching user stats:', error);
-    return {
-      success: false,
-      data: null,
-      error: error.response?.data?.message || 'Failed to fetch statistics'
-    };
-  }
-};
+    try {
+        const response = await axios.get(`${backendConnection()}/facility_users/stats`, axiosConfig)
+        return {
+            data: response.data.stats,
+        }
+    } catch (error) {
+        console.error('Error fetching user stats:', error)
+        throw error
+    }
+}
 
-/**
- * Export facility users to CSV
- * @param {Object} filters - Optional filters for export
- * @returns {Promise<Object>} Response with CSV data or download URL
- */
 export const exportFacilityUsers = async (filters = {}) => {
-  try {
-    const response = await axios.post(
-      `${BASE_URL}/users/export`,
-      { filters },
-      {
-        ...axiosConfig,
-        responseType: 'blob' // For file download
-      }
-    );
+    try {
+        const response = await axios.post(
+            `${backendConnection()}/facility_users/export`,
+            { filters },
+            {
+                ...axiosConfig,
+                responseType: 'blob',
+            }
+        )
 
-    return {
-      success: true,
-      data: response.data,
-      message: 'Export completed successfully'
-    };
-  } catch (error) {
-    console.error('Error exporting users:', error);
-    return {
-      success: false,
-      data: null,
-      error: error.response?.data?.message || 'Failed to export users'
-    };
-  }
-};
+        return response.data
+    } catch (error) {
+        console.error('Error exporting users:', error)
+        throw error
+    }
+}
 
-// Export all functions as named exports and default export
 export default {
-  getFacilityUsers,
-  getFacilityUserById,
-  createFacilityUser,
-  updateFacilityUser,
-  deleteFacilityUser,
-  activateFacilityUser,
-  deactivateFacilityUser,
-  resendUserInvitation,
-  resetUserPassword,
-  getFacilityUserStats,
-  exportFacilityUsers
-};
+    getFacilityUsers,
+    getFacilityUserById,
+    createFacilityUser,
+    updateFacilityUser,
+    deleteFacilityUser,
+    activateFacilityUser,
+    deactivateFacilityUser,
+    resendUserInvitation,
+    resetUserPassword,
+    getFacilityUserStats,
+    exportFacilityUsers,
+}

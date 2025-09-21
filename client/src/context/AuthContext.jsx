@@ -142,12 +142,14 @@ export const AuthProvider = ({ children }) => {
                     navigateOnLogin(response.user.role)
                     return response
                 } else {
-                    showToast('error', 'Invalid credentials')
-                    return { success: false, message: 'Invalid credentials' }
+                    // Use the specific error message from the backend response
+                    const errorMessage = response.message || 'Invalid credentials'
+                    throw new Error(errorMessage)
                 }
-            } catch {
-                showToast('error', 'Authentication failed')
-                return { success: false, message: 'Authentication failed' }
+            } catch (error) {
+                // Preserve the specific error message and re-throw for Login component to handle
+                const errorMessage = error.message || 'Authentication failed'
+                throw new Error(errorMessage)
             } finally {
                 setLoading(false)
             }

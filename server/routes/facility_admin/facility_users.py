@@ -3,6 +3,7 @@ from utils.access_control import require_auth, require_role
 from config.settings import supabase
 from utils.redis_client import get_redis_client
 from utils.invalidate_cache import invalidate_caches
+from gotrue.errors import AuthApiError
 import json
 import datetime
 import secrets
@@ -167,12 +168,12 @@ def get_facility_users():
 @require_role('facility_admin')
 def add_facility_user():
     try:
-        data = request.get_json()
+        data = request.json
         current_user = request.current_user
-        current_user_facility_id = current_user
+        current_user_facility_id = current_user.get('facility_id')
 
         # Validate facility_id exists
-        if not current_user_facility_id.get('facility_id'):
+        if not current_user_facility_id:
             current_app.logger.error(f"User {current_user.get('user_id', 'unknown')} has no facility_id")
             return jsonify({
                 "status": "error",
@@ -189,7 +190,7 @@ def add_facility_user():
                 }), 400
 
         # Validate role
-        valid_roles = ['doctor', 'nurse', 'admin', 'staff', 'facility_admin']
+        valid_roles = ['doctor', 'nurse', 'staff', 'facility_admin']
         if data.get('role') not in valid_roles:
             return jsonify({
                 "status": "error",
@@ -216,7 +217,7 @@ def add_facility_user():
                 "user_id": user_id,
                 "role": data.get('role'),
                 "start_date": data.get('start_date', datetime.date.today().isoformat()),
-                "assigned_by": current_user.get('user_id'),
+                "assigned_by": current_user.get('id'),
                 "created_at": datetime.datetime.utcnow().isoformat(),
                 "updated_at": datetime.datetime.utcnow().isoformat()
             }
@@ -230,32 +231,48 @@ def add_facility_user():
                 }), 400
 
         else:
-            # Create new user
-            password = generate_secure_password()
-            user_payload = {
-                "email": data.get('email'),
-                "password": password,  # In production, this should be hashed
-                "firstname": data.get('firstname'),
-                "lastname": data.get('lastname'),
-                "role": data.get('role'),
-                "specialty": data.get('specialty'),
-                "license_number": data.get('license_number'),
-                "phone_number": data.get('phone_number'),
-                "is_active": True,
-                "created_at": datetime.datetime.utcnow().isoformat(),
-                "updated_at": datetime.datetime.utcnow().isoformat()
-            }
+            # Create new user using Supabase Auth
+            password = 'keepsake123'
 
-            # Create user
-            user_resp = supabase.table('users').insert(user_payload).execute()
-            if getattr(user_resp, 'error', None):
-                current_app.logger.error(f"Failed to create new user: {user_resp.error.message}")
+            try:
+                signup_resp = supabase.auth.sign_up({
+                    "email": data.get('email'),
+                    "password": password,
+                    "options": {
+                        "data": {
+                            "firstname": data.get('firstname'),
+                            "lastname": data.get('lastname'),
+                            "role": data.get('role'),
+                            "specialty": data.get('specialty'),
+                            "license_number": data.get('license_number'),
+                            "phone_number": data.get('phone_number'),
+                            "is_active": True
+                        }
+                    }
+                })
+
+                # Check if email confirmation is required
+                if signup_resp.user is None:
+                    current_app.logger.error("User signup requires email confirmation")
+                    return jsonify({
+                        "status": "error",
+                        "message": "User signup requires email confirmation"
+                    }), 400
+
+                user_id = signup_resp.user.id
+
+            except AuthApiError as auth_error:
+                current_app.logger.error(f"Failed to create user in Supabase Auth: {str(auth_error)}")
+                return jsonify({
+                    "status": "error",
+                    "message": f"Failed to create user: {str(auth_error)}"
+                }), 400
+            except Exception as e:
+                current_app.logger.error(f"Failed to create new user: {str(e)}")
                 return jsonify({
                     "status": "error",
                     "message": "Failed to create user"
                 }), 400
-
-            user_id = user_resp.data[0]['user_id']
 
             # Add user to facility
             facility_user_payload = {
@@ -263,7 +280,7 @@ def add_facility_user():
                 "user_id": user_id,
                 "role": data.get('role'),
                 "start_date": data.get('start_date', datetime.date.today().isoformat()),
-                "assigned_by": current_user.get('user_id'),
+                "assigned_by": current_user.get('id'),
                 "created_at": datetime.datetime.utcnow().isoformat(),
                 "updated_at": datetime.datetime.utcnow().isoformat()
             }
@@ -328,7 +345,7 @@ def update_facility_user(user_id):
         # Prepare update payload
         update_payload = {}
         if 'role' in data:
-            valid_roles = ['doctor', 'nurse', 'admin', 'staff', 'facility_admin']
+            valid_roles = ['doctor', 'nurse', 'staff', 'facility_admin']
             if data['role'] not in valid_roles:
                 return jsonify({
                     "status": "error",
