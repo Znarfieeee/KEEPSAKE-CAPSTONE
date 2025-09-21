@@ -122,18 +122,6 @@ export const resetUserPassword = async (userId) => {
     }
 }
 
-export const getFacilityUserStats = async () => {
-    try {
-        const response = await axios.get(`${backendConnection()}/facility_users/stats`, axiosConfig)
-        return {
-            data: response.data.stats,
-        }
-    } catch (error) {
-        console.error('Error fetching user stats:', error)
-        throw error
-    }
-}
-
 export const exportFacilityUsers = async (filters = {}) => {
     try {
         const response = await axios.post(
@@ -162,6 +150,5 @@ export default {
     deactivateFacilityUser,
     resendUserInvitation,
     resetUserPassword,
-    getFacilityUserStats,
     exportFacilityUsers,
 }

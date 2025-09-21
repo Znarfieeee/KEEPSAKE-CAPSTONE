@@ -1,69 +1,47 @@
-import React from 'react';
-import { Button } from '@/components/ui/button';
-import { Plus, Download, RefreshCw, BarChart3 } from 'lucide-react';
+import React, { memo } from "react"
 
-const UserRegistryHeader = ({
-  onOpenRegister,
-  onExportCSV,
-  onOpenReports,
-  onRefresh,
-  isLoading = false,
-  totalUsers = 0
-}) => {
-  return (
-    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 p-6 bg-white rounded-lg shadow-sm border">
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900">
-          Facility Users Registry
-        </h1>
-        <p className="text-gray-600 mt-1">
-          Manage users in your healthcare facility ({totalUsers} total)
-        </p>
-      </div>
+// UI Components
+import { Button } from "@/components/ui/Button"
+import { PlusCircle, FileDown, BarChart3 } from "lucide-react"
 
-      <div className="flex flex-wrap gap-2">
-        <Button
-          onClick={onRefresh}
-          variant="outline"
-          size="sm"
-          disabled={isLoading}
-          className="flex items-center gap-2"
-        >
-          <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
-          Refresh
-        </Button>
+const UserRegistryHeader = memo(
+    ({ onOpenAddUser, onExportCSV, onOpenReports, onRefresh, totalUsers = 0 }) => {
+        return (
+            <div className="space-y-4">
+                {/* Header with actions */}
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                    <h1 className="text-2xl font-bold text-black">
+                        Facility Users Registry
+                    </h1>
 
-        <Button
-          onClick={onOpenReports}
-          variant="outline"
-          size="sm"
-          className="flex items-center gap-2"
-        >
-          <BarChart3 className="h-4 w-4" />
-          Reports
-        </Button>
+                    <div className="flex flex-wrap gap-3">
+                        <Button
+                            onClick={onOpenAddUser}
+                            className="bg-primary text-white hover:bg-primary/90">
+                            <PlusCircle className="h-4 w-4 mr-2" />
+                            Add New User
+                        </Button>
 
-        <Button
-          onClick={onExportCSV}
-          variant="outline"
-          size="sm"
-          className="flex items-center gap-2"
-        >
-          <Download className="h-4 w-4" />
-          Export CSV
-        </Button>
+                        <Button
+                            onClick={onExportCSV}
+                            variant="outline"
+                            className="border-gray-200">
+                            <FileDown className="h-4 w-4 mr-2" />
+                            Export to CSV
+                        </Button>
 
-        <Button
-          onClick={onOpenRegister}
-          size="sm"
-          className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700"
-        >
-          <Plus className="h-4 w-4" />
-          Add User
-        </Button>
-      </div>
-    </div>
-  );
-};
+                        <Button
+                            onClick={onOpenReports}
+                            variant="outline"
+                            className="border-gray-200">
+                            <BarChart3 className="h-4 w-4 mr-2" />
+                            View Reports
+                        </Button>
+                    </div>
+                </div>
+            </div>
+        )
+    }
+)
 
 export default UserRegistryHeader;

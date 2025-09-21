@@ -1,292 +1,225 @@
 import React from 'react'
-import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
+
+// UI Components
+import { UserStatusBadge } from '@/components/ui/StatusBadge'
+import { Button } from '@/components/ui/Button'
 import {
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow,
-} from '@/components/ui/table'
-import {
-    DropdownMenu,
-    DropdownMenuContent,
-    DropdownMenuItem,
-    DropdownMenuSeparator,
-    DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
-import { Eye, Edit2, Trash2, MoreHorizontal, UserX, UserCheck, Mail, Phone } from 'lucide-react'
+    Eye,
+    Trash2,
+    ChevronLeft,
+    ChevronRight,
+    UserPen,
+    UserX,
+    UserCheck,
+    Users,
+} from 'lucide-react'
+
+// Helper
+import { TooltipHelper } from '@/util/TooltipHelper'
 
 const UserTable = ({
     users = [],
-    loading = false,
-    page = 1,
+    page,
     setPage,
-    itemsPerPage = 10,
+    itemsPerPage,
     setItemsPerPage,
+    totalUsers,
     onView,
     onEdit,
     onDelete,
-    onActivateUser,
-    onDeactivateUser,
-    currentUserRole = 'facility_admin',
+    onActivate,
+    onDeactivate,
+    loading = false,
+    actionLoading = false,
 }) => {
-    const getStatusColor = (status) => {
-        switch (status?.toLowerCase()) {
-            case 'active':
-                return 'bg-green-100 text-green-800 border-green-200'
-            case 'inactive':
-                return 'bg-gray-100 text-gray-800 border-gray-200'
-            case 'pending':
-                return 'bg-yellow-100 text-yellow-800 border-yellow-200'
-            case 'suspended':
-                return 'bg-red-100 text-red-800 border-red-200'
-            default:
-                return 'bg-gray-100 text-gray-800 border-gray-200'
-        }
-    }
+    const totalPages = Math.ceil(totalUsers / itemsPerPage) || 1
+    const startIdx = (page - 1) * itemsPerPage
+    const currentData = users
 
-    const getRoleColor = (role) => {
-        switch (role?.toLowerCase()) {
-            case 'facility_admin':
-                return 'bg-purple-100 text-purple-800 border-purple-200'
-            case 'doctor':
-                return 'bg-blue-100 text-blue-800 border-blue-200'
-            case 'nurse':
-                return 'bg-green-100 text-green-800 border-green-200'
-            case 'vital_custodian':
-                return 'bg-orange-100 text-orange-800 border-orange-200'
-            case 'keepsaker':
-                return 'bg-pink-100 text-pink-800 border-pink-200'
-            default:
-                return 'bg-gray-100 text-gray-800 border-gray-200'
-        }
-    }
+    const handlePrev = () => setPage((p) => Math.max(1, p - 1))
+    const handleNext = () => setPage((p) => Math.min(totalPages, p + 1))
 
     const formatRole = (role) => {
         return role?.replace('_', ' ').replace(/\b\w/g, (l) => l.toUpperCase()) || 'Unknown'
     }
 
-    const getInitials = (name) => {
-        if (!name) return 'U'
-        return name
-            .split(' ')
-            .map((n) => n[0])
-            .join('')
-            .toUpperCase()
-            .slice(0, 2)
-    }
-
-    const canManageUser = (userRole) => {
-        // Facility admins can manage all users except other facility admins
-        if (currentUserRole === 'facility_admin') {
-            return userRole !== 'facility_admin'
-        }
-        return false
-    }
-
-    if (loading) {
+    // Show empty state when no users
+    if (!loading && users.length === 0) {
         return (
-            <div className="bg-white rounded-lg shadow-sm border">
-                <div className="p-8 text-center">
-                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
-                    <p className="mt-2 text-gray-600">Loading users...</p>
+            <div className="w-full">
+                <div className="min-h-[400px] flex items-center justify-center bg-gray-50 rounded-lg">
+                    <div className="max-w-md w-full p-6 bg-white rounded-lg shadow-md text-center">
+                        <div className="flex justify-center mb-4">
+                            <Users className="size-16 text-gray-400" />
+                        </div>
+                        <h2 className="text-2xl font-semibold text-gray-800 mb-4">
+                            No Users Found
+                        </h2>
+                        <p className="text-gray-600 mb-6">
+                            There are no facility users to display. Try adjusting your filters or
+                            add new users to get started.
+                        </p>
+                        <div className="text-sm text-gray-500">Total users: {totalUsers}</div>
+                    </div>
                 </div>
             </div>
         )
     }
-
-    if (users.length === 0) {
-        return (
-            <div className="bg-white rounded-lg shadow-sm border">
-                <div className="p-8 text-center">
-                    <p className="text-gray-600">No users found.</p>
-                </div>
-            </div>
-        )
-    }
-
-    const startIndex = (page - 1) * itemsPerPage
-    const endIndex = startIndex + itemsPerPage
-    const paginatedUsers = users.slice(startIndex, endIndex)
-    const totalPages = Math.ceil(users.length / itemsPerPage)
 
     return (
-        <div className="bg-white rounded-lg shadow-sm border">
-            <div className="overflow-x-auto">
-                <Table>
-                    <TableHeader>
-                        <TableRow>
-                            <TableHead>User</TableHead>
-                            <TableHead>Role</TableHead>
-                            <TableHead>Department</TableHead>
-                            <TableHead>Contact</TableHead>
-                            <TableHead>Status</TableHead>
-                            <TableHead>Last Login</TableHead>
-                            <TableHead className="text-right">Actions</TableHead>
-                        </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                        {paginatedUsers.map((user) => (
-                            <TableRow key={user.id} className="hover:bg-gray-50">
-                                <TableCell>
-                                    <div className="flex items-center space-x-3">
-                                        <div>
-                                            <div className="font-medium text-gray-900">
-                                                {user.full_name || 'Unknown Name'}
-                                            </div>
-                                            <div className="text-sm text-gray-500">
-                                                ID: {user.id}
-                                            </div>
-                                        </div>
-                                    </div>
-                                </TableCell>
+        <div className="w-full overflow-x-auto">
+            <table className="w-full text-sm">
+                <thead className="border-b border-gray-300 text-xs uppercase text-muted-foreground">
+                    <tr className="text-left text-black">
+                        <th className="py-3 px-2">User Name</th>
+                        <th className="py-3 px-2">Email</th>
+                        <th className="py-3 px-2">Role</th>
+                        <th className="py-3 px-2">Department</th>
+                        <th className="py-3 px-2">Phone</th>
+                        <th className="py-3 px-2">Status</th>
+                        <th className="py-3 px-2">Last Login</th>
+                        <th className="py-3 px-2">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {loading
+                        ? Array.from({ length: itemsPerPage }).map((_, idx) => (
+                              <tr key={idx} className="border-b last:border-none animate-pulse">
+                                  {Array.from({ length: 8 }).map((__, cIdx) => (
+                                      <td key={cIdx} className="p-2 whitespace-nowrap">
+                                          <div className="h-4 bg-gray-300 rounded w-full" />
+                                      </td>
+                                  ))}
+                              </tr>
+                          ))
+                        : currentData.map((user) => (
+                              <tr
+                                  key={user.id}
+                                  className="border-b border-gray-200 last:border-none"
+                              >
+                                  <td className="p-2 whitespace-nowrap">
+                                      {user.full_name || 'Unknown Name'}
+                                  </td>
+                                  <td className="p-2 whitespace-nowrap">{user.email}</td>
+                                  <td className="p-2 whitespace-nowrap capitalize">
+                                      {formatRole(user.role)}
+                                  </td>
+                                  <td className="p-2 whitespace-nowrap">
+                                      {user.department || 'Not assigned'}
+                                  </td>
+                                  <td className="p-2 whitespace-nowrap">{user.phone || '—'}</td>
+                                  <td className="p-2 whitespace-nowrap">
+                                      <UserStatusBadge status={user.status} />
+                                  </td>
+                                  <td className="p-2 whitespace-nowrap">
+                                      {user.last_login
+                                          ? new Date(user.last_login).toLocaleDateString()
+                                          : 'Never'}
+                                  </td>
+                                  <td className="p-2 whitespace-nowrap">
+                                      <div className="flex gap-1">
+                                          <TooltipHelper content="View User">
+                                              <Button
+                                                  variant="ghost"
+                                                  size="icon"
+                                                  className="hover:text-blue-600 hover:bg-blue-100"
+                                                  onClick={() => onView(user)}
+                                                  title="View"
+                                              >
+                                                  <Eye className="size-4" />
+                                              </Button>
+                                          </TooltipHelper>
+                                          <TooltipHelper content="Edit User">
+                                              <Button
+                                                  variant="ghost"
+                                                  size="icon"
+                                                  className="hover:text-green-600 hover:bg-green-100"
+                                                  onClick={() => onEdit(user)}
+                                              >
+                                                  <UserPen className="size-4" />
+                                              </Button>
+                                          </TooltipHelper>
+                                          {user.status === 'active' ? (
+                                              <TooltipHelper content="Deactivate User">
+                                                  <Button
+                                                      variant="ghost"
+                                                      size="icon"
+                                                      className="hover:text-orange-600 hover:bg-orange-100"
+                                                      onClick={() => onDeactivate(user)}
+                                                      disabled={actionLoading}
+                                                  >
+                                                      <UserX className="size-4" />
+                                                  </Button>
+                                              </TooltipHelper>
+                                          ) : (
+                                              <TooltipHelper content="Activate User">
+                                                  <Button
+                                                      variant="ghost"
+                                                      size="icon"
+                                                      className="hover:text-green-600 hover:bg-green-100"
+                                                      onClick={() => onActivate(user)}
+                                                      disabled={actionLoading}
+                                                  >
+                                                      <UserCheck className="size-4" />
+                                                  </Button>
+                                              </TooltipHelper>
+                                          )}
+                                          <TooltipHelper content="Delete User">
+                                              <Button
+                                                  variant="ghost"
+                                                  size="icon"
+                                                  className="hover:text-red-600 hover:bg-red-100"
+                                                  onClick={() => onDelete(user)}
+                                                  disabled={actionLoading}
+                                              >
+                                                  <Trash2 className="size-4" />
+                                              </Button>
+                                          </TooltipHelper>
+                                      </div>
+                                  </td>
+                              </tr>
+                          ))}
+                </tbody>
+            </table>
 
-                                <TableCell>
-                                    <Badge className={getRoleColor(user.role)}>
-                                        {formatRole(user.role)}
-                                    </Badge>
-                                </TableCell>
-
-                                <TableCell>
-                                    <span className="text-gray-900">
-                                        {user.department || 'Not assigned'}
-                                    </span>
-                                </TableCell>
-
-                                <TableCell>
-                                    <div className="space-y-1">
-                                        <div className="flex items-center text-sm text-gray-600">
-                                            <Mail className="h-3 w-3 mr-1" />
-                                            {user.email}
-                                        </div>
-                                        {user.phone && (
-                                            <div className="flex items-center text-sm text-gray-600">
-                                                <Phone className="h-3 w-3 mr-1" />
-                                                {user.phone}
-                                            </div>
-                                        )}
-                                    </div>
-                                </TableCell>
-
-                                <TableCell>
-                                    <Badge className={getStatusColor(user.status)}>
-                                        {user.status || 'Unknown'}
-                                    </Badge>
-                                </TableCell>
-
-                                <TableCell>
-                                    <span className="text-sm text-gray-600">
-                                        {user.last_login
-                                            ? new Date(user.last_login).toLocaleDateString()
-                                            : 'Never'}
-                                    </span>
-                                </TableCell>
-
-                                <TableCell className="text-right">
-                                    <DropdownMenu>
-                                        <DropdownMenuTrigger asChild>
-                                            <Button variant="ghost" size="sm">
-                                                <MoreHorizontal className="h-4 w-4" />
-                                            </Button>
-                                        </DropdownMenuTrigger>
-                                        <DropdownMenuContent align="end">
-                                            <DropdownMenuItem onClick={() => onView(user)}>
-                                                <Eye className="h-4 w-4 mr-2" />
-                                                View Details
-                                            </DropdownMenuItem>
-
-                                            {canManageUser(user.role) && (
-                                                <>
-                                                    <DropdownMenuItem onClick={() => onEdit(user)}>
-                                                        <Edit2 className="h-4 w-4 mr-2" />
-                                                        Edit User
-                                                    </DropdownMenuItem>
-
-                                                    <DropdownMenuSeparator />
-
-                                                    {user.status === 'active' ? (
-                                                        <DropdownMenuItem
-                                                            onClick={() => onDeactivateUser(user)}
-                                                            className="text-orange-600"
-                                                        >
-                                                            <UserX className="h-4 w-4 mr-2" />
-                                                            Deactivate
-                                                        </DropdownMenuItem>
-                                                    ) : (
-                                                        <DropdownMenuItem
-                                                            onClick={() => onActivateUser(user)}
-                                                            className="text-green-600"
-                                                        >
-                                                            <UserCheck className="h-4 w-4 mr-2" />
-                                                            Activate
-                                                        </DropdownMenuItem>
-                                                    )}
-
-                                                    <DropdownMenuSeparator />
-
-                                                    <DropdownMenuItem
-                                                        onClick={() => onDelete(user)}
-                                                        className="text-red-600"
-                                                    >
-                                                        <Trash2 className="h-4 w-4 mr-2" />
-                                                        Delete User
-                                                    </DropdownMenuItem>
-                                                </>
-                                            )}
-                                        </DropdownMenuContent>
-                                    </DropdownMenu>
-                                </TableCell>
-                            </TableRow>
-                        ))}
-                    </TableBody>
-                </Table>
-            </div>
-
-            {/* Pagination */}
-            {totalPages > 1 && (
-                <div className="flex items-center justify-between px-6 py-4 border-t">
-                    <div className="flex items-center space-x-2">
-                        <span className="text-sm text-gray-600">Rows per page:</span>
+            {/* Pagination - Only show if there are users */}
+            {users.length > 0 && (
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mt-4">
+                    <div className="flex items-center gap-2">
+                        <span className="text-sm">Rows per page:</span>
                         <select
                             value={itemsPerPage}
-                            onChange={(e) => {
-                                setItemsPerPage(Number(e.target.value))
-                                setPage(1)
-                            }}
-                            className="border rounded px-2 py-1 text-sm"
+                            onChange={(e) => setItemsPerPage(Number(e.target.value))}
+                            className="border rounded-md px-2 py-1 text-sm dark:bg-input/30 dark:border-input"
                         >
-                            <option value={5}>5</option>
-                            <option value={10}>10</option>
-                            <option value={25}>25</option>
-                            <option value={50}>50</option>
+                            {[10, 25, 50].map((n) => (
+                                <option key={n} value={n}>
+                                    {n}
+                                </option>
+                            ))}
                         </select>
                     </div>
-
-                    <div className="flex items-center space-x-2">
-                        <span className="text-sm text-gray-600">
-                            {startIndex + 1}–{Math.min(endIndex, users.length)} of {users.length}
+                    <div className="flex items-center gap-2 text-sm">
+                        <span>
+                            {startIdx + 1}-{Math.min(startIdx + itemsPerPage, totalUsers)} of{' '}
+                            {totalUsers}
                         </span>
-
-                        <div className="flex space-x-1">
-                            <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => setPage(page - 1)}
-                                disabled={page === 1}
-                            >
-                                Previous
-                            </Button>
-                            <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => setPage(page + 1)}
-                                disabled={page === totalPages}
-                            >
-                                Next
-                            </Button>
-                        </div>
+                        <Button
+                            size="icon"
+                            variant="ghost"
+                            onClick={handlePrev}
+                            disabled={page === 1}
+                        >
+                            <ChevronLeft className="size-4" />
+                        </Button>
+                        <Button
+                            size="icon"
+                            variant="ghost"
+                            onClick={handleNext}
+                            disabled={page === totalPages}
+                        >
+                            <ChevronRight className="size-4" />
+                        </Button>
                     </div>
                 </div>
             )}

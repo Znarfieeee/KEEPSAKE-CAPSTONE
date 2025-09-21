@@ -1,6 +1,5 @@
-import React, { useState, useMemo, lazy, Suspense } from 'react'
+import React, { useMemo, useState, useCallback, lazy, Suspense } from 'react'
 import { useAuth } from '@/context/auth'
-import { showToast } from '@/util/alertHelper'
 import { useFacilityUsers } from '@/hooks/useFacilityUsers'
 
 // UI Components
@@ -8,6 +7,10 @@ import UserRegistryHeader from '@/components/facilityAdmin/fadmin_facilityUsers/
 import UserFilters from '@/components/facilityAdmin/fadmin_facilityUsers/UserFilters'
 import UserTable from '@/components/facilityAdmin/fadmin_facilityUsers/UserTable'
 import Unauthorized from '@/components/Unauthorized'
+
+// Helper
+import { useFacilityUsersRealtime } from '@/hook/useSupabaseRealtime'
+import { showToast } from '@/util/alertHelper'
 
 // Lazy-loaded components (modals are heavy and used conditionally)
 const AddUserModal = lazy(() =>
@@ -19,14 +22,11 @@ const UserDetailModal = lazy(() =>
 const EditUserModal = lazy(() =>
     import('@/components/facilityAdmin/fadmin_facilityUsers/EditUserModal')
 )
-
 const FadminFacilityUsersRegistry = () => {
     const { user } = useAuth()
-
-    // Use custom hook for user management
     const {
+        users,
         loading,
-        // error,
         createUser,
         updateUser,
         deleteUser,
@@ -54,7 +54,7 @@ const FadminFacilityUsersRegistry = () => {
     const [editingUser, setEditingUser] = useState(null)
     const [actionLoading, setActionLoading] = useState(false)
 
-    // Filtered users based on search and filter criteria
+    // Filter users based on current filter state
     const filteredUsers = useMemo(() => {
         return filterUsers({
             search,
@@ -64,7 +64,6 @@ const FadminFacilityUsersRegistry = () => {
         })
     }, [filterUsers, search, roleFilter, statusFilter, departmentFilter])
 
-    // Clear all filters
     const clearFilters = () => {
         setSearch('')
         setRoleFilter('all')
@@ -72,6 +71,66 @@ const FadminFacilityUsersRegistry = () => {
         setDepartmentFilter('all')
         setPage(1)
     }
+
+    const handleUserChange = useCallback(
+        ({ type, facilityUser }) => {
+            console.log(`Real-time user ${type} received:`, facilityUser)
+
+            switch (type) {
+                case 'INSERT':
+                    // Refresh the users list to get updated data
+                    refresh()
+                    showToast('success', 'A new user has been added to your facility')
+                    break
+
+                case 'UPDATE':
+                    // Refresh the users list to get updated data
+                    refresh()
+                    showToast('info', 'A facility user has been updated')
+
+                    // Update detail view if it's the same user
+                    if (showDetail && selectedUser?.id === facilityUser.user_id) {
+                        // The refresh will handle updating the detail view
+                        setTimeout(() => {
+                            const updatedUser = users.find((u) => u.id === facilityUser.user_id)
+                            if (updatedUser) {
+                                setSelectedUser(updatedUser)
+                            }
+                        }, 500)
+                    }
+                    break
+
+                case 'DELETE':
+                    // Refresh the users list to get updated data
+                    refresh()
+                    showToast('warning', 'A user has been removed from your facility')
+
+                    // Close detail view if it's the deleted user
+                    if (showDetail && selectedUser?.id === facilityUser.user_id) {
+                        setShowDetail(false)
+                        setSelectedUser(null)
+                    }
+                    break
+
+                default:
+                    console.warn('Unknown real-time event type: ', type)
+            }
+        },
+        [showDetail, selectedUser, refresh, users]
+    )
+
+    useFacilityUsersRealtime({
+        onFacilityUserChange: handleUserChange,
+    })
+
+    // The useFacilityUsers hook handles data loading automatically
+
+    // Pagination logic for users
+    const paginatedUsers = useMemo(() => {
+        const startIndex = (page - 1) * itemsPerPage
+        const endIndex = startIndex + itemsPerPage
+        return filteredUsers.slice(startIndex, endIndex)
+    }, [filteredUsers, page, itemsPerPage])
 
     // Role-based guard - only facility admins can access this page
     if (!user || user.role !== 'facility_admin') {
@@ -89,6 +148,9 @@ const FadminFacilityUsersRegistry = () => {
         setShowEdit(true)
     }
 
+    // This function is not needed for user management
+
+    // Testing purposes
     const handleDeleteUser = async (userToDelete) => {
         if (!window.confirm(`Delete user ${userToDelete.full_name}?`)) return
 
@@ -162,14 +224,14 @@ const FadminFacilityUsersRegistry = () => {
         showToast('info', 'User reports dashboard coming soon')
     }
 
+    /* ------------------------------------------------------------ */
     return (
-        <div className="p-6 space-y-6">
+        <div className="p-6 px-20 space-y-6">
             <UserRegistryHeader
-                onOpenRegister={() => setShowAddUser(true)}
+                onOpenAddUser={() => setShowAddUser(true)}
                 onExportCSV={handleExportCSV}
                 onOpenReports={handleReports}
                 onRefresh={refresh}
-                isLoading={loading}
                 totalUsers={totalUsers}
             />
 
@@ -191,22 +253,23 @@ const FadminFacilityUsersRegistry = () => {
                     setDepartmentFilter(val)
                     setPage(1)
                 }}
-                clearFilters={clearFilters}
+                onClearFilters={clearFilters}
             />
 
             <UserTable
-                users={filteredUsers}
+                users={paginatedUsers}
                 loading={loading}
+                actionLoading={actionLoading}
                 page={page}
                 setPage={setPage}
                 itemsPerPage={itemsPerPage}
                 setItemsPerPage={setItemsPerPage}
+                totalUsers={filteredUsers.length}
                 onView={handleViewUser}
                 onEdit={handleEditUser}
                 onDelete={handleDeleteUser}
-                onActivateUser={handleActivateUser}
-                onDeactivateUser={handleDeactivateUser}
-                currentUserRole={user?.role}
+                onActivate={handleActivateUser}
+                onDeactivate={handleDeactivateUser}
             />
 
             {/* Modals – lazily loaded */}
@@ -215,33 +278,28 @@ const FadminFacilityUsersRegistry = () => {
                     <AddUserModal
                         open={showAddUser}
                         onClose={() => setShowAddUser(false)}
-                        onSubmit={handleCreateUser}
+                        onSave={handleCreateUser}
                         loading={actionLoading}
                     />
                 )}
-
-                {showDetail && selectedUser && (
+                {showDetail && (
                     <UserDetailModal
                         open={showDetail}
                         user={selectedUser}
-                        onClose={() => {
-                            setShowDetail(false)
-                            setSelectedUser(null)
-                        }}
+                        onClose={() => setShowDetail(false)}
                         onEdit={handleEditUser}
-                        currentUserRole={user?.role}
+                        onDelete={handleDeleteUser}
+                        onActivate={handleActivateUser}
+                        onDeactivate={handleDeactivateUser}
+                        loading={actionLoading}
                     />
                 )}
-
-                {showEdit && editingUser && (
+                {showEdit && (
                     <EditUserModal
                         open={showEdit}
                         user={editingUser}
-                        onSubmit={handleUpdateUser}
-                        onClose={() => {
-                            setShowEdit(false)
-                            setEditingUser(null)
-                        }}
+                        onSave={handleUpdateUser}
+                        onClose={() => setShowEdit(false)}
                         loading={actionLoading}
                     />
                 )}
