@@ -109,6 +109,7 @@ CREATE TABLE public.facility_users (
   assigned_by uuid NOT NULL,
   created_at timestamp with time zone NOT NULL DEFAULT now(),
   updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  department character varying CHECK (department IS NULL OR (department::text = ANY (ARRAY['Pediatrics'::character varying, 'Cardiology'::character varying, 'Emergency'::character varying, 'Surgery'::character varying, 'Administration'::character varying, 'Radiology'::character varying, 'Laboratory'::character varying, 'Pharmacy'::character varying, 'Nursing'::character varying, 'IT'::character varying, 'Human Resources'::character varying, 'Finance'::character varying]::text[]))),
   CONSTRAINT facility_users_pkey PRIMARY KEY (user_id, facility_id),
   CONSTRAINT facility_users_facility_id_fkey FOREIGN KEY (facility_id) REFERENCES public.healthcare_facilities(facility_id),
   CONSTRAINT facility_users_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(user_id),

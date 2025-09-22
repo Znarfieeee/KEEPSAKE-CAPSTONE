@@ -26,6 +26,7 @@ def prepare_facility_user_response(facility_user_data, user_data):
         "user_id": facility_user_data.get('user_id'),
         "facility_id": facility_user_data.get('facility_id'),
         "role": facility_user_data.get('role'),
+        "department": facility_user_data.get('department'),
         "start_date": facility_user_data.get('start_date'),
         "end_date": facility_user_data.get('end_date'),
         "assigned_by": facility_user_data.get('assigned_by'),
@@ -79,11 +80,13 @@ def get_facility_users():
             facility_id,
             user_id,
             role,
+            department,
             start_date,
             end_date,
             assigned_by,
             created_at,
             updated_at,
+            department,
             users:users!facility_users_user_id_fkey (
                 user_id,
                 firstname,
@@ -91,6 +94,7 @@ def get_facility_users():
                 email,
                 specialty,
                 license_number,
+                last_sign_in_at,
                 phone_number,
                 is_active,
                 role,
@@ -123,6 +127,7 @@ def get_facility_users():
                 "user_id": facility_user.get('user_id'),
                 "facility_id": facility_user.get('facility_id'),
                 "role": facility_user.get('role'),
+                "department": facility_user.get('department'),
                 "start_date": facility_user.get('start_date'),
                 "end_date": facility_user.get('end_date'),
                 "assigned_by": facility_user.get('assigned_by'),
@@ -135,6 +140,7 @@ def get_facility_users():
                     "specialty": user_data.get('specialty'),
                     "license_number": user_data.get('license_number'),
                     "phone_number": user_data.get('phone_number'),
+                    "last_sign_in_at": user_data.get('last_sign_in_at'),
                     "is_active": user_data.get('is_active'),
                     "role": user_data.get('role'),
                     "created_at": user_data.get('created_at')
@@ -197,6 +203,18 @@ def add_facility_user():
                 "message": f"Invalid role. Must be one of: {', '.join(valid_roles)}"
             }), 400
 
+        # Validate department if provided
+        if data.get('department'):
+            valid_departments = [
+                'Pediatrics', 'Cardiology', 'Emergency', 'Surgery', 'Administration',
+                'Radiology', 'Laboratory', 'Pharmacy', 'Nursing', 'IT', 'Human Resources', 'Finance'
+            ]
+            if data.get('department') not in valid_departments:
+                return jsonify({
+                    "status": "error",
+                    "message": f"Invalid department. Must be one of: {', '.join(valid_departments)}"
+                }), 400
+
         # Check if user already exists
         existing_user_resp = supabase.table('users').select('*').eq('email', data.get('email')).execute()
 
@@ -216,6 +234,7 @@ def add_facility_user():
                 "facility_id": current_user_facility_id,
                 "user_id": user_id,
                 "role": data.get('role'),
+                "department": data.get('department'),
                 "start_date": data.get('start_date', datetime.date.today().isoformat()),
                 "assigned_by": current_user.get('id'),
                 "created_at": datetime.datetime.utcnow().isoformat(),
@@ -279,6 +298,7 @@ def add_facility_user():
                 "facility_id": current_user_facility_id,
                 "user_id": user_id,
                 "role": data.get('role'),
+                "department": data.get('department'),
                 "start_date": data.get('start_date', datetime.date.today().isoformat()),
                 "assigned_by": current_user.get('id'),
                 "created_at": datetime.datetime.utcnow().isoformat(),
@@ -352,6 +372,20 @@ def update_facility_user(user_id):
                     "message": f"Invalid role. Must be one of: {', '.join(valid_roles)}"
                 }), 400
             update_payload['role'] = data['role']
+
+        if 'department' in data:
+            # Validate department if provided
+            if data['department']:
+                valid_departments = [
+                    'Pediatrics', 'Cardiology', 'Emergency', 'Surgery', 'Administration',
+                    'Radiology', 'Laboratory', 'Pharmacy', 'Nursing', 'IT', 'Human Resources', 'Finance'
+                ]
+                if data['department'] not in valid_departments:
+                    return jsonify({
+                        "status": "error",
+                        "message": f"Invalid department. Must be one of: {', '.join(valid_departments)}"
+                    }), 400
+            update_payload['department'] = data['department']
 
         if 'start_date' in data:
             update_payload['start_date'] = data['start_date']

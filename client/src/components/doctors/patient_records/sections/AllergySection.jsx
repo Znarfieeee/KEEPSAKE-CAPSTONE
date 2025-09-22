@@ -1,6 +1,9 @@
 import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
+import { format } from 'date-fns'
+import { cn } from '@/lib/utils'
 import { Textarea } from '@/components/ui/textarea'
+import { Calendar } from '@/components/ui/calendar'
 import {
     Select,
     SelectContent,
@@ -8,10 +11,51 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { Calendar as CalendarIcon } from 'lucide-react'
+import { Button } from '@/components/ui/button'
 
 const AllergySection = ({ form, updateForm }) => {
     return (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="space-y-2">
+                <Label className="text-sm font-medium">Date Identified</Label>
+                <Input
+                    type="date"
+                    className="border-input"
+                    value={form.date_identified}
+                    onChange={(e) => updateForm('date_identified', e.target.value)}
+                />
+                <Popover>
+                    <PopoverTrigger asChild>
+                        <Button
+                            variant={'outline'}
+                            className={cn(
+                                'w-full justify-start text-left font-normal',
+                                !form.date_identified && 'text-muted-foreground'
+                            )}
+                        >
+                            <CalendarIcon className="mr-2 h-4 w-4" />
+                            {form.date_identified ? (
+                                format(form.date_identified, 'PPP')
+                            ) : (
+                                <span>Pick a date</span>
+                            )}
+                        </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                        <Calendar
+                            mode="single"
+                            selected={form.date_identified}
+                            onSelect={(date) => {
+                                new Date(date)
+                                updateForm('nhs_date', date ? date.toISOString().split('T')[0] : '')
+                            }}
+                            initialFocus
+                        />
+                    </PopoverContent>
+                </Popover>
+            </div>
             <div className="space-y-2">
                 <Label className="text-sm font-medium">Allergen</Label>
                 <Input
@@ -23,42 +67,26 @@ const AllergySection = ({ form, updateForm }) => {
             </div>
             <div className="space-y-2">
                 <Label className="text-sm font-medium">Reaction Type</Label>
-                <Select
+                <Input
+                    className="border-input"
+                    placeholder="e.g., Skin rash, Breathing difficulty, Swelling"
                     value={form.reaction_type}
-                    onValueChange={(v) => updateForm('reaction_type', v)}
-                >
-                    <SelectTrigger className="border-input">
-                        <SelectValue placeholder="Select reaction type" />
-                    </SelectTrigger>
-                    <SelectContent>
-                        <SelectItem value="mild">Mild</SelectItem>
-                        <SelectItem value="moderate">Moderate</SelectItem>
-                        <SelectItem value="severe">Severe</SelectItem>
-                    </SelectContent>
-                </Select>
+                    onChange={(e) => updateForm('reaction_type', e.target.value)}
+                />
             </div>
             <div className="space-y-2">
                 <Label className="text-sm font-medium">Severity</Label>
                 <Select value={form.severity} onValueChange={(v) => updateForm('severity', v)}>
                     <SelectTrigger className="border-input">
-                        <SelectValue placeholder="Select severity" />
+                        <SelectValue placeholder="Select severity level" />
                     </SelectTrigger>
                     <SelectContent>
-                        <SelectItem value="low">Low</SelectItem>
-                        <SelectItem value="medium">Medium</SelectItem>
-                        <SelectItem value="high">High</SelectItem>
-                        <SelectItem value="critical">Critical</SelectItem>
+                        <SelectItem value="mild">Mild</SelectItem>
+                        <SelectItem value="moderate">Moderate</SelectItem>
+                        <SelectItem value="severe">Severe</SelectItem>
+                        <SelectItem value="life_threatening">Life Threatening</SelectItem>
                     </SelectContent>
                 </Select>
-            </div>
-            <div className="space-y-2">
-                <Label className="text-sm font-medium">Date Identified</Label>
-                <Input
-                    type="date"
-                    className="border-input"
-                    value={form.date_identified}
-                    onChange={(e) => updateForm('date_identified', e.target.value)}
-                />
             </div>
             <div className="md:col-span-2 space-y-2">
                 <Label className="text-sm font-medium">Notes</Label>

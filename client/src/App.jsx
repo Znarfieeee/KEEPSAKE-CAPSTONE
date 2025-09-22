@@ -24,7 +24,7 @@ import SystemConfigPage from '@/pages/systemAdmin/SystemConfigPage'
 import MaintenancePage from '@/pages/systemAdmin/MaintenancePage'
 
 // Facility_admin
-import FacilityAdminDashboard from '@/pages/facilityAdmin/FacilityAdminDashboard'
+import FadminDashboard from '@/pages/facilityAdmin/FadminDashboard'
 import FadminFacilityUsersRegistry from './pages/facilityAdmin/FadminFacilityUsersRegistry'
 
 // Doctor
@@ -131,7 +131,7 @@ function App() {
                     children: [
                         {
                             index: true,
-                            element: <FacilityAdminDashboard />,
+                            element: <FadminDashboard />,
                         },
                         // Main Navigation (from mainSideNavLinks)
                         {

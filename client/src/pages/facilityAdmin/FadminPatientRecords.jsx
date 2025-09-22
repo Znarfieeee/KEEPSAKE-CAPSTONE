@@ -1,6 +1,8 @@
-import React, { useState, useCallback, useEffect, useMemo, lazy, Suspense } from 'react'
+import React, { useState, useCallback, useEffect, useMemo } from 'react'
 import { useAuth } from '@/context/auth'
+import { usePatientsRealtime } from '@/hook/useSupabaseRealtime'
 import { getPatientById, updatePatientRecord, deactivate_patient } from '@/api/doctors/patient'
+import { supabase } from '@/lib/supabaseClient'
 
 import { useNavigate } from 'react-router-dom'
 
@@ -9,24 +11,14 @@ import PatientRecordsHeader from '@/components/doctors/patient_records/PatientRe
 import PatientRecordFilters from '@/components/doctors/patient_records/PatientRecordFilters'
 import PatientRecordsTable from '@/components/doctors/patient_records/PatientRecordsTable'
 import Unauthorized from '@/components/Unauthorized'
-import { Dialog, DialogTrigger } from '@/components/ui/dialog'
+import { Button } from '@/components/ui/Button'
 
 // Helper
 import { showToast } from '@/util/alertHelper'
-import { usePatientsRealtime } from '@/hook/useSupabaseRealtime'
-import { supabase } from '@/lib/supabaseClient'
 
-// Import modals - Lazy loaded with preloading
-const StepperAddPatientModal = lazy(() =>
-    import('@/components/doctors/patient_records/StepperAddPatientModal')
-)
-const EditPatientModal = lazy(() => import('@/components/doctors/patient_records/EditPatientModal'))
-
-// Preload the EditPatientModal when component mounts or when user interacts
-const preloadEditModal = () => {
-    const componentImport = () => import('@/components/doctors/patient_records/EditPatientModal')
-    return componentImport
-}
+// Import modals
+import StepperAddPatientModal from '@/components/doctors/patient_records/StepperAddPatientModal'
+// const EditPatientModal = lazy(() => import('@/components/doctors/patient_records/EditPatientModal'))
 // const PatientDetailModal = lazy(() => import('@/components/doctors/patient_records/PatientDetailModal'))
 
 function DoctorPatientRecords() {
@@ -50,8 +42,6 @@ function DoctorPatientRecords() {
     const [showDetailModal, setShowDetailModal] = useState(false)
     const [selectedPatient, setSelectedPatient] = useState(null)
     const [editingPatient, setEditingPatient] = useState(null)
-    const [isLoadingEditModal, setIsLoadingEditModal] = useState(false)
-    const [editModalPreloaded, setEditModalPreloaded] = useState(false)
 
     // Helper to format patient data
     const formatPatient = useCallback((raw) => {
@@ -181,21 +171,6 @@ function DoctorPatientRecords() {
         fetchPatients()
     }, [fetchPatients])
 
-    // Preload EditPatientModal after initial load to improve UX
-    useEffect(() => {
-        const timer = setTimeout(() => {
-            if (!editModalPreloaded) {
-                preloadEditModal()().then(() => {
-                    setEditModalPreloaded(true)
-                }).catch(() => {
-                    // Silently fail, component will still load when needed
-                })
-            }
-        }, 2000) // Preload after 2 seconds
-
-        return () => clearTimeout(timer)
-    }, [editModalPreloaded])
-
     usePatientsRealtime({
         onPatientChange: handlePatientChange,
     })
@@ -266,39 +241,22 @@ function DoctorPatientRecords() {
     }
 
     const handleEdit = async (record) => {
-        // Immediately show loading state and open modal with basic data
-        setIsLoadingEditModal(true)
-        setEditingPatient(record) // Use basic record data first
-        setShowEditModal(true)
-
         try {
-            // Fetch complete patient data for editing in the background
+            // Fetch complete patient data for editing
             const response = await getPatientById(record.id)
             if (response.status === 'success') {
-                setEditingPatient(response.data) // Update with complete data
+                setEditingPatient(response.data)
+                setShowEditModal(true)
             } else {
-                showToast('error', 'Failed to load complete patient details')
-                // Keep using basic record data
+                showToast('error', 'Failed to load patient details')
             }
         } catch (error) {
             console.error('Edit patient error:', error)
-            showToast('warning', 'Using basic patient data. Some fields may not be available.')
-            // Modal is already open with basic data
-        } finally {
-            setIsLoadingEditModal(false)
+            // Fallback to basic data
+            setEditingPatient(record)
+            setShowEditModal(true)
         }
     }
-
-    // Handle preloading on hover for better UX
-    const handleEditHover = useCallback(() => {
-        if (!editModalPreloaded) {
-            preloadEditModal()().then(() => {
-                setEditModalPreloaded(true)
-            }).catch(() => {
-                // Silently fail
-            })
-        }
-    }, [editModalPreloaded])
 
     const handleUpdatePatient = async (patientData) => {
         try {
@@ -378,30 +336,12 @@ function DoctorPatientRecords() {
 
     return (
         <div className="p-6 px-20 space-y-6">
-            {/* Add Patient Modal with Dialog/Trigger */}
-            <Dialog open={showAddModal} onOpenChange={setShowAddModal}>
-                <PatientRecordsHeader
-                    onNewRecord={handleAddPatient}
-                    onExportCSV={handleExportCSV}
-                    onOpenReports={handleOpenReports}
-                    onRefresh={fetchPatients}
-                />
-                <Suspense
-                    fallback={
-                        <div className="flex items-center justify-center p-8">
-                            <div className="flex items-center gap-2">
-                                <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent"></div>
-                                <span className="text-sm text-gray-600">Loading modal...</span>
-                            </div>
-                        </div>
-                    }
-                >
-                    <StepperAddPatientModal
-                        open={showAddModal}
-                        onClose={() => setShowAddModal(false)}
-                    />
-                </Suspense>
-            </Dialog>
+            <PatientRecordsHeader
+                onNewRecord={handleAddPatient}
+                onExportCSV={handleExportCSV}
+                onOpenReports={handleOpenReports}
+                onRefresh={fetchPatients}
+            />
 
             <PatientRecordFilters
                 search={search}
@@ -437,41 +377,17 @@ function DoctorPatientRecords() {
                 setItemsPerPage={setItemsPerPage}
                 onView={handleView}
                 onEdit={handleEdit}
-                onEditHover={handleEditHover}
                 onArchive={handleArchive}
                 onDelete={handleDelete}
             />
 
-            {/* Edit Patient Modal */}
-            <Dialog
-                open={showEditModal}
-                onOpenChange={(open) => {
-                    setShowEditModal(open)
-                    if (!open) setEditingPatient(null)
-                }}
-            >
-                <Suspense
-                    fallback={
-                        <div className="flex items-center justify-center p-8">
-                            <div className="flex items-center gap-2">
-                                <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent"></div>
-                                <span className="text-sm text-gray-600">Loading modal...</span>
-                            </div>
-                        </div>
-                    }
-                >
-                    <EditPatientModal
-                        patient={editingPatient}
-                        isLoading={isLoadingEditModal}
-                        onClose={() => {
-                            setShowEditModal(false)
-                            setEditingPatient(null)
-                            setIsLoadingEditModal(false)
-                        }}
-                        onSuccess={handleUpdatePatient}
-                    />
-                </Suspense>
-            </Dialog>
+            {/* Modals */}
+            {showAddModal && (
+                <StepperAddPatientModal
+                    open={showAddModal}
+                    onClose={() => setShowAddModal(false)}
+                />
+            )}
         </div>
     )
 }

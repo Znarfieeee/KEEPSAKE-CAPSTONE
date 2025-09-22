@@ -345,32 +345,46 @@ def get_facility_users(facility_id):
     """
     try:
         # Query with joins to get complete user information
-        query = supabase.table('facility_users')\
-            .select('''
-                *,
-                users (
-                    user_id,
-                    email,
-                    firstname,
-                    lastname,
-                    specialty,
-                    license_number,
-                    phone_number,
-                    is_active,
-                    created_at
-                )
-            ''')\
-            .eq('facility_id', facility_id)\
-            .is_('end_date', 'null')  # Only active assignments
+        resp = supabase.table('facility_users').select(
+            '''
+            facility_id,
+            user_id,
+            role,
+            department,
+            start_date,
+            end_date,
+            assigned_by,
+            created_at,
+            updated_at,
+            department,
+            users:users!facility_users_user_id_fkey (
+                user_id,
+                firstname,
+                lastname,
+                email,
+                specialty,
+                license_number,
+                last_sign_in_at,
+                phone_number,
+                is_active,
+                role,
+                created_at,
+                updated_at
+            )
+            '''
+        ).execute()
         
-        result = query.execute()
-        
-        if result.get('error'):
-            raise Exception(result['error'])
+        if getattr(resp, 'error', None):
+            current_app.logger.error(f"Failed to fetch facility users: {resp.error.message}")
+            return jsonify({
+                "status": "error",
+                "message": "Failed to fetch facility users",
+                "details": resp.error.message if resp.error else "Unknown"
+            }), 400
         
         # Format the response
         facility_users = []
-        for record in result.data:
+        for record in resp.data:
             user_data = record['users']
             facility_users.append({
                 'user_id': user_data['user_id'],
@@ -378,6 +392,7 @@ def get_facility_users(facility_id):
                 'firstname': user_data['firstname'],
                 'lastname': user_data['lastname'],
                 'facility_role': record['role'],
+                'department': record.get('department'),
                 'specialty': user_data['specialty'],
                 'license_number': user_data['license_number'],
                 'phone_number': user_data['phone_number'],
@@ -446,25 +461,32 @@ def update_facility_user(facility_id, user_id):
             if user_update_result.get('error'):
                 raise Exception(f"Failed to update user: {user_update_result['error']}")
         
-        # Update facility-specific role if provided
+        # Update facility-specific role and/or department if provided
+        facility_updates = {}
         if 'role' in data:
             new_role = data['role']
             valid_roles = ['doctor', 'nurse', 'admin', 'staff']
-            
+
             if new_role not in valid_roles:
                 return jsonify({
                     "status": "error",
                     "message": f"Invalid role. Must be one of: {', '.join(valid_roles)}"
                 }), 400
-            
+
+            facility_updates['role'] = new_role
+
+        if 'department' in data:
+            facility_updates['department'] = data['department']
+
+        if facility_updates:
             facility_update_result = supabase.table('facility_users')\
-                .update({'role': new_role})\
+                .update(facility_updates)\
                 .eq('facility_id', facility_id)\
                 .eq('user_id', user_id)\
                 .execute()
-            
+
             if facility_update_result.get('error'):
-                raise Exception(f"Failed to update facility role: {facility_update_result['error']}")
+                raise Exception(f"Failed to update facility user: {facility_update_result['error']}")
         
         # Audit logging is handled automatically by the database trigger
         

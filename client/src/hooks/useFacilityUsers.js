@@ -9,6 +9,33 @@ import {
 } from '@/api/facilityAdmin/users'
 import { showToast } from '@/util/alertHelper'
 
+const formatLastLogin = (lastLoginTime) => {
+    try {
+        if (!lastLoginTime || lastLoginTime === 'null') return 'Never'
+
+        const lastLogin = new Date(lastLoginTime)
+        const now = new Date()
+        const diffInHours = Math.floor((now - lastLogin) / (1000 * 60 * 60))
+
+        if (diffInHours < 24) {
+            return `${diffInHours} ${diffInHours === 1 ? 'hour' : 'hours'} ago`
+        } else {
+            const days = Math.floor(diffInHours / 24)
+            const remainingHours = diffInHours % 24
+
+            if (remainingHours === 0) {
+                return `${days} ${days === 1 ? 'day' : 'days'} ago`
+            } else {
+                return `${days} ${days === 1 ? 'day' : 'days'} and ${remainingHours} ${
+                    remainingHours === 1 ? 'hour' : 'hours'
+                } ago`
+            }
+        }
+    } catch {
+        return 'Never'
+    }
+}
+
 /**
  * Custom hook for managing facility users
  * Provides state management and CRUD operations for users
@@ -47,10 +74,13 @@ export const useFacilityUsers = () => {
                     // Role and department information
                     role: facilityUser.role, // This is the facility role
                     user_role: facilityUser.user_info?.role || '', // This is the user's system role
-                    department: facilityUser.user_info?.specialty || '',
+                    department: facilityUser.department || '',
                     license_number: facilityUser.user_info?.license_number || '',
 
                     // Status and dates
+                    last_login: facilityUser.user_info?.last_sign_in_at
+                        ? formatLastLogin(facilityUser.user_info.last_sign_in_at)
+                        : 'Never',
                     status: facilityUser.user_info?.is_active ? 'active' : 'inactive',
                     start_date: facilityUser.start_date,
                     end_date: facilityUser.end_date,

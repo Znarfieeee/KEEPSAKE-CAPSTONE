@@ -214,15 +214,6 @@ def add_patient_record():
                 "message": "Sex must be one of: male or female"
             }), 400
             
-        # Validate gestation weeks if provided
-        if data.get('gestation_weeks') is not None:
-            weeks = data.get('gestation_weeks')
-            if not isinstance(weeks, int) or weeks <= 0 or weeks > 50:
-                return jsonify({
-                    "status": "error",
-                    "message": "Gestation weeks must be between 1 and 50"
-                }), 400
-            
         current_app.logger.info(f"AUDIT: User {current_user.get('email')} attempting to create new patient record")
         
         created_by = current_user.get('id')

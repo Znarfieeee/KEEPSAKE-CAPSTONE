@@ -1,45 +1,45 @@
-import React, { useState } from 'react'
+import { useState } from 'react'
 import {
     Dialog,
     DialogContent,
-    DialogDescription,
     DialogHeader,
     DialogTitle,
+    DialogDescription,
     DialogFooter,
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Progress } from '@/components/ui/progress'
+import { showToast } from '@/util/alertHelper'
+import { cn } from '@/lib/utils'
 import {
+    User,
     Stethoscope,
     Activity,
     AlertCircle,
     Ruler,
+    Check,
     ChevronLeft,
     ChevronRight,
-    Check,
-    User,
 } from 'lucide-react'
-import { cn } from '@/lib/utils'
 
-// Import your existing sections
+// Import sections
 import BasicInfoSection from './sections/BasicInfoSection'
 import DeliverySection from './sections/DeliverySection'
 import ScreeningSection from './sections/ScreeningSection'
 import AllergySection from './sections/AllergySection'
 import AnthropometricSection from './sections/AnthropometricSection'
 
-// Import API functions (assuming these exist)
+// Import API functions
 import {
     addPatientRecord,
     addDeliveryRecord,
-    addAnthropometricRecord,
     addScreeningRecord,
+    addAnthropometricRecord,
     addAllergyRecord,
 } from '@/api/doctors/patient'
 
-// Import utilities (assuming these exist)
+// Import utilities
 import { sanitizeObject } from '@/util/sanitize'
-import { showToast } from '@/util/alertHelper'
 
 // Initial form states
 const patientInitForm = {
@@ -76,15 +76,18 @@ const deliveryInitForm = {
 
 const screeningInitForm = {
     ens_date: '',
-    ens_remarks: '',
+    ens_remarks: false,
     nhs_date: '',
-    nhs_right_ear: '',
-    nhs_left_ear: '',
+    nhs_right_ear: false,
+    nhs_left_ear: false,
     pos_date: '',
-    pos_for_cchd_right: '',
-    pos_for_cchd_left: '',
+    pos_for_cchd_right: false,
+    pos_for_cchd_left: false,
     ror_date: '',
     ror_remarks: '',
+    // Adding default values to ensure form initialization
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
 }
 
 const allergiesInitForm = {
@@ -151,86 +154,8 @@ const STEPS = [
 ]
 
 /**
- * StepIndicator Component
- * Shows the current step and progress through the form
- */
-const StepIndicator = ({ currentStep, completedSteps, includedSteps }) => {
-    const currentStepIndex = STEPS.findIndex((step) => step.id === currentStep)
-    const progress = ((currentStepIndex + 1) / STEPS.length) * 100
-
-    return (
-        <div className="mb-8">
-            {/* Progress Bar */}
-            <div className="mb-4">
-                <div className="flex justify-between text-sm text-muted-foreground mb-2">
-                    <span>
-                        Step {currentStepIndex + 1} of {STEPS.length}
-                    </span>
-                    <span>{Math.round(progress)}% Complete</span>
-                </div>
-                <Progress value={progress} className="h-2" />
-            </div>
-
-            {/* Step Indicators */}
-            <div className="flex items-center justify-between">
-                {STEPS.map((step, index) => {
-                    const StepIcon = step.icon
-                    const isActive = step.id === currentStep
-                    const isCompleted = completedSteps.includes(step.id)
-                    const isIncluded = step.required || includedSteps.includes(step.id)
-                    const isSkipped = !step.required && !includedSteps.includes(step.id)
-
-                    return (
-                        <div key={step.id} className="flex flex-col items-center space-y-2">
-                            <div
-                                className={cn(
-                                    'w-10 h-10 rounded-full flex items-center justify-center border-2 transition-colors',
-                                    isActive && 'border-primary bg-primary text-primary-foreground',
-                                    isCompleted &&
-                                        !isActive &&
-                                        'border-green-500 bg-green-500 text-white',
-                                    !isActive &&
-                                        !isCompleted &&
-                                        isIncluded &&
-                                        'border-muted-foreground bg-background',
-                                    isSkipped &&
-                                        'border-muted bg-muted text-muted-foreground opacity-50'
-                                )}
-                            >
-                                {isCompleted && !isActive ? (
-                                    <Check size={16} />
-                                ) : (
-                                    <StepIcon size={16} />
-                                )}
-                            </div>
-                            <div className="text-center">
-                                <div
-                                    className={cn(
-                                        'text-xs font-medium',
-                                        isActive && 'text-primary',
-                                        isCompleted && !isActive && 'text-green-600',
-                                        isSkipped && 'text-muted-foreground opacity-50'
-                                    )}
-                                >
-                                    {step.title}
-                                </div>
-                                {isSkipped && (
-                                    <div className="text-xs text-muted-foreground opacity-50">
-                                        (Skipped)
-                                    </div>
-                                )}
-                            </div>
-                        </div>
-                    )
-                })}
-            </div>
-        </div>
-    )
-}
-
-/**
  * StepSelector Component
- * Allows users to choose which optional sections to include
+ * Allows users to choose which optional steps to include
  */
 const StepSelector = ({ includedSteps, onToggleStep, onNext }) => {
     const optionalSteps = STEPS.filter((step) => !step.required && step.id !== 'review')
@@ -238,9 +163,10 @@ const StepSelector = ({ includedSteps, onToggleStep, onNext }) => {
     return (
         <div className="space-y-6">
             <div className="text-center">
-                <h3 className="text-lg font-semibold mb-2">Select Additional Information</h3>
+                <h3 className="text-lg font-semibold mb-2">Choose Additional Information</h3>
                 <p className="text-muted-foreground">
-                    Choose which optional sections you'd like to include in the patient record
+                    Select which additional sections you'd like to include for this patient record.
+                    You can always add this information later if needed.
                 </p>
             </div>
 
@@ -253,38 +179,43 @@ const StepSelector = ({ includedSteps, onToggleStep, onNext }) => {
                         <div
                             key={step.id}
                             className={cn(
-                                'border rounded-lg p-4 cursor-pointer transition-all hover:shadow-md',
+                                'border rounded-lg p-4 cursor-pointer transition-all hover:shadow-md transform hover:scale-[1.02]',
                                 isIncluded
-                                    ? 'border-primary bg-primary/5 shadow-sm'
-                                    : 'border-border hover:border-primary/50'
+                                    ? 'border-primary bg-primary/5 shadow-sm ring-2 ring-primary/20'
+                                    : 'border-gray-200 hover:border-primary/50 hover:bg-gray-50'
                             )}
                             onClick={() => onToggleStep(step.id)}
                         >
                             <div className="flex items-start space-x-3">
                                 <div
                                     className={cn(
-                                        'p-2 rounded-md',
-                                        isIncluded ? 'bg-primary/10' : 'bg-muted'
+                                        'p-3 rounded-lg transition-colors',
+                                        isIncluded
+                                            ? 'bg-primary text-white'
+                                            : 'bg-gray-100 text-gray-600'
                                     )}
                                 >
-                                    <StepIcon
-                                        size={20}
-                                        className={
-                                            isIncluded ? 'text-primary' : 'text-muted-foreground'
-                                        }
-                                    />
+                                    <StepIcon size={20} />
                                 </div>
                                 <div className="flex-1">
                                     <div className="flex items-center justify-between">
-                                        <h4 className="font-medium">{step.title}</h4>
-                                        <input
-                                            type="checkbox"
-                                            checked={isIncluded}
-                                            onChange={() => onToggleStep(step.id)}
-                                            className="h-4 w-4 text-primary focus:ring-primary/20 border-input rounded"
-                                        />
+                                        <h4 className="font-semibold text-gray-900">
+                                            {step.title}
+                                        </h4>
+                                        <div
+                                            className={cn(
+                                                'w-6 h-6 rounded-full border-2 flex items-center justify-center transition-colors',
+                                                isIncluded
+                                                    ? 'border-primary bg-primary'
+                                                    : 'border-gray-300'
+                                            )}
+                                        >
+                                            {isIncluded && (
+                                                <Check size={14} className="text-white" />
+                                            )}
+                                        </div>
                                     </div>
-                                    <p className="text-sm text-muted-foreground mt-1">
+                                    <p className="text-sm text-muted-foreground mt-2 leading-relaxed">
                                         {step.description}
                                     </p>
                                 </div>
@@ -294,10 +225,122 @@ const StepSelector = ({ includedSteps, onToggleStep, onNext }) => {
                 })}
             </div>
 
-            <div className="flex justify-center pt-4">
-                <Button onClick={onNext} className="px-8">
-                    Continue <ChevronRight size={16} className="ml-2" />
+            <div className="flex justify-center space-x-4">
+                <Button variant="outline" onClick={onNext} className="px-6">
+                    Skip All
                 </Button>
+                <Button onClick={onNext} className="px-8">
+                    {includedSteps.length > 0
+                        ? `Continue with ${includedSteps.length} section${
+                              includedSteps.length > 1 ? 's' : ''
+                          }`
+                        : 'Proceed to Review'}
+                    <ChevronRight size={16} className="ml-2" />
+                </Button>
+            </div>
+        </div>
+    )
+}
+
+/**
+ * StepIndicator Component
+ * Shows the current step and progress through the form
+ */
+const StepIndicator = ({ currentStep, completedSteps, includedSteps }) => {
+    // Calculate active steps for proper progress calculation
+    const getActiveSteps = () => {
+        const baseSteps = ['basic']
+        if (includedSteps.length > 0) {
+            baseSteps.push(...includedSteps)
+        }
+        baseSteps.push('review')
+        return baseSteps
+    }
+
+    const activeSteps = getActiveSteps()
+    const currentStepIndex =
+        currentStep === 'step-selector' ? 1 : activeSteps.findIndex((step) => step === currentStep)
+    const totalSteps = currentStep === 'step-selector' ? 2 : activeSteps.length
+    const progress = ((currentStepIndex + 1) / totalSteps) * 100
+
+    // Don't show step indicator during step selection
+    if (currentStep === 'step-selector') {
+        return (
+            <div className="mb-8">
+                <div className="text-center">
+                    <h3 className="text-lg font-semibold mb-2">
+                        Step 2: Choose Additional Sections
+                    </h3>
+                    <p className="text-muted-foreground">
+                        Basic information completed. Select optional sections to include.
+                    </p>
+                </div>
+            </div>
+        )
+    }
+
+    return (
+        <div className="mb-8">
+            {/* Progress Bar */}
+            <div className="mb-4">
+                <div className="flex justify-between text-sm text-muted-foreground mb-2">
+                    <span>
+                        Step {currentStepIndex + 1} of {totalSteps}
+                    </span>
+                    <span>{Math.round(progress)}% Complete</span>
+                </div>
+                <Progress value={progress} className="h-2" />
+            </div>
+
+            {/* Step Indicators */}
+            <div className="flex items-center justify-center gap-4 flex-wrap">
+                {STEPS.filter((step) => step.required || includedSteps.includes(step.id)).map(
+                    (step) => {
+                        const StepIcon = step.icon
+                        const isActive = step.id === currentStep
+                        const isCompleted = completedSteps.includes(step.id)
+
+                        return (
+                            <div key={step.id} className="flex flex-col items-center space-y-2">
+                                <div
+                                    className={cn(
+                                        'w-10 h-10 rounded-full flex items-center justify-center border-2 transition-colors',
+                                        isActive &&
+                                            'border-primary bg-primary text-primary-foreground',
+                                        isCompleted &&
+                                            !isActive &&
+                                            'border-green-500 bg-green-500 text-white',
+                                        !isActive &&
+                                            !isCompleted &&
+                                            'border-muted-foreground bg-background'
+                                    )}
+                                >
+                                    {isCompleted && !isActive ? (
+                                        <Check size={16} />
+                                    ) : (
+                                        <StepIcon size={16} />
+                                    )}
+                                </div>
+                                <div className="text-center">
+                                    <div
+                                        className={cn(
+                                            'text-xs font-medium',
+                                            isActive && 'text-primary',
+                                            isCompleted && !isActive && 'text-green-600'
+                                        )}
+                                    >
+                                        {step.title}
+                                    </div>
+                                    {step.required && (
+                                        <div className="text-xs text-muted-foreground">
+                                            (Required)
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        )
+                    }
+                )}
             </div>
         </div>
     )
@@ -318,13 +361,23 @@ const ReviewStep = ({
     const ReviewSection = ({ title, icon: Icon, children, isEmpty = false }) => (
         <div className="border rounded-lg p-4">
             <div className="flex items-center space-x-2 mb-3">
-                <Icon size={18} className="text-primary" />
+                {Icon && <Icon size={18} className="text-primary" />}
                 <h4 className="font-medium">{title}</h4>
                 {isEmpty && (
-                    <span className="text-sm text-muted-foreground">(No data entered)</span>
+                    <span className="text-sm text-muted-foreground bg-gray-100 px-2 py-1 rounded">
+                        No data entered
+                    </span>
                 )}
             </div>
-            <div className="text-sm space-y-1">{children}</div>
+            <div className="text-sm space-y-1">
+                {isEmpty ? (
+                    <p className="text-muted-foreground italic">
+                        This section was included but no information was provided.
+                    </p>
+                ) : (
+                    children
+                )}
+            </div>
         </div>
     )
 
@@ -433,6 +486,10 @@ const ReviewStep = ({
                         isEmpty={!Object.values(anthroForm).some(Boolean)}
                     >
                         <FieldDisplay
+                            label="Measurement Date"
+                            value={anthroForm.measurement_date}
+                        />
+                        <FieldDisplay
                             label="Weight"
                             value={anthroForm.weight && `${anthroForm.weight} kg`}
                         />
@@ -461,10 +518,6 @@ const ReviewStep = ({
                                 `${anthroForm.abdominal_circumference} cm`
                             }
                         />
-                        <FieldDisplay
-                            label="Measurement Date"
-                            value={anthroForm.measurement_date}
-                        />
                     </ReviewSection>
                 )}
             </div>
@@ -489,11 +542,6 @@ const StepperAddPatientModal = ({ open, onClose }) => {
     const [includedSteps, setIncludedSteps] = useState([])
     const [loading, setLoading] = useState(false)
 
-    // Step navigation
-    const currentStepIndex = STEPS.findIndex((step) => step.id === currentStep)
-    const isFirstStep = currentStepIndex === 0
-    const isLastStep = currentStepIndex === STEPS.length - 1
-
     // Helper function to update forms
     const updateForm = (setFormFn, field, value) =>
         setFormFn((prev) => ({ ...prev, [field]: value }))
@@ -517,7 +565,22 @@ const StepperAddPatientModal = ({ open, onClose }) => {
             const missing = required.filter((field) => !patientForm[field])
 
             if (missing.length > 0) {
-                showToast?.('error', `Please fill in required fields: ${missing.join(', ')}`)
+                showToast('error', `Please fill in required fields: ${missing.join(', ')}`)
+                return false
+            }
+
+            // Validate gestation weeks if provided
+            if (
+                patientForm.gestation_weeks &&
+                (patientForm.gestation_weeks < 1 || patientForm.gestation_weeks > 50)
+            ) {
+                showToast('error', 'Gestation weeks must be between 1 and 50')
+                return false
+            }
+
+            // Validate sex field
+            if (!['male', 'female'].includes(patientForm.sex)) {
+                showToast('error', 'Please select a valid sex option')
                 return false
             }
         }
@@ -541,9 +604,16 @@ const StepperAddPatientModal = ({ open, onClose }) => {
     const handleNext = () => {
         if (currentStep === 'basic') {
             // After basic info, show step selector
-            setCurrentStep('delivery')
+            setCurrentStep('step-selector')
+        } else if (currentStep === 'step-selector') {
+            // After step selector, go to first included step or review
+            if (includedSteps.length === 0) {
+                setCurrentStep('review')
+            } else {
+                setCurrentStep(includedSteps[0])
+            }
         } else {
-            const activeSteps = ['basic', ...includedSteps, 'review']
+            const activeSteps = ['basic', 'step-selector', ...includedSteps, 'review']
             const currentIndex = activeSteps.findIndex((step) => step === currentStep)
             if (currentIndex < activeSteps.length - 1) {
                 setCurrentStep(activeSteps[currentIndex + 1])
@@ -553,10 +623,20 @@ const StepperAddPatientModal = ({ open, onClose }) => {
 
     // Navigate to previous step
     const handlePrevious = () => {
-        const activeSteps = ['basic', ...includedSteps, 'review']
-        const currentIndex = activeSteps.findIndex((step) => step === currentStep)
-        if (currentIndex > 0) {
-            setCurrentStep(activeSteps[currentIndex - 1])
+        if (currentStep === 'step-selector') {
+            setCurrentStep('basic')
+        } else if (currentStep === 'review') {
+            if (includedSteps.length === 0) {
+                setCurrentStep('step-selector')
+            } else {
+                setCurrentStep(includedSteps[includedSteps.length - 1])
+            }
+        } else {
+            const activeSteps = ['basic', 'step-selector', ...includedSteps, 'review']
+            const currentIndex = activeSteps.findIndex((step) => step === currentStep)
+            if (currentIndex > 0) {
+                setCurrentStep(activeSteps[currentIndex - 1])
+            }
         }
     }
 
@@ -573,59 +653,74 @@ const StepperAddPatientModal = ({ open, onClose }) => {
             setLoading(true)
 
             // Create patient record first
-            const patientPayload = sanitizeObject ? sanitizeObject(patientForm) : patientForm
-            const patientResponse = await addPatientRecord?.(patientPayload)
+            const patientPayload = sanitizeObject(patientForm)
+            const patientResponse = await addPatientRecord(patientPayload)
 
             if (patientResponse?.status !== 'success') {
                 throw new Error(patientResponse?.message || 'Failed to create patient')
             }
 
-            const patientId = patientResponse.data.id
+            const patientId = patientResponse.data.patient_id
             const promises = []
 
             // Add optional sections based on inclusion
-            if (includedSteps.includes('delivery') && addDeliveryRecord) {
-                promises.push(
-                    addDeliveryRecord(
-                        patientId,
-                        sanitizeObject ? sanitizeObject(deliveryForm) : deliveryForm
+            if (includedSteps.includes('delivery')) {
+                const deliveryPayload = sanitizeObject(deliveryForm)
+                if (
+                    Object.values(deliveryPayload).some(
+                        (val) => val !== null && val !== '' && val !== false
                     )
-                )
+                ) {
+                    promises.push(addDeliveryRecord(patientId, deliveryPayload))
+                }
             }
-            if (includedSteps.includes('screening') && addScreeningRecord) {
-                promises.push(
-                    addScreeningRecord(
-                        patientId,
-                        sanitizeObject ? sanitizeObject(screeningForm) : screeningForm
+            if (includedSteps.includes('screening')) {
+                const screeningPayload = sanitizeObject(screeningForm)
+                if (
+                    Object.values(screeningPayload).some(
+                        (val) => val !== null && val !== '' && val !== false
                     )
-                )
+                ) {
+                    promises.push(addScreeningRecord(patientId, screeningPayload))
+                }
             }
-            if (includedSteps.includes('anthropometric') && addAnthropometricRecord) {
-                promises.push(
-                    addAnthropometricRecord(
-                        patientId,
-                        sanitizeObject ? sanitizeObject(anthroForm) : anthroForm
+            if (includedSteps.includes('anthropometric')) {
+                const anthroPayload = sanitizeObject(anthroForm)
+                if (
+                    Object.values(anthroPayload).some(
+                        (val) => val !== null && val !== '' && val !== false
                     )
-                )
+                ) {
+                    promises.push(addAnthropometricRecord(patientId, anthroPayload))
+                }
             }
-            if (includedSteps.includes('allergies') && addAllergyRecord) {
-                promises.push(
-                    addAllergyRecord(
-                        patientId,
-                        sanitizeObject ? sanitizeObject(allergiesForm) : allergiesForm
+            if (includedSteps.includes('allergies')) {
+                const allergyPayload = sanitizeObject(allergiesForm)
+                if (
+                    Object.values(allergyPayload).some(
+                        (val) => val !== null && val !== '' && val !== false
                     )
-                )
+                ) {
+                    promises.push(addAllergyRecord(patientId, allergyPayload))
+                }
             }
 
-            // Execute all promises
+            // Execute all promises with error handling
             if (promises.length > 0) {
-                await Promise.all(promises)
+                const results = await Promise.allSettled(promises)
+                const failedResults = results.filter((result) => result.status === 'rejected')
+
+                if (failedResults.length > 0) {
+                    console.warn('Some optional records failed to save:', failedResults)
+                    showToast('warning', 'Patient created but some optional data failed to save')
+                } else {
+                    showToast('success', 'Patient record created successfully with all data')
+                }
+            } else {
+                showToast('success', 'Patient record created successfully')
             }
 
-            // Success handling
-            showToast?.('success', 'Patient record created successfully')
-
-            // Dispatch custom event if available
+            // Dispatch custom event for real-time updates
             if (typeof window !== 'undefined') {
                 window.dispatchEvent(
                     new CustomEvent('patient-created', { detail: patientResponse.data })
@@ -636,7 +731,9 @@ const StepperAddPatientModal = ({ open, onClose }) => {
             onClose()
         } catch (error) {
             console.error('Error creating patient record:', error)
-            showToast?.('error', error.message || 'Failed to create patient record')
+            const errorMessage =
+                error.response?.data?.message || error.message || 'Failed to create patient record'
+            showToast('error', errorMessage)
         } finally {
             setLoading(false)
         }
@@ -649,7 +746,14 @@ const StepperAddPatientModal = ({ open, onClose }) => {
     }
 
     // Get the current step's active steps for navigation
-    const getActiveSteps = () => ['basic', ...includedSteps, 'review']
+    const getActiveSteps = () => {
+        const steps = ['basic', 'step-selector']
+        if (includedSteps.length > 0) {
+            steps.push(...includedSteps)
+        }
+        steps.push('review')
+        return steps
+    }
     const activeSteps = getActiveSteps()
     const activeStepIndex = activeSteps.findIndex((step) => step === currentStep)
     const isActiveFirstStep = activeStepIndex === 0
@@ -671,7 +775,7 @@ const StepperAddPatientModal = ({ open, onClose }) => {
                     <StepSelector
                         includedSteps={includedSteps}
                         onToggleStep={handleToggleStep}
-                        onNext={handleStepSelectorNext}
+                        onNext={handleNext}
                         completedSteps={completedSteps}
                     />
                 )
@@ -780,7 +884,10 @@ const StepperAddPatientModal = ({ open, onClose }) => {
 
     return (
         <Dialog open={open} onOpenChange={handleClose} modal>
-            <DialogContent className="max-w-[1200px] max-h-[95vh] overflow-y-auto p-6">
+            <DialogContent
+                className="max-w-[1200px] max-h-[95vh] overflow-y-auto p-6"
+                showCloseButton={false}
+            >
                 <DialogHeader>
                     <DialogTitle className="text-xl font-semibold">Add New Patient</DialogTitle>
                     <DialogDescription>
@@ -806,7 +913,7 @@ const StepperAddPatientModal = ({ open, onClose }) => {
                         <Button variant="outline" onClick={handleClose} disabled={loading}>
                             Cancel
                         </Button>
-                        {!isActiveFirstStep && currentStep !== 'delivery' && (
+                        {!isActiveFirstStep && (
                             <Button variant="outline" onClick={handlePrevious} disabled={loading}>
                                 <ChevronLeft size={16} className="mr-2" />
                                 Previous
@@ -826,7 +933,7 @@ const StepperAddPatientModal = ({ open, onClose }) => {
                             >
                                 {loading ? 'Creating...' : 'Create Patient Record'}
                             </Button>
-                        ) : currentStep === 'delivery' && !includedSteps.length ? null : ( // Special case for step selector - button is handled within StepSelector component
+                        ) : currentStep === 'step-selector' ? null : ( // Step selector has its own button
                             <Button
                                 onClick={handleStepComplete}
                                 disabled={loading}

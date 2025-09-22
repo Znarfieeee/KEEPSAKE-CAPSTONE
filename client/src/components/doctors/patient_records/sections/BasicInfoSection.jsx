@@ -55,7 +55,7 @@ const BasicInfoSection = ({ form, updateForm }) => {
                         <PopoverTrigger asChild>
                             <Button
                                 variant={'outline'}
-                                className={`w-full justify-start text-left font-normal ${
+                                className={`w-full justify-start text-left font-normal border border-gray-200 ${
                                     !form.date_of_birth && 'text-muted-foreground'
                                 }`}
                             >

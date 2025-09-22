@@ -1,9 +1,47 @@
 import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
+import { cn } from '@/lib/utils'
+import { format } from 'date-fns'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { Button } from '@/components/ui/button'
+import { Calendar as CalendarIcon } from 'lucide-react'
+import { Calendar } from '@/components/ui/calendar'
 
 const AnthropometricSection = ({ form, updateForm }) => {
     return (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="space-y-2">
+                <Label className="text-sm font-medium">Measurement Date</Label>
+                <Popover>
+                    <PopoverTrigger asChild>
+                        <Button
+                            variant={'outline'}
+                            className={cn(
+                                'w-full justify-start text-left font-normal border border-gray-200',
+                                !form.measurement_date && 'text-muted-foreground'
+                            )}
+                        >
+                            <CalendarIcon className="mr-2 h-4 w-4" />
+                            {form.measurement_date ? (
+                                format(form.measurement_date, 'PPP')
+                            ) : (
+                                <span>Pick a date</span>
+                            )}
+                        </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                        <Calendar
+                            mode="single"
+                            selected={form.measurement_date}
+                            onSelect={(date) => {
+                                new Date(date)
+                                updateForm('nhs_date', date ? date.toISOString().split('T')[0] : '')
+                            }}
+                            initialFocus
+                        />
+                    </PopoverContent>
+                </Popover>
+            </div>
             <div className="space-y-2">
                 <Label className="text-sm font-medium">Weight (kg)</Label>
                 <Input
@@ -57,15 +95,6 @@ const AnthropometricSection = ({ form, updateForm }) => {
                     placeholder="Enter abdominal circumference"
                     value={form.abdominal_circumference}
                     onChange={(e) => updateForm('abdominal_circumference', e.target.value)}
-                />
-            </div>
-            <div className="space-y-2">
-                <Label className="text-sm font-medium">Measurement Date</Label>
-                <Input
-                    type="date"
-                    className="border-input"
-                    value={form.measurement_date}
-                    onChange={(e) => updateForm('measurement_date', e.target.value)}
                 />
             </div>
         </div>
