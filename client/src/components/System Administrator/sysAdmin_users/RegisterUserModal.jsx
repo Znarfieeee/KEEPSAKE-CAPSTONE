@@ -1,17 +1,29 @@
 import React, { useState, useEffect } from 'react'
-import { createUser } from '@/api/admin/users'
+import { createUser, assignUserToFacility } from '@/api/admin/users'
+import { getFacilities } from '@/api/admin/facility'
 import { sanitizeObject } from '@/util/sanitize'
 
 // UI Components
 import { showToast } from '@/util/alertHelper'
 import { Button } from '@/components/ui/Button'
 import LoadingButton from '@/components/ui/LoadingButton'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 import { PhoneNumberInput } from '@/components/ui/phone-number'
 import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@/components/ui/select'
+import {
     Stepper,
+    StepperDescription,
     StepperIndicator,
     StepperItem,
     StepperSeparator,
+    StepperTitle,
     StepperTrigger,
 } from '@/components/ui/stepper'
 import Checkbox from '@/components/ui/Checkbox'
@@ -20,6 +32,7 @@ const initialForm = {
     email: '',
     password: 'keepsake123',
     firstname: '',
+    middlename: '',
     lastname: '',
     specialty: '',
     role: '',
@@ -27,13 +40,17 @@ const initialForm = {
     phone_number: '',
     facility_id: '',
     facility_role: '',
-    status: 'active', // Added default status
+    department: '',
+    start_date: new Date().toISOString().split('T')[0], // Today's date
+    subscription_expires: '',
+    is_subscribed: false,
+    status: 'active',
 }
 
 const steps = [
     'Basic Information',
     'Professional Details',
-    'Subscription & Facility',
+    'Facility Assignment',
     'Review & Confirm',
 ]
 
@@ -42,6 +59,8 @@ const RegisterUserModal = ({ open, onClose }) => {
     const [step, setStep] = useState(0)
     const [loading, setLoading] = useState(false)
     const [isConfirmed, setIsConfirmed] = useState(false)
+    const [facilities, setFacilities] = useState([])
+    const [facilitiesLoading, setFacilitiesLoading] = useState(false)
     // Ref for scroll animation when changing steps
     const contentRef = React.useRef(null)
 
@@ -50,6 +69,30 @@ const RegisterUserModal = ({ open, onClose }) => {
             contentRef.current.scrollTo({ top: 0, behavior: 'smooth' })
         }
     }, [step])
+
+    // Fetch facilities when modal opens
+    useEffect(() => {
+        if (open && facilities.length === 0) {
+            fetchFacilities()
+        }
+    }, [open])
+
+    const fetchFacilities = async () => {
+        try {
+            setFacilitiesLoading(true)
+            const response = await getFacilities()
+            if (response.status === 'success') {
+                setFacilities(response.data || [])
+            } else {
+                showToast('error', 'Failed to load facilities')
+            }
+        } catch (error) {
+            showToast('error', 'Failed to load facilities')
+            console.error('Error fetching facilities:', error)
+        } finally {
+            setFacilitiesLoading(false)
+        }
+    }
 
     // Transition effect when changing steps
     const goToStep = (newStep) => {
@@ -60,6 +103,10 @@ const RegisterUserModal = ({ open, onClose }) => {
             }
             if (step === 1 && (!form.role || !form.specialty)) {
                 showToast('error', 'Please fill in all required fields')
+                return
+            }
+            if (step === 2 && (!form.facility_id || !form.facility_role)) {
+                showToast('error', 'Please select a facility and role')
                 return
             }
         }
@@ -78,23 +125,64 @@ const RegisterUserModal = ({ open, onClose }) => {
     const handleSubmit = async () => {
         try {
             setLoading(true)
-            const payload = sanitizeObject({
-                ...form,
-                password: 'keepsake123', // Default password as specified in initialForm
+
+            // Step 1: Create the user
+            const userPayload = sanitizeObject({
+                email: form.email,
+                password: form.password,
+                firstname: form.firstname,
+                middlename: form.middlename,
+                lastname: form.lastname,
+                specialty: form.specialty,
+                role: form.role,
+                license_number: form.license_number,
+                phone_number: form.phone_number,
+                subscription_expires: form.subscription_expires,
+                is_subscribed: !!form.subscription_expires,
+                status: form.status,
             })
 
-            const res = await createUser(payload)
+            const userRes = await createUser(userPayload)
 
-            if (res.status === 'success') {
-                showToast('success', 'User registered successfully')
-                // Notify other components to update user list
-                window.dispatchEvent(new CustomEvent('user-created', { detail: res.data }))
-                reset()
-                onClose()
-            } else {
-                showToast('error', res.message || 'Failed to register user')
+            if (userRes.status !== 'success') {
+                throw new Error(userRes.message || 'Failed to create user')
             }
+
+            const userId = userRes.user.id
+
+            // Step 2: Assign user to facility if facility data is provided
+            if (form.facility_id && form.facility_role) {
+                const facilityPayload = {
+                    facility_id: form.facility_id,
+                    facility_role: form.facility_role,
+                    department: form.department || null,
+                    start_date: form.start_date,
+                }
+
+                const facilityRes = await assignUserToFacility(userId, facilityPayload)
+
+                if (facilityRes.status !== 'success') {
+                    console.warn(
+                        'User created but facility assignment failed:',
+                        facilityRes.message
+                    )
+                    showToast(
+                        'warning',
+                        'User created successfully, but facility assignment failed. Please assign manually.'
+                    )
+                } else {
+                    showToast('success', 'User registered and assigned to facility successfully')
+                }
+            } else {
+                showToast('success', 'User registered successfully')
+            }
+
+            // Notify other components to update user list
+            window.dispatchEvent(new CustomEvent('user-created', { detail: userRes.user }))
+            reset()
+            onClose()
         } catch (error) {
+            console.error('Registration error:', error)
             showToast('error', error.message || 'Failed to register user')
         } finally {
             setLoading(false)
@@ -111,23 +199,39 @@ const RegisterUserModal = ({ open, onClose }) => {
             <div className="relative bg-white text-black dark:bg-background rounded-lg shadow-lg w-full max-w-xl mx-4 p-6 space-y-6 z-10">
                 <h2 className="text-xl font-semibold mb-2">Register New User</h2>
 
-                {/* Stepper */}
+                {/* Enhanced Stepper */}
                 <Stepper
                     value={step + 1}
                     onValueChange={(val) => goToStep(val - 1)}
-                    className="mb-4 mx-auto w-full justify-center"
+                    className="mb-6 mx-auto w-full"
                     orientation="horizontal"
                 >
                     {steps.map((title, idx) => (
                         <StepperItem
                             key={idx + 1}
                             step={idx + 1}
-                            className="flex-1 text-white data-[state=checked]:text-white"
+                            className="flex-1"
+                            completed={idx < step}
                         >
-                            <StepperTrigger asChild>
-                                <StepperIndicator />
-                            </StepperTrigger>
-                            {idx < steps.length - 1 && <StepperSeparator className="bg-white/20" />}
+                            <div className="flex flex-col items-center gap-2 w-full">
+                                <StepperTrigger className="group flex flex-col items-center gap-2">
+                                    <StepperIndicatorIt className="size-8 text-sm" />
+                                    <div className="text-center">
+                                        <StepperTitle className="text-xs font-medium group-data-[state=active]:text-primary group-data-[state=completed]:text-primary">
+                                            {title}
+                                        </StepperTitle>
+                                        <StepperDescription className="text-xs mt-1 hidden sm:block">
+                                            {idx === 0 && 'Enter basic details'}
+                                            {idx === 1 && 'Add professional info'}
+                                            {idx === 2 && 'Assign to facility'}
+                                            {idx === 3 && 'Review and confirm'}
+                                        </StepperDescription>
+                                    </div>
+                                </StepperTrigger>
+                                {/* {idx < steps.length - 1 && (
+                                    <StepperSeparator className="hidden sm:block absolute top-4 left-1/2 transform translate-x-1/2 w-full" />
+                                )} */}
+                            </div>
                         </StepperItem>
                     ))}
                 </Stepper>
@@ -135,24 +239,20 @@ const RegisterUserModal = ({ open, onClose }) => {
                 {/* Step content with transition */}
                 <div
                     ref={contentRef}
-                    className="space-y-3 max-h-[60vh] overflow-y-auto pr-1 transition-all duration-300"
+                    className="space-y-4 max-h-[60vh] overflow-y-auto pr-1 transition-all duration-300"
                 >
                     {step === 0 && (
                         // ... Basic Information step ...
                         <>
-                            <div className="space-y-3">
+                            <div className="space-y-2">
                                 <div className="flex gap-2">
-                                    <div className="flex-1 form-control">
-                                        <label
-                                            htmlFor="firstname"
-                                            className="block text-sm font-medium"
-                                        >
-                                            First Name
-                                        </label>
-                                        <input
+                                    <div className="flex flex-col gap-1 p-2 w-full">
+                                        <Label htmlFor="firstname">First Name</Label>
+                                        <Input
                                             type="text"
                                             id="firstname"
                                             name="firstname"
+                                            className="w-full"
                                             value={form.firstname}
                                             onChange={(e) =>
                                                 setForm({
@@ -164,41 +264,13 @@ const RegisterUserModal = ({ open, onClose }) => {
                                             required
                                         />
                                     </div>
-                                    <div className="flex-1 form-control">
-                                        <label
-                                            htmlFor="middlename"
-                                            className="block text-sm font-medium"
-                                        >
-                                            Middle Name
-                                        </label>
-                                        <input
-                                            type="text"
-                                            id="middlename"
-                                            name="middlename"
-                                            value={form.middlename}
-                                            onChange={(e) =>
-                                                setForm({
-                                                    ...form,
-                                                    middlename: e.target.value,
-                                                })
-                                            }
-                                            placeholder="Yap"
-                                            required
-                                        />
-                                    </div>
-                                </div>
-                                <div className="flex gap-2">
-                                    <div className="flex-1 form-control">
-                                        <label
-                                            htmlFor="lastname"
-                                            className="block text-sm font-medium"
-                                        >
-                                            Last Name
-                                        </label>
-                                        <input
+                                    <div className="flex flex-col gap-1 p-2 w-full">
+                                        <Label htmlFor="lastname">Last Name</Label>
+                                        <Input
                                             type="text"
                                             id="lastname"
                                             name="lastname"
+                                            className="w-full"
                                             value={form.lastname}
                                             onChange={(e) =>
                                                 setForm({
@@ -210,31 +282,10 @@ const RegisterUserModal = ({ open, onClose }) => {
                                             required
                                         />
                                     </div>
-                                    <div className="form-control">
-                                        <label
-                                            htmlFor="phone_number"
-                                            className="block text-sm font-medium mb-2"
-                                        >
-                                            Phone Number
-                                        </label>
-                                        <PhoneNumberInput
-                                            value={form.phone_number}
-                                            onChange={(value) =>
-                                                setForm({
-                                                    ...form,
-                                                    phone_number: value || '',
-                                                })
-                                            }
-                                            placeholder="09123456789"
-                                            required
-                                        />
-                                    </div>
                                 </div>
-                                <div className="form-control">
-                                    <label htmlFor="email" className="block text-sm font-medium">
-                                        Email Address
-                                    </label>
-                                    <input
+                                <div className="p-2">
+                                    <Label htmlFor="email">Email Address</Label>
+                                    <Input
                                         type="email"
                                         id="email"
                                         name="email"
@@ -249,109 +300,192 @@ const RegisterUserModal = ({ open, onClose }) => {
                                         required
                                     />
                                 </div>
+                                <div className="p-2">
+                                    <Label htmlFor="phone_number" className="mb-2">
+                                        Phone Number
+                                    </Label>
+                                    <PhoneNumberInput
+                                        value={form.phone_number}
+                                        onChange={(value) =>
+                                            setForm({
+                                                ...form,
+                                                phone_number: value || '',
+                                            })
+                                        }
+                                        placeholder="Enter phone number"
+                                        required
+                                    />
+                                </div>
                             </div>
                         </>
                     )}
                     {step === 1 && (
                         // ... Professional Details step ...
-                        <div className="space-y-3">
-                            <div className="form-control">
-                                <label htmlFor="specialty" className="block text-sm font-medium">
-                                    Specialty
-                                </label>
-                                <input
-                                    type="text"
-                                    id="specialty"
-                                    name="specialty"
-                                    value={form.specialty}
-                                    onChange={(e) =>
-                                        setForm({
-                                            ...form,
-                                            specialty: e.target.value,
-                                        })
-                                    }
-                                    placeholder="e.g., Pediatrician"
-                                />
-                            </div>
-                            <div className="form-control">
-                                <label htmlFor="role" className="block text-sm font-medium">
-                                    Role
-                                </label>
-                                <select
-                                    id="role"
-                                    name="role"
-                                    value={form.role}
-                                    onChange={(e) =>
-                                        setForm({
-                                            ...form,
-                                            role: e.target.value,
-                                        })
-                                    }
-                                    required
-                                >
-                                    <option value="">Select a role</option>
-                                    <option value="doctor">Doctor</option>
-                                    <option value="nurse">Nurse</option>
-                                    <option value="staff">Staff</option>
-                                    <option value="admin">Admin</option>
-                                </select>
-                            </div>
-                            <div className="form-control">
-                                <label
-                                    htmlFor="license_number"
-                                    className="block text-sm font-medium"
-                                >
-                                    License Number
-                                </label>
-                                <input
-                                    type="text"
-                                    id="license_number"
-                                    name="license_number"
-                                    value={form.license_number}
-                                    onChange={(e) =>
-                                        setForm({
-                                            ...form,
-                                            license_number: e.target.value,
-                                        })
-                                    }
-                                    placeholder="Enter professional license number"
-                                />
-                                <p className="text-xs text-muted-foreground mt-1">
-                                    Required for medical professionals
-                                </p>
-                            </div>
+                        <div className="space-y-4">
+                            <Label htmlFor="specialty">Specialty</Label>
+                            <Input
+                                type="text"
+                                id="specialty"
+                                name="specialty"
+                                value={form.specialty}
+                                onChange={(e) =>
+                                    setForm({
+                                        ...form,
+                                        specialty: e.target.value,
+                                    })
+                                }
+                                placeholder="e.g., Pediatrician"
+                            />
+                            <Label htmlFor="role">Role</Label>
+                            <Select
+                                value={form.role}
+                                onValueChange={(value) =>
+                                    setForm({
+                                        ...form,
+                                        role: value,
+                                    })
+                                }
+                            >
+                                <SelectTrigger className="w-full">
+                                    <SelectValue placeholder="Select a role" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="doctor">Doctor</SelectItem>
+                                    <SelectItem value="nurse">Nurse</SelectItem>
+                                    <SelectItem value="staff">Staff</SelectItem>
+                                    <SelectItem value="admin">Admin</SelectItem>
+                                </SelectContent>
+                            </Select>
+                            <Label htmlFor="license_number">License Number</Label>
+                            <Input
+                                type="text"
+                                id="license_number"
+                                name="license_number"
+                                value={form.license_number}
+                                onChange={(e) =>
+                                    setForm({
+                                        ...form,
+                                        license_number: e.target.value,
+                                    })
+                                }
+                                placeholder="Enter professional license number"
+                            />
+                            <p className="text-xs text-muted-foreground mt-1">
+                                Required for medical professionals
+                            </p>
                         </div>
                     )}
                     {step === 2 && (
-                        // ... Subscription & Facility step ...
-                        <div className="space-y-3 flex flex-col gap-4">
-                            <div className="flex flex-col form-control">
-                                <label htmlFor="plan" className="block text-sm font-medium">
-                                    Plan
-                                </label>
-                                <select
-                                    id="plan"
-                                    name="plan"
-                                    value={form.plan}
+                        // ... Facility Assignment step ...
+                        <div className="space-y-4">
+                            <Label htmlFor="facility_id">Healthcare Facility</Label>
+                            <Select
+                                value={form.facility_id}
+                                onValueChange={(value) =>
+                                    setForm({
+                                        ...form,
+                                        facility_id: value,
+                                    })
+                                }
+                                disabled={facilitiesLoading}
+                            >
+                                <SelectTrigger className="w-full">
+                                    <SelectValue
+                                        placeholder={
+                                            facilitiesLoading
+                                                ? 'Loading facilities...'
+                                                : 'Select a facility'
+                                        }
+                                    />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {facilities.map((facility) => (
+                                        <SelectItem
+                                            key={facility.facility_id}
+                                            value={facility.facility_id}
+                                        >
+                                            {facility.facility_name} - {facility.city}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                            <p className="text-xs text-muted-foreground mt-1">
+                                Select the primary facility where this user will work
+                            </p>
+
+                            <Label htmlFor="facility_role">Facility Role</Label>
+                            <Select
+                                value={form.facility_role}
+                                onValueChange={(value) =>
+                                    setForm({
+                                        ...form,
+                                        facility_role: value,
+                                    })
+                                }
+                            >
+                                <SelectTrigger className="w-full">
+                                    <SelectValue placeholder="Select facility role" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="doctor">Doctor</SelectItem>
+                                    <SelectItem value="nurse">Nurse</SelectItem>
+                                    <SelectItem value="admin">Admin</SelectItem>
+                                    <SelectItem value="staff">Staff</SelectItem>
+                                    <SelectItem value="facility_admin">Facility Admin</SelectItem>
+                                </SelectContent>
+                            </Select>
+                            <p className="text-xs text-muted-foreground mt-1">
+                                Role within the selected facility
+                            </p>
+
+                            <Label htmlFor="department">Department (Optional)</Label>
+                            <Select
+                                value={form.department}
+                                onValueChange={(value) =>
+                                    setForm({
+                                        ...form,
+                                        department: value,
+                                    })
+                                }
+                            >
+                                <SelectTrigger className="w-full">
+                                    <SelectValue placeholder="Select department" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="None">No specific department</SelectItem>
+                                    <SelectItem value="Pediatrics">Pediatrics</SelectItem>
+                                    <SelectItem value="Cardiology">Cardiology</SelectItem>
+                                    <SelectItem value="Emergency">Emergency</SelectItem>
+                                    <SelectItem value="Surgery">Surgery</SelectItem>
+                                    <SelectItem value="Administration">Administration</SelectItem>
+                                    <SelectItem value="Radiology">Radiology</SelectItem>
+                                    <SelectItem value="Laboratory">Laboratory</SelectItem>
+                                    <SelectItem value="Pharmacy">Pharmacy</SelectItem>
+                                    <SelectItem value="Nursing">Nursing</SelectItem>
+                                    <SelectItem value="IT">IT</SelectItem>
+                                    <SelectItem value="Human Resources">Human Resources</SelectItem>
+                                    <SelectItem value="Finance">Finance</SelectItem>
+                                </SelectContent>
+                            </Select>
+
+                            <div className="flex gap-4">
+                                <Label htmlFor="start_date">Start Date</Label>
+                                <Input
+                                    type="date"
+                                    id="start_date"
+                                    name="start_date"
+                                    value={form.start_date}
                                     onChange={(e) =>
                                         setForm({
                                             ...form,
-                                            plan: e.target.value,
+                                            start_date: e.target.value,
                                         })
                                     }
-                                >
-                                    <option value="standard">Freemium</option>
-                                    <option value="premium">Premium</option>
-                                </select>
-                            </div>
-                            <div className="flex flex-col form-control">
-                                <label
-                                    htmlFor="subscription_expires"
-                                    className="block text-sm font-medium"
-                                >
-                                    Expiry Date
-                                </label>
-                                <input
+                                />
+                                <Label htmlFor="subscription_expires">
+                                    Personal Subscription Expires
+                                </Label>
+                                <Input
                                     type="date"
                                     id="subscription_expires"
                                     name="subscription_expires"
@@ -363,8 +497,10 @@ const RegisterUserModal = ({ open, onClose }) => {
                                         })
                                     }
                                 />
+                                <p className="text-xs text-muted-foreground mt-1">
+                                    Optional individual subscription
+                                </p>
                             </div>
-                            {/* Facility assignment fields can be added here if needed */}
                         </div>
                     )}
                     {step === 3 && (
@@ -374,7 +510,8 @@ const RegisterUserModal = ({ open, onClose }) => {
                                 <div className="flex justify-between">
                                     <span className="font-medium">Full Name</span>
                                     <span>
-                                        {form.firstname} {form.lastname}
+                                        {form.firstname} {form.middlename && `${form.middlename} `}
+                                        {form.lastname}
                                     </span>
                                 </div>
                                 <div className="flex justify-between">
@@ -398,12 +535,29 @@ const RegisterUserModal = ({ open, onClose }) => {
                                     <span>{form.license_number || 'N/A'}</span>
                                 </div>
                                 <div className="flex justify-between">
-                                    <span className="font-medium">Plan</span>
-                                    <span>{form.plan || 'N/A'}</span>
+                                    <span className="font-medium">Facility</span>
+                                    <span>
+                                        {facilities.find((f) => f.facility_id === form.facility_id)
+                                            ?.facility_name || 'N/A'}
+                                    </span>
                                 </div>
                                 <div className="flex justify-between">
-                                    <span className="font-medium">Expiry Date</span>
-                                    <span>{form.subscription_expires || 'N/A'}</span>
+                                    <span className="font-medium">Facility Role</span>
+                                    <span className="capitalize">
+                                        {form.facility_role || 'N/A'}
+                                    </span>
+                                </div>
+                                <div className="flex justify-between">
+                                    <span className="font-medium">Department</span>
+                                    <span>{form.department || 'N/A'}</span>
+                                </div>
+                                <div className="flex justify-between">
+                                    <span className="font-medium">Start Date</span>
+                                    <span>{form.start_date || 'N/A'}</span>
+                                </div>
+                                <div className="flex justify-between">
+                                    <span className="font-medium">Personal Subscription</span>
+                                    <span>{form.subscription_expires || 'No expiration'}</span>
                                 </div>
                             </div>
                             {/* Confirm Button */}

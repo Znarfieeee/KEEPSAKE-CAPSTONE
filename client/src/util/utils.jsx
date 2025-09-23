@@ -88,3 +88,35 @@ export const getStatusBadgeColor = (status) => {
 
     return statusColors[status?.toLowerCase()] || 'bg-gray-100 text-gray-800'
 }
+
+/**
+ * Get user status badge color based on user status
+ * @param {string} status - User status
+ * @returns {string} - CSS classes for status badge
+ */
+export const getUserStatusBadgeColor = (status) => {
+    const statusColors = {
+        active: 'bg-green-100 text-green-800',
+        inactive: 'bg-gray-100 text-gray-800',
+        suspended: 'bg-red-100 text-red-800',
+        pending: 'bg-yellow-100 text-yellow-800',
+    }
+
+    return statusColors[status?.toLowerCase()] || 'bg-gray-100 text-gray-800'
+}
+
+/**
+ * Format user status for display
+ * @param {string} status - User status
+ * @returns {string} - Formatted status string
+ */
+export const formatUserStatus = (status) => {
+    const statusMap = {
+        active: 'Active',
+        inactive: 'Inactive',
+        suspended: 'Suspended',
+        pending: 'Pending',
+    }
+
+    return statusMap[status?.toLowerCase()] || status || 'Unknown'
+}

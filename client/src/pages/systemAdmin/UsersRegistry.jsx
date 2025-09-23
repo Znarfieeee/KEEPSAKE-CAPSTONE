@@ -1,7 +1,7 @@
 /* eslint-disable no-unused-vars */
 import React, { useEffect, useMemo, useState, lazy, Suspense, useCallback } from 'react'
 import { useAuth } from '@/context/auth'
-import { getUserById } from '@/api/admin/users'
+import { getUserById, updateUserStatus, deleteUser } from '@/api/admin/users'
 import { useUsersRealtime, useFacilityUsersRealtime, supabase } from '@/hook/useSupabaseRealtime'
 
 // UI Components
@@ -13,6 +13,7 @@ import Unauthorized from '@/components/Unauthorized'
 // Helper
 import { showToast } from '@/util/alertHelper'
 import { displayRoles } from '@/util/roleHelper'
+import { getUserStatusBadgeColor, formatUserStatus } from '@/util/utils'
 
 // Helper function to format last login time
 const formatLastLogin = (lastLoginTime) => {
@@ -52,6 +53,12 @@ const UserDetailModal = lazy(() =>
 const UserAssignFacility = lazy(() =>
     import('../../components/System Administrator/sysAdmin_users/UserAssignFacility')
 )
+const EditUserModal = lazy(() =>
+    import('../../components/System Administrator/sysAdmin_users/EditUserModal')
+)
+const ConfirmationDialog = lazy(() =>
+    import('../../components/ui/ConfirmationDialog')
+)
 
 const UsersRegistry = () => {
     const { user } = useAuth()
@@ -70,8 +77,16 @@ const UsersRegistry = () => {
     const [showRegister, setShowRegister] = useState(false)
     const [showDetail, setShowDetail] = useState(false)
     const [detailUser, setDetailUser] = useState(null)
+    const [showEdit, setShowEdit] = useState(false)
+    const [editUser, setEditUser] = useState(null)
     const [showAssignFacility, setShowAssignFacility] = useState(false)
     const [selectedUserId, setSelectedUserId] = useState(null)
+
+    // Confirmation dialogs state
+    const [showDeleteDialog, setShowDeleteDialog] = useState(false)
+    const [showStatusDialog, setShowStatusDialog] = useState(false)
+    const [confirmationUser, setConfirmationUser] = useState(null)
+    const [actionLoading, setActionLoading] = useState(false)
 
     // Helper to normalize user records coming from API
     const formatUser = useCallback(
@@ -79,7 +94,6 @@ const UsersRegistry = () => {
             id: raw.user_id,
             email: raw.email,
             firstname: raw.firstname,
-            middlename: raw.middlename,
             lastname: raw.lastname,
             role: displayRoles(raw.role),
             specialty: raw.specialty || '—',
@@ -88,6 +102,8 @@ const UsersRegistry = () => {
             sub_exp: raw.subscription_expires,
             plan: raw.is_subscribed ? 'Premium' : 'Free',
             status: raw.is_active ? 'active' : 'inactive',
+            statusBadgeColor: getUserStatusBadgeColor(raw.is_active ? 'active' : 'inactive'),
+            statusDisplay: formatUserStatus(raw.is_active ? 'active' : 'inactive'),
             created_at: new Date(raw.created_at).toLocaleDateString(),
             updated_at: raw.updated_at ? new Date(raw.updated_at).toLocaleDateString() : '—',
             last_login:
@@ -127,7 +143,7 @@ const UsersRegistry = () => {
                     `
                     role,
                     healthcare_facilities (
-                        id,
+                        facility_id,
                         facility_name
                     )
                 `
@@ -136,6 +152,7 @@ const UsersRegistry = () => {
                 .single()
 
             if (error || !data) {
+                // User is not assigned to any facility
                 setUsers((prev) =>
                     prev.map((u) =>
                         u.id === userId
@@ -151,6 +168,7 @@ const UsersRegistry = () => {
                 return
             }
 
+            // User is assigned to a facility
             setUsers((prev) =>
                 prev.map((u) =>
                     u.id === userId
@@ -159,7 +177,7 @@ const UsersRegistry = () => {
                               assigned_facility:
                                   data.healthcare_facilities?.facility_name || 'Not Assigned',
                               facility_role: displayRoles(data.role || ''),
-                              facility_id: data.healthcare_facilities?.id || null,
+                              facility_id: data.healthcare_facilities?.facility_id || null,
                           }
                         : u
                 )
@@ -211,7 +229,7 @@ const UsersRegistry = () => {
                     assigned_facility:
                         facilityAssignment?.healthcare_facilities?.facility_name || 'Not Assigned',
                     facility_role: displayRoles(facilityAssignment?.role || ''),
-                    facility_id: facilityAssignment?.healthcare_facilities?.id || null,
+                    facility_id: facilityAssignment?.healthcare_facilities?.facility_id || null,
                 }
             })
 
@@ -246,7 +264,6 @@ const UsersRegistry = () => {
                     setUsers((prev) =>
                         prev.map((u) => {
                             if (u.id === user.id) {
-                                showToast('info', `User "${user.email}" updated`)
                                 return {
                                     ...user,
                                     // Preserve facility info that might not be in the update
@@ -320,14 +337,9 @@ const UsersRegistry = () => {
     const filteredUsers = useMemo(() => {
         return users.filter((u) => {
             const matchesSearch = search
-                ? [
-                      u.firstname,
-                      u.middlename,
-                      u.lastname,
-                      u.email,
-                      u.specialty,
-                      u.assigned_facility,
-                  ].some((field) => String(field).toLowerCase().includes(search.toLowerCase()))
+                ? [u.firstname, u.lastname, u.email, u.specialty, u.assigned_facility].some(
+                      (field) => String(field).toLowerCase().includes(search.toLowerCase())
+                  )
                 : true
             const matchesStatus =
                 statusFilter && statusFilter !== 'all' ? u.status === statusFilter : true
@@ -353,12 +365,51 @@ const UsersRegistry = () => {
         setShowDetail(true)
     }
 
+    const handleEdit = (user) => {
+        setEditUser(user)
+        setShowEdit(true)
+    }
+
     const handleToggleStatus = (user) => {
-        const updatedStatus = user.status === 'suspended' ? 'active' : 'inactive'
-        setUsers((prev) =>
-            prev.map((u) => (u.id === user.id ? { ...u, status: updatedStatus } : u))
-        )
-        showToast('success', `User ${updatedStatus === 'active' ? 'activated' : 'deactivated'}`)
+        setConfirmationUser(user)
+        setShowStatusDialog(true)
+    }
+
+    const confirmStatusToggle = async () => {
+        if (!confirmationUser) return
+
+        try {
+            setActionLoading(true)
+            const newStatus = confirmationUser.status === 'active' ? 'inactive' : 'active'
+
+            const response = await updateUserStatus(confirmationUser.id, newStatus)
+
+            if (response.status === 'success') {
+                setUsers((prev) =>
+                    prev.map((u) => {
+                        if (u.id === confirmationUser.id) {
+                            return {
+                                ...u,
+                                status: newStatus,
+                                statusBadgeColor: getUserStatusBadgeColor(newStatus),
+                                statusDisplay: formatUserStatus(newStatus),
+                            }
+                        }
+                        return u
+                    })
+                )
+                showToast('success', `User ${newStatus === 'active' ? 'activated' : 'deactivated'} successfully`)
+            } else {
+                showToast('error', response.message || 'Failed to update user status')
+            }
+        } catch (error) {
+            console.error('Status update error:', error)
+            showToast('error', error.message || 'Failed to update user status')
+        } finally {
+            setActionLoading(false)
+            setShowStatusDialog(false)
+            setConfirmationUser(null)
+        }
     }
 
     const handleFacilityAssignment = (user) => {
@@ -367,10 +418,37 @@ const UsersRegistry = () => {
     }
 
     const handleDelete = (user) => {
-        if (window.confirm(`Delete user ${user.firstname} ${user.lastname}?`)) {
-            // Note: You'll need to implement the actual delete API call
-            setUsers((prev) => prev.filter((f) => f.id !== user.id))
-            showToast('success', 'User deleted')
+        setConfirmationUser(user)
+        setShowDeleteDialog(true)
+    }
+
+    const confirmDelete = async () => {
+        if (!confirmationUser) return
+
+        try {
+            setActionLoading(true)
+
+            const response = await deleteUser(confirmationUser.id)
+
+            if (response.status === 'success') {
+                setUsers((prev) => prev.filter((u) => u.id !== confirmationUser.id))
+                showToast('success', 'User deleted successfully')
+
+                // Close detail modal if showing deleted user
+                if (showDetail && detailUser?.id === confirmationUser.id) {
+                    setShowDetail(false)
+                    setDetailUser(null)
+                }
+            } else {
+                showToast('error', response.message || 'Failed to delete user')
+            }
+        } catch (error) {
+            console.error('Delete error:', error)
+            showToast('error', error.message || 'Failed to delete user')
+        } finally {
+            setActionLoading(false)
+            setShowDeleteDialog(false)
+            setConfirmationUser(null)
         }
     }
 
@@ -389,7 +467,7 @@ const UsersRegistry = () => {
             'Last Updated',
         ]
         const rows = users.map((u) => [
-            `${u.firstname} ${u.middlename} ${u.lastname}`,
+            `${u.firstname} ${u.lastname}`,
             u.email,
             u.role,
             u.specialty,
@@ -452,6 +530,7 @@ const UsersRegistry = () => {
                 itemsPerPage={itemsPerPage}
                 setItemsPerPage={setItemsPerPage}
                 onView={handleView}
+                onEdit={handleEdit}
                 onToggleStatus={handleToggleStatus}
                 onTransfer={handleFacilityAssignment}
                 onDelete={handleDelete}
@@ -470,6 +549,16 @@ const UsersRegistry = () => {
                         onAuditLogs={handleFacilityAssignment}
                     />
                 )}
+                {showEdit && (
+                    <EditUserModal
+                        open={showEdit}
+                        user={editUser}
+                        onClose={() => {
+                            setShowEdit(false)
+                            setEditUser(null)
+                        }}
+                    />
+                )}
                 {showAssignFacility && (
                     <UserAssignFacility
                         open={showAssignFacility}
@@ -478,7 +567,37 @@ const UsersRegistry = () => {
                         onClose={() => {
                             setShowAssignFacility(false)
                             setSelectedUserId(null)
+                            // Refresh user data after assignment
+                            if (selectedUserId) {
+                                updateUserFacilityInfo(selectedUserId)
+                            }
                         }}
+                    />
+                )}
+
+                {/* Confirmation Dialogs */}
+                {showDeleteDialog && confirmationUser && (
+                    <ConfirmationDialog
+                        open={showDeleteDialog}
+                        onOpenChange={setShowDeleteDialog}
+                        title="Delete User"
+                        description={`Are you sure you want to permanently delete user "${confirmationUser.firstname} ${confirmationUser.lastname}"? This action cannot be undone and will remove all associated data.`}
+                        confirmText={`${confirmationUser.firstname} ${confirmationUser.lastname}`}
+                        requireTyping={true}
+                        destructive={true}
+                        loading={actionLoading}
+                        onConfirm={confirmDelete}
+                    />
+                )}
+
+                {showStatusDialog && confirmationUser && (
+                    <ConfirmationDialog
+                        open={showStatusDialog}
+                        onOpenChange={setShowStatusDialog}
+                        title={`${confirmationUser.status === 'active' ? 'Deactivate' : 'Activate'} User`}
+                        description={`Are you sure you want to ${confirmationUser.status === 'active' ? 'deactivate' : 'activate'} user "${confirmationUser.firstname} ${confirmationUser.lastname}"?`}
+                        loading={actionLoading}
+                        onConfirm={confirmStatusToggle}
                     />
                 )}
             </Suspense>

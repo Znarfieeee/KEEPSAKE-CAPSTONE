@@ -22,6 +22,7 @@ const UserTable = ({
     itemsPerPage,
     setItemsPerPage,
     onView,
+    onEdit,
     onToggleStatus,
     onTransfer,
     onDelete,
@@ -65,7 +66,7 @@ const UserTable = ({
                                   className="border-b border-gray-200 last:border-none"
                               >
                                   <td className="p-2 whitespace-nowrap">
-                                      {`${user.firstname} ${user.middlename} ${user.lastname}`}
+                                      {`${user.firstname} ${user.lastname}`}
                                   </td>
                                   <td className="p-2 whitespace-nowrap">{user.role}</td>
                                   <td className="p-2 whitespace-nowrap capitalize">{user.plan}</td>
@@ -123,7 +124,7 @@ const UserTable = ({
                                                   variant="ghost"
                                                   size="icon"
                                                   className="hover:text-green-600 hover:bg-green-100"
-                                                  onClick={() => onDelete(user)}
+                                                  onClick={() => onEdit(user)}
                                               >
                                                   <UserPen className="size-4" />
                                               </Button>
