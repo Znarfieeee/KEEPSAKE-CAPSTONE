@@ -115,12 +115,15 @@ export const useFacilitiesRealtime = ({ onFacilityChange }) => {
 
     const handleInsert = useCallback(
         (newFacility) => {
-            const formatted = formatFacility(newFacility)
-            onFacilityChange({
-                type: 'INSERT',
-                facility: formatted,
-                raw: newFacility,
-            })
+            // Only process if not deleted
+            if (!newFacility.deleted_at) {
+                const formatted = formatFacility(newFacility)
+                onFacilityChange({
+                    type: 'INSERT',
+                    facility: formatted,
+                    raw: newFacility,
+                })
+            }
         },
         [formatFacility, onFacilityChange]
     )
@@ -128,12 +131,27 @@ export const useFacilitiesRealtime = ({ onFacilityChange }) => {
     const handleUpdate = useCallback(
         (updatedFacility, oldFacility) => {
             const formatted = formatFacility(updatedFacility)
-            onFacilityChange({
-                type: 'UPDATE',
-                facility: formatted,
-                raw: updatedFacility,
-                oldRaw: oldFacility,
-            })
+
+            // Check if this is a soft delete (facility was active, now has deleted_at)
+            if (!oldFacility.deleted_at && updatedFacility.deleted_at) {
+                // This is a soft delete, send as DELETE event
+                onFacilityChange({
+                    type: 'DELETE',
+                    facility: formatted,
+                    raw: updatedFacility,
+                    oldRaw: oldFacility,
+                })
+            } else if (!updatedFacility.deleted_at) {
+                // Regular update for non-deleted facilities
+                onFacilityChange({
+                    type: 'UPDATE',
+                    facility: formatted,
+                    raw: updatedFacility,
+                    oldRaw: oldFacility,
+                })
+            }
+            // If updatedFacility.deleted_at exists and oldFacility.deleted_at also exists,
+            // ignore (it's an update to an already deleted facility)
         },
         [formatFacility, onFacilityChange]
     )
@@ -155,7 +173,7 @@ export const useFacilitiesRealtime = ({ onFacilityChange }) => {
         onInsert: handleInsert,
         onUpdate: handleUpdate,
         onDelete: handleDelete,
-        filter: 'deleted_at=is.null',
+        filter: null, // Remove filter to catch soft deletes via UPDATE
         dependencies: [onFacilityChange],
     })
 }

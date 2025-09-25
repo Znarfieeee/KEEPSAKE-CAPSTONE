@@ -204,7 +204,7 @@ const EditUserModal = ({ open, user, onClose }) => {
                                 type="email"
                                 value={form.email}
                                 readOnly
-                                className="bg-gray-50 dark:bg-gray-800 cursor-not-allowed"
+                                className="bg-gray-50 cursor-not-allowed"
                                 placeholder="user@example.com"
                             />
                             <p className="text-xs text-muted-foreground mt-1">

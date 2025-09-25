@@ -215,7 +215,7 @@ const RegisterUserModal = ({ open, onClose }) => {
                         >
                             <div className="flex flex-col items-center gap-2 w-full">
                                 <StepperTrigger className="group flex flex-col items-center gap-2">
-                                    <StepperIndicatorIt className="size-8 text-sm" />
+                                    <StepperIndicator className="size-8 text-sm" />
                                     <div className="text-center">
                                         <StepperTitle className="text-xs font-medium group-data-[state=active]:text-primary group-data-[state=completed]:text-primary">
                                             {title}

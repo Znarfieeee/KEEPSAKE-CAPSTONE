@@ -106,6 +106,48 @@ export const getUserStatusBadgeColor = (status) => {
 }
 
 /**
+ * Get facility status badge styles
+ * @param {string} status - Facility status
+ * @returns {object} - Object containing background, text, and dot colors
+ */
+export const getFacilityStatusStyles = (status) => {
+    const statusStyles = {
+        active: {
+            background: 'bg-green-50',
+            text: 'text-green-700',
+            dot: 'bg-green-500',
+            border: 'border-green-100',
+        },
+        inactive: {
+            background: 'bg-gray-50',
+            text: 'text-gray-600',
+            dot: 'bg-gray-400',
+            border: 'border-gray-100',
+        },
+        suspended: {
+            background: 'bg-red-50',
+            text: 'text-red-700',
+            dot: 'bg-red-500',
+            border: 'border-red-100',
+        },
+        pending: {
+            background: 'bg-yellow-50',
+            text: 'text-yellow-700',
+            dot: 'bg-yellow-500',
+            border: 'border-yellow-100',
+        },
+        expired: {
+            background: 'bg-orange-50',
+            text: 'text-orange-700',
+            dot: 'bg-orange-500',
+            border: 'border-orange-100',
+        },
+    }
+
+    return statusStyles[status?.toLowerCase()] || statusStyles.inactive
+}
+
+/**
  * Format user status for display
  * @param {string} status - User status
  * @returns {string} - Formatted status string

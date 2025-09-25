@@ -43,7 +43,7 @@ const steps = [
     'Facility Information',
     'Contact & Admin Details',
     'Plan & Subscription',
-    'Review & Confirm'
+    'Review & Confirm',
 ]
 
 const RegisterFacilityModal = ({ open, onClose }) => {
@@ -61,46 +61,79 @@ const RegisterFacilityModal = ({ open, onClose }) => {
     }, [step])
 
     // Transition effect when changing steps
-    const goToStep = useCallback((newStep) => {
-        if (newStep > step) {
-            if (step === 0 && (!form.facility_name || !form.address || !form.city)) {
-                showToast('error', 'Please fill in all required fields')
-                return
+    const goToStep = useCallback(
+        (newStep) => {
+            if (newStep > step) {
+                if (step === 0 && (!form.facility_name || !form.address || !form.city)) {
+                    showToast('error', 'Please fill in all required fields')
+                    return
+                }
+                if (step === 1 && (!form.contact_number || !form.email)) {
+                    showToast('error', 'Please fill in contact number and email')
+                    return
+                }
+                if (step === 2 && (!form.plan || !form.subscription_expires)) {
+                    showToast('error', 'Please select plan and expiry date')
+                    return
+                }
             }
-            if (step === 1 && (!form.contact_number || !form.email)) {
-                showToast('error', 'Please fill in contact number and email')
-                return
-            }
-            if (step === 2 && (!form.plan || !form.subscription_expires)) {
-                showToast('error', 'Please select plan and expiry date')
-                return
-            }
-        }
-        setStep(newStep)
-    }, [step, form])
+            setStep(newStep)
+        },
+        [step, form]
+    )
 
     const next = useCallback(() => goToStep(Math.min(steps.length - 1, step + 1)), [goToStep, step])
     const prev = useCallback(() => goToStep(Math.max(0, step - 1)), [goToStep, step])
 
     // Optimized form field handlers
     const handleInputChange = useCallback((field, value) => {
-        setForm(prev => ({
+        setForm((prev) => ({
             ...prev,
-            [field]: value
+            [field]: value,
         }))
     }, [])
 
     // Optimized handlers for each field
-    const handleFacilityNameChange = useCallback((e) => handleInputChange('facility_name', e.target.value), [handleInputChange])
-    const handleAddressChange = useCallback((e) => handleInputChange('address', e.target.value), [handleInputChange])
-    const handleCityChange = useCallback((e) => handleInputChange('city', e.target.value), [handleInputChange])
-    const handleZipCodeChange = useCallback((e) => handleInputChange('zip_code', e.target.value), [handleInputChange])
-    const handleTypeChange = useCallback((value) => handleInputChange('type', value), [handleInputChange])
-    const handleContactChange = useCallback((e) => handleInputChange('contact_number', e.target.value), [handleInputChange])
-    const handleEmailChange = useCallback((e) => handleInputChange('email', e.target.value), [handleInputChange])
-    const handleWebsiteChange = useCallback((e) => handleInputChange('website', e.target.value), [handleInputChange])
-    const handlePlanChange = useCallback((value) => handleInputChange('plan', value), [handleInputChange])
-    const handleExpiryChange = useCallback((e) => handleInputChange('subscription_expires', e.target.value), [handleInputChange])
+    const handleFacilityNameChange = useCallback(
+        (e) => handleInputChange('facility_name', e.target.value),
+        [handleInputChange]
+    )
+    const handleAddressChange = useCallback(
+        (e) => handleInputChange('address', e.target.value),
+        [handleInputChange]
+    )
+    const handleCityChange = useCallback(
+        (e) => handleInputChange('city', e.target.value),
+        [handleInputChange]
+    )
+    const handleZipCodeChange = useCallback(
+        (e) => handleInputChange('zip_code', e.target.value),
+        [handleInputChange]
+    )
+    const handleTypeChange = useCallback(
+        (value) => handleInputChange('type', value),
+        [handleInputChange]
+    )
+    const handleContactChange = useCallback(
+        (e) => handleInputChange('contact_number', e.target.value),
+        [handleInputChange]
+    )
+    const handleEmailChange = useCallback(
+        (e) => handleInputChange('email', e.target.value),
+        [handleInputChange]
+    )
+    const handleWebsiteChange = useCallback(
+        (e) => handleInputChange('website', e.target.value),
+        [handleInputChange]
+    )
+    const handlePlanChange = useCallback(
+        (value) => handleInputChange('plan', value),
+        [handleInputChange]
+    )
+    const handleExpiryChange = useCallback(
+        (e) => handleInputChange('subscription_expires', e.target.value),
+        [handleInputChange]
+    )
 
     const reset = useCallback(() => {
         setForm(initialForm)
@@ -184,20 +217,43 @@ const RegisterFacilityModal = ({ open, onClose }) => {
                 >
                     {step === 0 && (
                         <div className="space-y-4">
-                            <div>
-                                <Label htmlFor="facility_name">Facility Name *</Label>
-                                <Input
-                                    type="text"
-                                    id="facility_name"
-                                    name="facility_name"
-                                    value={form.facility_name}
-                                    onChange={handleFacilityNameChange}
-                                    placeholder="St. Luke's Hospital"
-                                    required
-                                />
+                            <div className="flex gap-4">
+                                <div className="flex-1 p-2">
+                                    <Label htmlFor="facility_name">Facility Name *</Label>
+                                    <Input
+                                        type="text"
+                                        id="facility_name"
+                                        name="facility_name"
+                                        value={form.facility_name}
+                                        onChange={handleFacilityNameChange}
+                                        placeholder="St. Luke's Hospital"
+                                        required
+                                    />
+                                </div>
+                                <div className="w-[180px] p-2">
+                                    <Label htmlFor="type">Facility Type</Label>
+                                    <Select value={form.type} onValueChange={handleTypeChange}>
+                                        <SelectTrigger className="w-full">
+                                            <SelectValue placeholder="Select type" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="clinic">Clinic</SelectItem>
+                                            <SelectItem value="hospital">Hospital</SelectItem>
+                                            <SelectItem value="health_center">
+                                                Health Center
+                                            </SelectItem>
+                                            <SelectItem value="diagnostic_center">
+                                                Diagnostic Center
+                                            </SelectItem>
+                                            <SelectItem value="specialty_clinic">
+                                                Specialty Clinic
+                                            </SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
                             </div>
 
-                            <div>
+                            <div className="p-2">
                                 <Label htmlFor="address">Address *</Label>
                                 <Input
                                     type="text"
@@ -211,7 +267,7 @@ const RegisterFacilityModal = ({ open, onClose }) => {
                             </div>
 
                             <div className="grid grid-cols-2 gap-3">
-                                <div>
+                                <div className="p-2">
                                     <Label htmlFor="city">City *</Label>
                                     <Input
                                         type="text"
@@ -223,7 +279,7 @@ const RegisterFacilityModal = ({ open, onClose }) => {
                                         required
                                     />
                                 </div>
-                                <div>
+                                <div className="p-2">
                                     <Label htmlFor="zip_code">Zip Code</Label>
                                     <Input
                                         type="text"
@@ -235,31 +291,12 @@ const RegisterFacilityModal = ({ open, onClose }) => {
                                     />
                                 </div>
                             </div>
-
-                            <div>
-                                <Label htmlFor="type">Facility Type</Label>
-                                <Select
-                                    value={form.type}
-                                    onValueChange={handleTypeChange}
-                                >
-                                    <SelectTrigger>
-                                        <SelectValue placeholder="Select facility type" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="clinic">Clinic</SelectItem>
-                                        <SelectItem value="hospital">Hospital</SelectItem>
-                                        <SelectItem value="health_center">Health Center</SelectItem>
-                                        <SelectItem value="diagnostic_center">Diagnostic Center</SelectItem>
-                                        <SelectItem value="specialty_clinic">Specialty Clinic</SelectItem>
-                                    </SelectContent>
-                                </Select>
-                            </div>
                         </div>
                     )}
 
                     {step === 1 && (
                         <div className="space-y-4">
-                            <div>
+                            <div className="p-2">
                                 <Label htmlFor="contact_number">Contact Number *</Label>
                                 <Input
                                     type="tel"
@@ -272,7 +309,7 @@ const RegisterFacilityModal = ({ open, onClose }) => {
                                 />
                             </div>
 
-                            <div>
+                            <div className="p-2">
                                 <Label htmlFor="email">Admin Email *</Label>
                                 <Input
                                     type="email"
@@ -288,7 +325,7 @@ const RegisterFacilityModal = ({ open, onClose }) => {
                                 </p>
                             </div>
 
-                            <div>
+                            <div className="p-2">
                                 <Label htmlFor="website">Website</Label>
                                 <Input
                                     type="url"
@@ -307,12 +344,9 @@ const RegisterFacilityModal = ({ open, onClose }) => {
 
                     {step === 2 && (
                         <div className="space-y-4">
-                            <div>
+                            <div className="p-2">
                                 <Label htmlFor="plan">Subscription Plan *</Label>
-                                <Select
-                                    value={form.plan}
-                                    onValueChange={handlePlanChange}
-                                >
+                                <Select value={form.plan} onValueChange={handlePlanChange}>
                                     <SelectTrigger>
                                         <SelectValue placeholder="Select a plan" />
                                     </SelectTrigger>
@@ -323,11 +357,12 @@ const RegisterFacilityModal = ({ open, onClose }) => {
                                     </SelectContent>
                                 </Select>
                                 <p className="text-xs text-muted-foreground mt-1">
-                                    Choose the subscription plan that best fits your facility's needs
+                                    Choose the subscription plan that best fits your facility's
+                                    needs
                                 </p>
                             </div>
 
-                            <div>
+                            <div className="p-2">
                                 <Label htmlFor="subscription_expires">Subscription Expires *</Label>
                                 <Input
                                     type="date"

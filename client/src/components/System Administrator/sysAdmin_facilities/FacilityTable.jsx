@@ -1,19 +1,33 @@
-import React from "react"
+import React, { useState } from 'react'
 
 // UI Components
-import { FacilityStatusBadge } from "@/components/ui/StatusBadge"
-import { Button } from "@/components/ui/Button"
-import {
-    Eye,
-    Trash2,
-    ChevronLeft,
-    ChevronRight,
-    UserPen,
-    TableOfContents,
-} from "lucide-react"
+import { Button } from '@/components/ui/Button'
+import { Badge } from '@/components/ui/badge'
+import { Eye, Trash2, ChevronLeft, ChevronRight, UserPen, TableOfContents } from 'lucide-react'
+import ConfirmationDialog from '../../ui/ConfirmationDialog'
 
 // Helper
-import { TooltipHelper } from "@/util/TooltipHelper"
+import { TooltipHelper } from '@/util/TooltipHelper'
+import { cn, getFacilityStatusStyles } from '@/util/utils'
+
+// Status Badge Component
+const StatusBadge = ({ status }) => {
+    const styles = getFacilityStatusStyles(status)
+    return (
+        <Badge
+            variant="outline"
+            className={cn(
+                'gap-1.5 px-2.5 py-0.5 border font-medium capitalize',
+                styles.background,
+                styles.text,
+                styles.border
+            )}
+        >
+            <span className={cn('size-1.5 rounded-full animate-pulse', styles.dot)} />
+            {status?.toLowerCase()}
+        </Badge>
+    )
+}
 
 const FacilityTable = ({
     facilities = [],
@@ -27,12 +41,31 @@ const FacilityTable = ({
     onDelete,
     loading = false,
 }) => {
+    const [deleteDialog, setDeleteDialog] = useState({ open: false, facility: null })
+    const [isDeleting, setIsDeleting] = useState(false)
+
     const totalPages = Math.ceil(facilities.length / itemsPerPage) || 1
     const startIdx = (page - 1) * itemsPerPage
     const currentData = facilities.slice(startIdx, startIdx + itemsPerPage)
 
-    const handlePrev = () => setPage(p => Math.max(1, p - 1))
-    const handleNext = () => setPage(p => Math.min(totalPages, p + 1))
+    const handleDeleteClick = (facility) => {
+        setDeleteDialog({ open: true, facility })
+    }
+
+    const handleConfirmDelete = async () => {
+        try {
+            setIsDeleting(true)
+            await onDelete(deleteDialog.facility)
+            setDeleteDialog({ open: false, facility: null })
+        } catch (error) {
+            console.error('Error deleting facility:', error)
+        } finally {
+            setIsDeleting(false)
+        }
+    }
+
+    const handlePrev = () => setPage((p) => Math.max(1, p - 1))
+    const handleNext = () => setPage((p) => Math.min(totalPages, p + 1))
 
     return (
         <div className="w-full overflow-x-auto">
@@ -52,31 +85,23 @@ const FacilityTable = ({
                 <tbody>
                     {loading
                         ? Array.from({ length: itemsPerPage }).map((_, idx) => (
-                              <tr
-                                  key={idx}
-                                  className="border-b last:border-none animate-pulse">
+                              <tr key={idx} className="border-b last:border-none animate-pulse">
                                   {Array.from({ length: 8 }).map((__, cIdx) => (
-                                      <td
-                                          key={cIdx}
-                                          className="p-2 whitespace-nowrap">
+                                      <td key={cIdx} className="p-2 whitespace-nowrap">
                                           <div className="h-4 bg-gray-300 rounded w-full" />
                                       </td>
                                   ))}
                               </tr>
                           ))
-                        : currentData.map(facility => (
+                        : currentData.map((facility) => (
                               <tr
                                   key={facility.id}
-                                  className="border-b border-gray-200 last:border-none">
-                                  <td className="p-2 whitespace-nowrap">
-                                      {facility.name}
-                                  </td>
+                                  className="border-b border-gray-200 last:border-none"
+                              >
+                                  <td className="p-2 whitespace-nowrap">{facility.name}</td>
                                   <td className="p-2 whitespace-nowrap">
                                       {facility.location.length > 30
-                                          ? `${facility.location.substring(
-                                                0,
-                                                30
-                                            )}...`
+                                          ? `${facility.location.substring(0, 30)}...`
                                           : facility.location}
                                   </td>
                                   <td className="p-2 whitespace-nowrap capitalize">
@@ -85,16 +110,10 @@ const FacilityTable = ({
                                   <td className="p-2 whitespace-nowrap capitalize">
                                       {facility.type}
                                   </td>
+                                  <td className="p-2 whitespace-nowrap">{facility.expiry}</td>
+                                  <td className="p-2 whitespace-nowrap">{facility.admin}</td>
                                   <td className="p-2 whitespace-nowrap">
-                                      {facility.expiry}
-                                  </td>
-                                  <td className="p-2 whitespace-nowrap">
-                                      {facility.admin}
-                                  </td>
-                                  <td className="p-2 whitespace-nowrap">
-                                      <FacilityStatusBadge
-                                          status={facility.status}
-                                      />
+                                      <StatusBadge status={facility.status} />
                                   </td>
                                   <td className="p-2 whitespace-nowrap">
                                       <div className="flex gap-1">
@@ -103,10 +122,9 @@ const FacilityTable = ({
                                                   variant="ghost"
                                                   size="icon"
                                                   className="hover:text-blue-600 hover:bg-blue-100"
-                                                  onClick={() =>
-                                                      onView(facility)
-                                                  }
-                                                  title="View">
+                                                  onClick={() => onView(facility)}
+                                                  title="View"
+                                              >
                                                   <Eye className="size-4" />
                                               </Button>
                                           </TooltipHelper>
@@ -114,7 +132,8 @@ const FacilityTable = ({
                                               <Button
                                                   variant="ghost"
                                                   size="icon"
-                                                  onClick={() => onGoto()}>
+                                                  onClick={() => onGoto()}
+                                              >
                                                   <TableOfContents className="size-4" />
                                               </Button>
                                           </TooltipHelper>
@@ -123,9 +142,8 @@ const FacilityTable = ({
                                                   variant="ghost"
                                                   size="icon"
                                                   className="hover:text-green-600 hover:bg-green-100"
-                                                  onClick={() =>
-                                                      onEdit(facility)
-                                                  }>
+                                                  onClick={() => onEdit(facility)}
+                                              >
                                                   <UserPen className="size-4" />
                                               </Button>
                                           </TooltipHelper>
@@ -134,9 +152,8 @@ const FacilityTable = ({
                                                   variant="ghost"
                                                   size="icon"
                                                   className="hover:text-red-600 hover:bg-red-100"
-                                                  onClick={() =>
-                                                      onDelete(facility)
-                                                  }>
+                                                  onClick={() => handleDeleteClick(facility)}
+                                              >
                                                   <Trash2 className="size-4" />
                                               </Button>
                                           </TooltipHelper>
@@ -153,9 +170,10 @@ const FacilityTable = ({
                     <span className="text-sm">Rows per page:</span>
                     <select
                         value={itemsPerPage}
-                        onChange={e => setItemsPerPage(Number(e.target.value))}
-                        className="border rounded-md px-2 py-1 text-sm dark:bg-input/30 dark:border-input">
-                        {[10, 25, 50].map(n => (
+                        onChange={(e) => setItemsPerPage(Number(e.target.value))}
+                        className="border rounded-md px-2 py-1 text-sm dark:bg-input/30 dark:border-input"
+                    >
+                        {[10, 25, 50].map((n) => (
                             <option key={n} value={n}>
                                 {n}
                             </option>
@@ -164,26 +182,52 @@ const FacilityTable = ({
                 </div>
                 <div className="flex items-center gap-2 text-sm">
                     <span>
-                        {startIdx + 1}-
-                        {Math.min(startIdx + itemsPerPage, facilities.length)}{" "}
-                        of {facilities.length}
+                        {startIdx + 1}-{Math.min(startIdx + itemsPerPage, facilities.length)} of{' '}
+                        {facilities.length}
                     </span>
-                    <Button
-                        size="icon"
-                        variant="ghost"
-                        onClick={handlePrev}
-                        disabled={page === 1}>
+                    <Button size="icon" variant="ghost" onClick={handlePrev} disabled={page === 1}>
                         <ChevronLeft className="size-4" />
                     </Button>
                     <Button
                         size="icon"
                         variant="ghost"
                         onClick={handleNext}
-                        disabled={page === totalPages}>
+                        disabled={page === totalPages}
+                    >
                         <ChevronRight className="size-4" />
                     </Button>
                 </div>
             </div>
+
+            {/* Delete Confirmation Dialog */}
+            <ConfirmationDialog
+                open={deleteDialog.open}
+                onOpenChange={(open) => setDeleteDialog((prev) => ({ ...prev, open }))}
+                title="Delete Facility"
+                description={
+                    <>
+                        Are you sure you want to delete{' '}
+                        <strong>"{deleteDialog.facility?.name}"</strong>?
+                        <br />
+                        <br />
+                        This action will:
+                        <ul className="list-disc list-inside mt-2 space-y-1 text-left">
+                            <li>Deactivate the facility</li>
+                            <li>Prevent new user assignments</li>
+                            <li>Maintain data for auditing purposes</li>
+                        </ul>
+                        <br />
+                        <span className="font-semibold text-red-600">
+                            This action cannot be easily undone.
+                        </span>
+                    </>
+                }
+                confirmText="DELETE"
+                onConfirm={handleConfirmDelete}
+                requireTyping={true}
+                destructive={true}
+                loading={isDeleting}
+            />
         </div>
     )
 }

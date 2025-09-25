@@ -37,7 +37,7 @@ export default function ConfirmationDialog({
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent>
+            <DialogContent className="max-w-xl space-y-4" showCloseButton={false}>
                 <div className="flex flex-col items-center gap-2">
                     <div
                         className="flex size-9 shrink-0 items-center justify-center rounded-full border"
