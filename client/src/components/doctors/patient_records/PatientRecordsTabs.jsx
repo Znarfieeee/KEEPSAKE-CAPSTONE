@@ -20,9 +20,9 @@ const TabItem = ({ value, icon: Icon, children }) => (
     </TabsTrigger>
 )
 
-const PatientRecordsTabs = ({ patient, viewPrescription }) => {
+const PatientRecordsTabs = ({ patient }) => {
     const [prescriptions, setPrescriptions] = useState([])
-    const [isLoading, setIsLoading] = useState(false)
+    const [isLoading] = useState(false)
     const [search, setSearch] = useState('')
 
     const handlePrescriptionAdded = (newPrescription) => {
@@ -121,24 +121,26 @@ const PatientRecordsTabs = ({ patient, viewPrescription }) => {
     ]
 
     return (
-        <Tabs defaultValue="information" className="w-full">
-            <ScrollArea>
-                <TabsList className="before:bg-border ml-8 relative h-auto w-max gap-0.5 bg-transparent p-0 before:absolute before:inset-x-0 before:bottom-0 before:h-px">
-                    {tabs.map((tab) => (
-                        <TabItem key={tab.value} value={tab.value} icon={tab.icon}>
-                            {tab.label}
-                        </TabItem>
-                    ))}
-                </TabsList>
-                <ScrollBar orientation="horizontal" />
-            </ScrollArea>
+        <>
+            <Tabs defaultValue="information" className="w-full">
+                <ScrollArea>
+                    <TabsList className="before:bg-border ml-8 relative h-auto w-max gap-0.5 bg-transparent p-0 before:absolute before:inset-x-0 before:bottom-0 before:h-px">
+                        {tabs.map((tab) => (
+                            <TabItem key={tab.value} value={tab.value} icon={tab.icon}>
+                                {tab.label}
+                            </TabItem>
+                        ))}
+                    </TabsList>
+                    <ScrollBar orientation="horizontal" />
+                </ScrollArea>
 
-            {tabs.map((tab) => (
-                <TabsContent key={tab.value} value={tab.value}>
-                    {tab.content}
-                </TabsContent>
-            ))}
-        </Tabs>
+                {tabs.map((tab) => (
+                    <TabsContent key={tab.value} value={tab.value}>
+                        {tab.content}
+                    </TabsContent>
+                ))}
+            </Tabs>
+        </>
     )
 }
 

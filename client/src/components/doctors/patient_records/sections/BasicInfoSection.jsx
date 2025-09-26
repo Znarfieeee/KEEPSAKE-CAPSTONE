@@ -88,17 +88,47 @@ const BasicInfoSection = ({ form, updateForm }) => {
                         </PopoverContent>
                     </Popover>
                 </div>
+                <div className="space-y-2 flex justify-between gap-2">
+                    <div className="w-full">
+                        <Label className="text-sm font-medium">Sex *</Label>
+                        <Select value={form.sex} onValueChange={(v) => updateForm('sex', v)}>
+                            <SelectTrigger className="border-input w-full">
+                                <SelectValue placeholder="Sex" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="male">Male</SelectItem>
+                                <SelectItem value="female">Female</SelectItem>
+                            </SelectContent>
+                        </Select>
+                    </div>
+                    <div className="w-full">
+                        <Label className="text-sm font-medium">Blood Type</Label>
+                        <Select
+                            value={form.bloodtype}
+                            onValueChange={(v) => updateForm('bloodtype', v)}
+                        >
+                            <SelectTrigger className="border-input w-full">
+                                <SelectValue placeholder="Blood Type" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'].map((bt) => (
+                                    <SelectItem key={bt} value={bt}>
+                                        {bt}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    </div>
+                </div>
                 <div className="space-y-2">
-                    <Label className="text-sm font-medium">Sex *</Label>
-                    <Select value={form.sex} onValueChange={(v) => updateForm('sex', v)}>
-                        <SelectTrigger className="border-input">
-                            <SelectValue placeholder="Select sex" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="male">Male</SelectItem>
-                            <SelectItem value="female">Female</SelectItem>
-                        </SelectContent>
-                    </Select>
+                    <Label className="text-sm font-medium">Gestation Weeks</Label>
+                    <Input
+                        type="number"
+                        className="border-input"
+                        placeholder="Enter gestation weeks"
+                        value={form.gestation_weeks}
+                        onChange={(e) => updateForm('gestation_weeks', e.target.value)}
+                    />
                 </div>
                 <div className="space-y-2">
                     <Label className="text-sm font-medium">Birth Weight (kg)</Label>
@@ -118,34 +148,6 @@ const BasicInfoSection = ({ form, updateForm }) => {
                         placeholder="Enter birth height"
                         value={form.birth_height}
                         onChange={(e) => updateForm('birth_height', e.target.value)}
-                    />
-                </div>
-                <div className="space-y-2">
-                    <Label className="text-sm font-medium">Blood Type</Label>
-                    <Select
-                        value={form.bloodtype}
-                        onValueChange={(v) => updateForm('bloodtype', v)}
-                    >
-                        <SelectTrigger className="border-input">
-                            <SelectValue placeholder="Select blood type" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            {['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'].map((bt) => (
-                                <SelectItem key={bt} value={bt}>
-                                    {bt}
-                                </SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
-                </div>
-                <div className="space-y-2">
-                    <Label className="text-sm font-medium">Gestation Weeks</Label>
-                    <Input
-                        type="number"
-                        className="border-input"
-                        placeholder="Enter gestation weeks"
-                        value={form.gestation_weeks}
-                        onChange={(e) => updateForm('gestation_weeks', e.target.value)}
                     />
                 </div>
             </div>

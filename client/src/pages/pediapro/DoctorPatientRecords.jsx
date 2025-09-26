@@ -1,6 +1,11 @@
 import React, { useState, useCallback, useEffect, useMemo, lazy, Suspense } from 'react'
 import { useAuth } from '@/context/auth'
-import { getPatientById, updatePatientRecord, deactivate_patient } from '@/api/doctors/patient'
+import {
+    getPatientById,
+    updatePatientRecord,
+    deactivate_patient,
+    deletePatientRecord,
+} from '@/api/doctors/patient'
 
 import { useNavigate } from 'react-router-dom'
 
@@ -50,7 +55,6 @@ function DoctorPatientRecords() {
     const [showDetailModal, setShowDetailModal] = useState(false)
     const [selectedPatient, setSelectedPatient] = useState(null)
     const [editingPatient, setEditingPatient] = useState(null)
-    const [isLoadingEditModal, setIsLoadingEditModal] = useState(false)
     const [editModalPreloaded, setEditModalPreloaded] = useState(false)
 
     // Helper to format patient data
@@ -185,11 +189,13 @@ function DoctorPatientRecords() {
     useEffect(() => {
         const timer = setTimeout(() => {
             if (!editModalPreloaded) {
-                preloadEditModal()().then(() => {
-                    setEditModalPreloaded(true)
-                }).catch(() => {
-                    // Silently fail, component will still load when needed
-                })
+                preloadEditModal()()
+                    .then(() => {
+                        setEditModalPreloaded(true)
+                    })
+                    .catch(() => {
+                        // Silently fail, component will still load when needed
+                    })
             }
         }, 2000) // Preload after 2 seconds
 
@@ -266,37 +272,41 @@ function DoctorPatientRecords() {
     }
 
     const handleEdit = async (record) => {
-        // Immediately show loading state and open modal with basic data
-        setIsLoadingEditModal(true)
-        setEditingPatient(record) // Use basic record data first
-        setShowEditModal(true)
+        console.log('Opening edit modal for patient:', record.id)
 
         try {
-            // Fetch complete patient data for editing in the background
+            // Fetch complete patient data with related records before opening modal
             const response = await getPatientById(record.id)
             if (response.status === 'success') {
-                setEditingPatient(response.data) // Update with complete data
+                console.log('Fetched complete patient data:', response.data)
+                setEditingPatient(response.data)
+                setShowEditModal(true)
             } else {
-                showToast('error', 'Failed to load complete patient details')
-                // Keep using basic record data
+                showToast('error', response.message || 'Failed to load patient details')
+                console.error('Failed to fetch patient data:', response)
             }
         } catch (error) {
             console.error('Edit patient error:', error)
-            showToast('warning', 'Using basic patient data. Some fields may not be available.')
-            // Modal is already open with basic data
-        } finally {
-            setIsLoadingEditModal(false)
+            let errorMessage = 'Failed to load patient details'
+            if (error.response?.data?.message) {
+                errorMessage = error.response.data.message
+            } else if (error.message) {
+                errorMessage = error.message
+            }
+            showToast('error', errorMessage)
         }
     }
 
     // Handle preloading on hover for better UX
     const handleEditHover = useCallback(() => {
         if (!editModalPreloaded) {
-            preloadEditModal()().then(() => {
-                setEditModalPreloaded(true)
-            }).catch(() => {
-                // Silently fail
-            })
+            preloadEditModal()()
+                .then(() => {
+                    setEditModalPreloaded(true)
+                })
+                .catch(() => {
+                    // Silently fail
+                })
         }
     }, [editModalPreloaded])
 
@@ -334,14 +344,46 @@ function DoctorPatientRecords() {
         }
     }
 
-    const handleDelete = (record) => {
-        if (
-            window.confirm(
-                `Delete patient ${record.firstname} ${record.lastname}? This action cannot be undone.`
-            )
-        ) {
-            // For now, just show a message - implement actual delete API if needed
-            showToast('warning', 'Delete functionality not implemented yet')
+    const handleDelete = async (record) => {
+        console.log('Delete requested for patient:', record)
+
+        try {
+            const response = await deletePatientRecord(record.id)
+            if (response.status === 'success') {
+                showToast('success', response.message || 'Patient record deleted successfully')
+
+                // Dispatch custom event for real-time updates
+                if (typeof window !== 'undefined') {
+                    const eventDetail = {
+                        patient_id: record.id,
+                        firstname: record.firstname,
+                        lastname: record.lastname,
+                        timestamp: new Date().toISOString(),
+                    }
+                    console.log('Dispatching patient-deleted event:', eventDetail)
+                    window.dispatchEvent(
+                        new CustomEvent('patient-deleted', { detail: eventDetail })
+                    )
+                }
+
+                // Real-time will handle the state update, but we can also manually remove it
+                setPatients((prevPatients) =>
+                    prevPatients.filter((patient) => patient.id !== record.id)
+                )
+            } else {
+                showToast('error', response.message || 'Failed to delete patient record')
+            }
+        } catch (error) {
+            console.error('Delete patient error:', error)
+
+            let errorMessage = 'Failed to delete patient record'
+            if (error.message) {
+                errorMessage = error.message
+            } else if (error.response?.data?.message) {
+                errorMessage = error.response.data.message
+            }
+
+            showToast('error', errorMessage)
         }
     }
 
@@ -462,11 +504,9 @@ function DoctorPatientRecords() {
                 >
                     <EditPatientModal
                         patient={editingPatient}
-                        isLoading={isLoadingEditModal}
                         onClose={() => {
                             setShowEditModal(false)
                             setEditingPatient(null)
-                            setIsLoadingEditModal(false)
                         }}
                         onSuccess={handleUpdatePatient}
                     />

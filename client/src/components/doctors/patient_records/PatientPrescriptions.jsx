@@ -36,7 +36,7 @@ const PatientPrescription = ({
 
     const handlePrescriptionAdded = (newPrescription) => {
         // Add new prescription to local state immediately
-        setLocalPrescriptions(prev => [newPrescription, ...prev])
+        setLocalPrescriptions((prev) => [newPrescription, ...prev])
         // Close modal
         setIsOpen(false)
         // Call parent callback if provided
@@ -63,16 +63,17 @@ const PatientPrescription = ({
 
     // Filter prescriptions based on search term
     const filteredPrescriptions = Array.isArray(localPrescriptions)
-        ? localPrescriptions.filter(rx => {
-            if (!search) return true
-            const searchLower = search.toLowerCase()
-            return (
-                rx.findings?.toLowerCase().includes(searchLower) ||
-                rx.status?.toLowerCase().includes(searchLower) ||
-                (rx.prescription_date && formatDate(rx.prescription_date).toLowerCase().includes(searchLower)) ||
-                (rx.return_date && formatDate(rx.return_date).toLowerCase().includes(searchLower))
-            )
-        })
+        ? localPrescriptions.filter((rx) => {
+              if (!search) return true
+              const searchLower = search.toLowerCase()
+              return (
+                  rx.findings?.toLowerCase().includes(searchLower) ||
+                  rx.status?.toLowerCase().includes(searchLower) ||
+                  (rx.prescription_date &&
+                      formatDate(rx.prescription_date).toLowerCase().includes(searchLower)) ||
+                  (rx.return_date && formatDate(rx.return_date).toLowerCase().includes(searchLower))
+              )
+          })
         : []
 
     // Use filtered prescriptions for rendering
@@ -187,7 +188,12 @@ const PatientPrescription = ({
                             <tr>
                                 <td colSpan="5" className="p-8">
                                     <NoResults
-                                        message={search ? 'No prescriptions found' : 'No prescriptions yet'}
+                                        colSpan={5}
+                                        message={
+                                            search
+                                                ? 'No prescriptions found'
+                                                : 'No prescriptions yet'
+                                        }
                                         suggestion={
                                             search
                                                 ? 'Try adjusting your search criteria'

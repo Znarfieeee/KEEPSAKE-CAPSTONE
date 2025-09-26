@@ -18,7 +18,7 @@ const DeliverySection = ({ form, updateForm }) => {
                     value={form.type_of_delivery}
                     onValueChange={(v) => updateForm('type_of_delivery', v)}
                 >
-                    <SelectTrigger className="border-input">
+                    <SelectTrigger className="border-input w-full">
                         <SelectValue placeholder="Select delivery type" />
                     </SelectTrigger>
                     <SelectContent>
@@ -42,21 +42,39 @@ const DeliverySection = ({ form, updateForm }) => {
             </div>
             <div className="space-y-2">
                 <Label className="text-sm font-medium">Mother's Blood Type</Label>
-                <Input
-                    className="border-input"
-                    placeholder="Enter mother's blood type"
+                <Select
                     value={form.mother_blood_type}
-                    onChange={(e) => updateForm('mother_blood_type', e.target.value)}
-                />
+                    onValueChange={(v) => updateForm('mother_blood_type', v)}
+                >
+                    <SelectTrigger className="border-input w-full">
+                        <SelectValue placeholder="Select blood type" />
+                    </SelectTrigger>
+                    <SelectContent>
+                        {['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'].map((bt) => (
+                            <SelectItem key={bt} value={bt}>
+                                {bt}
+                            </SelectItem>
+                        ))}
+                    </SelectContent>
+                </Select>
             </div>
             <div className="space-y-2">
                 <Label className="text-sm font-medium">Father's Blood Type</Label>
-                <Input
-                    className="border-input"
-                    placeholder="Enter father's blood type"
+                <Select
                     value={form.father_blood_type}
-                    onChange={(e) => updateForm('father_blood_type', e.target.value)}
-                />
+                    onValueChange={(v) => updateForm('father_blood_type', v)}
+                >
+                    <SelectTrigger className="border-input w-full">
+                        <SelectValue placeholder="Select blood type" />
+                    </SelectTrigger>
+                    <SelectContent>
+                        {['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'].map((bt) => (
+                            <SelectItem key={bt} value={bt}>
+                                {bt}
+                            </SelectItem>
+                        ))}
+                    </SelectContent>
+                </Select>
             </div>
             <div className="md:col-span-2 space-y-2">
                 <Label className="text-sm font-medium">Distinguishable Marks</Label>

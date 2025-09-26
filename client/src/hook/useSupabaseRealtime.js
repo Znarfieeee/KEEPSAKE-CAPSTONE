@@ -370,9 +370,13 @@ export const usePatientsRealtime = ({ onPatientChange }) => {
     const formatPatients = useCallback(
         (raw) => ({
             id: raw.patient_id,
+            patient_id: raw.patient_id,
             firstname: raw.firstname,
+            middlename: raw.middlename,
             lastname: raw.lastname,
+            full_name: `${raw.firstname} ${raw.middlename ? raw.middlename + ' ' : ''}${raw.lastname}`,
             date_of_birth: raw.date_of_birth,
+            birthdate: raw.date_of_birth, // Add alias for compatibility
             sex: raw.sex,
             birth_weight: raw.birth_weight,
             birth_height: raw.birth_height,
@@ -380,6 +384,8 @@ export const usePatientsRealtime = ({ onPatientChange }) => {
             gestation_weeks: raw.gestation_weeks,
             is_active: raw.is_active,
             created_by: raw.created_by,
+            created_at: raw.created_at,
+            updated_at: raw.updated_at,
         }),
         []
     )
@@ -416,6 +422,74 @@ export const usePatientsRealtime = ({ onPatientChange }) => {
         },
         [formatPatients, onPatientChange]
     )
+
+    // Set up custom event listeners for immediate UI updates
+    useEffect(() => {
+        const handleCustomPatientCreated = (event) => {
+            console.log('Custom patient-created event received:', event.detail)
+            const patient = event.detail
+            if (patient) {
+                const formattedPatient = formatPatients(patient)
+                if (formattedPatient) {
+                    onPatientChange({
+                        type: 'INSERT',
+                        patient: formattedPatient,
+                        raw: patient,
+                        source: 'custom-event'
+                    })
+                }
+            }
+        }
+
+        const handleCustomPatientUpdated = (event) => {
+            console.log('Custom patient-updated event received:', event.detail)
+            const patient = event.detail
+            if (patient) {
+                const formattedPatient = formatPatients(patient)
+                if (formattedPatient) {
+                    onPatientChange({
+                        type: 'UPDATE',
+                        patient: formattedPatient,
+                        raw: patient,
+                        source: 'custom-event'
+                    })
+                }
+            }
+        }
+
+        const handleCustomPatientDeleted = (event) => {
+            console.log('Custom patient-deleted event received:', event.detail)
+            const patient = event.detail
+            if (patient) {
+                // For delete events, we just need the ID
+                const patientToDelete = {
+                    id: patient.patient_id,
+                    patient_id: patient.patient_id,
+                    firstname: patient.firstname,
+                    lastname: patient.lastname
+                }
+
+                onPatientChange({
+                    type: 'DELETE',
+                    patient: patientToDelete,
+                    raw: patient,
+                    source: 'custom-event'
+                })
+            }
+        }
+
+        // Add event listeners for custom events
+        window.addEventListener('patient-created', handleCustomPatientCreated)
+        window.addEventListener('patient-updated', handleCustomPatientUpdated)
+        window.addEventListener('patient-deleted', handleCustomPatientDeleted)
+
+        return () => {
+            // Remove custom event listeners
+            window.removeEventListener('patient-created', handleCustomPatientCreated)
+            window.removeEventListener('patient-updated', handleCustomPatientUpdated)
+            window.removeEventListener('patient-deleted', handleCustomPatientDeleted)
+        }
+    }, [formatPatients, onPatientChange])
 
     return useSupabaseRealtime({
         table: 'patients',

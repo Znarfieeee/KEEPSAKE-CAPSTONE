@@ -188,103 +188,143 @@ def get_patient_records():
 def add_patient_record():
     """
     Clean, focused patient creation - like a pure React functional component.
-    Only handles the main patient record. 
+    Only handles the main patient record.
     Use dedicated routes for related data (delivery, measurements, etc.)
-    
+
     Think: <PatientBasicForm /> instead of <MegaPatientEverythingForm />
     """
     try:
         data = request.json or {}
         current_user = request.current_user
-        
+
+        current_app.logger.info(f"AUDIT: User {current_user.get('email', 'Unknown')} attempting to create new patient record")
+        current_app.logger.debug(f"Patient creation data received: {json.dumps(data, default=str)}")
+
         # Validate required fields
         required_fields = ['firstname', 'lastname', 'date_of_birth', 'sex']
         missing_fields = [field for field in required_fields if not data.get(field)]
-        
+
         if missing_fields:
+            current_app.logger.warning(f"AUDIT: Patient creation failed - missing required fields: {missing_fields}")
             return jsonify({
                 "status": "error",
-                "message": f"Missing required fields: {', '.join(missing_fields)}"
+                "message": f"Missing required fields: {', '.join(missing_fields)}",
+                "field_errors": {field: "This field is required" for field in missing_fields}
             }), 400
-            
+
         # Validate sex field
         if data.get('sex') not in ['male', 'female']:
+            current_app.logger.warning(f"AUDIT: Patient creation failed - invalid sex value: {data.get('sex')}")
             return jsonify({
                 "status": "error",
-                "message": "Sex must be one of: male or female"
+                "message": "Sex must be one of: male or female",
+                "field_errors": {"sex": "Please select a valid sex option"}
             }), 400
-            
-        current_app.logger.info(f"AUDIT: User {current_user.get('email')} attempting to create new patient record")
-        
+
+        # Validate date of birth format
+        try:
+            from datetime import datetime
+            datetime.fromisoformat(data.get('date_of_birth').replace('Z', '+00:00'))
+        except (ValueError, AttributeError) as e:
+            current_app.logger.warning(f"AUDIT: Patient creation failed - invalid date format: {data.get('date_of_birth')}")
+            return jsonify({
+                "status": "error",
+                "message": "Invalid date of birth format",
+                "field_errors": {"date_of_birth": "Please provide a valid date"}
+            }), 400
+
         created_by = current_user.get('id')
-        
+        if not created_by:
+            current_app.logger.error(f"AUDIT: Patient creation failed - no user ID available")
+            return jsonify({
+                "status": "error",
+                "message": "Authentication error - user ID not found"
+            }), 401
+
         # Create only the main patient record - clean and simple
         patients_payload = prepare_patient_payload(data, created_by)
-        
+        current_app.logger.debug(f"Prepared patient payload: {json.dumps(patients_payload, default=str)}")
+
         try:
             patient_resp = supabase.table('patients').insert(patients_payload).execute()
-            
+
             if getattr(patient_resp, 'error', None):
-                current_app.logger.error(f"AUDIT: Failed to create patient record: {patient_resp.error.message if patient_resp.error else 'Unknown error'}")
+                error_msg = patient_resp.error.message if patient_resp.error else 'Unknown database error'
+                current_app.logger.error(f"AUDIT: Failed to create patient record - Database error: {error_msg}")
                 return jsonify({
                     "status": "error",
-                    "message": "Failed to create patient",
-                    "details": patient_resp.error.message if patient_resp.error else "Unknown",
-                }), 400
+                    "message": "Failed to create patient record",
+                    "details": error_msg,
+                }), 500
 
             if not patient_resp.data or len(patient_resp.data) == 0:
+                current_app.logger.error(f"AUDIT: Failed to create patient record - No data returned from database")
                 return jsonify({
                     "status": "error",
-                    "message": "Failed to create patient - no data returned"
-                }), 400
+                    "message": "Failed to create patient record - database returned no data"
+                }), 500
 
-            patient_id = patient_resp.data[0].get('patient_id')
+            patient_data = patient_resp.data[0]
+            patient_id = patient_data.get('patient_id')
+
             if not patient_id:
+                current_app.logger.error(f"AUDIT: Failed to create patient record - Patient ID not found in response")
                 return jsonify({
                     "status": "error",
-                    "message": "Failed to get patient ID"
-                }), 400
-                    
+                    "message": "Failed to retrieve patient ID from created record"
+                }), 500
+
             invalidate_caches('patient')
-            
-            current_app.logger.info(f"AUDIT: Successfully created patient record with ID {patient_id}")
-            
+
+            current_app.logger.info(f"AUDIT: Successfully created patient record with ID {patient_id} for user {current_user.get('email', 'Unknown')}")
+
             return jsonify({
                 "status": "success",
-                "message": "Patient record created successfully. Use dedicated endpoints for additional data (delivery, measurements, etc.)",
-                "data": patient_resp.data[0],
+                "message": "Patient record created successfully",
+                "data": patient_data,
+                "patient_id": patient_id,
                 "next_steps": {
                     "delivery_record": f"/patient_record/{patient_id}/delivery",
                     "anthropometric_data": f"/patient_record/{patient_id}/anthropometric",
                     "screening_tests": f"/patient_record/{patient_id}/screening",
                     "allergies": f"/patient_record/{patient_id}/allergies",
-                    "allergies": f"/patient_record/{patient_id}/prescription",                    
+                    "prescription": f"/patient_record/{patient_id}/prescription",
                 }
             }), 201
-            
+
         except AuthApiError as e:
             current_app.logger.error(f"AUDIT: Auth API error while creating patient: {str(e)}")
             return jsonify({
                 "status": "error",
-                "message": f"Auth API Error: {str(e)}",
-            }), 500
+                "message": "Authentication error occurred while creating patient",
+                "details": str(e)
+            }), 401
         except Exception as e:
             current_app.logger.error(f"AUDIT: Unexpected error while creating patient: {str(e)}")
+            import traceback
+            current_app.logger.error(f"AUDIT: Traceback: {traceback.format_exc()}")
             return jsonify({
                 "status": "error",
-                "message": f"Unexpected error: {str(e)}",
+                "message": "An unexpected error occurred while creating the patient record",
+                "details": str(e)
             }), 500
-        
+
     except AuthApiError as e:
+        current_app.logger.error(f"AUDIT: Supabase Auth error in patient creation: {str(e)}")
         return jsonify({
             "status": "error",
-            "message": f"Supabase Auth error: {str(e)}",
-        }), 500
-        
+            "message": "Authentication error",
+            "details": str(e)
+        }), 401
+
     except Exception as e:
+        current_app.logger.error(f"AUDIT: Top-level error creating patient: {str(e)}")
+        import traceback
+        current_app.logger.error(f"AUDIT: Traceback: {traceback.format_exc()}")
         return jsonify({
             "status": "error",
-            "message": f"Error creating patient: {str(e)}",
+            "message": "An unexpected error occurred",
+            "details": str(e)
         }), 500
 
 # Separate routes for individual record types (like separate React components)
@@ -605,4 +645,99 @@ def get_patient_record_by_id(patient_id):
         return jsonify({
             "status": "error",
             "message": f"Error fetching patient: {str(e)}"
+        }), 500
+
+@patrecord_bp.route('/patient_record/<patient_id>', methods=['DELETE'])
+@require_auth
+@require_role('doctor', 'facility_admin')
+def delete_patient_record(patient_id):
+    """
+    Delete patient record and all related records.
+    This is a hard delete operation that removes all traces of the patient.
+
+    Security: Only facility admins and doctors can delete patient records.
+    """
+    try:
+        current_user = request.current_user
+
+        current_app.logger.info(f"AUDIT: User {current_user.get('email', 'Unknown')} attempting to delete patient record {patient_id}")
+
+        # Check if patient exists
+        patient_check = supabase.table('patients').select('*').eq('patient_id', patient_id).single().execute()
+        if not patient_check.data:
+            current_app.logger.warning(f"AUDIT: Patient {patient_id} not found during delete attempt")
+            return jsonify({
+                "status": "error",
+                "message": "Patient not found"
+            }), 404
+
+        patient_data = patient_check.data
+        patient_name = f"{patient_data.get('firstname', '')} {patient_data.get('lastname', '')}"
+
+        # Delete related records first (to avoid foreign key constraints)
+        related_tables = [
+            'delivery_record',
+            'anthropometric_measurements',
+            'screening_tests',
+            'allergies',
+            'prescriptions',
+            'appointments'
+        ]
+
+        deleted_related = {}
+        for table in related_tables:
+            try:
+                delete_resp = supabase.table(table).delete().eq('patient_id', patient_id).execute()
+                deleted_count = len(delete_resp.data) if delete_resp.data else 0
+                deleted_related[table] = deleted_count
+                current_app.logger.info(f"AUDIT: Deleted {deleted_count} records from {table} for patient {patient_id}")
+            except Exception as table_error:
+                current_app.logger.warning(f"AUDIT: Failed to delete from {table} for patient {patient_id}: {str(table_error)}")
+                # Continue with other tables even if one fails
+                deleted_related[table] = 0
+
+        # Delete the main patient record
+        patient_delete_resp = supabase.table('patients').delete().eq('patient_id', patient_id).execute()
+
+        if getattr(patient_delete_resp, 'error', None):
+            current_app.logger.error(f"AUDIT: Failed to delete patient {patient_id}: {patient_delete_resp.error.message if patient_delete_resp.error else 'Unknown error'}")
+            return jsonify({
+                "status": "error",
+                "message": "Failed to delete patient record",
+                "details": patient_delete_resp.error.message if patient_delete_resp.error else "Unknown database error"
+            }), 500
+
+        if not patient_delete_resp.data:
+            current_app.logger.warning(f"AUDIT: Patient {patient_id} was not found or already deleted")
+            return jsonify({
+                "status": "error",
+                "message": "Patient record not found or already deleted"
+            }), 404
+
+        # Invalidate caches
+        invalidate_caches('patient', patient_id)
+
+        # Log successful deletion with details
+        total_related_deleted = sum(deleted_related.values())
+        current_app.logger.info(f"AUDIT: Successfully deleted patient {patient_id} ({patient_name}) and {total_related_deleted} related records by user {current_user.get('email', 'Unknown')}")
+        current_app.logger.info(f"AUDIT: Deletion breakdown: {json.dumps(deleted_related)}")
+
+        return jsonify({
+            "status": "success",
+            "message": f"Patient record '{patient_name}' and all related data deleted successfully",
+            "data": {
+                "deleted_patient": patient_data,
+                "related_records_deleted": deleted_related,
+                "total_related_deleted": total_related_deleted
+            }
+        }), 200
+
+    except Exception as e:
+        current_app.logger.error(f"AUDIT: Unexpected error deleting patient {patient_id}: {str(e)}")
+        import traceback
+        current_app.logger.error(f"AUDIT: Traceback: {traceback.format_exc()}")
+        return jsonify({
+            "status": "error",
+            "message": "An unexpected error occurred while deleting the patient record",
+            "details": str(e)
         }), 500

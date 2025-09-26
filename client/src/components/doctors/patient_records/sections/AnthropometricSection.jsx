@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
 import { cn } from '@/lib/utils'
@@ -8,6 +9,10 @@ import { Calendar as CalendarIcon } from 'lucide-react'
 import { Calendar } from '@/components/ui/calendar'
 
 const AnthropometricSection = ({ form, updateForm }) => {
+    const [measurementDate, setMeasurementDate] = useState(
+        form.measurement_date ? new Date(form.measurement_date) : null
+    )
+
     return (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-2">
@@ -18,12 +23,12 @@ const AnthropometricSection = ({ form, updateForm }) => {
                             variant={'outline'}
                             className={cn(
                                 'w-full justify-start text-left font-normal border border-gray-200',
-                                !form.measurement_date && 'text-muted-foreground'
+                                !measurementDate && 'text-muted-foreground'
                             )}
                         >
                             <CalendarIcon className="mr-2 h-4 w-4" />
-                            {form.measurement_date ? (
-                                format(form.measurement_date, 'PPP')
+                            {measurementDate ? (
+                                format(measurementDate, 'PPP')
                             ) : (
                                 <span>Pick a date</span>
                             )}
@@ -32,10 +37,13 @@ const AnthropometricSection = ({ form, updateForm }) => {
                     <PopoverContent className="w-auto p-0" align="start">
                         <Calendar
                             mode="single"
-                            selected={form.measurement_date}
+                            selected={measurementDate}
                             onSelect={(date) => {
-                                new Date(date)
-                                updateForm('nhs_date', date ? date.toISOString().split('T')[0] : '')
+                                setMeasurementDate(date)
+                                updateForm(
+                                    'measurement_date',
+                                    date ? date.toISOString().split('T')[0] : ''
+                                )
                             }}
                             initialFocus
                         />

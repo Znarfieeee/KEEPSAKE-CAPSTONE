@@ -4,7 +4,7 @@ import React, { useState } from 'react'
 import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/badge'
 import { Eye, Trash2, ChevronLeft, ChevronRight, UserPen, TableOfContents } from 'lucide-react'
-import ConfirmationDialog from '../../ui/ConfirmationDialog'
+import ConfirmationDialog from '@/components/ui/ConfirmationDialog'
 
 // Helper
 import { TooltipHelper } from '@/util/TooltipHelper'

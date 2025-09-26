@@ -20,12 +20,6 @@ const AllergySection = ({ form, updateForm }) => {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-2">
                 <Label className="text-sm font-medium">Date Identified</Label>
-                <Input
-                    type="date"
-                    className="border-input"
-                    value={form.date_identified}
-                    onChange={(e) => updateForm('date_identified', e.target.value)}
-                />
                 <Popover>
                     <PopoverTrigger asChild>
                         <Button
@@ -37,7 +31,7 @@ const AllergySection = ({ form, updateForm }) => {
                         >
                             <CalendarIcon className="mr-2 h-4 w-4" />
                             {form.date_identified ? (
-                                format(form.date_identified, 'PPP')
+                                format(form.date_identified, 'PP')
                             ) : (
                                 <span>Pick a date</span>
                             )}
@@ -49,7 +43,7 @@ const AllergySection = ({ form, updateForm }) => {
                             selected={form.date_identified}
                             onSelect={(date) => {
                                 new Date(date)
-                                updateForm('nhs_date', date ? date.toISOString().split('T')[0] : '')
+                                updateForm('date_identified', date ? format(date, 'PP') : '')
                             }}
                             initialFocus
                         />
@@ -77,7 +71,7 @@ const AllergySection = ({ form, updateForm }) => {
             <div className="space-y-2">
                 <Label className="text-sm font-medium">Severity</Label>
                 <Select value={form.severity} onValueChange={(v) => updateForm('severity', v)}>
-                    <SelectTrigger className="border-input">
+                    <SelectTrigger className="border-input w-full">
                         <SelectValue placeholder="Select severity level" />
                     </SelectTrigger>
                     <SelectContent>

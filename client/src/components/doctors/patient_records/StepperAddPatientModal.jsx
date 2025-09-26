@@ -189,7 +189,7 @@ const StepSelector = ({ includedSteps, onToggleStep, onNext }) => {
                             <div className="flex items-start space-x-3">
                                 <div
                                     className={cn(
-                                        'p-3 rounded-lg transition-colors',
+                                        'p-2 rounded-lg transition-colors',
                                         isIncluded
                                             ? 'bg-primary text-white'
                                             : 'bg-gray-100 text-gray-600'
@@ -565,17 +565,66 @@ const StepperAddPatientModal = ({ open, onClose }) => {
             const missing = required.filter((field) => !patientForm[field])
 
             if (missing.length > 0) {
-                showToast('error', `Please fill in required fields: ${missing.join(', ')}`)
+                const fieldNames = missing.map((field) => {
+                    switch (field) {
+                        case 'firstname':
+                            return 'First Name'
+                        case 'lastname':
+                            return 'Last Name'
+                        case 'date_of_birth':
+                            return 'Date of Birth'
+                        case 'sex':
+                            return 'Sex'
+                        default:
+                            return field
+                    }
+                })
+                showToast('error', `Please fill in required fields: ${fieldNames.join(', ')}`)
                 return false
             }
 
+            // Validate date of birth
+            if (patientForm.date_of_birth) {
+                const birthDate = new Date(patientForm.date_of_birth)
+                const today = new Date()
+                if (birthDate > today) {
+                    showToast('error', 'Date of birth cannot be in the future')
+                    return false
+                }
+                // Check if birth date is too far in the past (more than 150 years)
+                const maxAge = new Date()
+                maxAge.setFullYear(maxAge.getFullYear() - 150)
+                if (birthDate < maxAge) {
+                    showToast('error', 'Please enter a valid date of birth')
+                    return false
+                }
+            }
+
             // Validate gestation weeks if provided
-            if (
-                patientForm.gestation_weeks &&
-                (patientForm.gestation_weeks < 1 || patientForm.gestation_weeks > 50)
-            ) {
-                showToast('error', 'Gestation weeks must be between 1 and 50')
-                return false
+            if (patientForm.gestation_weeks) {
+                const weeks = parseFloat(patientForm.gestation_weeks)
+                if (isNaN(weeks) || weeks < 20 || weeks > 44) {
+                    showToast('error', 'Gestation weeks must be between 20 and 44')
+                    return false
+                }
+            }
+
+            // Validate birth weight if provided
+            if (patientForm.birth_weight) {
+                const weight = parseFloat(patientForm.birth_weight)
+                if (isNaN(weight) || weight < 0.3 || weight > 10) {
+                    showToast('error', 'Birth weight must be between 0.3 and 10 kg')
+                    return false
+                }
+            }
+
+            // Validate birth height if provided
+            if (patientForm.birth_height) {
+                const height = parseFloat(patientForm.birth_height)
+                if (isNaN(height) || height < 20 || height > 70) {
+                    showToast('error', 'Birth height must be between 20 and 70 cm')
+                    return false
+                }
             }
 
             // Validate sex field
@@ -613,10 +662,14 @@ const StepperAddPatientModal = ({ open, onClose }) => {
                 setCurrentStep(includedSteps[0])
             }
         } else {
-            const activeSteps = ['basic', 'step-selector', ...includedSteps, 'review']
-            const currentIndex = activeSteps.findIndex((step) => step === currentStep)
-            if (currentIndex < activeSteps.length - 1) {
-                setCurrentStep(activeSteps[currentIndex + 1])
+            // Find next step from included steps
+            const currentIncludedIndex = includedSteps.findIndex((step) => step === currentStep)
+            if (currentIncludedIndex >= 0 && currentIncludedIndex < includedSteps.length - 1) {
+                // Go to next included step
+                setCurrentStep(includedSteps[currentIncludedIndex + 1])
+            } else {
+                // Go to review step
+                setCurrentStep('review')
             }
         }
     }
@@ -632,10 +685,14 @@ const StepperAddPatientModal = ({ open, onClose }) => {
                 setCurrentStep(includedSteps[includedSteps.length - 1])
             }
         } else {
-            const activeSteps = ['basic', 'step-selector', ...includedSteps, 'review']
-            const currentIndex = activeSteps.findIndex((step) => step === currentStep)
-            if (currentIndex > 0) {
-                setCurrentStep(activeSteps[currentIndex - 1])
+            // Find previous step from included steps
+            const currentIncludedIndex = includedSteps.findIndex((step) => step === currentStep)
+            if (currentIncludedIndex > 0) {
+                // Go to previous included step
+                setCurrentStep(includedSteps[currentIncludedIndex - 1])
+            } else if (currentIncludedIndex === 0) {
+                // Go back to step selector
+                setCurrentStep('step-selector')
             }
         }
     }
@@ -649,19 +706,34 @@ const StepperAddPatientModal = ({ open, onClose }) => {
 
     // Handle form submission
     const handleSubmit = async () => {
+        console.log('Starting patient creation process...')
         try {
             setLoading(true)
 
             // Create patient record first
             const patientPayload = sanitizeObject(patientForm)
-            const patientResponse = await addPatientRecord(patientPayload)
+            console.log('Creating patient with payload:', patientPayload)
 
+            const patientResponse = await addPatientRecord(patientPayload)
+            console.log('Patient creation response:', patientResponse)
+
+            // Check if response indicates success
             if (patientResponse?.status !== 'success') {
-                throw new Error(patientResponse?.message || 'Failed to create patient')
+                const errorMsg = patientResponse?.message || 'Failed to create patient record'
+                console.error('Patient creation failed:', errorMsg)
+                throw new Error(errorMsg)
             }
 
-            const patientId = patientResponse.data.patient_id
+            // Get patient ID from response
+            const patientId = patientResponse?.data?.patient_id || patientResponse?.patient_id
+            if (!patientId) {
+                console.error('No patient ID in response:', patientResponse)
+                throw new Error('Patient created but ID not returned from server')
+            }
+
+            console.log('Patient created successfully with ID:', patientId)
             const promises = []
+            const failedSections = []
 
             // Add optional sections based on inclusion
             if (includedSteps.includes('delivery')) {
@@ -671,7 +743,15 @@ const StepperAddPatientModal = ({ open, onClose }) => {
                         (val) => val !== null && val !== '' && val !== false
                     )
                 ) {
-                    promises.push(addDeliveryRecord(patientId, deliveryPayload))
+                    promises.push(
+                        addDeliveryRecord(patientId, deliveryPayload)
+                            .then((result) => ({ section: 'delivery', result }))
+                            .catch((error) => {
+                                console.error('Delivery record failed:', error)
+                                failedSections.push('delivery')
+                                return Promise.reject({ section: 'delivery', error })
+                            })
+                    )
                 }
             }
             if (includedSteps.includes('screening')) {
@@ -681,7 +761,15 @@ const StepperAddPatientModal = ({ open, onClose }) => {
                         (val) => val !== null && val !== '' && val !== false
                     )
                 ) {
-                    promises.push(addScreeningRecord(patientId, screeningPayload))
+                    promises.push(
+                        addScreeningRecord(patientId, screeningPayload)
+                            .then((result) => ({ section: 'screening', result }))
+                            .catch((error) => {
+                                console.error('Screening record failed:', error)
+                                failedSections.push('screening')
+                                return Promise.reject({ section: 'screening', error })
+                            })
+                    )
                 }
             }
             if (includedSteps.includes('anthropometric')) {
@@ -691,7 +779,15 @@ const StepperAddPatientModal = ({ open, onClose }) => {
                         (val) => val !== null && val !== '' && val !== false
                     )
                 ) {
-                    promises.push(addAnthropometricRecord(patientId, anthroPayload))
+                    promises.push(
+                        addAnthropometricRecord(patientId, anthroPayload)
+                            .then((result) => ({ section: 'anthropometric', result }))
+                            .catch((error) => {
+                                console.error('Anthropometric record failed:', error)
+                                failedSections.push('anthropometric')
+                                return Promise.reject({ section: 'anthropometric', error })
+                            })
+                    )
                 }
             }
             if (includedSteps.includes('allergies')) {
@@ -701,39 +797,88 @@ const StepperAddPatientModal = ({ open, onClose }) => {
                         (val) => val !== null && val !== '' && val !== false
                     )
                 ) {
-                    promises.push(addAllergyRecord(patientId, allergyPayload))
+                    promises.push(
+                        addAllergyRecord(patientId, allergyPayload)
+                            .then((result) => ({ section: 'allergies', result }))
+                            .catch((error) => {
+                                console.error('Allergy record failed:', error)
+                                failedSections.push('allergies')
+                                return Promise.reject({ section: 'allergies', error })
+                            })
+                    )
                 }
             }
 
-            // Execute all promises with error handling
+            // Execute all promises with detailed error handling
             if (promises.length > 0) {
+                console.log(`Processing ${promises.length} additional sections...`)
                 const results = await Promise.allSettled(promises)
                 const failedResults = results.filter((result) => result.status === 'rejected')
 
                 if (failedResults.length > 0) {
+                    const failedSectionNames = failedResults
+                        .map((result) => result.reason?.section || 'unknown')
+                        .join(', ')
                     console.warn('Some optional records failed to save:', failedResults)
-                    showToast('warning', 'Patient created but some optional data failed to save')
+                    showToast(
+                        'warning',
+                        `Patient created successfully, but failed to save: ${failedSectionNames}`
+                    )
                 } else {
+                    console.log('All sections saved successfully')
                     showToast('success', 'Patient record created successfully with all data')
                 }
             } else {
+                console.log('Patient created with no additional sections')
                 showToast('success', 'Patient record created successfully')
             }
 
-            // Dispatch custom event for real-time updates
+            // Dispatch custom event for real-time updates with detailed patient data
             if (typeof window !== 'undefined') {
-                window.dispatchEvent(
-                    new CustomEvent('patient-created', { detail: patientResponse.data })
-                )
+                const eventDetail = {
+                    ...patientResponse.data,
+                    patient_id: patientId,
+                    sections_added: includedSteps,
+                    timestamp: new Date().toISOString(),
+                }
+                console.log('Dispatching patient-created event:', eventDetail)
+                window.dispatchEvent(new CustomEvent('patient-created', { detail: eventDetail }))
             }
 
+            console.log('Patient creation process completed successfully')
             resetForm()
             onClose()
         } catch (error) {
-            console.error('Error creating patient record:', error)
-            const errorMessage =
-                error.response?.data?.message || error.message || 'Failed to create patient record'
-            showToast('error', errorMessage)
+            console.error('Error in patient creation process:', error)
+
+            // Detailed error handling with user-friendly messages
+            let errorMessage = 'Failed to create patient record'
+            let details = ''
+
+            if (error.fieldErrors) {
+                // Handle field validation errors
+                const fieldErrors = Object.entries(error.fieldErrors)
+                    .map(([field, message]) => `${field}: ${message}`)
+                    .join(', ')
+                errorMessage = `Validation errors: ${fieldErrors}`
+            } else if (error.message) {
+                errorMessage = error.message
+                if (error.details) {
+                    details = error.details
+                }
+            } else if (error.response?.data?.message) {
+                errorMessage = error.response.data.message
+                if (error.response.data.details) {
+                    details = error.response.data.details
+                }
+            }
+
+            // Show appropriate error message
+            if (details) {
+                showToast('error', `${errorMessage}. ${details}`)
+            } else {
+                showToast('error', errorMessage)
+            }
         } finally {
             setLoading(false)
         }
@@ -754,10 +899,7 @@ const StepperAddPatientModal = ({ open, onClose }) => {
         steps.push('review')
         return steps
     }
-    const activeSteps = getActiveSteps()
-    const activeStepIndex = activeSteps.findIndex((step) => step === currentStep)
-    const isActiveFirstStep = activeStepIndex === 0
-    const isActiveLastStep = activeStepIndex === activeSteps.length - 1
+    const isActiveFirstStep = currentStep === 'basic'
 
     // Render current step content
     const renderStepContent = () => {
@@ -781,15 +923,6 @@ const StepperAddPatientModal = ({ open, onClose }) => {
                 )
 
             case 'delivery':
-                if (!includedSteps.includes('delivery')) {
-                    return (
-                        <StepSelector
-                            includedSteps={includedSteps}
-                            onToggleStep={handleToggleStep}
-                            onNext={handleNext}
-                        />
-                    )
-                }
                 return (
                     <div className="bg-card border rounded-lg p-6">
                         <div className="flex items-center space-x-2 mb-6">
@@ -884,10 +1017,7 @@ const StepperAddPatientModal = ({ open, onClose }) => {
 
     return (
         <Dialog open={open} onOpenChange={handleClose} modal>
-            <DialogContent
-                className="max-w-[1200px] max-h-[95vh] overflow-y-auto p-6"
-                showCloseButton={false}
-            >
+            <DialogContent className="max-w-2xl max-h-[98vh]" showCloseButton={false}>
                 <DialogHeader>
                     <DialogTitle className="text-xl font-semibold">Add New Patient</DialogTitle>
                     <DialogDescription>
@@ -908,9 +1038,9 @@ const StepperAddPatientModal = ({ open, onClose }) => {
                     <div className="min-h-[400px]">{renderStepContent()}</div>
                 </div>
 
-                <DialogFooter className="flex justify-between pt-4 border-t">
+                <DialogFooter className="flex justify-between mt-8 ">
                     <div className="flex space-x-3">
-                        <Button variant="outline" onClick={handleClose} disabled={loading}>
+                        <Button variant="destructive" onClick={handleClose} disabled={loading}>
                             Cancel
                         </Button>
                         {!isActiveFirstStep && (
@@ -939,8 +1069,14 @@ const StepperAddPatientModal = ({ open, onClose }) => {
                                 disabled={loading}
                                 className="bg-primary text-primary-foreground hover:bg-primary/90"
                             >
-                                {isActiveLastStep ? 'Review' : 'Next'}
-                                {!isActiveLastStep && <ChevronRight size={16} className="ml-2" />}
+                                {includedSteps.length > 0 &&
+                                includedSteps[includedSteps.length - 1] === currentStep
+                                    ? 'Review'
+                                    : 'Next'}
+                                {!(
+                                    includedSteps.length > 0 &&
+                                    includedSteps[includedSteps.length - 1] === currentStep
+                                ) && <ChevronRight size={16} className="ml-2" />}
                             </Button>
                         )}
                     </div>

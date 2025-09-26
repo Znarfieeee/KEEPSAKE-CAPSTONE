@@ -7,8 +7,6 @@ import {
     Clock,
     User,
     PlusCircle,
-    Phone,
-    MapPin,
     FileText,
     AlertCircle,
     CheckCircle,
@@ -42,11 +40,19 @@ const AppointmentCard = ({ appointment, onAction }) => {
                     showToast('success', 'Appointment confirmed successfully')
                     break
                 case 'checkin':
-                    response = await updateAppointmentStatus(appointmentId, 'checked_in', 'Patient checked in')
+                    response = await updateAppointmentStatus(
+                        appointmentId,
+                        'checked_in',
+                        'Patient checked in'
+                    )
                     showToast('success', 'Patient checked in successfully')
                     break
                 case 'complete':
-                    response = await updateAppointmentStatus(appointmentId, 'completed', 'Appointment completed')
+                    response = await updateAppointmentStatus(
+                        appointmentId,
+                        'completed',
+                        'Appointment completed'
+                    )
                     showToast('success', 'Appointment completed successfully')
                     break
                 case 'cancel':
@@ -62,7 +68,10 @@ const AppointmentCard = ({ appointment, onAction }) => {
             await onAction?.(actionType, appointment, response)
         } catch (error) {
             console.error(`Error ${actionType}ing appointment:`, error)
-            const errorMessage = error.response?.data?.message || error.message || `Failed to ${actionType} appointment`
+            const errorMessage =
+                error.response?.data?.message ||
+                error.message ||
+                `Failed to ${actionType} appointment`
             showToast('error', errorMessage)
             throw error
         } finally {
@@ -293,7 +302,6 @@ const TodaySchedule = ({ appointments, loading = false, onAppointmentAction, onR
                 <div className="flex items-center justify-between">
                     <div>
                         <h3 className="text-xl font-bold text-gray-900 flex items-center">
-                            <Calendar className="size-6 mr-3 text-primary" />
                             Today's Schedule
                         </h3>
                         <p className="text-sm text-gray-600 mt-1 font-medium">{formattedDate}</p>
@@ -360,7 +368,7 @@ const TodaySchedule = ({ appointments, loading = false, onAppointmentAction, onR
                 ) : (
                     <div className="flex flex-col items-center justify-center py-12 text-center">
                         <div className="w-24 h-24 bg-blue-100 rounded-full flex items-center justify-center mb-4">
-                            <Calendar className="h-12 w-12 text-blue-500" />
+                            <Calendar className="h-12 w-12 text-primary" />
                         </div>
                         <h4 className="text-xl font-semibold text-gray-900 mb-2">
                             No appointments scheduled

@@ -1,17 +1,9 @@
-import React from 'react'
+import React, { useState } from 'react'
 
 // UI Components
 import { Button } from '@/components/ui/button'
-import {
-    MoreVertical,
-    Eye,
-    FileEdit,
-    Archive,
-    Trash2,
-    ArrowRightLeft,
-    UserPen,
-    Ban,
-} from 'lucide-react'
+import ConfirmationDialog from '@/components/ui/ConfirmationDialog'
+import { Eye, Archive, Trash2, UserPen } from 'lucide-react'
 import {
     Pagination,
     PaginationContent,
@@ -37,9 +29,30 @@ const PatientRecordsTable = ({
     onDelete,
     loading = false,
 }) => {
+    const [deleteDialog, setDeleteDialog] = useState({ open: false, patient: null })
+    const [isDeleting, setIsDeleting] = useState(false)
+
     const totalPages = Math.ceil(records.length / itemsPerPage) || 1
     const startIdx = (page - 1) * itemsPerPage
     const currentData = records.slice(startIdx, startIdx + itemsPerPage)
+
+    const handleDeleteClick = (patient) => {
+        setDeleteDialog({ open: true, patient })
+    }
+
+    const handleConfirmDelete = async () => {
+        if (!deleteDialog.patient) return
+
+        setIsDeleting(true)
+        try {
+            await onDelete(deleteDialog.patient)
+            setDeleteDialog({ open: false, patient: null })
+        } catch (error) {
+            console.error('Error deleting patient:', error)
+        } finally {
+            setIsDeleting(false)
+        }
+    }
 
     const handlePrev = () => setPage((p) => Math.max(1, p - 1))
     const handleNext = () => setPage((p) => Math.min(totalPages, p + 1))
@@ -77,18 +90,21 @@ const PatientRecordsTable = ({
                             suggestion="Try adjusting your search or filter criteria"
                         />
                     ) : (
-                        currentData.map((user) => (
-                            <tr key={user.id} className="border-b border-gray-200 last:border-none">
-                                <td className="p-2 whitespace-nowrap">{`${user.firstname} ${user.lastname}`}</td>
+                        currentData.map((patient) => (
+                            <tr
+                                key={patient.id}
+                                className="border-b border-gray-200 last:border-none"
+                            >
+                                <td className="p-2 whitespace-nowrap">{`${patient.firstname} ${patient.lastname}`}</td>
                                 <td className="p-2 whitespace-nowrap">
-                                    {user.sex.charAt(0).toUpperCase() +
-                                        user.sex.slice(1).toLowerCase()}
+                                    {patient.sex.charAt(0).toUpperCase() +
+                                        patient.sex.slice(1).toLowerCase()}
                                 </td>
-                                <td className="p-2 whitespace-nowrap capitalize">{user.age}</td>
+                                <td className="p-2 whitespace-nowrap capitalize">{patient.age}</td>
                                 <td className="p-2 whitespace-nowrap">
-                                    {user.doctor ? user.doctor : 'Unassigned'}
+                                    {patient.doctor ? patient.doctor : 'Unassigned'}
                                 </td>
-                                <td className="p-2 whitespace-nowrap">{user.birthdate}</td>
+                                <td className="p-2 whitespace-nowrap">{patient.birthdate}</td>
                                 <td className="p-2 whitespace-nowrap">
                                     <div className="flex gap-1">
                                         <TooltipHelper content="View Details">
@@ -96,7 +112,7 @@ const PatientRecordsTable = ({
                                                 variant="ghost"
                                                 size="icon"
                                                 className="hover:text-blue-600 hover:bg-blue-100"
-                                                onClick={() => onView(user)}
+                                                onClick={() => onView(patient)}
                                             >
                                                 <Eye className="size-4" />
                                             </Button>
@@ -107,7 +123,7 @@ const PatientRecordsTable = ({
                                                 variant="ghost"
                                                 size="icon"
                                                 className="hover:text-yellow-600 hover:bg-yellow-100"
-                                                onClick={() => onArchive(user)}
+                                                onClick={() => onArchive(patient)}
                                             >
                                                 <Archive className="size-4" />
                                             </Button>
@@ -118,7 +134,7 @@ const PatientRecordsTable = ({
                                                 variant="ghost"
                                                 size="icon"
                                                 className="hover:text-green-600 hover:bg-green-100"
-                                                onClick={() => onEdit(user)}
+                                                onClick={() => onEdit(patient)}
                                                 onMouseEnter={onEditHover}
                                             >
                                                 <UserPen className="size-4" />
@@ -130,7 +146,7 @@ const PatientRecordsTable = ({
                                                 variant="ghost"
                                                 size="icon"
                                                 className="hover:text-red-600 hover:bg-red-100"
-                                                onClick={() => onDelete(user)}
+                                                onClick={() => handleDeleteClick(patient)}
                                             >
                                                 <Trash2 className="size-4" />
                                             </Button>
@@ -167,6 +183,41 @@ const PatientRecordsTable = ({
                     </PaginationContent>
                 </Pagination>
             </div>
+
+            {/* Delete confirmation dialog */}
+            {deleteDialog.patient && (
+                <ConfirmationDialog
+                    open={deleteDialog.open}
+                    onOpenChange={(open) => setDeleteDialog((prev) => ({ ...prev, open }))}
+                    title="Delete Patient Record"
+                    description={
+                        <>
+                            Are you sure you want to delete{' '}
+                            <strong>
+                                {deleteDialog.patient.firstname} {deleteDialog.patient.lastname}
+                            </strong>
+                            ?
+                            <br />
+                            <br />
+                            This action will:
+                            <ul className="list-disc list-inside mt-2 space-y-1 text-left">
+                                <li>Permanently delete the patient record</li>
+                                <li>Remove all associated medical records</li>
+                                <li>This action cannot be undone</li>
+                            </ul>
+                            <br />
+                            <span className="font-semibold text-red-600">
+                                Type the patient's full name to confirm deletion
+                            </span>
+                        </>
+                    }
+                    confirmText={`${deleteDialog.patient.firstname} ${deleteDialog.patient.lastname}`}
+                    onConfirm={handleConfirmDelete}
+                    requireTyping={true}
+                    destructive={true}
+                    loading={isDeleting}
+                />
+            )}
         </div>
     )
 }
