@@ -80,7 +80,7 @@ class MedicalDataSanitizer:
     
     # Patterns for medical data validation
     MEDICAL_PATTERNS = {
-        'blood_type': re.compile(r'^(A|B|AB|O)[+-]?$', re.IGNORECASE),
+        'blood_type': re.compile(r'^(A|B|AB|O)[+-]$', re.IGNORECASE),  # Must include + or -
         'sex': re.compile(r'^(male|female)$', re.IGNORECASE),
         'date': re.compile(r'^\d{4}-\d{2}-\d{2}$'),
         'datetime': re.compile(r'^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?Z?$'),

@@ -40,10 +40,7 @@ const AnthropometricSection = ({ form, updateForm }) => {
                             selected={measurementDate}
                             onSelect={(date) => {
                                 setMeasurementDate(date)
-                                updateForm(
-                                    'measurement_date',
-                                    date ? date.toISOString() : ''
-                                )
+                                updateForm('measurement_date', date ? date.toISOString() : '')
                             }}
                             initialFocus
                         />

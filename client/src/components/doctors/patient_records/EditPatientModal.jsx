@@ -294,11 +294,15 @@ const EditPatientModal = ({ onClose, patient, onSuccess }) => {
                 )
             }
 
-            // Execute all related record updates
+            // Execute all related record updates and collect results
+            let completedSections = []
             if (promises.length > 0) {
                 console.log(`Processing ${promises.length} related record updates...`)
                 const results = await Promise.allSettled(promises)
                 const failures = results.filter((result) => result.status === 'rejected')
+                completedSections = results
+                    .filter((result) => result.status === 'fulfilled')
+                    .map((result) => result.value)
 
                 if (failures.length > 0) {
                     console.warn('Some related records failed to update:', failures)
@@ -313,19 +317,73 @@ const EditPatientModal = ({ onClose, patient, onSuccess }) => {
                 showToast('success', 'Patient updated successfully')
             }
 
-            // Dispatch custom event for real-time updates
-            if (typeof window !== 'undefined') {
-                const eventDetail = {
+            // Dispatch custom event for real-time updates with comprehensive data
+            if (typeof window !== 'undefined' && patient) {
+                const updatedPatientData = {
+                    ...patient,
                     ...patientPayload,
-                    patient_id: patientId,
-                    timestamp: new Date().toISOString(),
+                    related_records: {
+                        ...patient.related_records,
+                        // Update related records with new data based on form data (optimistic updates)
+                        ...(hasFormData(deliveryForm) && {
+                            delivery: sanitizeObject(deliveryForm),
+                        }),
+                        ...(hasFormData(screeningForm) && {
+                            screening: sanitizeObject(screeningForm),
+                        }),
+                        ...(hasFormData(anthroForm) && {
+                            anthropometric_measurements: (() => {
+                                const newMeasurement = {
+                                    ...sanitizeObject(anthroForm),
+                                    am_id: Date.now(), // Temporary ID for immediate display
+                                    recorded_by:
+                                        patient.related_records?.anthropometric_measurements?.[0]
+                                            ?.recorded_by || 'current_user',
+                                }
+
+                                // For updates, replace the most recent measurement or add if none exists
+                                const existingMeasurements =
+                                    patient.related_records?.anthropometric_measurements || []
+                                if (existingMeasurements.length > 0) {
+                                    // Replace the most recent measurement
+                                    return [...existingMeasurements.slice(0, -1), newMeasurement]
+                                } else {
+                                    // Add new measurement
+                                    return [newMeasurement]
+                                }
+                            })(),
+                        }),
+                        ...(hasFormData(allergiesForm) && {
+                            allergies: patient.related_records?.allergies
+                                ? [
+                                      ...patient.related_records.allergies,
+                                      sanitizeObject(allergiesForm),
+                                  ]
+                                : [sanitizeObject(allergiesForm)],
+                        }),
+                    },
                 }
+
+                const eventDetail = {
+                    patient_id: patientId,
+                    updated_sections: completedSections.map((result) => result.section),
+                    failed_sections: failedSections,
+                    timestamp: new Date().toISOString(),
+                    patient_data: updatedPatientData,
+                    original_patient: patient,
+                }
+
                 console.log('Dispatching patient-updated event:', eventDetail)
+                // Dispatch immediately for optimistic UI updates
                 window.dispatchEvent(new CustomEvent('patient-updated', { detail: eventDetail }))
             }
 
             console.log('Patient update process completed successfully')
-            onClose()
+
+            // Close modal after brief delay to show the success message
+            setTimeout(() => {
+                onClose()
+            }, 500)
         } catch (error) {
             console.error('Error in patient update process:', error)
 

@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo } from 'react'
+import React, { useEffect, useState, useMemo, useCallback } from 'react'
 
 // UI Components
 import { FileText, Syringe, Pill, Stethoscope } from 'lucide-react'
@@ -20,7 +20,8 @@ const TabItem = ({ value, icon: Icon, children }) => (
     </TabsTrigger>
 )
 
-const PatientRecordsTabs = ({ patient }) => {
+const PatientRecordsTabs = ({ patient: initialPatient }) => {
+    const [patient, setPatient] = useState(initialPatient)
     const [prescriptions, setPrescriptions] = useState([])
     const [isLoading] = useState(false)
     const [search, setSearch] = useState('')
@@ -28,6 +29,42 @@ const PatientRecordsTabs = ({ patient }) => {
     const handlePrescriptionAdded = (newPrescription) => {
         setPrescriptions((prev) => [newPrescription, ...prev])
     }
+
+    // Handle patient updates from EditPatientModal
+    const handlePatientUpdate = useCallback((event) => {
+        const { patient_data, patient_id } = event.detail
+
+        // Only update if this is the same patient and we have valid data
+        if (patient_id === patient?.patient_id && patient_data) {
+            console.log('Updating patient data in tabs:', patient_data)
+            // Ensure the patient data has the required structure
+            const updatedPatient = {
+                ...patient,
+                ...patient_data,
+                related_records: {
+                    ...patient?.related_records,
+                    ...patient_data.related_records
+                }
+            }
+            setPatient(updatedPatient)
+        }
+    }, [patient?.patient_id, patient])
+
+    // Listen for patient update events
+    useEffect(() => {
+        window.addEventListener('patient-updated', handlePatientUpdate)
+        window.addEventListener('patient-created', handlePatientUpdate)
+
+        return () => {
+            window.removeEventListener('patient-updated', handlePatientUpdate)
+            window.removeEventListener('patient-created', handlePatientUpdate)
+        }
+    }, [handlePatientUpdate])
+
+    // Update patient state when initial patient prop changes
+    useEffect(() => {
+        setPatient(initialPatient)
+    }, [initialPatient])
 
     useEffect(() => {
         if (patient?.related_records?.prescriptions) {
@@ -55,6 +92,15 @@ const PatientRecordsTabs = ({ patient }) => {
             })
         }
     }, [patient?.related_records])
+
+    // Early return if patient data is not available
+    if (!patient) {
+        return (
+            <div className="w-full p-8 text-center">
+                <p className="text-muted-foreground">Loading patient data...</p>
+            </div>
+        )
+    }
 
     // Filter prescriptions based on search query with improved error handling
     const filteredPrescriptions = useMemo(() => {

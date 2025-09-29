@@ -1,9 +1,22 @@
-import React from 'react'
+import React, { useState, useEffect } from 'react'
 import { format } from 'date-fns'
 
 const PatientVitals = ({ patient }) => {
+    const [isUpdating, setIsUpdating] = useState(false)
+
+    // Show brief update animation when patient data changes
+    useEffect(() => {
+        if (patient) {
+            setIsUpdating(true)
+            const timer = setTimeout(() => setIsUpdating(false), 1000)
+            return () => clearTimeout(timer)
+        }
+    }, [patient])
+
     return (
-        <div className="bg-white rounded-lg shadow-sm p-6">
+        <div className={`bg-white rounded-lg shadow-sm p-6 transition-all duration-300 ${
+            isUpdating ? 'ring-2 ring-blue-200 ring-opacity-50' : ''
+        }`}>
             <div className="mb-10">
                 <h2 className="text-lg font-semibold my-4">DELIVERY RECORD</h2>
                 <div className="grid grid-cols-3 gap-6">

@@ -12,8 +12,12 @@ export function sanitizeInput(input) {
         input
             // Remove HTML tags
             .replace(/<[^>]*>/g, '')
-            // Replace special characters
-            .replace(/[&<>"'`=\/]/g, '')
+            // Replace special characters except blood type symbols
+            .replace(/[&<>"'`=\/]/g, (match) => {
+                // Preserve + and - symbols for blood types
+                if (match === '+' || match === '-') return match
+                return ''
+            })
             // Remove SQL injection attempts
             .replace(/(\b)(on\S+)(\s*)=/g, '') // Remove JS event handlers
             .replace(/(javascript|script|eval|trustedTypes)/gi, '')
