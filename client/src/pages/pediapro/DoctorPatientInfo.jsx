@@ -182,21 +182,22 @@ const DoctorPatientInfo = () => {
                     <div className="flex items-center gap-2">
                         <TooltipHelper content="Edit patient">
                             <Button
-                                variant="outline"
                                 size="sm"
                                 onClick={handleEditClick}
-                                className="hover:bg-green-50 hover:text-green-700 hover:border-green-300"
+                                className="bg-green-400/90 hover:bg-green-500 px-2"
                             >
+                                Edit
                                 <Edit size={16} />
                             </Button>
                         </TooltipHelper>
                         <TooltipHelper content="Delete patient">
                             <Button
-                                variant="outline"
+                                variant="destructive"
                                 size="sm"
                                 onClick={handleDeleteClick}
-                                className="hover:bg-red-50 hover:text-red-700 hover:border-red-300"
+                                className="px-2"
                             >
+                                Delete
                                 <Trash2 size={16} />
                             </Button>
                         </TooltipHelper>

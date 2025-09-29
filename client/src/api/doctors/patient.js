@@ -321,21 +321,21 @@ export const addAllergyRecord = async (patientId, allergyData) => {
 
 export const updateAllergyRecord = async (patientId, allergyData) => {
   try {
-    console.log('Updating allergy record for patient:', patientId, allergyData)
-    const response = await axios.put(
+    console.log('Adding allergy record for patient:', patientId, allergyData)
+    const response = await axios.post(
       `${backendConnection()}/patient_record/${patientId}/allergies`,
       allergyData,
       axiosConfig
     )
-    console.log('Allergy update response:', response.data)
+    console.log('Allergy add response:', response.data)
     return response.data
   } catch (error) {
-    console.error('Update allergy record error:', error)
+    console.error('Add allergy record error:', error)
     if (error.response) {
       const errorData = error.response.data
       throw {
         ...error,
-        message: errorData?.message || 'Failed to update allergy record',
+        message: errorData?.message || 'Failed to add allergy record',
         details: errorData?.details,
         status: error.response.status
       }

@@ -266,11 +266,15 @@ const EditPatientModal = ({ onClose, patient, onSuccess }) => {
 
             // Update anthropometric record if has data
             if (hasFormData(anthroForm)) {
+                const sanitizedAnthro = sanitizeObject(anthroForm)
+                console.log('DEBUG: Anthropometric form data:', anthroForm)
+                console.log('DEBUG: Sanitized anthropometric data:', sanitizedAnthro)
                 promises.push(
-                    updateAnthropometricRecord(patientId, sanitizeObject(anthroForm))
+                    updateAnthropometricRecord(patientId, sanitizedAnthro)
                         .then(() => ({ section: 'anthropometric', success: true }))
                         .catch((error) => {
                             console.error('Anthropometric update failed:', error)
+                            console.error('Anthropometric error details:', error.response?.data)
                             failedSections.push('anthropometric')
                             return { section: 'anthropometric', error }
                         })

@@ -42,7 +42,7 @@ const AnthropometricSection = ({ form, updateForm }) => {
                                 setMeasurementDate(date)
                                 updateForm(
                                     'measurement_date',
-                                    date ? date.toISOString().split('T')[0] : ''
+                                    date ? date.toISOString() : ''
                                 )
                             }}
                             initialFocus

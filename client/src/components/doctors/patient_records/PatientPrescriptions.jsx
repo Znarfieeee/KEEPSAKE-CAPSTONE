@@ -185,23 +185,14 @@ const PatientPrescription = ({
                                 </tr>
                             ))
                         ) : (
-                            <tr>
-                                <td colSpan="5" className="p-8">
-                                    <NoResults
-                                        colSpan={5}
-                                        message={
-                                            search
-                                                ? 'No prescriptions found'
-                                                : 'No prescriptions yet'
-                                        }
-                                        suggestion={
-                                            search
-                                                ? 'Try adjusting your search criteria'
-                                                : 'Add a prescription using the button above'
-                                        }
-                                    />
-                                </td>
-                            </tr>
+                            <NoResults
+                                message={search ? 'No prescriptions found' : 'No prescriptions yet'}
+                                suggestion={
+                                    search
+                                        ? 'Try adjusting your search criteria'
+                                        : 'Add a prescription using the button above'
+                                }
+                            />
                         )}
                     </tbody>
                 </table>

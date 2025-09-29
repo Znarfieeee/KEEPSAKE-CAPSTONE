@@ -185,7 +185,7 @@ const ScheduleAppointmentModal = ({ onSuccess, facilityId, doctorId }) => {
         }
 
         if (!formData.appointment_time) {
-            newErrors.appointment_time = 'Appointment time is required'
+            newErrors.appointment_time = 'Please select time slot'
         } else {
             // Validate time format only
             const timeRegex = /^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/
@@ -257,8 +257,11 @@ const ScheduleAppointmentModal = ({ onSuccess, facilityId, doctorId }) => {
             const submitData = {
                 patient_id: formData.patient_id,
                 facility_id: facilityId,
-                doctor_id: formData.doctor_id === 'any' || formData.doctor_id === '' ? null : formData.doctor_id, // Send null for 'any' or empty
-                appointment_date: formData.appointment_date.toISOString(),
+                doctor_id:
+                    formData.doctor_id === 'any' || formData.doctor_id === ''
+                        ? null
+                        : formData.doctor_id, // Send null for 'any' or empty
+                appointment_date: format(formData.appointment_date, 'yyyy-MM-dd'),
                 appointment_time: formData.appointment_time,
                 reason: formData.reason.trim(),
                 notes: formData.notes.trim(),
@@ -451,7 +454,7 @@ const ScheduleAppointmentModal = ({ onSuccess, facilityId, doctorId }) => {
                                                     <p className="text-sm font-medium">
                                                         {format(
                                                             formData.appointment_date,
-                                                            'EEEE, d'
+                                                            'EEEE, MMM d, yyyy'
                                                         )}
                                                     </p>
                                                 </div>

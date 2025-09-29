@@ -85,9 +85,6 @@ const screeningInitForm = {
     pos_for_cchd_left: false,
     ror_date: '',
     ror_remarks: '',
-    // Adding default values to ensure form initialization
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString(),
 }
 
 const allergiesInitForm = {
@@ -732,17 +729,24 @@ const StepperAddPatientModal = ({ open, onClose }) => {
             }
 
             console.log('Patient created successfully with ID:', patientId)
+            console.log('Included steps for additional records:', includedSteps)
             const promises = []
             const failedSections = []
 
             // Add optional sections based on inclusion
             if (includedSteps.includes('delivery')) {
                 const deliveryPayload = sanitizeObject(deliveryForm)
-                if (
-                    Object.values(deliveryPayload).some(
-                        (val) => val !== null && val !== '' && val !== false
-                    )
-                ) {
+                console.log('Processing delivery payload:', deliveryPayload)
+
+                // Check if there's meaningful data (not just empty/null values)
+                const hasData = Object.entries(deliveryPayload).some(([key, val]) => {
+                    // Allow boolean false values and meaningful strings/numbers
+                    return val !== null && val !== '' && val !== undefined &&
+                           (typeof val === 'boolean' || (typeof val === 'string' && val.trim().length > 0) || typeof val === 'number')
+                })
+
+                if (hasData) {
+                    console.log('Adding delivery record to promises')
                     promises.push(
                         addDeliveryRecord(patientId, deliveryPayload)
                             .then((result) => ({ section: 'delivery', result }))
@@ -752,15 +756,21 @@ const StepperAddPatientModal = ({ open, onClose }) => {
                                 return Promise.reject({ section: 'delivery', error })
                             })
                     )
+                } else {
+                    console.log('Delivery section included but no meaningful data found, skipping')
                 }
             }
             if (includedSteps.includes('screening')) {
                 const screeningPayload = sanitizeObject(screeningForm)
-                if (
-                    Object.values(screeningPayload).some(
-                        (val) => val !== null && val !== '' && val !== false
-                    )
-                ) {
+                console.log('Processing screening payload:', screeningPayload)
+
+                // Check if there's meaningful data (allowing boolean values)
+                const hasData = Object.entries(screeningPayload).some(([key, val]) => {
+                    return val !== null && val !== '' && val !== undefined &&
+                           (typeof val === 'boolean' || (typeof val === 'string' && val.trim().length > 0) || typeof val === 'number')
+                })
+
+                if (hasData) {
                     promises.push(
                         addScreeningRecord(patientId, screeningPayload)
                             .then((result) => ({ section: 'screening', result }))
@@ -774,16 +784,22 @@ const StepperAddPatientModal = ({ open, onClose }) => {
             }
             if (includedSteps.includes('anthropometric')) {
                 const anthroPayload = sanitizeObject(anthroForm)
-                if (
-                    Object.values(anthroPayload).some(
-                        (val) => val !== null && val !== '' && val !== false
-                    )
-                ) {
+                console.log('DEBUG: Anthropometric form data (add):', anthroForm)
+                console.log('DEBUG: Sanitized anthropometric data (add):', anthroPayload)
+
+                // Check if there's meaningful data
+                const hasData = Object.entries(anthroPayload).some(([key, val]) => {
+                    return val !== null && val !== '' && val !== undefined &&
+                           (typeof val === 'boolean' || (typeof val === 'string' && val.trim().length > 0) || typeof val === 'number')
+                })
+
+                if (hasData) {
                     promises.push(
                         addAnthropometricRecord(patientId, anthroPayload)
                             .then((result) => ({ section: 'anthropometric', result }))
                             .catch((error) => {
-                                console.error('Anthropometric record failed:', error)
+                                console.error('Anthropometric record failed (add):', error)
+                                console.error('Anthropometric error details (add):', error.response?.data)
                                 failedSections.push('anthropometric')
                                 return Promise.reject({ section: 'anthropometric', error })
                             })
@@ -792,11 +808,15 @@ const StepperAddPatientModal = ({ open, onClose }) => {
             }
             if (includedSteps.includes('allergies')) {
                 const allergyPayload = sanitizeObject(allergiesForm)
-                if (
-                    Object.values(allergyPayload).some(
-                        (val) => val !== null && val !== '' && val !== false
-                    )
-                ) {
+                console.log('Processing allergy payload:', allergyPayload)
+
+                // Check if there's meaningful data
+                const hasData = Object.entries(allergyPayload).some(([key, val]) => {
+                    return val !== null && val !== '' && val !== undefined &&
+                           (typeof val === 'boolean' || (typeof val === 'string' && val.trim().length > 0) || typeof val === 'number')
+                })
+
+                if (hasData) {
                     promises.push(
                         addAllergyRecord(patientId, allergyPayload)
                             .then((result) => ({ section: 'allergies', result }))

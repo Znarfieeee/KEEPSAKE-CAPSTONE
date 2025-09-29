@@ -41,6 +41,21 @@ const PatientRecordsTabs = ({ patient }) => {
         }
     }, [patient?.related_records?.prescriptions])
 
+    // Debug log to check if all related data is being received
+    useEffect(() => {
+        if (patient?.related_records) {
+            console.log('Patient related records:', {
+                delivery: patient.related_records.delivery,
+                anthropometric_measurements: patient.related_records.anthropometric_measurements,
+                screening: patient.related_records.screening,
+                allergies: patient.related_records.allergies,
+                prescriptions: patient.related_records.prescriptions,
+                vaccinations: patient.related_records.vaccinations,
+                parent_access: patient.related_records.parent_access
+            })
+        }
+    }, [patient?.related_records])
+
     // Filter prescriptions based on search query with improved error handling
     const filteredPrescriptions = useMemo(() => {
         if (!Array.isArray(prescriptions)) {

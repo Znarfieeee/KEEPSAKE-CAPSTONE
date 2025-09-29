@@ -65,7 +65,6 @@ const PatientRecordsTable = ({
                         <th className="py-3 px-2">Name</th>
                         <th className="py-3 px-2">Sex</th>
                         <th className="py-3 px-2">Age</th>
-                        <th className="py-3 px-2">Doctor</th>
                         <th className="py-3 px-2">
                             Birthdate{' '}
                             <span className="text-xs font-medium text-gray-400">(YYYY-MM-DD)</span>
@@ -101,9 +100,6 @@ const PatientRecordsTable = ({
                                         patient.sex.slice(1).toLowerCase()}
                                 </td>
                                 <td className="p-2 whitespace-nowrap capitalize">{patient.age}</td>
-                                <td className="p-2 whitespace-nowrap">
-                                    {patient.doctor ? patient.doctor : 'Unassigned'}
-                                </td>
                                 <td className="p-2 whitespace-nowrap">{patient.birthdate}</td>
                                 <td className="p-2 whitespace-nowrap">
                                     <div className="flex gap-1">
