@@ -170,7 +170,8 @@ const ScheduleAppointmentModal = ({ onSuccess, facilityId, doctorId }) => {
     }
 
     /**
-     * Validate form data
+     * Validate form data - Real-life clinic validation
+     * Only validates required fields, no time restrictions
      */
     const validateForm = () => {
         const newErrors = {}
@@ -187,10 +188,10 @@ const ScheduleAppointmentModal = ({ onSuccess, facilityId, doctorId }) => {
         if (!formData.appointment_time) {
             newErrors.appointment_time = 'Please select time slot'
         } else {
-            // Validate time format only
+            // Validate time format only - no restrictions on past/future times
             const timeRegex = /^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/
             if (!timeRegex.test(formData.appointment_time)) {
-                newErrors.appointment_time = 'Invalid time format'
+                newErrors.appointment_time = 'Invalid time format (HH:MM)'
             }
         }
 
@@ -282,6 +283,16 @@ const ScheduleAppointmentModal = ({ onSuccess, facilityId, doctorId }) => {
 
             if (response.status === 'success' || response.success) {
                 showToast('success', 'Appointment scheduled successfully')
+
+                // Dispatch custom event for immediate real-time update
+                if (response.data) {
+                    window.dispatchEvent(
+                        new CustomEvent('appointment-created', {
+                            detail: response.data,
+                        })
+                    )
+                }
+
                 resetForm()
                 onSuccess?.()
             } else {
@@ -442,15 +453,15 @@ const ScheduleAppointmentModal = ({ onSuccess, facilityId, doctorId }) => {
                                         'p-2 sm:pe-5',
                                         errors.appointment_date && 'border-red-500'
                                     )}
-                                    // Allow any date selection, including past dates
-                                    disabled={[]}
+                                    // Allow any date selection for real-life scenarios (walk-ins, backdating, future appointments)
+                                    disabled={false}
                                     required
                                 />
                                 <div className="relative w-full max-sm:h-48 sm:w-40">
                                     <div className="absolute inset-0 py-4 max-sm:border-t">
                                         <ScrollArea className="h-full sm:border-s">
                                             <div className="space-y-3">
-                                                <div className="flex h-5 shrink-0 items-center px-5">
+                                                <div className="flex h-5 shrink-0 items-center py-5 px-5">
                                                     <p className="text-sm font-medium">
                                                         {format(
                                                             formData.appointment_date,

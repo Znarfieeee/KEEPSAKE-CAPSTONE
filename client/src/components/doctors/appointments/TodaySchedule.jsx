@@ -26,13 +26,22 @@ const ScheduleAppointmentModal = lazy(() =>
 )
 
 const AppointmentCard = ({ appointment, onAction }) => {
-    const [isLoading, setIsLoading] = useState(false)
+    const [loadingAction, setLoadingAction] = useState(null)
 
     const handleAction = async (actionType) => {
-        setIsLoading(true)
+        setLoadingAction(actionType)
         try {
             let response
             const appointmentId = appointment.appointment_id || appointment.id
+
+            // Debug logging
+            console.log('Appointment data:', appointment)
+            console.log('Appointment ID being used:', appointmentId)
+            console.log('Action type:', actionType)
+
+            if (!appointmentId) {
+                throw new Error('Appointment ID is missing')
+            }
 
             switch (actionType) {
                 case 'confirm':
@@ -64,18 +73,42 @@ const AppointmentCard = ({ appointment, onAction }) => {
                     return
             }
 
+            // Dispatch custom event for immediate real-time update
+            if (response?.data) {
+                window.dispatchEvent(
+                    new CustomEvent('appointment-updated', {
+                        detail: response.data,
+                    })
+                )
+            }
+
             // Notify parent component about the change
             await onAction?.(actionType, appointment, response)
         } catch (error) {
             console.error(`Error ${actionType}ing appointment:`, error)
-            const errorMessage =
-                error.response?.data?.message ||
-                error.message ||
-                `Failed to ${actionType} appointment`
+            console.error('Error response:', error.response)
+            console.error('Error config:', error.config)
+
+            let errorMessage = `Failed to ${actionType} appointment`
+
+            if (error.response) {
+                // Server responded with error
+                errorMessage = error.response?.data?.message ||
+                              error.response?.data?.details ||
+                              `Server error (${error.response.status}): ${error.response.statusText}`
+                console.error('Server response data:', error.response.data)
+            } else if (error.request) {
+                // Request was made but no response
+                errorMessage = 'No response from server. Please check your connection.'
+            } else {
+                // Error in request setup
+                errorMessage = error.message || errorMessage
+            }
+
             showToast('error', errorMessage)
             throw error
         } finally {
-            setIsLoading(false)
+            setLoadingAction(null)
         }
     }
 
@@ -196,27 +229,45 @@ const AppointmentCard = ({ appointment, onAction }) => {
                     </Badge>
 
                     <div className="flex items-center space-x-1">
-                        {appointment.status?.toLowerCase() === 'scheduled' && (
+                        {(appointment.status?.toLowerCase() === 'scheduled' || !appointment.status) && (
                             <>
                                 <Button
                                     onClick={handleConfirm}
                                     size="sm"
                                     variant="outline"
                                     className="h-7 px-2 text-xs text-green-600 border-green-200 hover:bg-green-50"
-                                    disabled={isLoading}
+                                    disabled={loadingAction !== null}
                                 >
-                                    <CheckCircle className="h-3 w-3 mr-1" />
-                                    Confirm
+                                    {loadingAction === 'confirm' ? (
+                                        <div className="flex items-center">
+                                            <div className="h-3 w-3 mr-1 animate-spin rounded-full border-2 border-green-600 border-t-transparent" />
+                                            Confirming...
+                                        </div>
+                                    ) : (
+                                        <>
+                                            <CheckCircle className="h-3 w-3 mr-1" />
+                                            Confirm Appointment
+                                        </>
+                                    )}
                                 </Button>
                                 <Button
                                     onClick={handleCancel}
                                     size="sm"
                                     variant="outline"
                                     className="h-7 px-2 text-xs text-red-600 border-red-200 hover:bg-red-50"
-                                    disabled={isLoading}
+                                    disabled={loadingAction !== null}
                                 >
-                                    <XCircle className="h-3 w-3 mr-1" />
-                                    Cancel
+                                    {loadingAction === 'cancel' ? (
+                                        <div className="flex items-center">
+                                            <div className="h-3 w-3 mr-1 animate-spin rounded-full border-2 border-red-600 border-t-transparent" />
+                                            Cancelling...
+                                        </div>
+                                    ) : (
+                                        <>
+                                            <XCircle className="h-3 w-3 mr-1" />
+                                            Cancel
+                                        </>
+                                    )}
                                 </Button>
                             </>
                         )}
@@ -227,20 +278,38 @@ const AppointmentCard = ({ appointment, onAction }) => {
                                     onClick={handleCheckIn}
                                     size="sm"
                                     className="h-7 px-2 text-xs bg-blue-600 text-white hover:bg-blue-700"
-                                    disabled={isLoading}
+                                    disabled={loadingAction !== null}
                                 >
-                                    <UserCheck className="h-3 w-3 mr-1" />
-                                    Check In
+                                    {loadingAction === 'checkin' ? (
+                                        <div className="flex items-center">
+                                            <div className="h-3 w-3 mr-1 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                                            Checking In...
+                                        </div>
+                                    ) : (
+                                        <>
+                                            <UserCheck className="h-3 w-3 mr-1" />
+                                            Mark as Arrived
+                                        </>
+                                    )}
                                 </Button>
                                 <Button
                                     onClick={handleCancel}
                                     size="sm"
                                     variant="outline"
                                     className="h-7 px-2 text-xs text-red-600 border-red-200 hover:bg-red-50"
-                                    disabled={isLoading}
+                                    disabled={loadingAction !== null}
                                 >
-                                    <XCircle className="h-3 w-3 mr-1" />
-                                    Cancel
+                                    {loadingAction === 'cancel' ? (
+                                        <div className="flex items-center">
+                                            <div className="h-3 w-3 mr-1 animate-spin rounded-full border-2 border-red-600 border-t-transparent" />
+                                            Cancelling...
+                                        </div>
+                                    ) : (
+                                        <>
+                                            <XCircle className="h-3 w-3 mr-1" />
+                                            Cancel
+                                        </>
+                                    )}
                                 </Button>
                             </>
                         )}
@@ -251,15 +320,20 @@ const AppointmentCard = ({ appointment, onAction }) => {
                                 onClick={handleComplete}
                                 size="sm"
                                 className="h-7 px-2 text-xs bg-green-600 text-white hover:bg-green-700"
-                                disabled={isLoading}
+                                disabled={loadingAction !== null}
                             >
-                                <CheckCircle className="h-3 w-3 mr-1" />
-                                Complete
+                                {loadingAction === 'complete' ? (
+                                    <div className="flex items-center">
+                                        <div className="h-3 w-3 mr-1 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                                        Completing...
+                                    </div>
+                                ) : (
+                                    <>
+                                        <CheckCircle className="h-3 w-3 mr-1" />
+                                        Mark as Complete
+                                    </>
+                                )}
                             </Button>
-                        )}
-
-                        {isLoading && (
-                            <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent" />
                         )}
                     </div>
                 </div>

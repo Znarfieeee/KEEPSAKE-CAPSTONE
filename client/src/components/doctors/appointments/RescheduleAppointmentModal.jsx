@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react'
 
 // UI Components
 import {
+    DialogTitle,
     DialogContent,
     DialogDescription,
     DialogHeader,
@@ -158,10 +159,11 @@ const RescheduleAppointmentModal = ({ appointment, onSuccess, onClose }) => {
 
     if (!appointment) return null
 
-    const patientName = appointment.patient_name ||
-                       appointment.patients?.firstname + ' ' + appointment.patients?.lastname ||
-                       appointment.patient?.full_name ||
-                       'Unknown Patient'
+    const patientName =
+        appointment.patient_name ||
+        appointment.patients?.firstname + ' ' + appointment.patients?.lastname ||
+        appointment.patient?.full_name ||
+        'Unknown Patient'
 
     return (
         <DialogContent
@@ -169,7 +171,7 @@ const RescheduleAppointmentModal = ({ appointment, onSuccess, onClose }) => {
             showCloseButton={false}
         >
             <DialogHeader className="space-y-3">
-                <h2 className="text-2xl font-semibold text-gray-900">Reschedule Appointment</h2>
+                <DialogTitle className="text-2xl text-gray-900">Reschedule Appointment</DialogTitle>
                 <DialogDescription>
                     Update the date and time for <strong>{patientName}</strong>'s appointment
                 </DialogDescription>
@@ -181,10 +183,18 @@ const RescheduleAppointmentModal = ({ appointment, onSuccess, onClose }) => {
                     <div className="bg-gray-50 rounded-lg p-4">
                         <h4 className="font-medium text-gray-900 mb-2">Appointment Details</h4>
                         <div className="space-y-1 text-sm">
-                            <p><span className="font-medium">Patient:</span> {patientName}</p>
-                            <p><span className="font-medium">Reason:</span> {appointment.reason || 'General Consultation'}</p>
+                            <p>
+                                <span className="font-medium">Patient:</span> {patientName}
+                            </p>
+                            <p>
+                                <span className="font-medium">Reason:</span>{' '}
+                                {appointment.reason || 'General Consultation'}
+                            </p>
                             {appointment.doctor_name && (
-                                <p><span className="font-medium">Doctor:</span> Dr. {appointment.doctor_name}</p>
+                                <p>
+                                    <span className="font-medium">Doctor:</span> Dr.{' '}
+                                    {appointment.doctor_name}
+                                </p>
                             )}
                         </div>
                     </div>

@@ -84,6 +84,7 @@ export const getStatusBadgeColor = (status) => {
         completed: 'bg-blue-100 text-blue-800',
         cancelled: 'bg-red-100 text-white',
         'no-show': 'bg-yellow-100 text-yellow-800',
+        checked_in: 'bg-purple-100 text-purple-800',
     }
 
     return statusColors[status?.toLowerCase()] || 'bg-gray-100 text-gray-800'

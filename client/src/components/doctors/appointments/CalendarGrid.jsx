@@ -424,7 +424,10 @@ const CalendarGrid = ({ appointments = [], className }) => {
 
             {/* Day Detail Modal */}
             <Dialog open={showDayDetail} onOpenChange={setShowDayDetail}>
-                <DialogContent className="max-w-2xl max-h-[80vh] overflow-hidden">
+                <DialogContent
+                    className="max-w-2xl max-h-[80vh] overflow-hidden"
+                    showCloseButton={false}
+                >
                     <DialogHeader className="pb-4 border-b">
                         <DialogTitle className="flex items-center gap-2 text-xl font-semibold">
                             <Calendar className="w-5 h-5 text-blue-600" />
@@ -443,7 +446,7 @@ const CalendarGrid = ({ appointments = [], className }) => {
 
                     <div className="overflow-y-auto max-h-[60vh]">
                         {selectedDay && selectedDay.appointments.length > 0 ? (
-                            <div className="space-y-4 p-2">
+                            <div className="space-y-4 p-2 mt-6">
                                 <div className="flex items-center justify-between mb-4">
                                     <h3 className="font-medium text-gray-900">
                                         {selectedDay.appointments.length} Appointment
@@ -556,12 +559,8 @@ const CalendarGrid = ({ appointments = [], className }) => {
                     </div>
 
                     <div className="mt-4 pt-4 border-t border-gray-200 flex justify-end">
-                        <Button
-                            variant="outline"
-                            onClick={() => setShowDayDetail(false)}
-                            className="px-4 py-2"
-                        >
-                            Close
+                        <Button onClick={() => setShowDayDetail(false)} className="px-8 py-2">
+                            OK
                         </Button>
                     </div>
                 </DialogContent>

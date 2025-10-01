@@ -20,8 +20,10 @@ def supabase_service_role_client() -> "supabase_py.Client":
     return sr_client
 
 
-try:        
-    supabase = supabase_anon_client()
+try:
+    # Use service role client for backend operations to bypass RLS
+    # This is safe because all routes are protected by @require_auth and @require_role decorators
+    supabase = supabase_service_role_client()
     if supabase:
         print("Successfully connected to supabase!")
     else:

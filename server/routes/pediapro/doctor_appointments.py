@@ -54,46 +54,52 @@ def prepare_appointments_payload(data, is_update=False):
     """
     Prepare appointment payload with required and optional fields.
     Maps to the actual database schema fields.
+
+    Real-life clinic validation approach:
+    - No time restrictions (allows past/future appointments for walk-ins, backdating)
+    - Allows double-booking (multiple patients at same time)
+    - Doctor assignment is optional (supports "any available doctor")
+    - Only validates essential fields to ensure data integrity
     """
     payload = {}
-    
-    # Required fields for creation (not all required for updates)
+
+    # Required fields for creation (minimal validation for real-life flexibility)
     if not is_update:
         required_fields = ['patient_id', 'facility_id', 'scheduled_by', 'appointment_date']
         missing_fields = [field for field in required_fields if not data.get(field)]
-        
+
         if missing_fields:
             raise ValueError(f"Missing required fields: {', '.join(missing_fields)}")
-    
+
     # Map fields according to database schema
     field_mapping = {
         'patient_id': 'patient_id',
-        'facility_id': 'facility_id', 
-        'doctor_id': 'doctor_id',
-        'doctor_name': 'doctor_name',  # New field for doctor name
+        'facility_id': 'facility_id',
+        'doctor_id': 'doctor_id',  # Optional - allows "any available doctor"
+        'doctor_name': 'doctor_name',
         'scheduled_by': 'scheduled_by',
-        'appointment_date': 'appointment_date',  # timestamp with time zone
-        'appointment_time': 'appointment_time',  # time without time zone
+        'appointment_date': 'appointment_date',  # No date restrictions (past/future allowed)
+        'appointment_time': 'appointment_time',  # No time slot restrictions
         'reason': 'reason',
         'notes': 'notes',
         'status': 'status',  # scheduled, confirmed, cancelled, completed, no_show
         'updated_by': 'updated_by',
-        'patient_name': 'patient_name'  # Added field in schema
+        'patient_name': 'patient_name'
     }
-    
+
     # Only include fields that have values and exist in our mapping
     for key, db_field in field_mapping.items():
         if key in data and data[key] is not None:
             payload[db_field] = data[key]
-    
+
     # Set default status if not provided and not an update
     if not is_update and 'status' not in payload:
         payload['status'] = 'scheduled'
-        
+
     # Add timestamps for updates
     if is_update:
         payload['updated_at'] = datetime.datetime.utcnow().isoformat()
-    
+
     return payload
 
 @appointment_bp.route('/appointments', methods=['GET'])
@@ -874,21 +880,25 @@ def update_appointment_status(appointment_id):
         raw_data = request.json
         data = sanitize_request_data(raw_data)
         current_user = request.current_user
-        
+
+        # Debug logging
+        current_app.logger.info(f"DEBUG: Received status update request for appointment_id={appointment_id}")
+        current_app.logger.info(f"DEBUG: Request data: {data}")
+
         if not data.get('status'):
             return jsonify({
                 "status": "error",
                 "message": "Status is required"
             }), 400
-        
+
         # Validate status
-        valid_statuses = ['scheduled', 'confirmed', 'cancelled', 'completed', 'no_show']
+        valid_statuses = ['scheduled', 'confirmed', 'cancelled', 'completed', 'no_show', 'checked_in', 'in_progress']
         if data['status'] not in valid_statuses:
             return jsonify({
                 "status": "error",
                 "message": f"Invalid status. Must be one of: {', '.join(valid_statuses)}"
             }), 400
-        
+
         current_app.logger.info(f"AUDIT: User {current_user.get('email')} updating appointment {appointment_id} status to {data['status']}")
         
         # Update appointment status
@@ -901,7 +911,11 @@ def update_appointment_status(appointment_id):
             })\
             .eq('appointment_id', appointment_id)\
             .execute()
-        
+
+        # Debug logging
+        current_app.logger.info(f"DEBUG: Supabase response data: {resp.data if resp.data else 'No data'}")
+        current_app.logger.info(f"DEBUG: Supabase response error: {getattr(resp, 'error', None)}")
+
         if getattr(resp, 'error', None):
             current_app.logger.error(f"AUDIT: Failed to update appointment status {appointment_id}: {resp.error.message}")
             return jsonify({
@@ -909,11 +923,12 @@ def update_appointment_status(appointment_id):
                 "message": "Failed to update appointment status",
                 "details": resp.error.message
             }), 400
-        
-        if not resp.data:
+
+        if not resp.data or len(resp.data) == 0:
+            current_app.logger.error(f"DEBUG: No appointment found with ID {appointment_id}")
             return jsonify({
                 "status": "error",
-                "message": "Appointment not found"
+                "message": f"Appointment not found with ID {appointment_id}. Please refresh the page."
             }), 404
         
         # Invalidate related caches

@@ -31,24 +31,29 @@ const DoctorAppointments = () => {
     const navigate = useNavigate()
 
     /**
-     * Handle real-time appointment changes from Supabase
+     * Handle real-time appointment changes from Supabase and custom events
      * Updates the appointments state based on the change type
      */
-    const handleAppointmentChange = useCallback(({ type, appointment, raw }) => {
+    const handleAppointmentChange = useCallback(({ type, appointment, raw, source }) => {
         setAppointments((prevAppointments) => {
             let updatedAppointments = [...prevAppointments]
             const appointmentId = appointment.appointment_id || appointment.id
 
             switch (type) {
                 case 'INSERT':
-                    // Check if appointment already exists to prevent duplicates
+                    // Check if appointment already exists to prevent duplicates from both sources
                     const exists = prevAppointments.some((app) => {
                         const currentId = app.appointment_id || app.id
                         return currentId === appointmentId
                     })
                     if (!exists) {
                         updatedAppointments = [appointment, ...prevAppointments]
-                        console.log('New appointment added:', appointment.patient_name || 'Unknown Patient')
+                        console.log(
+                            `New appointment added (${source || 'realtime'}):`,
+                            appointment.patient_name || 'Unknown Patient'
+                        )
+                    } else {
+                        console.log('Appointment already exists, skipping duplicate:', appointmentId)
                     }
                     break
                 case 'UPDATE':
@@ -166,13 +171,13 @@ const DoctorAppointments = () => {
 
     /**
      * Handle successful appointment scheduling
-     * Refreshes the appointments list and closes the modal
+     * Closes the modal - real-time updates will handle the data refresh
      */
     const handleScheduleSuccess = useCallback(() => {
-        fetchAppointments()
         setIsModalOpen(false)
-        showToast('success', 'Appointment scheduled successfully!')
-    }, [fetchAppointments])
+        // Note: No need to call fetchAppointments() here
+        // The custom event 'appointment-created' and Supabase realtime will handle the update
+    }, [])
 
     /**
      * Handle appointment actions (check-in, cancel, etc.)

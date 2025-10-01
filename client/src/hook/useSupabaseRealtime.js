@@ -565,6 +565,80 @@ export const useAppointmentsRealtime = ({ onAppointmentChange, doctorId, facilit
         [formatAppointment, onAppointmentChange]
     )
 
+    // Set up custom event listeners for immediate UI updates
+    useEffect(() => {
+        const handleCustomAppointmentCreated = (event) => {
+            console.log('Custom appointment-created event received:', event.detail)
+            const appointment = event.detail
+            if (appointment) {
+                // Check if this appointment matches our filter (if any)
+                const matchesFilter =
+                    !doctorId ||
+                    appointment.doctor_id === doctorId ||
+                    (!facilityId || appointment.facility_id === facilityId)
+
+                if (matchesFilter) {
+                    const formattedAppointment = formatAppointment(appointment)
+                    if (formattedAppointment) {
+                        onAppointmentChange({
+                            type: 'INSERT',
+                            appointment: formattedAppointment,
+                            raw: appointment,
+                            source: 'custom-event',
+                        })
+                    }
+                }
+            }
+        }
+
+        const handleCustomAppointmentUpdated = (event) => {
+            console.log('Custom appointment-updated event received:', event.detail)
+            const appointment = event.detail
+            if (appointment) {
+                const formattedAppointment = formatAppointment(appointment)
+                if (formattedAppointment) {
+                    onAppointmentChange({
+                        type: 'UPDATE',
+                        appointment: formattedAppointment,
+                        raw: appointment,
+                        source: 'custom-event',
+                    })
+                }
+            }
+        }
+
+        const handleCustomAppointmentDeleted = (event) => {
+            console.log('Custom appointment-deleted event received:', event.detail)
+            const appointment = event.detail
+            if (appointment) {
+                const appointmentToDelete = {
+                    appointment_id: appointment.appointment_id,
+                    id: appointment.appointment_id,
+                    patient_name: appointment.patient_name,
+                }
+
+                onAppointmentChange({
+                    type: 'DELETE',
+                    appointment: appointmentToDelete,
+                    raw: appointment,
+                    source: 'custom-event',
+                })
+            }
+        }
+
+        // Add event listeners for custom events
+        window.addEventListener('appointment-created', handleCustomAppointmentCreated)
+        window.addEventListener('appointment-updated', handleCustomAppointmentUpdated)
+        window.addEventListener('appointment-deleted', handleCustomAppointmentDeleted)
+
+        return () => {
+            // Remove custom event listeners
+            window.removeEventListener('appointment-created', handleCustomAppointmentCreated)
+            window.removeEventListener('appointment-updated', handleCustomAppointmentUpdated)
+            window.removeEventListener('appointment-deleted', handleCustomAppointmentDeleted)
+        }
+    }, [formatAppointment, onAppointmentChange, doctorId, facilityId])
+
     // Create filter based on available parameters
     let filter = null
     if (doctorId) {

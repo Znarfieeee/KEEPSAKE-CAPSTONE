@@ -1,10 +1,12 @@
 import React, { useState, useMemo, Suspense, lazy } from 'react'
 
 // UI Components
-import { Filter, Search, RotateCcw, Eye, Calendar, Clock, User, Edit } from 'lucide-react'
+import { Filter, Search, RotateCcw, Eye, Calendar, Clock, User, Edit, XCircle } from 'lucide-react'
 import { cn, getStatusBadgeColor } from '@/util/utils'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogTrigger } from '@/components/ui/dialog'
+import { showToast } from '@/util/alertHelper'
+import { cancelAppointment } from '@/api/doctors/appointment'
 
 // Helper
 import TooltipHelper from '@/util/TooltipHelper'
@@ -34,6 +36,7 @@ const AllAppointments = ({ appointments, onRefresh, loading = false }) => {
     const [selectedAppointment, setSelectedAppointment] = useState(null)
     const [showViewModal, setShowViewModal] = useState(false)
     const [showRescheduleModal, setShowRescheduleModal] = useState(false)
+    const [cancellingId, setCancellingId] = useState(null)
 
     // Filter and search appointments
     const filteredAppointments = useMemo(() => {
@@ -83,6 +86,43 @@ const AllAppointments = ({ appointments, onRefresh, loading = false }) => {
         onRefresh?.()
     }
 
+    const handleCancelAppointment = async (appointment) => {
+        const appointmentId = appointment.appointment_id || appointment.id
+
+        if (!confirm('Are you sure you want to cancel this appointment?')) {
+            return
+        }
+
+        setCancellingId(appointmentId)
+        try {
+            const response = await cancelAppointment(appointmentId)
+
+            if (response.status === 'success') {
+                showToast('success', 'Appointment cancelled successfully')
+
+                // Dispatch custom event for real-time update
+                if (response.data) {
+                    window.dispatchEvent(
+                        new CustomEvent('appointment-updated', {
+                            detail: response.data,
+                        })
+                    )
+                }
+
+                onRefresh?.()
+            }
+        } catch (error) {
+            console.error('Error cancelling appointment:', error)
+            const errorMessage =
+                error.response?.data?.message ||
+                error.message ||
+                'Failed to cancel appointment'
+            showToast('error', errorMessage)
+        } finally {
+            setCancellingId(null)
+        }
+    }
+
     const closeModals = () => {
         setShowViewModal(false)
         setShowRescheduleModal(false)
@@ -93,9 +133,10 @@ const AllAppointments = ({ appointments, onRefresh, loading = false }) => {
         { value: 'all', label: 'All Statuses' },
         { value: 'scheduled', label: 'Scheduled' },
         { value: 'confirmed', label: 'Confirmed' },
+        { value: 'checked_in', label: 'Checked In' },
         { value: 'completed', label: 'Completed' },
         { value: 'cancelled', label: 'Cancelled' },
-        { value: 'no-show', label: 'No Show' },
+        { value: 'no_show', label: 'No Show' },
     ]
 
     return (
@@ -283,19 +324,38 @@ const AllAppointments = ({ appointments, onRefresh, loading = false }) => {
                                                 </Button>
                                             </TooltipHelper>
 
-                                            {/* Only show reschedule for scheduled appointments */}
+                                            {/* Only show reschedule for scheduled/confirmed appointments */}
                                             {(appointment.status?.toLowerCase() === 'scheduled' ||
                                               appointment.status?.toLowerCase() === 'confirmed') && (
-                                                <TooltipHelper content="Reschedule Appointment">
-                                                    <Button
-                                                        variant="ghost"
-                                                        size="icon"
-                                                        className="hover:text-yellow-600 hover:bg-yellow-100"
-                                                        onClick={() => handleRescheduleAppointment(appointment)}
-                                                    >
-                                                        <Edit className="size-4" />
-                                                    </Button>
-                                                </TooltipHelper>
+                                                <>
+                                                    <TooltipHelper content="Reschedule Appointment">
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="icon"
+                                                            className="hover:text-yellow-600 hover:bg-yellow-100"
+                                                            onClick={() => handleRescheduleAppointment(appointment)}
+                                                            disabled={cancellingId === (appointment.appointment_id || appointment.id)}
+                                                        >
+                                                            <Edit className="size-4" />
+                                                        </Button>
+                                                    </TooltipHelper>
+
+                                                    <TooltipHelper content="Cancel Appointment">
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="icon"
+                                                            className="hover:text-red-600 hover:bg-red-100"
+                                                            onClick={() => handleCancelAppointment(appointment)}
+                                                            disabled={cancellingId === (appointment.appointment_id || appointment.id)}
+                                                        >
+                                                            {cancellingId === (appointment.appointment_id || appointment.id) ? (
+                                                                <div className="size-4 animate-spin rounded-full border-2 border-red-600 border-t-transparent" />
+                                                            ) : (
+                                                                <XCircle className="size-4" />
+                                                            )}
+                                                        </Button>
+                                                    </TooltipHelper>
+                                                </>
                                             )}
                                         </div>
                                     </td>
