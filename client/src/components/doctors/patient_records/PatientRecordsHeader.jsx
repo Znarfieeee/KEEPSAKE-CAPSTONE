@@ -1,8 +1,9 @@
 import React from "react"
 import { Button } from "@/components/ui/Button"
 import { PlusCircle, Download, BarChart3 } from "lucide-react"
+import { DialogTrigger } from "@/components/ui/dialog"
 
-const PatientRecordsHeader = ({ onNewRecord, onExportCSV, onOpenReports }) => {
+const PatientRecordsHeader = ({ onExportCSV, onOpenReports, onNewRecord }) => {
     return (
         <div className="space-y-4">
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
@@ -10,12 +11,14 @@ const PatientRecordsHeader = ({ onNewRecord, onExportCSV, onOpenReports }) => {
                     Patient Records
                 </h1>
                 <div className="flex flex-wrap gap-3">
-                    <Button
-                        onClick={onNewRecord}
-                        className="bg-primary text-white hover:bg-primary/90">
-                        <PlusCircle className="h-4 w-4 mr-2" />
-                        New Record
-                    </Button>
+                    <DialogTrigger asChild>
+                        <Button
+                            className="bg-primary text-white hover:bg-primary/90"
+                            onClick={onNewRecord}>
+                            <PlusCircle className="h-4 w-4 mr-2" />
+                            New Record
+                        </Button>
+                    </DialogTrigger>
 
                     <Button
                         variant="outline"

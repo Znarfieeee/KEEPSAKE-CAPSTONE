@@ -1,19 +1,30 @@
-import React, { useState } from 'react'
-import { createFacility } from '../../../api/admin/facility'
-import { sanitizeObject } from '../../../util/sanitize'
+import React, { useState, useEffect, useCallback } from 'react'
+import { createFacility } from '@/api/admin/facility'
+import { sanitizeObject } from '@/util/sanitize'
 
 // UI Components
-import { showToast } from '../../../util/alertHelper'
-import { Button } from '../../ui/Button'
-import LoadingButton from '../../ui/LoadingButton'
+import { showToast } from '@/util/alertHelper'
+import { Button } from '@/components/ui/Button'
+import LoadingButton from '@/components/ui/LoadingButton'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@/components/ui/select'
 import {
     Stepper,
+    StepperDescription,
     StepperIndicator,
     StepperItem,
     StepperSeparator,
+    StepperTitle,
     StepperTrigger,
 } from '@/components/ui/stepper'
-import Checkbox from '../../ui/Checkbox'
+import Checkbox from '@/components/ui/Checkbox'
 
 const initialForm = {
     facility_name: '',
@@ -28,7 +39,12 @@ const initialForm = {
     subscription_expires: '',
 }
 
-const steps = ['Facility Info', 'Assign Admin', 'Plan & Expiry', 'Review']
+const steps = [
+    'Facility Information',
+    'Contact & Admin Details',
+    'Plan & Subscription',
+    'Review & Confirm',
+]
 
 const RegisterFacilityModal = ({ open, onClose }) => {
     const [form, setForm] = useState(initialForm)
@@ -38,18 +54,94 @@ const RegisterFacilityModal = ({ open, onClose }) => {
     // Ref for scroll animation when changing steps
     const contentRef = React.useRef(null)
 
-    const next = () => setStep((s) => Math.min(steps.length - 1, s + 1))
-    const prev = () => setStep((s) => Math.max(0, s - 1))
+    useEffect(() => {
+        if (contentRef.current) {
+            contentRef.current.scrollTo({ top: 0, behavior: 'smooth' })
+        }
+    }, [step])
 
-    const reset = () => {
+    // Transition effect when changing steps
+    const goToStep = useCallback(
+        (newStep) => {
+            if (newStep > step) {
+                if (step === 0 && (!form.facility_name || !form.address || !form.city)) {
+                    showToast('error', 'Please fill in all required fields')
+                    return
+                }
+                if (step === 1 && (!form.contact_number || !form.email)) {
+                    showToast('error', 'Please fill in contact number and email')
+                    return
+                }
+                if (step === 2 && (!form.plan || !form.subscription_expires)) {
+                    showToast('error', 'Please select plan and expiry date')
+                    return
+                }
+            }
+            setStep(newStep)
+        },
+        [step, form]
+    )
+
+    const next = useCallback(() => goToStep(Math.min(steps.length - 1, step + 1)), [goToStep, step])
+    const prev = useCallback(() => goToStep(Math.max(0, step - 1)), [goToStep, step])
+
+    // Optimized form field handlers
+    const handleInputChange = useCallback((field, value) => {
+        setForm((prev) => ({
+            ...prev,
+            [field]: value,
+        }))
+    }, [])
+
+    // Optimized handlers for each field
+    const handleFacilityNameChange = useCallback(
+        (e) => handleInputChange('facility_name', e.target.value),
+        [handleInputChange]
+    )
+    const handleAddressChange = useCallback(
+        (e) => handleInputChange('address', e.target.value),
+        [handleInputChange]
+    )
+    const handleCityChange = useCallback(
+        (e) => handleInputChange('city', e.target.value),
+        [handleInputChange]
+    )
+    const handleZipCodeChange = useCallback(
+        (e) => handleInputChange('zip_code', e.target.value),
+        [handleInputChange]
+    )
+    const handleTypeChange = useCallback(
+        (value) => handleInputChange('type', value),
+        [handleInputChange]
+    )
+    const handleContactChange = useCallback(
+        (e) => handleInputChange('contact_number', e.target.value),
+        [handleInputChange]
+    )
+    const handleEmailChange = useCallback(
+        (e) => handleInputChange('email', e.target.value),
+        [handleInputChange]
+    )
+    const handleWebsiteChange = useCallback(
+        (e) => handleInputChange('website', e.target.value),
+        [handleInputChange]
+    )
+    const handlePlanChange = useCallback(
+        (value) => handleInputChange('plan', value),
+        [handleInputChange]
+    )
+    const handleExpiryChange = useCallback(
+        (e) => handleInputChange('subscription_expires', e.target.value),
+        [handleInputChange]
+    )
+
+    const reset = useCallback(() => {
         setForm(initialForm)
         setStep(0)
         setIsConfirmed(false)
-    }
+    }, [])
 
-    const handleSubmit = async (e) => {
-        e.preventDefault()
-
+    const handleSubmit = useCallback(async () => {
         try {
             setLoading(true)
             const payload = sanitizeObject({
@@ -58,19 +150,21 @@ const RegisterFacilityModal = ({ open, onClose }) => {
             const res = await createFacility(payload)
 
             if (res.status === 'success') {
-                showToast('success', 'Facility registered')
+                showToast('success', 'Facility registered successfully')
                 // Notify other components (e.g., FacilitiesRegistry) to update list
                 window.dispatchEvent(new CustomEvent('facility-created', { detail: res.data }))
+                reset()
+                onClose()
             } else {
                 showToast('error', res.message || 'Failed to register facility')
             }
-
-            reset()
-            onClose()
+        } catch (error) {
+            console.error('Registration error:', error)
+            showToast('error', error.message || 'Failed to register facility')
         } finally {
             setLoading(false)
         }
-    }
+    }, [form, reset, onClose])
 
     if (!open) return null
 
@@ -82,228 +176,205 @@ const RegisterFacilityModal = ({ open, onClose }) => {
             <div className="relative bg-white text-black dark:bg-background rounded-lg shadow-lg w-full max-w-xl mx-4 p-6 space-y-6 z-10">
                 <h2 className="text-xl font-semibold mb-2">Register Facility</h2>
 
-                {/* Stepper */}
+                {/* Enhanced Stepper */}
                 <Stepper
                     value={step + 1}
-                    onValueChange={(val) => setStep(val - 1)}
-                    className="mb-4 mx-auto w-full justify-center"
+                    onValueChange={(val) => goToStep(val - 1)}
+                    className="mb-6 mx-auto w-full"
                     orientation="horizontal"
                 >
-                    {steps.map((_, idx) => (
+                    {steps.map((title, idx) => (
                         <StepperItem
                             key={idx + 1}
                             step={idx + 1}
-                            className="flex-1 text-white data-[state=checked]:text-white"
+                            className="flex-1"
+                            completed={idx < step}
                         >
-                            <StepperTrigger asChild>
-                                <StepperIndicator />
-                            </StepperTrigger>
-                            {idx < steps.length - 1 && <StepperSeparator className="bg-white/20" />}
+                            <div className="flex flex-col items-center gap-2 w-full">
+                                <StepperTrigger className="group flex flex-col items-center gap-2">
+                                    <StepperIndicator className="size-8 text-sm" />
+                                    <div className="text-center">
+                                        <StepperTitle className="text-xs font-medium group-data-[state=active]:text-primary group-data-[state=completed]:text-primary">
+                                            {title}
+                                        </StepperTitle>
+                                        <StepperDescription className="text-xs mt-1 hidden sm:block">
+                                            {idx === 0 && 'Basic facility details'}
+                                            {idx === 1 && 'Contact information'}
+                                            {idx === 2 && 'Plan and subscription'}
+                                            {idx === 3 && 'Review and confirm'}
+                                        </StepperDescription>
+                                    </div>
+                                </StepperTrigger>
+                            </div>
                         </StepperItem>
                     ))}
                 </Stepper>
 
-                {/* Step content */}
-                <div ref={contentRef} className="space-y-3 max-h-[60vh] overflow-y-auto pr-1">
+                {/* Step content with transition */}
+                <div
+                    ref={contentRef}
+                    className="space-y-4 max-h-[60vh] overflow-y-auto pr-1 transition-all duration-300"
+                >
                     {step === 0 && (
-                        <>
-                            {/* Facility Name */}
-                            <div className="flex flex-col form-control">
-                                <label
-                                    htmlFor="facility_name"
-                                    className="block text-sm font-medium"
-                                >
-                                    Facility Name
-                                </label>
-                                <input
-                                    type="text"
-                                    id="facility_name"
-                                    name="facility_name"
-                                    value={form.facility_name}
-                                    onChange={(e) =>
-                                        setForm({
-                                            ...form,
-                                            facility_name: e.target.value,
-                                        })
-                                    }
-                                    placeholder="example:  St. Luke's Hospital"
-                                />
+                        <div className="space-y-4">
+                            <div className="flex gap-4">
+                                <div className="flex-1 p-2">
+                                    <Label htmlFor="facility_name">Facility Name *</Label>
+                                    <Input
+                                        type="text"
+                                        id="facility_name"
+                                        name="facility_name"
+                                        value={form.facility_name}
+                                        onChange={handleFacilityNameChange}
+                                        placeholder="St. Luke's Hospital"
+                                        required
+                                    />
+                                </div>
+                                <div className="w-[180px] p-2">
+                                    <Label htmlFor="type">Facility Type</Label>
+                                    <Select value={form.type} onValueChange={handleTypeChange}>
+                                        <SelectTrigger className="w-full">
+                                            <SelectValue placeholder="Select type" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="clinic">Clinic</SelectItem>
+                                            <SelectItem value="hospital">Hospital</SelectItem>
+                                            <SelectItem value="health_center">
+                                                Health Center
+                                            </SelectItem>
+                                            <SelectItem value="diagnostic_center">
+                                                Diagnostic Center
+                                            </SelectItem>
+                                            <SelectItem value="specialty_clinic">
+                                                Specialty Clinic
+                                            </SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
                             </div>
 
-                            {/* Address */}
-                            <div className="flex flex-col form-control">
-                                <label htmlFor="address" className="block text-sm font-medium">
-                                    Address
-                                </label>
-                                <input
+                            <div className="p-2">
+                                <Label htmlFor="address">Address *</Label>
+                                <Input
                                     type="text"
                                     id="address"
                                     name="address"
                                     value={form.address}
-                                    onChange={(e) =>
-                                        setForm({
-                                            ...form,
-                                            address: e.target.value,
-                                        })
-                                    }
-                                    placeholder="example: 123 Main St"
+                                    onChange={handleAddressChange}
+                                    placeholder="123 Main Street"
+                                    required
                                 />
                             </div>
 
-                            {/* City & Zip */}
-                            <div className="flex gap-2 form-control">
-                                <div className="flex-1">
-                                    <label htmlFor="city" className="block text-sm font-medium">
-                                        City
-                                    </label>
-                                    <input
+                            <div className="grid grid-cols-2 gap-3">
+                                <div className="p-2">
+                                    <Label htmlFor="city">City *</Label>
+                                    <Input
                                         type="text"
                                         id="city"
                                         name="city"
                                         value={form.city}
-                                        onChange={(e) =>
-                                            setForm({
-                                                ...form,
-                                                city: e.target.value,
-                                            })
-                                        }
-                                        placeholder="example: Cebu"
+                                        onChange={handleCityChange}
+                                        placeholder="Cebu City"
+                                        required
                                     />
                                 </div>
-                                <div className="w-36">
-                                    <label htmlFor="zip_code" className="block text-sm font-medium">
-                                        Zip Code
-                                    </label>
-                                    <input
+                                <div className="p-2">
+                                    <Label htmlFor="zip_code">Zip Code</Label>
+                                    <Input
                                         type="text"
                                         id="zip_code"
                                         name="zip_code"
                                         value={form.zip_code}
-                                        onChange={(e) =>
-                                            setForm({
-                                                ...form,
-                                                zip_code: e.target.value,
-                                            })
-                                        }
-                                        placeholder="example: 6000"
+                                        onChange={handleZipCodeChange}
+                                        placeholder="6000"
                                     />
                                 </div>
                             </div>
-
-                            {/* Contact */}
-                            <div className="flex flex-col form-control">
-                                <label
-                                    htmlFor="contact_number"
-                                    className="block text-sm font-medium"
-                                >
-                                    Contact Number
-                                </label>
-                                <input
-                                    type="text"
-                                    id="contact_number"
-                                    name="contact_number"
-                                    value={form.contact_number}
-                                    onChange={(e) =>
-                                        setForm({
-                                            ...form,
-                                            contact_number: e.target.value,
-                                        })
-                                    }
-                                    placeholder="example: 0912 345 6789 or (032) 123 4567"
-                                />
-                            </div>
-                        </>
+                        </div>
                     )}
 
                     {step === 1 && (
-                        <div className="space-y-3">
-                            <div className="flex flex-col form-control">
-                                <label htmlFor="email" className="block text-sm font-medium">
-                                    Admin Email
-                                </label>
-                                <input
+                        <div className="space-y-4">
+                            <div className="p-2">
+                                <Label htmlFor="contact_number">Contact Number *</Label>
+                                <Input
+                                    type="tel"
+                                    id="contact_number"
+                                    name="contact_number"
+                                    value={form.contact_number}
+                                    onChange={handleContactChange}
+                                    placeholder="(032) 123-4567 or 0912-345-6789"
+                                    required
+                                />
+                            </div>
+
+                            <div className="p-2">
+                                <Label htmlFor="email">Admin Email *</Label>
+                                <Input
                                     type="email"
                                     id="email"
                                     name="email"
                                     value={form.email}
-                                    onChange={(e) =>
-                                        setForm({
-                                            ...form,
-                                            email: e.target.value,
-                                        })
-                                    }
+                                    onChange={handleEmailChange}
                                     placeholder="admin@example.com"
+                                    required
                                 />
                                 <p className="text-xs text-muted-foreground mt-1">
-                                    You can invite a new admin by email or assign an existing user
-                                    later.
+                                    Primary contact email for facility administration
                                 </p>
                             </div>
-                            <div className="flex flex-col form-control">
-                                <label htmlFor="website" className="block text-sm font-medium">
-                                    Website
-                                </label>
-                                <input
-                                    type="text"
+
+                            <div className="p-2">
+                                <Label htmlFor="website">Website</Label>
+                                <Input
+                                    type="url"
                                     id="website"
                                     name="website"
                                     value={form.website}
-                                    onChange={(e) =>
-                                        setForm({
-                                            ...form,
-                                            website: e.target.value,
-                                        })
-                                    }
+                                    onChange={handleWebsiteChange}
                                     placeholder="https://example.com"
                                 />
                                 <p className="text-xs text-muted-foreground mt-1">
-                                    You can leave blank if not applicable.
+                                    Optional - Facility website or online presence
                                 </p>
                             </div>
                         </div>
                     )}
 
                     {step === 2 && (
-                        <div className="space-y-3 flex flex-col gap-4">
-                            <div className="flex flex-col form-control">
-                                <label htmlFor="plan" className="block text-sm font-medium">
-                                    Plan
-                                </label>
-                                <select
-                                    id="plan"
-                                    name="plan"
-                                    value={form.plan}
-                                    onChange={(e) =>
-                                        setForm({
-                                            ...form,
-                                            plan: e.target.value,
-                                        })
-                                    }
-                                >
-                                    <option value="standard">Standard</option>
-                                    <option value="premium">Premium</option>
-                                    <option value="enterprise">Enterprise</option>
-                                </select>
+                        <div className="space-y-4">
+                            <div className="p-2">
+                                <Label htmlFor="plan">Subscription Plan *</Label>
+                                <Select value={form.plan} onValueChange={handlePlanChange}>
+                                    <SelectTrigger>
+                                        <SelectValue placeholder="Select a plan" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="standard">Standard Plan</SelectItem>
+                                        <SelectItem value="premium">Premium Plan</SelectItem>
+                                        <SelectItem value="enterprise">Enterprise Plan</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                                <p className="text-xs text-muted-foreground mt-1">
+                                    Choose the subscription plan that best fits your facility's
+                                    needs
+                                </p>
                             </div>
-                            <div className="flex flex-col form-control">
-                                <label
-                                    htmlFor="subscription_expires"
-                                    className="block text-sm font-medium"
-                                >
-                                    Expiry Date
-                                </label>
-                                <input
+
+                            <div className="p-2">
+                                <Label htmlFor="subscription_expires">Subscription Expires *</Label>
+                                <Input
                                     type="date"
                                     id="subscription_expires"
                                     name="subscription_expires"
                                     value={form.subscription_expires}
-                                    onChange={(e) =>
-                                        setForm({
-                                            ...form,
-                                            subscription_expires: e.target.value,
-                                        })
-                                    }
+                                    onChange={handleExpiryChange}
+                                    required
                                 />
+                                <p className="text-xs text-muted-foreground mt-1">
+                                    Set the subscription expiration date
+                                </p>
                             </div>
                         </div>
                     )}
@@ -320,7 +391,19 @@ const RegisterFacilityModal = ({ open, onClose }) => {
                                     <span className="capitalize">{form.type}</span>
                                 </div>
                                 <div className="flex justify-between">
-                                    <span className="font-medium">Contact</span>
+                                    <span className="font-medium">Address</span>
+                                    <span>{form.address}</span>
+                                </div>
+                                <div className="flex justify-between">
+                                    <span className="font-medium">City</span>
+                                    <span>{form.city}</span>
+                                </div>
+                                <div className="flex justify-between">
+                                    <span className="font-medium">Zip Code</span>
+                                    <span>{form.zip_code || 'N/A'}</span>
+                                </div>
+                                <div className="flex justify-between">
+                                    <span className="font-medium">Contact Number</span>
                                     <span>{form.contact_number}</span>
                                 </div>
                                 <div className="flex justify-between">
@@ -328,11 +411,15 @@ const RegisterFacilityModal = ({ open, onClose }) => {
                                     <span>{form.email}</span>
                                 </div>
                                 <div className="flex justify-between">
+                                    <span className="font-medium">Website</span>
+                                    <span>{form.website || 'N/A'}</span>
+                                </div>
+                                <div className="flex justify-between">
                                     <span className="font-medium">Plan</span>
                                     <span className="capitalize">{form.plan}</span>
                                 </div>
                                 <div className="flex justify-between">
-                                    <span className="font-medium">Expiry</span>
+                                    <span className="font-medium">Subscription Expires</span>
                                     <span>{form.subscription_expires}</span>
                                 </div>
                             </div>

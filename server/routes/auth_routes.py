@@ -432,6 +432,7 @@ def login():
                 update_session_activity(session_id)
                 user_data = {
                     'id': existing_session.get('user_id'),
+                    'facility_id': existing_session.get('facility_id'),
                     'email': existing_session.get('email'),
                     'role': existing_session.get('role'),
                     'firstname': existing_session.get('firstname'),
@@ -459,7 +460,7 @@ def login():
         if not email or not password:
             return jsonify({
                 "status": "error",
-                "message": "Email and password are required"
+                "message": "Please enter both your email and password."
             }), 400
 
         current_app.logger.info(f"Attempting login for email: {email}")
@@ -475,14 +476,14 @@ def login():
                 current_app.logger.error(f"AUDIT: No user returned from Supabase for {email}")
                 return jsonify({
                     "status": "error",
-                    "message": "Invalid email or password"
+                    "message": "The email or password you entered is incorrect. Please check your credentials and try again."
                 }), 401
-                
+
             if not auth_response.session:
                 current_app.logger.error(f"AUDIT: No session returned from Supabase for {email}")
                 return jsonify({
                     "status": "error",
-                    "message": "Authentication failed - no session"
+                    "message": "Authentication failed. Please try again."
                 }), 401
             
             user_metadata = auth_response.user.user_metadata or {}
@@ -490,10 +491,9 @@ def login():
             get_facility_id = supabase.table('facility_users')\
                 .select('facility_id')\
                 .eq('user_id', auth_response.user.id)\
-                .single()\
                 .execute()
-                
-            facility_id = get_facility_id.data['facility_id']
+
+            facility_id = get_facility_id.data[0]['facility_id'] if get_facility_id.data else None
                 
             # Get user's last sign in time from Supabase auth
             last_sign_in = auth_response.user.last_sign_in_at.isoformat()
@@ -566,23 +566,39 @@ def login():
 
         except AuthApiError as auth_error:
             current_app.logger.error(f"AUDIT: Supabase AuthApiError for {email} from IP {request.remote_addr} - Error: {str(auth_error)}")
+
+            # Provide user-friendly error messages based on the auth error
+            error_message = str(auth_error).lower()
+            if "invalid password" in error_message or "invalid credentials" in error_message:
+                user_message = "The email or password you entered is incorrect. Please check your credentials and try again."
+            elif "invalid email" in error_message or "email is not valid" in error_message:
+                user_message = "Please enter a valid email address."
+            elif "user not found" in error_message or "account not found" in error_message:
+                user_message = "No account found with this email address. Please contact your administrator if you believe this is an error."
+            elif "account is inactive" in error_message or "user is inactive" in error_message:
+                user_message = "Your account has been deactivated. Please contact your administrator for assistance."
+            elif "too many attempts" in error_message or "rate limit" in error_message:
+                user_message = "Too many login attempts. Please wait a few minutes before trying again."
+            else:
+                user_message = "Authentication failed. Please verify your email and password."
+
             return jsonify({
                 "status": "error",
-                "message": f"Authentication failed: {str(auth_error)}"
+                "message": user_message
             }), 401
             
         except Exception as supabase_error:
             current_app.logger.error(f"AUDIT: Supabase connection error for {email} from IP {request.remote_addr} - Error: {str(supabase_error)}")
             return jsonify({
                 "status": "error",
-                "message": "Authentication service temporarily unavailable"
+                "message": "The authentication service is temporarily unavailable. Please try again in a few minutes."
             }), 503
 
     except Exception as e:
         current_app.logger.error(f"AUDIT: Login failed for {email if 'email' in locals() else 'unknown'} from IP {request.remote_addr} - Error: {str(e)}")
         return jsonify({
             "status": "error",
-            "message": "An unexpected error occurred during login"
+            "message": "An unexpected error occurred. Please try again."
         }), 500
 
 @auth_bp.route('/logout', methods=['POST'])
@@ -718,8 +734,6 @@ def refresh_token():
                     "status": "error",
                     "message": "Session expired"
                 }), 401
-                
-            print(f"Debug - Attempting to refresh with token: {refresh_token}")
             
             # Create a new session with the refresh token
             auth_response = supabase.auth.refresh_session({
@@ -732,9 +746,7 @@ def refresh_token():
                     "status": "error",
                     "message": "Failed to refresh session"
                 }), 401
-                
-            print(f"Debug - Got new session from Supabase: {auth_response.session.access_token[:20]}...")
-                
+                           
             # Update the tokens in Redis
             supabase_tokens = {
                 'access_token': auth_response.session.access_token,
@@ -770,8 +782,7 @@ def refresh_token():
                     path="/",
                     domain=None  # Let browser set automatically
                 )
-            print(f"Debug - Set cookies: session_id and {REFRESH_COOKIE}")
-            
+          
             return response, 200
             
         except AuthApiError as auth_error:

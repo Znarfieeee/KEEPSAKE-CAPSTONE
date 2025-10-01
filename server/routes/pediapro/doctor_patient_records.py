@@ -18,6 +18,7 @@ def prepare_patient_payload(data, created_by):
     payload = {
         "firstname": data.get('firstname'),
         "lastname": data.get('lastname'),
+        "middlename": data.get('middlename'),
         "date_of_birth": data.get('date_of_birth'),
         "sex": data.get('sex'),
         "created_by": created_by,
@@ -116,13 +117,19 @@ def has_related_data(data, fields):
 def upsert_related_record(table_name, payload, patient_id):
     """
     Upsert pattern: Try to update first, insert if no records exist
-    Think of this like React's useEffect with dependency array - 
+    Think of this like React's useEffect with dependency array -
     we only create/update when there's actual data to process
     """
     try:
+        current_app.logger.info(f"Attempting to upsert {table_name} for patient {patient_id} with payload: {payload}")
+
         # First check if record exists
         existing = supabase.table(table_name).select('*').eq('patient_id', patient_id).execute()
-        
+
+        if getattr(existing, 'error', None):
+            current_app.logger.error(f"Error checking existing {table_name} record: {existing.error.message}")
+            return existing
+
         if existing.data and len(existing.data) > 0:
             # Update existing record
             resp = supabase.table(table_name).update(payload).eq('patient_id', patient_id).execute()
@@ -131,16 +138,23 @@ def upsert_related_record(table_name, payload, patient_id):
             # Insert new record
             resp = supabase.table(table_name).insert(payload).execute()
             current_app.logger.info(f"Created new {table_name} record for patient {patient_id}")
-            
+
+        if getattr(resp, 'error', None):
+            current_app.logger.error(f"Database error in {table_name}: {resp.error.message}")
+        else:
+            current_app.logger.info(f"Successfully upserted {table_name} record")
+
         return resp
-        
+
     except Exception as e:
-        current_app.logger.error(f"Error upserting {table_name} for patient {patient_id}: {str(e)}")
+        current_app.logger.error(f"Exception upserting {table_name} for patient {patient_id}: {str(e)}")
+        import traceback
+        current_app.logger.error(f"Traceback: {traceback.format_exc()}")
         raise
 
 @patrecord_bp.route('/patient_records', methods=['GET'])
 @require_auth
-@require_role('doctor', 'facility_admin')
+@require_role('doctor', 'facility_admin', 'nurse')
 def get_patient_records():
     try:
         bust_cache = request.args.get('bust_cache', 'false').lower() == 'true'
@@ -183,122 +197,153 @@ def get_patient_records():
 
 @patrecord_bp.route('/patient_records', methods=['POST'])
 @require_auth
-@require_role('doctor', 'facility_admin')
+@require_role('doctor', 'facility_admin', 'nurse')
 def add_patient_record():
     """
     Clean, focused patient creation - like a pure React functional component.
-    Only handles the main patient record. 
+    Only handles the main patient record.
     Use dedicated routes for related data (delivery, measurements, etc.)
-    
+
     Think: <PatientBasicForm /> instead of <MegaPatientEverythingForm />
     """
     try:
         data = request.json or {}
         current_user = request.current_user
-        
+
+        current_app.logger.info(f"AUDIT: User {current_user.get('email', 'Unknown')} attempting to create new patient record")
+        current_app.logger.debug(f"Patient creation data received: {json.dumps(data, default=str)}")
+
         # Validate required fields
         required_fields = ['firstname', 'lastname', 'date_of_birth', 'sex']
         missing_fields = [field for field in required_fields if not data.get(field)]
-        
+
         if missing_fields:
+            current_app.logger.warning(f"AUDIT: Patient creation failed - missing required fields: {missing_fields}")
             return jsonify({
                 "status": "error",
-                "message": f"Missing required fields: {', '.join(missing_fields)}"
+                "message": f"Missing required fields: {', '.join(missing_fields)}",
+                "field_errors": {field: "This field is required" for field in missing_fields}
             }), 400
-            
+
         # Validate sex field
         if data.get('sex') not in ['male', 'female']:
+            current_app.logger.warning(f"AUDIT: Patient creation failed - invalid sex value: {data.get('sex')}")
             return jsonify({
                 "status": "error",
-                "message": "Sex must be one of: male or female"
+                "message": "Sex must be one of: male or female",
+                "field_errors": {"sex": "Please select a valid sex option"}
             }), 400
-            
-        # Validate gestation weeks if provided
-        if data.get('gestation_weeks') is not None:
-            weeks = data.get('gestation_weeks')
-            if not isinstance(weeks, int) or weeks <= 0 or weeks > 50:
-                return jsonify({
-                    "status": "error",
-                    "message": "Gestation weeks must be between 1 and 50"
-                }), 400
-            
-        current_app.logger.info(f"AUDIT: User {current_user.get('email')} attempting to create new patient record")
-        
+
+        # Validate date of birth format
+        try:
+            from datetime import datetime
+            datetime.fromisoformat(data.get('date_of_birth').replace('Z', '+00:00'))
+        except (ValueError, AttributeError) as e:
+            current_app.logger.warning(f"AUDIT: Patient creation failed - invalid date format: {data.get('date_of_birth')}")
+            return jsonify({
+                "status": "error",
+                "message": "Invalid date of birth format",
+                "field_errors": {"date_of_birth": "Please provide a valid date"}
+            }), 400
+
         created_by = current_user.get('id')
-        
+        if not created_by:
+            current_app.logger.error(f"AUDIT: Patient creation failed - no user ID available")
+            return jsonify({
+                "status": "error",
+                "message": "Authentication error - user ID not found"
+            }), 401
+
         # Create only the main patient record - clean and simple
         patients_payload = prepare_patient_payload(data, created_by)
-        
+        current_app.logger.debug(f"Prepared patient payload: {json.dumps(patients_payload, default=str)}")
+
         try:
             patient_resp = supabase.table('patients').insert(patients_payload).execute()
-            
+
             if getattr(patient_resp, 'error', None):
-                current_app.logger.error(f"AUDIT: Failed to create patient record: {patient_resp.error.message if patient_resp.error else 'Unknown error'}")
+                error_msg = patient_resp.error.message if patient_resp.error else 'Unknown database error'
+                current_app.logger.error(f"AUDIT: Failed to create patient record - Database error: {error_msg}")
                 return jsonify({
                     "status": "error",
-                    "message": "Failed to create patient",
-                    "details": patient_resp.error.message if patient_resp.error else "Unknown",
-                }), 400
+                    "message": "Failed to create patient record",
+                    "details": error_msg,
+                }), 500
 
             if not patient_resp.data or len(patient_resp.data) == 0:
+                current_app.logger.error(f"AUDIT: Failed to create patient record - No data returned from database")
                 return jsonify({
                     "status": "error",
-                    "message": "Failed to create patient - no data returned"
-                }), 400
+                    "message": "Failed to create patient record - database returned no data"
+                }), 500
 
-            patient_id = patient_resp.data[0].get('patient_id')
+            patient_data = patient_resp.data[0]
+            patient_id = patient_data.get('patient_id')
+
             if not patient_id:
+                current_app.logger.error(f"AUDIT: Failed to create patient record - Patient ID not found in response")
                 return jsonify({
                     "status": "error",
-                    "message": "Failed to get patient ID"
-                }), 400
-                    
+                    "message": "Failed to retrieve patient ID from created record"
+                }), 500
+
             invalidate_caches('patient')
-            
-            current_app.logger.info(f"AUDIT: Successfully created patient record with ID {patient_id}")
-            
+
+            current_app.logger.info(f"AUDIT: Successfully created patient record with ID {patient_id} for user {current_user.get('email', 'Unknown')}")
+
             return jsonify({
                 "status": "success",
-                "message": "Patient record created successfully. Use dedicated endpoints for additional data (delivery, measurements, etc.)",
-                "data": patient_resp.data[0],
+                "message": "Patient record created successfully",
+                "data": patient_data,
+                "patient_id": patient_id,
                 "next_steps": {
                     "delivery_record": f"/patient_record/{patient_id}/delivery",
                     "anthropometric_data": f"/patient_record/{patient_id}/anthropometric",
                     "screening_tests": f"/patient_record/{patient_id}/screening",
                     "allergies": f"/patient_record/{patient_id}/allergies",
-                    "allergies": f"/patient_record/{patient_id}/prescription",                    
+                    "prescription": f"/patient_record/{patient_id}/prescription",
                 }
             }), 201
-            
+
         except AuthApiError as e:
             current_app.logger.error(f"AUDIT: Auth API error while creating patient: {str(e)}")
             return jsonify({
                 "status": "error",
-                "message": f"Auth API Error: {str(e)}",
-            }), 500
+                "message": "Authentication error occurred while creating patient",
+                "details": str(e)
+            }), 401
         except Exception as e:
             current_app.logger.error(f"AUDIT: Unexpected error while creating patient: {str(e)}")
+            import traceback
+            current_app.logger.error(f"AUDIT: Traceback: {traceback.format_exc()}")
             return jsonify({
                 "status": "error",
-                "message": f"Unexpected error: {str(e)}",
+                "message": "An unexpected error occurred while creating the patient record",
+                "details": str(e)
             }), 500
-        
+
     except AuthApiError as e:
+        current_app.logger.error(f"AUDIT: Supabase Auth error in patient creation: {str(e)}")
         return jsonify({
             "status": "error",
-            "message": f"Supabase Auth error: {str(e)}",
-        }), 500
-        
+            "message": "Authentication error",
+            "details": str(e)
+        }), 401
+
     except Exception as e:
+        current_app.logger.error(f"AUDIT: Top-level error creating patient: {str(e)}")
+        import traceback
+        current_app.logger.error(f"AUDIT: Traceback: {traceback.format_exc()}")
         return jsonify({
             "status": "error",
-            "message": f"Error creating patient: {str(e)}",
+            "message": "An unexpected error occurred",
+            "details": str(e)
         }), 500
 
 # Separate routes for individual record types (like separate React components)
 @patrecord_bp.route('/patient_record/<patient_id>/delivery', methods=['POST', 'PUT'])
 @require_auth
-@require_role('doctor', 'facility_admin')
+@require_role('doctor', 'facility_admin', 'nurse')
 def manage_delivery_record(patient_id):
     """Dedicated route for delivery records - like a focused React component"""
     try:
@@ -339,7 +384,7 @@ def manage_delivery_record(patient_id):
 
 @patrecord_bp.route('/patient_record/<patient_id>/anthropometric', methods=['POST', 'PUT'])
 @require_auth
-@require_role('doctor', 'facility_admin')
+@require_role('doctor', 'facility_admin', 'nurse')
 def manage_anthropometric_record(patient_id):
     """Dedicated route for anthropometric records"""
     try:
@@ -381,7 +426,7 @@ def manage_anthropometric_record(patient_id):
 
 @patrecord_bp.route('/patient_record/<patient_id>/screening', methods=['POST', 'PUT'])
 @require_auth
-@require_role('doctor', 'facility_admin')
+@require_role('doctor', 'facility_admin', 'nurse')
 def manage_screening_record(patient_id):
     """Dedicated route for screening test records"""
     try:
@@ -420,15 +465,17 @@ def manage_screening_record(patient_id):
             "message": f"Error managing screening record: {str(e)}"
         }), 500
         
-@patrecord_bp.route('/patient_record/<patient_id>/allergies', methods=['POST', 'PUT'])
+@patrecord_bp.route('/patient_record/<patient_id>/allergies', methods=['POST'])
 @require_auth
-@require_role('doctor', 'facility_admin')
-def manage_allergy_record(patient_id):
-    """Dedicated route for allergy records"""
+@require_role('doctor', 'facility_admin', 'nurse')
+def add_allergy_record(patient_id):
+    """Add a new allergy record - patients can have multiple allergies"""
     try:
         data = request.json or {}
         current_user = request.current_user
-        
+
+        current_app.logger.info(f"DEBUG: Adding allergy for patient {patient_id} with data: {data}")
+
         # Verify patient exists
         patient_check = supabase.table('patients').select('patient_id').eq('patient_id', patient_id).single().execute()
         if not patient_check.data:
@@ -436,35 +483,247 @@ def manage_allergy_record(patient_id):
                 "status": "error",
                 "message": "Patient not found"
             }), 404
-        
+
         recorded_by = current_user.get('id')
         allergy_payload = prepare_allergy_payload(data, patient_id, recorded_by)
-        resp = upsert_related_record('allergies', allergy_payload, patient_id)
-        
+
+        current_app.logger.info(f"DEBUG: Allergy payload: {allergy_payload}")
+
+        # Always INSERT new allergy records (don't use upsert since patients can have multiple allergies)
+        resp = supabase.table('allergies').insert(allergy_payload).execute()
+
         if getattr(resp, 'error', None):
+            current_app.logger.error(f"DEBUG: Error inserting allergy: {resp.error.message if resp.error else 'Unknown'}")
             return jsonify({
                 "status": "error",
                 "message": "Failed to save allergy record",
                 "details": resp.error.message if resp.error else "Unknown"
             }), 400
-            
+
+        current_app.logger.info(f"DEBUG: Successfully added allergy record: {resp.data}")
         invalidate_caches('patient', patient_id)
-        
+
         return jsonify({
             "status": "success",
-            "message": "Allergy record saved successfully",
+            "message": "Allergy record added successfully",
+            "data": resp.data
+        }), 201
+
+    except Exception as e:
+        current_app.logger.error(f"DEBUG: Exception adding allergy: {str(e)}")
+        return jsonify({
+            "status": "error",
+            "message": f"Error adding allergy record: {str(e)}"
+        }), 500
+
+@patrecord_bp.route('/patient_record/<patient_id>/allergies/<allergy_id>', methods=['PUT'])
+@require_auth
+@require_role('doctor', 'facility_admin', 'nurse')
+def update_allergy_record(patient_id, allergy_id):
+    """Update an existing allergy record"""
+    try:
+        data = request.json or {}
+        current_user = request.current_user
+
+        # Verify patient exists
+        patient_check = supabase.table('patients').select('patient_id').eq('patient_id', patient_id).single().execute()
+        if not patient_check.data:
+            return jsonify({
+                "status": "error",
+                "message": "Patient not found"
+            }), 404
+
+        recorded_by = current_user.get('id')
+        allergy_payload = prepare_allergy_payload(data, patient_id, recorded_by)
+
+        # Update specific allergy record
+        resp = supabase.table('allergies').update(allergy_payload).eq('allergy_id', allergy_id).eq('patient_id', patient_id).execute()
+
+        if getattr(resp, 'error', None):
+            return jsonify({
+                "status": "error",
+                "message": "Failed to update allergy record",
+                "details": resp.error.message if resp.error else "Unknown"
+            }), 400
+
+        invalidate_caches('patient', patient_id)
+
+        return jsonify({
+            "status": "success",
+            "message": "Allergy record updated successfully",
             "data": resp.data
         }), 200
-        
+
     except Exception as e:
         return jsonify({
             "status": "error",
-            "message": f"Error managing allergy record: {str(e)}"
-        }), 500   
+            "message": f"Error updating allergy record: {str(e)}"
+        }), 500
+
+@patrecord_bp.route('/patient_record/<patient_id>/allergies/<allergy_id>', methods=['DELETE'])
+@require_auth
+@require_role('doctor', 'facility_admin', 'nurse')
+def delete_allergy_record(patient_id, allergy_id):
+    """Delete an allergy record"""
+    try:
+        current_user = request.current_user
+
+        # Verify patient exists
+        patient_check = supabase.table('patients').select('patient_id').eq('patient_id', patient_id).single().execute()
+        if not patient_check.data:
+            return jsonify({
+                "status": "error",
+                "message": "Patient not found"
+            }), 404
+
+        # Delete specific allergy record
+        resp = supabase.table('allergies').delete().eq('allergy_id', allergy_id).eq('patient_id', patient_id).execute()
+
+        if getattr(resp, 'error', None):
+            return jsonify({
+                "status": "error",
+                "message": "Failed to delete allergy record",
+                "details": resp.error.message if resp.error else "Unknown"
+            }), 400
+
+        invalidate_caches('patient', patient_id)
+
+        return jsonify({
+            "status": "success",
+            "message": "Allergy record deleted successfully"
+        }), 200
+
+    except Exception as e:
+        return jsonify({
+            "status": "error",
+            "message": f"Error deleting allergy record: {str(e)}"
+        }), 500
+
+@patrecord_bp.route('/patient_record/<patient_id>/parent_access', methods=['POST'])
+@require_auth
+@require_role('doctor', 'facility_admin')
+def add_parent_access(patient_id):
+    """Grant parent/guardian access to a patient record"""
+    try:
+        data = request.json or {}
+        current_user = request.current_user
+
+        current_app.logger.info(f"DEBUG: Adding parent access for patient {patient_id} with data: {data}")
+
+        # Verify patient exists
+        patient_check = supabase.table('patients').select('patient_id').eq('patient_id', patient_id).single().execute()
+        if not patient_check.data:
+            return jsonify({
+                "status": "error",
+                "message": "Patient not found"
+            }), 404
+
+        # Verify the user being granted access exists
+        user_id = data.get('user_id')
+        if not user_id:
+            return jsonify({
+                "status": "error",
+                "message": "User ID is required"
+            }), 400
+
+        user_check = supabase.table('users').select('user_id').eq('user_id', user_id).single().execute()
+        if not user_check.data:
+            return jsonify({
+                "status": "error",
+                "message": "User not found"
+            }), 404
+
+        granted_by = current_user.get('id')
+        parent_access_payload = {
+            "patient_id": patient_id,
+            "user_id": user_id,
+            "relationship": data.get('relationship', 'parent'),
+            "granted_by": granted_by,
+            "granted_at": data.get('granted_at') or datetime.datetime.now().date().isoformat(),
+            "is_active": True
+        }
+
+        current_app.logger.info(f"DEBUG: Parent access payload: {parent_access_payload}")
+
+        # Insert new parent access record
+        resp = supabase.table('parent_access').insert(parent_access_payload).execute()
+
+        if getattr(resp, 'error', None):
+            current_app.logger.error(f"DEBUG: Error inserting parent access: {resp.error.message if resp.error else 'Unknown'}")
+            return jsonify({
+                "status": "error",
+                "message": "Failed to grant parent access",
+                "details": resp.error.message if resp.error else "Unknown"
+            }), 400
+
+        current_app.logger.info(f"DEBUG: Successfully granted parent access: {resp.data}")
+        invalidate_caches('patient', patient_id)
+
+        return jsonify({
+            "status": "success",
+            "message": "Parent access granted successfully",
+            "data": resp.data
+        }), 201
+
+    except Exception as e:
+        current_app.logger.error(f"DEBUG: Exception granting parent access: {str(e)}")
+        return jsonify({
+            "status": "error",
+            "message": f"Error granting parent access: {str(e)}"
+        }), 500
+
+@patrecord_bp.route('/patient_record/<patient_id>/parent_access/<access_id>', methods=['PUT'])
+@require_auth
+@require_role('doctor', 'facility_admin')
+def update_parent_access(patient_id, access_id):
+    """Update parent access (e.g., change relationship or revoke access)"""
+    try:
+        data = request.json or {}
+        current_user = request.current_user
+
+        # Verify patient exists
+        patient_check = supabase.table('patients').select('patient_id').eq('patient_id', patient_id).single().execute()
+        if not patient_check.data:
+            return jsonify({
+                "status": "error",
+                "message": "Patient not found"
+            }), 404
+
+        update_payload = {}
+        if 'relationship' in data:
+            update_payload['relationship'] = data['relationship']
+        if 'is_active' in data:
+            update_payload['is_active'] = data['is_active']
+            if not data['is_active']:
+                update_payload['revoked_at'] = datetime.datetime.now().date().isoformat()
+
+        # Update specific parent access record
+        resp = supabase.table('parent_access').update(update_payload).eq('access_id', access_id).eq('patient_id', patient_id).execute()
+
+        if getattr(resp, 'error', None):
+            return jsonify({
+                "status": "error",
+                "message": "Failed to update parent access",
+                "details": resp.error.message if resp.error else "Unknown"
+            }), 400
+
+        invalidate_caches('patient', patient_id)
+
+        return jsonify({
+            "status": "success",
+            "message": "Parent access updated successfully",
+            "data": resp.data
+        }), 200
+
+    except Exception as e:
+        return jsonify({
+            "status": "error",
+            "message": f"Error updating parent access: {str(e)}"
+        }), 500
 
 @patrecord_bp.route('/patient_record/<patient_id>', methods=['PUT'])
 @require_auth
-@require_role('facility_admin', 'doctor')
+@require_role('facility_admin', 'doctor', 'nurse')
 def update_patient_record(patient_id):
     """
     Update only the main patient record. 
@@ -522,7 +781,7 @@ def update_patient_record(patient_id):
 # Get patient record by ID with optional related data
 @patrecord_bp.route('/patient_record/<patient_id>', methods=['GET'])
 @require_auth
-@require_role('doctor', 'facility_admin')
+@require_role('doctor', 'facility_admin', 'nurse')
 def get_patient_record_by_id(patient_id):
     """
     Get patient with optional related data.
@@ -576,32 +835,97 @@ def get_patient_record_by_id(patient_id):
         # Optionally include related records
         if include_related:
             related_data = {}
-            
-            # Get delivery record
-            delivery_resp = supabase.table('delivery_record').select('*').eq('patient_id', patient_id).execute()
-            if delivery_resp.data:
-                related_data['delivery'] = delivery_resp.data[0] if delivery_resp.data else None
-            
-            # Get anthropometric measurements
-            anthro_resp = supabase.table('anthropometric_measurements').select('*').eq('patient_id', patient_id).execute()
-            if anthro_resp.data:
-                related_data['anthropometric'] = anthro_resp.data
-            
-            # Get screening tests
-            screening_resp = supabase.table('screening_tests').select('*').eq('patient_id', patient_id).execute()
-            if screening_resp.data:
-                related_data['screening'] = screening_resp.data[0] if screening_resp.data else None
-            
-            # Get allergies
-            allergy_resp = supabase.table('allergies').select('*').eq('patient_id', patient_id).execute()
-            if allergy_resp.data:
-                related_data['allergies'] = allergy_resp.data[0] if screening_resp.data else None
-                
-            rx_resp = supabase.table('prescriptions').select('*').eq('patient_id', patient_id).execute()
-            if rx_resp.data:
-                related_data['prescriptions'] = rx_resp.data if screening_resp.data else None
-            
+
+            try:
+                # Get delivery record
+                delivery_resp = supabase.table('delivery_record').select('*').eq('patient_id', patient_id).execute()
+                if getattr(delivery_resp, 'error', None):
+                    current_app.logger.error(f"Error fetching delivery record for patient {patient_id}: {delivery_resp.error.message}")
+                    related_data['delivery'] = None
+                else:
+                    related_data['delivery'] = delivery_resp.data[0] if delivery_resp.data else None
+
+                # Get anthropometric measurements
+                anthro_resp = supabase.table('anthropometric_measurements').select('*').eq('patient_id', patient_id).execute()
+                if getattr(anthro_resp, 'error', None):
+                    current_app.logger.error(f"Error fetching anthropometric data for patient {patient_id}: {anthro_resp.error.message}")
+                    related_data['anthropometric_measurements'] = []
+                else:
+                    related_data['anthropometric_measurements'] = anthro_resp.data or []
+
+                # Get screening tests
+                screening_resp = supabase.table('screening_tests').select('*').eq('patient_id', patient_id).execute()
+                if getattr(screening_resp, 'error', None):
+                    current_app.logger.error(f"Error fetching screening data for patient {patient_id}: {screening_resp.error.message}")
+                    related_data['screening'] = None
+                else:
+                    related_data['screening'] = screening_resp.data[0] if screening_resp.data else None
+
+                # Get allergies
+                allergy_resp = supabase.table('allergies').select('*').eq('patient_id', patient_id).order('date_identified', desc=True).execute()
+                if getattr(allergy_resp, 'error', None):
+                    current_app.logger.error(f"Error fetching allergies for patient {patient_id}: {allergy_resp.error.message}")
+                    related_data['allergies'] = []
+                else:
+                    allergies_data = allergy_resp.data or []
+                    related_data['allergies'] = allergies_data
+                    current_app.logger.info(f"DEBUG: Found {len(allergies_data)} allergies for patient {patient_id}: {allergies_data}")
+
+                # Get prescriptions
+                rx_resp = supabase.table('prescriptions').select('*').eq('patient_id', patient_id).execute()
+                if getattr(rx_resp, 'error', None):
+                    current_app.logger.error(f"Error fetching prescriptions for patient {patient_id}: {rx_resp.error.message}")
+                    related_data['prescriptions'] = []
+                else:
+                    related_data['prescriptions'] = rx_resp.data or []
+
+                # Get vaccinations
+                vaccination_resp = supabase.table('vaccinations').select('*').eq('patient_id', patient_id).execute()
+                if getattr(vaccination_resp, 'error', None):
+                    current_app.logger.error(f"Error fetching vaccinations for patient {patient_id}: {vaccination_resp.error.message}")
+                    related_data['vaccinations'] = []
+                else:
+                    related_data['vaccinations'] = vaccination_resp.data or []
+
+                # Get parent access data with user information
+                parent_access_resp = supabase.table('parent_access').select('''
+                    access_id,
+                    relationship,
+                    granted_at,
+                    revoked_at,
+                    is_active,
+                    users!parent_access_user_id_fkey(
+                        user_id,
+                        email,
+                        firstname,
+                        lastname,
+                        phone_number
+                    )
+                ''').eq('patient_id', patient_id).eq('is_active', True).execute()
+
+                if getattr(parent_access_resp, 'error', None):
+                    current_app.logger.error(f"Error fetching parent access for patient {patient_id}: {parent_access_resp.error.message}")
+                    related_data['parent_access'] = []
+                else:
+                    parent_access_data = parent_access_resp.data or []
+                    related_data['parent_access'] = parent_access_data
+                    current_app.logger.info(f"DEBUG: Found {len(parent_access_data)} parent access records for patient {patient_id}")
+
+            except Exception as related_error:
+                current_app.logger.error(f"Exception while fetching related records for patient {patient_id}: {str(related_error)}")
+                # Initialize empty related data if there's an exception
+                related_data = {
+                    'delivery': None,
+                    'anthropometric_measurements': [],
+                    'screening': None,
+                    'allergies': [],
+                    'prescriptions': [],
+                    'vaccinations': [],
+                    'parent_access': []
+                }
+
             patient_data['related_records'] = related_data
+            current_app.logger.info(f"DEBUG: Final related_data structure for patient {patient_id}: {json.dumps(related_data, default=str)}")
             
         return jsonify({
             "status": "success",
@@ -613,4 +937,99 @@ def get_patient_record_by_id(patient_id):
         return jsonify({
             "status": "error",
             "message": f"Error fetching patient: {str(e)}"
+        }), 500
+
+@patrecord_bp.route('/patient_record/<patient_id>', methods=['DELETE'])
+@require_auth
+@require_role('doctor', 'facility_admin')
+def delete_patient_record(patient_id):
+    """
+    Delete patient record and all related records.
+    This is a hard delete operation that removes all traces of the patient.
+
+    Security: Only facility admins and doctors can delete patient records.
+    """
+    try:
+        current_user = request.current_user
+
+        current_app.logger.info(f"AUDIT: User {current_user.get('email', 'Unknown')} attempting to delete patient record {patient_id}")
+
+        # Check if patient exists
+        patient_check = supabase.table('patients').select('*').eq('patient_id', patient_id).single().execute()
+        if not patient_check.data:
+            current_app.logger.warning(f"AUDIT: Patient {patient_id} not found during delete attempt")
+            return jsonify({
+                "status": "error",
+                "message": "Patient not found"
+            }), 404
+
+        patient_data = patient_check.data
+        patient_name = f"{patient_data.get('firstname', '')} {patient_data.get('lastname', '')}"
+
+        # Delete related records first (to avoid foreign key constraints)
+        related_tables = [
+            'delivery_record',
+            'anthropometric_measurements',
+            'screening_tests',
+            'allergies',
+            'prescriptions',
+            'appointments'
+        ]
+
+        deleted_related = {}
+        for table in related_tables:
+            try:
+                delete_resp = supabase.table(table).delete().eq('patient_id', patient_id).execute()
+                deleted_count = len(delete_resp.data) if delete_resp.data else 0
+                deleted_related[table] = deleted_count
+                current_app.logger.info(f"AUDIT: Deleted {deleted_count} records from {table} for patient {patient_id}")
+            except Exception as table_error:
+                current_app.logger.warning(f"AUDIT: Failed to delete from {table} for patient {patient_id}: {str(table_error)}")
+                # Continue with other tables even if one fails
+                deleted_related[table] = 0
+
+        # Delete the main patient record
+        patient_delete_resp = supabase.table('patients').delete().eq('patient_id', patient_id).execute()
+
+        if getattr(patient_delete_resp, 'error', None):
+            current_app.logger.error(f"AUDIT: Failed to delete patient {patient_id}: {patient_delete_resp.error.message if patient_delete_resp.error else 'Unknown error'}")
+            return jsonify({
+                "status": "error",
+                "message": "Failed to delete patient record",
+                "details": patient_delete_resp.error.message if patient_delete_resp.error else "Unknown database error"
+            }), 500
+
+        if not patient_delete_resp.data:
+            current_app.logger.warning(f"AUDIT: Patient {patient_id} was not found or already deleted")
+            return jsonify({
+                "status": "error",
+                "message": "Patient record not found or already deleted"
+            }), 404
+
+        # Invalidate caches
+        invalidate_caches('patient', patient_id)
+
+        # Log successful deletion with details
+        total_related_deleted = sum(deleted_related.values())
+        current_app.logger.info(f"AUDIT: Successfully deleted patient {patient_id} ({patient_name}) and {total_related_deleted} related records by user {current_user.get('email', 'Unknown')}")
+        current_app.logger.info(f"AUDIT: Deletion breakdown: {json.dumps(deleted_related)}")
+
+        return jsonify({
+            "status": "success",
+            "message": f"Patient record '{patient_name}' and all related data deleted successfully",
+            "data": {
+                "deleted_patient": patient_data,
+                "related_records_deleted": deleted_related,
+                "total_related_deleted": total_related_deleted
+            }
+        }), 200
+
+    except Exception as e:
+        current_app.logger.error(f"AUDIT: Unexpected error deleting patient {patient_id}: {str(e)}")
+        import traceback
+        current_app.logger.error(f"AUDIT: Traceback: {traceback.format_exc()}")
+        return jsonify({
+            "status": "error",
+            "message": "An unexpected error occurred while deleting the patient record",
+            "details": str(e)
         }), 500

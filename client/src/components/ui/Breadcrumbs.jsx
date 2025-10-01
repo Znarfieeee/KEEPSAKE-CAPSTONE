@@ -1,113 +1,130 @@
 import React from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import {
-  Breadcrumb,
-  BreadcrumbItem,
-  BreadcrumbLink,
-  BreadcrumbList,
-  BreadcrumbPage,
-  BreadcrumbSeparator,
+    Breadcrumb,
+    BreadcrumbItem,
+    BreadcrumbLink,
+    BreadcrumbList,
+    BreadcrumbPage,
+    BreadcrumbSeparator,
 } from '@/components/ui/breadcrumb'
 
 // Adjust lang ang labels sa breadcrumbs base sa url address naka indicate
 const SEGMENT_LABELS = {
-  '': 'Home',
-  // General
-  settings: 'Settings',
-  help_support: 'Help & Support',
-  qr_scanner: 'QR Code Scanner',
+    '': 'Home',
+    // General
+    settings: 'Settings',
+    help_support: 'Help & Support',
+    qr_scanner: 'QR Code Scanner',
 
-  // Dynamic Labels (these will be replaced with actual data)
-  '[patientId]': 'Patient Details',
+    // Dynamic Labels (these will be replaced with actual data)
+    '[patientId]': 'Patient Details',
 
-  // System Admin
-  admin: 'Dashboard',
-  facilities: 'Facilities Registry',
-  users: 'User Registry',
-  sub_billing: 'Subscription & Billing',
-  tokinv_system: 'Token & Invite System',
-  audit_logs: 'Audit & Logs',
-  api_webhooks: 'API & Webhooks',
-  system_config: 'System Configuration',
-  maintenance_mode: 'Maintenance Mode',
+    // System Admin
+    admin: 'Dashboard',
+    facilities: 'Facilities Registry',
+    users: 'User Registry',
+    sub_billing: 'Subscription & Billing',
+    tokinv_system: 'Token & Invite System',
+    audit_logs: 'Audit & Logs',
+    api_webhooks: 'API & Webhooks',
+    system_config: 'System Configuration',
+    maintenance_mode: 'Maintenance Mode',
 
-  // Facility Admin
-  facility_admin: 'Dashboard',
+    // Facility Admin
+    facility_admin: 'Dashboard',
+    facility_users: 'Facility Users',
+    appointments: 'Appointments',
+    invitations: 'User Invitations',
+    patients: 'Patient Records',
+    vaccinations: 'Vaccinations',
+    screening: 'Screening Tests',
+    allergies: 'Allergies',
+    'parent-access': 'Parent Access',
+    reports: 'Reports',
+    audit: 'Audit & Logs',
+    // api_webhooks: 'API & Webhooks',
+    // system_config: 'System Configuration',
+    // maintenance_mode: 'Maintenance Mode',
 
-  // Doctor
-  pediapro: 'Dashboard',
-  appointments: 'Appointments',
-  patient_records: 'Patient Records',
-  reports: 'Reports',
+    // Doctor
+    pediapro: 'Dashboard',
+    // appointments: 'Appointments',
+    patient_records: 'Patient Records',
+    // reports: 'Reports',
 
-  // Parent
-  keepsaker: 'Dashboard',
+    // Parent
+    keepsaker: 'Dashboard',
 
-  // Nurse || Staff
-  vital_custodian: 'Dashboard',
+    // Nurse || Staff
+    vital_custodian: 'Dashboard',
 }
 
 const DASHBOARD_SEGMENTS = ['admin', 'facility_admin', 'pediapro', 'keepsaker', 'vital_custodian']
 
 function Breadcrumbs() {
-  const location = useLocation()
-  const segments = location.pathname.split('/').filter(Boolean)
+    const location = useLocation()
+    const segments = location.pathname.split('/').filter(Boolean)
 
-  if (segments.length === 0) return null // at root
+    if (segments.length === 0) return null // at root
 
-  const filteredSegments = []
+    const filteredSegments = []
 
-  for (let i = 0; i < segments.length; i++) {
-    const seg = segments[i]
+    for (let i = 0; i < segments.length; i++) {
+        const seg = segments[i]
 
-    // Skip dashboard segments when they're the first segment and we have more segments
-    // This prevents "Dashboard > Patient Records" type hierarchies
-    if (i === 0 && DASHBOARD_SEGMENTS.includes(seg) && segments.length > 1) {
-      continue
+        // Skip dashboard segments when they're the first segment and we have more segments
+        // This prevents "Dashboard > Patient Records" type hierarchies
+        if (i === 0 && DASHBOARD_SEGMENTS.includes(seg) && segments.length > 1) {
+            continue
+        }
+
+        filteredSegments.push(seg)
     }
 
-    filteredSegments.push(seg)
-  }
+    // Rebuild the path accounting for skipped dashboard segments
+    let pathAcc = ''
+    let originalIndex = 0
 
-  // Rebuild the path accounting for skipped dashboard segments
-  let pathAcc = ''
-  let originalIndex = 0
+    return (
+        <Breadcrumb className="mb-4 ml-10 text-sm text-gray-400">
+            <BreadcrumbList>
+                {filteredSegments.map((seg, idx) => {
+                    // Build path correctly, accounting for skipped dashboard segments
+                    if (
+                        idx === 0 &&
+                        originalIndex === 0 &&
+                        DASHBOARD_SEGMENTS.includes(segments[0])
+                    ) {
+                        // If we skipped a dashboard segment, include it in the path
+                        pathAcc += `/${segments[0]}/${seg}`
+                        originalIndex = 2
+                    } else {
+                        pathAcc += `/${seg}`
+                        originalIndex++
+                    }
 
-  return (
-    <Breadcrumb className="mb-4 ml-10 text-sm text-gray-400">
-      <BreadcrumbList>
-        {filteredSegments.map((seg, idx) => {
-          // Build path correctly, accounting for skipped dashboard segments
-          if (idx === 0 && originalIndex === 0 && DASHBOARD_SEGMENTS.includes(segments[0])) {
-            // If we skipped a dashboard segment, include it in the path
-            pathAcc += `/${segments[0]}/${seg}`
-            originalIndex = 2
-          } else {
-            pathAcc += `/${seg}`
-            originalIndex++
-          }
+                    const isLast = idx === filteredSegments.length - 1
+                    const label = SEGMENT_LABELS[seg] || seg
 
-          const isLast = idx === filteredSegments.length - 1
-          const label = SEGMENT_LABELS[seg] || seg
-
-          return (
-            <React.Fragment key={idx}>
-              <BreadcrumbItem className="hover:text-black hover:underline duration-300 transition-colors">
-                {isLast ? (
-                  <BreadcrumbPage>{label}</BreadcrumbPage>
-                ) : (
-                  <BreadcrumbLink asChild>
-                    <Link to={pathAcc}>{label}</Link>
-                  </BreadcrumbLink>
-                )}
-              </BreadcrumbItem>
-              {!isLast && <BreadcrumbSeparator />}
-            </React.Fragment>
-          )
-        })}
-      </BreadcrumbList>
-    </Breadcrumb>
-  )
+                    return (
+                        <React.Fragment key={idx}>
+                            <BreadcrumbItem className="hover:text-black hover:underline duration-300 transition-colors">
+                                {isLast ? (
+                                    <BreadcrumbPage>{label}</BreadcrumbPage>
+                                ) : (
+                                    <BreadcrumbLink asChild>
+                                        <Link to={pathAcc}>{label}</Link>
+                                    </BreadcrumbLink>
+                                )}
+                            </BreadcrumbItem>
+                            {!isLast && <BreadcrumbSeparator />}
+                        </React.Fragment>
+                    )
+                })}
+            </BreadcrumbList>
+        </Breadcrumb>
+    )
 }
 
 export default Breadcrumbs

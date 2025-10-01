@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo } from 'react'
+import React, { useEffect, useState, useMemo, useCallback } from 'react'
 
 // UI Components
 import { FileText, Syringe, Pill, Stethoscope } from 'lucide-react'
@@ -20,14 +20,51 @@ const TabItem = ({ value, icon: Icon, children }) => (
     </TabsTrigger>
 )
 
-const PatientRecordsTabs = ({ patient, viewPrescription }) => {
+const PatientRecordsTabs = ({ patient: initialPatient }) => {
+    const [patient, setPatient] = useState(initialPatient)
     const [prescriptions, setPrescriptions] = useState([])
-    const [isLoading, setIsLoading] = useState(false)
+    const [isLoading] = useState(false)
     const [search, setSearch] = useState('')
 
     const handlePrescriptionAdded = (newPrescription) => {
         setPrescriptions((prev) => [newPrescription, ...prev])
     }
+
+    // Handle patient updates from EditPatientModal
+    const handlePatientUpdate = useCallback((event) => {
+        const { patient_data, patient_id } = event.detail
+
+        // Only update if this is the same patient and we have valid data
+        if (patient_id === patient?.patient_id && patient_data) {
+            console.log('Updating patient data in tabs:', patient_data)
+            // Ensure the patient data has the required structure
+            const updatedPatient = {
+                ...patient,
+                ...patient_data,
+                related_records: {
+                    ...patient?.related_records,
+                    ...patient_data.related_records
+                }
+            }
+            setPatient(updatedPatient)
+        }
+    }, [patient?.patient_id, patient])
+
+    // Listen for patient update events
+    useEffect(() => {
+        window.addEventListener('patient-updated', handlePatientUpdate)
+        window.addEventListener('patient-created', handlePatientUpdate)
+
+        return () => {
+            window.removeEventListener('patient-updated', handlePatientUpdate)
+            window.removeEventListener('patient-created', handlePatientUpdate)
+        }
+    }, [handlePatientUpdate])
+
+    // Update patient state when initial patient prop changes
+    useEffect(() => {
+        setPatient(initialPatient)
+    }, [initialPatient])
 
     useEffect(() => {
         if (patient?.related_records?.prescriptions) {
@@ -40,6 +77,30 @@ const PatientRecordsTabs = ({ patient, viewPrescription }) => {
             setPrescriptions([])
         }
     }, [patient?.related_records?.prescriptions])
+
+    // Debug log to check if all related data is being received
+    useEffect(() => {
+        if (patient?.related_records) {
+            console.log('Patient related records:', {
+                delivery: patient.related_records.delivery,
+                anthropometric_measurements: patient.related_records.anthropometric_measurements,
+                screening: patient.related_records.screening,
+                allergies: patient.related_records.allergies,
+                prescriptions: patient.related_records.prescriptions,
+                vaccinations: patient.related_records.vaccinations,
+                parent_access: patient.related_records.parent_access
+            })
+        }
+    }, [patient?.related_records])
+
+    // Early return if patient data is not available
+    if (!patient) {
+        return (
+            <div className="w-full p-8 text-center">
+                <p className="text-muted-foreground">Loading patient data...</p>
+            </div>
+        )
+    }
 
     // Filter prescriptions based on search query with improved error handling
     const filteredPrescriptions = useMemo(() => {
@@ -121,24 +182,26 @@ const PatientRecordsTabs = ({ patient, viewPrescription }) => {
     ]
 
     return (
-        <Tabs defaultValue="information" className="w-full">
-            <ScrollArea>
-                <TabsList className="before:bg-border ml-8 relative h-auto w-max gap-0.5 bg-transparent p-0 before:absolute before:inset-x-0 before:bottom-0 before:h-px">
-                    {tabs.map((tab) => (
-                        <TabItem key={tab.value} value={tab.value} icon={tab.icon}>
-                            {tab.label}
-                        </TabItem>
-                    ))}
-                </TabsList>
-                <ScrollBar orientation="horizontal" />
-            </ScrollArea>
+        <>
+            <Tabs defaultValue="information" className="w-full">
+                <ScrollArea>
+                    <TabsList className="before:bg-border ml-8 relative h-auto w-max gap-0.5 bg-transparent p-0 before:absolute before:inset-x-0 before:bottom-0 before:h-px">
+                        {tabs.map((tab) => (
+                            <TabItem key={tab.value} value={tab.value} icon={tab.icon}>
+                                {tab.label}
+                            </TabItem>
+                        ))}
+                    </TabsList>
+                    <ScrollBar orientation="horizontal" />
+                </ScrollArea>
 
-            {tabs.map((tab) => (
-                <TabsContent key={tab.value} value={tab.value}>
-                    {tab.content}
-                </TabsContent>
-            ))}
-        </Tabs>
+                {tabs.map((tab) => (
+                    <TabsContent key={tab.value} value={tab.value}>
+                        {tab.content}
+                    </TabsContent>
+                ))}
+            </Tabs>
+        </>
     )
 }
 

@@ -16,22 +16,36 @@ export const login = async (email, password) => {
             const errorMessage =
                 error.response.data?.message || "Authentication failed"
 
+            // Preserve the specific error message from the backend for better UX
             if (error.response.status === 401) {
-                throw new Error(
-                    "Incorrect email or password. Please try again."
+                // Use backend message for 401 errors, fallback to generic message
+                throw new Error(errorMessage.includes('Authentication failed')
+                    ? "The email or password you entered is incorrect. Please check your credentials and try again."
+                    : errorMessage
                 )
             } else if (error.response.status === 400) {
+                // For 400 errors, use the backend message directly
                 throw new Error(errorMessage)
             } else if (error.response.status === 503) {
                 throw new Error(
-                    "Service is temporarily unavailable. Please try again later."
+                    "The authentication service is temporarily unavailable. Please try again in a few minutes."
+                )
+            } else if (error.response.status === 404) {
+                throw new Error(
+                    "No account found with this email address. Please contact your administrator if you believe this is an error."
+                )
+            } else if (error.response.status === 403) {
+                throw new Error(
+                    "Your account has been deactivated. Please contact your administrator for assistance."
                 )
             }
+
+            // For any other server errors, use the backend message directly
             throw new Error(errorMessage)
         } else if (error.request) {
             // The request was made but no response was received
             throw new Error(
-                "Unable to reach the server. Please check your internet connection."
+                "Unable to connect to the server. Please check your internet connection and try again."
             )
         } else {
             // Something happened in setting up the request

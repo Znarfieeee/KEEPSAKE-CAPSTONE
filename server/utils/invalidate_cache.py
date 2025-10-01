@@ -28,6 +28,10 @@ CACHE_KEYS = {
     'prescription_med': {
         'all': "prescription_med:all",
         'prefix': "prescription_med:"
+    },
+    'appointments': {
+        'all': 'appointments_all',
+        'prefix': 'appointments:'
     }
     
 }

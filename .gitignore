@@ -1,0 +1,17 @@
+node_modules/
+dist/
+build/
+*.egg-info/
+venv/
+env/
+.env/
+.venv/
+.env
+.env.local
+.env.*.local
+.env.*
+
+
+.mcp.json
+.cursor/
+# CLAUDE.md

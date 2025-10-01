@@ -1,17 +1,17 @@
-import React, { useState, lazy, Suspense } from 'react'
+import React, { useState, useEffect, lazy, Suspense } from 'react'
 
 // UI Components
 import { NoResults } from '@/components/ui/no-results'
 import { TooltipHelper } from '@/util/TooltipHelper'
 import { Button } from '@/components/ui/button'
-import { Eye, Search, PlusCircle } from 'lucide-react'
+import { Eye, Search, PlusCircle, Share2 } from 'lucide-react'
 import { Dialog, DialogTrigger } from '@/components/ui/dialog'
+import { showToast } from '../../../util/alertHelper'
 
 const AddPatientPrescriptionModal = lazy(() => import('./AddPatientPrescriptionModal'))
 const PatientPrescriptionDetailModal = lazy(() => import('./PatientPrescriptionDetailModal'))
 
 const PatientPrescription = ({
-    onView,
     search,
     onSearchChange,
     isLoading,
@@ -22,10 +22,26 @@ const PatientPrescription = ({
     const [isOpen, setIsOpen] = useState(false)
     const [selectedPrescription, setSelectedPrescription] = useState(null)
     const [isDetailModalOpen, setIsDetailModalOpen] = useState(false)
+    const [localPrescriptions, setLocalPrescriptions] = useState(prescription)
+
+    // Sync external prescription changes with local state
+    useEffect(() => {
+        setLocalPrescriptions(prescription)
+    }, [prescription])
 
     const handleViewPrescription = (rx) => {
         setSelectedPrescription(rx)
         setIsDetailModalOpen(true)
+    }
+
+    const handlePrescriptionAdded = (newPrescription) => {
+        // Add new prescription to local state immediately
+        setLocalPrescriptions((prev) => [newPrescription, ...prev])
+        // Close modal
+        setIsOpen(false)
+        // Call parent callback if provided
+        onPrescriptionAdded?.(newPrescription)
+        showToast('success', 'Prescription added successfully!')
     }
 
     // Enhanced date formatter with error handling
@@ -45,8 +61,23 @@ const PatientPrescription = ({
         }
     }
 
-    // Ensure prescriptions is always an array
-    const prescriptionArray = Array.isArray(prescription) ? prescription : []
+    // Filter prescriptions based on search term
+    const filteredPrescriptions = Array.isArray(localPrescriptions)
+        ? localPrescriptions.filter((rx) => {
+              if (!search) return true
+              const searchLower = search.toLowerCase()
+              return (
+                  rx.findings?.toLowerCase().includes(searchLower) ||
+                  rx.status?.toLowerCase().includes(searchLower) ||
+                  (rx.prescription_date &&
+                      formatDate(rx.prescription_date).toLowerCase().includes(searchLower)) ||
+                  (rx.return_date && formatDate(rx.return_date).toLowerCase().includes(searchLower))
+              )
+          })
+        : []
+
+    // Use filtered prescriptions for rendering
+    const prescriptionArray = filteredPrescriptions
 
     return (
         <div className="bg-white rounded-b-lg shadow-sm p-6 mb-6">
@@ -75,10 +106,7 @@ const PatientPrescription = ({
                                     prescription={{ patient_id: patient?.patient_id }}
                                     isLoading={isLoading}
                                     setIsOpen={setIsOpen}
-                                    onSuccess={(newPrescription) => {
-                                        // Add the new prescription to the existing list
-                                        onPrescriptionAdded?.(newPrescription)
-                                    }}
+                                    onSuccess={handlePrescriptionAdded}
                                 />
                             </Suspense>
                         </Dialog>
@@ -97,7 +125,7 @@ const PatientPrescription = ({
                     <tbody>
                         {isLoading ? (
                             <tr>
-                                <td colSpan="4" className="p-2 text-center">
+                                <td colSpan="5" className="p-2 text-center">
                                     Loading prescriptions...
                                 </td>
                             </tr>
@@ -139,6 +167,18 @@ const PatientPrescription = ({
                                                 onClick={() => handleViewPrescription(rx)}
                                             >
                                                 <Eye className="size-4" />
+                                            </Button>
+                                        </TooltipHelper>
+                                        <TooltipHelper content="Share Prescription">
+                                            <Button
+                                                variant="ghost"
+                                                size="icon"
+                                                className="hover:text-green-600 hover:bg-green-100"
+                                                onClick={() => {
+                                                    showToast('success', 'Sharing via QR Code')
+                                                }}
+                                            >
+                                                <Share2 className="size-4" />
                                             </Button>
                                         </TooltipHelper>
                                     </td>

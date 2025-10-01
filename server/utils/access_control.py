@@ -136,6 +136,7 @@ def require_auth(f):
                     "firstname": session_data.get("firstname"),
                     "lastname": session_data.get("lastname"),
                     "specialty": session_data.get("specialty"),
+                    "facility_id": session_data.get("facility_id"),
                 }  # type: ignore[attr-defined]
 
                 # Tell the Supabase client to run queries on behalf of the user
@@ -178,6 +179,7 @@ def require_auth(f):
                             "firstname": session_data.get("firstname"),
                             "lastname": session_data.get("lastname"),
                             "specialty": session_data.get("specialty"),
+                            "facility_id": session_data.get("facility_id"),
                         }  # type: ignore[attr-defined]
 
                         return f(*args, **kwargs)
