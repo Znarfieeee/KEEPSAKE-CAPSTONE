@@ -76,6 +76,10 @@ class MedicalDataSanitizer:
         'duration': 100,
         'quantity': 50,
         'special_instructions': 1000,
+
+        # Appointment fields
+        'appointment_type': 50,
+        'reason': 200,
     }
     
     # Patterns for medical data validation

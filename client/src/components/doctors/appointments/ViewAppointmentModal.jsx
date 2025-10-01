@@ -12,16 +12,7 @@ import {
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
-import {
-    Calendar,
-    Clock,
-    User,
-    FileText,
-    Phone,
-    MapPin,
-    UserCheck,
-    Heart,
-} from 'lucide-react'
+import { Calendar, User, FileText, Phone, MapPin, UserCheck } from 'lucide-react'
 
 // Utilities
 import { cn, formatTime, getStatusBadgeColor } from '@/util/utils'
@@ -29,10 +20,11 @@ import { cn, formatTime, getStatusBadgeColor } from '@/util/utils'
 const ViewAppointmentModal = ({ appointment, onClose }) => {
     if (!appointment) return null
 
-    const patientName = appointment.patient_name ||
-                       appointment.patients?.firstname + ' ' + appointment.patients?.lastname ||
-                       appointment.patient?.full_name ||
-                       'Unknown Patient'
+    const patientName =
+        appointment.patient_name ||
+        appointment.patients?.firstname + ' ' + appointment.patients?.lastname ||
+        appointment.patient?.full_name ||
+        'Unknown Patient'
 
     const calculateAge = (dateOfBirth) => {
         if (!dateOfBirth) return null
@@ -61,12 +53,22 @@ const ViewAppointmentModal = ({ appointment, onClose }) => {
                 <div className="flex items-center justify-between">
                     <h3 className="text-lg font-medium text-gray-900">Appointment Status</h3>
                     <Badge
-                        variant={appointment.status?.toLowerCase() === 'completed' ? 'default' :
-                                appointment.status?.toLowerCase() === 'confirmed' ? 'secondary' :
-                                appointment.status?.toLowerCase() === 'cancelled' ? 'destructive' : 'outline'}
-                        className={cn('text-sm font-medium', getStatusBadgeColor(appointment.status))}
+                        variant={
+                            appointment.status?.toLowerCase() === 'completed'
+                                ? 'default'
+                                : appointment.status?.toLowerCase() === 'confirmed'
+                                ? 'secondary'
+                                : appointment.status?.toLowerCase() === 'cancelled'
+                                ? 'destructive'
+                                : 'outline'
+                        }
+                        className={cn(
+                            'text-sm font-medium',
+                            getStatusBadgeColor(appointment.status)
+                        )}
                     >
-                        {appointment.status?.charAt(0).toUpperCase() + appointment.status?.slice(1) || 'Scheduled'}
+                        {appointment.status?.charAt(0).toUpperCase() +
+                            appointment.status?.slice(1) || 'Scheduled'}
                     </Badge>
                 </div>
 
@@ -82,7 +84,9 @@ const ViewAppointmentModal = ({ appointment, onClose }) => {
                     <div className="bg-gray-50 rounded-lg p-4 space-y-3">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
-                                <label className="text-sm font-medium text-gray-500">Full Name</label>
+                                <label className="text-sm font-medium text-gray-500">
+                                    Full Name
+                                </label>
                                 <p className="text-sm text-gray-900 font-semibold">{patientName}</p>
                             </div>
 
@@ -97,7 +101,9 @@ const ViewAppointmentModal = ({ appointment, onClose }) => {
 
                             {appointment.patients?.sex && (
                                 <div>
-                                    <label className="text-sm font-medium text-gray-500">Gender</label>
+                                    <label className="text-sm font-medium text-gray-500">
+                                        Gender
+                                    </label>
                                     <p className="text-sm text-gray-900 capitalize">
                                         {appointment.patients.sex}
                                     </p>
@@ -106,9 +112,14 @@ const ViewAppointmentModal = ({ appointment, onClose }) => {
 
                             {appointment.patients?.date_of_birth && (
                                 <div>
-                                    <label className="text-sm font-medium text-gray-500">Date of Birth</label>
+                                    <label className="text-sm font-medium text-gray-500">
+                                        Date of Birth
+                                    </label>
                                     <p className="text-sm text-gray-900">
-                                        {format(new Date(appointment.patients.date_of_birth), 'MMMM d, yyyy')}
+                                        {format(
+                                            new Date(appointment.patients.date_of_birth),
+                                            'MMMM d, yyyy'
+                                        )}
                                     </p>
                                 </div>
                             )}
@@ -130,7 +141,10 @@ const ViewAppointmentModal = ({ appointment, onClose }) => {
                             <div>
                                 <label className="text-sm font-medium text-gray-500">Date</label>
                                 <p className="text-sm text-gray-900 font-semibold">
-                                    {format(new Date(appointment.appointment_date), 'EEEE, MMMM d, yyyy')}
+                                    {format(
+                                        new Date(appointment.appointment_date),
+                                        'EEEE, MMMM d, yyyy'
+                                    )}
                                 </p>
                             </div>
 
@@ -141,8 +155,19 @@ const ViewAppointmentModal = ({ appointment, onClose }) => {
                                 </p>
                             </div>
 
-                            <div className="md:col-span-2">
-                                <label className="text-sm font-medium text-gray-500">Reason for Visit</label>
+                            <div>
+                                <label className="text-sm font-medium text-gray-500">
+                                    Appointment Type
+                                </label>
+                                <p className="text-sm text-gray-900 capitalize">
+                                    {appointment.appointment_type || 'Consultation'}
+                                </p>
+                            </div>
+
+                            <div>
+                                <label className="text-sm font-medium text-gray-500">
+                                    Reason for Visit
+                                </label>
                                 <p className="text-sm text-gray-900">
                                     {appointment.reason || 'General Consultation'}
                                 </p>
@@ -150,7 +175,9 @@ const ViewAppointmentModal = ({ appointment, onClose }) => {
 
                             {appointment.doctor_name && (
                                 <div className="md:col-span-2">
-                                    <label className="text-sm font-medium text-gray-500">Assigned Doctor</label>
+                                    <label className="text-sm font-medium text-gray-500">
+                                        Assigned Doctor
+                                    </label>
                                     <p className="text-sm text-gray-900 flex items-center">
                                         <UserCheck className="h-4 w-4 mr-2 text-blue-600" />
                                         Dr. {appointment.doctor_name}
@@ -213,11 +240,7 @@ const ViewAppointmentModal = ({ appointment, onClose }) => {
 
             <DialogFooter className="flex justify-end">
                 <DialogClose asChild>
-                    <Button
-                        variant="outline"
-                        onClick={onClose}
-                        className="border-gray-200"
-                    >
+                    <Button variant="outline" onClick={onClose} className="border-gray-200">
                         Close
                     </Button>
                 </DialogClose>

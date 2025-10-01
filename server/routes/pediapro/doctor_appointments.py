@@ -80,11 +80,13 @@ def prepare_appointments_payload(data, is_update=False):
         'scheduled_by': 'scheduled_by',
         'appointment_date': 'appointment_date',  # No date restrictions (past/future allowed)
         'appointment_time': 'appointment_time',  # No time slot restrictions
+        'appointment_type': 'appointment_type',  # No time slot restrictions
         'reason': 'reason',
         'notes': 'notes',
         'status': 'status',  # scheduled, confirmed, cancelled, completed, no_show
         'updated_by': 'updated_by',
         'patient_name': 'patient_name'
+        
     }
 
     # Only include fields that have values and exist in our mapping
@@ -655,7 +657,15 @@ def schedule_appointment():
 
         # Prepare the appointment payload
         try:
+            # Debug: Log incoming data
+            current_app.logger.info(f"DEBUG: Received appointment data: {data}")
+            current_app.logger.info(f"DEBUG: Appointment type from request: {data.get('appointment_type')}")
+
             appointments_payload = prepare_appointments_payload(data, is_update=False)
+
+            # Debug: Log prepared payload
+            current_app.logger.info(f"DEBUG: Prepared payload: {appointments_payload}")
+            current_app.logger.info(f"DEBUG: Appointment type in payload: {appointments_payload.get('appointment_type')}")
         except ValueError as ve:
             return jsonify({
                 "status": "error",
@@ -683,7 +693,12 @@ def schedule_appointment():
         appointments_resp = supabase.table('appointments')\
             .insert(appointments_payload)\
             .execute()
-            
+
+        # Debug: Log database response
+        current_app.logger.info(f"DEBUG: Database response data: {appointments_resp.data if appointments_resp.data else 'No data'}")
+        if appointments_resp.data and len(appointments_resp.data) > 0:
+            current_app.logger.info(f"DEBUG: Appointment type in DB response: {appointments_resp.data[0].get('appointment_type')}")
+
         if getattr(appointments_resp, 'error', None):
             current_app.logger.error(f"AUDIT: Failed to schedule appointment: {appointments_resp.error.message}")
             return jsonify({

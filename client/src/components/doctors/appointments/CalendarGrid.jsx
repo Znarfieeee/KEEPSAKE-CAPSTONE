@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react'
+
 import { ChevronLeft, ChevronRight, Calendar, Clock, User, AlertCircle, Info } from 'lucide-react'
-import { cn } from '@/util/utils'
+import { cn, getStatusBadgeColor } from '@/util/utils'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/Dialog'
 import { Badge } from '@/components/ui/badge'
@@ -105,7 +106,7 @@ const CalendarGrid = ({ appointments = [], className }) => {
 
         appointments.forEach((apt) => {
             const type = apt.appointment_type?.toLowerCase() || 'consultation'
-            if (stats.hasOwnProperty(type)) {
+            if (Object.prototype.hasOwnProperty.call(stats, type)) {
                 stats[type]++
             } else {
                 stats.consultation++
@@ -182,7 +183,7 @@ const CalendarGrid = ({ appointments = [], className }) => {
         try {
             const time = new Date(`2000-01-01T${timeString}`)
             return time.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', hour12: true })
-        } catch (error) {
+        } catch {
             return timeString
         }
     }
@@ -211,8 +212,8 @@ const CalendarGrid = ({ appointments = [], className }) => {
             (apt) => apt.appointment_type?.toLowerCase() === 'followup'
         )
 
-        if (hasEmergency) return 'bg-red-500'
-        if (hasFollowup) return 'bg-yellow-400'
+        if (hasEmergency) return 'bg-red-400'
+        if (hasFollowup) return 'bg-yellow-200'
         return 'bg-primary'
     }
 
@@ -243,7 +244,7 @@ const CalendarGrid = ({ appointments = [], className }) => {
 
                 <div className="flex items-center space-x-2">
                     <Button
-                        variant="outline"
+                        variant="ghost"
                         size="sm"
                         onClick={goToPreviousMonth}
                         className="p-1 h-8 w-8"
@@ -253,7 +254,7 @@ const CalendarGrid = ({ appointments = [], className }) => {
                     </Button>
 
                     <Button
-                        variant="outline"
+                        variant="ghost"
                         size="sm"
                         onClick={goToToday}
                         className="px-2 h-8 text-xs"
@@ -262,7 +263,7 @@ const CalendarGrid = ({ appointments = [], className }) => {
                     </Button>
 
                     <Button
-                        variant="outline"
+                        variant="ghost"
                         size="sm"
                         onClick={goToNextMonth}
                         className="p-1 h-8 w-8"
@@ -299,7 +300,7 @@ const CalendarGrid = ({ appointments = [], className }) => {
                                     // Previous/next month days
                                     'text-gray-400 cursor-not-allowed': !dayData.isCurrentMonth,
                                     // Today's date
-                                    'bg-blue-100 text-blue-800 font-semibold border-2 border-blue-300':
+                                    'bg-blue-100 text-primary font-semibold border-2 border-blue-300':
                                         isToday(dayData.date) && dayData.isCurrentMonth,
                                     // Days with appointments
                                     'bg-blue-50 border border-blue-200 hover:bg-blue-100':
@@ -344,81 +345,97 @@ const CalendarGrid = ({ appointments = [], className }) => {
                 })}
             </div>
 
-            {/* Simplified Legend */}
+            {/* Calendar Summary */}
             <div className="mt-6 pt-4 border-t border-gray-200">
                 <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-4">
-                        <div className="flex items-center gap-1">
-                            <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
-                            <span className="text-sm font-medium">
-                                {appointmentStats.consultation +
-                                    appointmentStats.checkup +
-                                    appointmentStats.vaccination}
-                            </span>
-                        </div>
+                    <TooltipHelper
+                        classname="bg-primary text-white border shadow-lg"
+                        content={
+                            <div className="p-4 space-y-3">
+                                <div className="text-sm font-medium text-white border-b border-gray-600 pb-2">
+                                    Appointment Overview
+                                </div>
 
-                        <div className="flex items-center gap-1">
-                            <div className="w-3 h-3 bg-yellow-400 rounded-full"></div>
-                            <span className="text-sm font-medium">{appointmentStats.followup}</span>
-                        </div>
-
-                        <div className="flex items-center gap-1">
-                            <div className="w-3 h-3 bg-red-500 rounded-full"></div>
-                            <span className="text-sm font-medium">
-                                {appointmentStats.emergency}
-                            </span>
-                        </div>
-
-                        <div className="flex items-center gap-1">
-                            <div className="w-3 h-3 bg-blue-100 border-2 border-blue-300 rounded-full"></div>
-                            <span className="text-sm font-medium">Today</span>
-                        </div>
-
-                        <TooltipHelper
-                            classname="bg-primary text-white border shadow-lg"
-                            content={
-                                <div className="p-3 space-y-2">
-                                    <div className="text-sm font-medium text-white mb-2 border-b border-gray-600 pb-1">
-                                        Legend:
+                                {/* Counts Section */}
+                                <div className="space-y-2">
+                                    <div className="flex items-center justify-between gap-4 text-sm">
+                                        <div className="flex items-center gap-2">
+                                            <div className="w-2 h-2 bg-primary rounded-full"></div>
+                                            <span>Consultation:</span>
+                                        </div>
+                                        <span>{appointmentStats.consultation}</span>
                                     </div>
-                                    <div className="flex items-center gap-2 text-sm">
-                                        <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                                        <span className="text-gray-100">
-                                            Regular appointments (consultation, checkup,
-                                            vaccination)
-                                        </span>
+                                    <div className="flex items-center justify-between gap-4 text-sm">
+                                        <div className="flex items-center gap-2">
+                                            <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                                            <span>Check-up:</span>
+                                        </div>
+                                        <span>{appointmentStats.checkup}</span>
                                     </div>
-                                    <div className="flex items-center gap-2 text-sm">
-                                        <div className="w-2 h-2 bg-yellow-400 rounded-full"></div>
-                                        <span className="text-gray-100">
-                                            Follow-up appointments
-                                        </span>
+                                    <div className="flex items-center justify-between gap-4 text-sm">
+                                        <div className="flex items-center gap-2">
+                                            <div className="w-2 h-2 bg-yellow-200 rounded-full"></div>
+                                            <span>Follow-up:</span>
+                                        </div>
+                                        <span>{appointmentStats.followup}</span>
                                     </div>
-                                    <div className="flex items-center gap-2 text-sm">
-                                        <div className="w-2 h-2 bg-red-500 rounded-full"></div>
-                                        <span className="text-gray-100">
-                                            Emergency appointments
-                                        </span>
+                                    <div className="flex items-center justify-between gap-4 text-sm">
+                                        <div className="flex items-center gap-2">
+                                            <div className="w-2 h-2 bg-red-400 rounded-full"></div>
+                                            <span>Emergency:</span>
+                                        </div>
+                                        <span>{appointmentStats.emergency}</span>
                                     </div>
-                                    <div className="flex items-center gap-2 text-sm">
-                                        <div className="w-2 h-2 bg-blue-100 border border-blue-300 rounded-full"></div>
-                                        <span className="text-gray-100">Today's date</span>
-                                    </div>
-                                    <div className="mt-2 pt-2 border-t border-gray-600 text-sm text-gray-300">
-                                        Click any day to view appointment details
+                                    <div className="flex items-center justify-between gap-4 text-sm">
+                                        <div className="flex items-center gap-2">
+                                            <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
+                                            <span>Vaccination:</span>
+                                        </div>
+                                        <span>{appointmentStats.vaccination}</span>
                                     </div>
                                 </div>
-                            }
-                        >
-                            <Info className="w-4 h-4 text-gray-500 hover:text-gray-700 cursor-help" />
-                        </TooltipHelper>
-                    </div>
 
-                    {appointmentStats.total > 0 && (
-                        <div className="text-sm text-gray-600 bg-gray-50 px-3 py-1 rounded-full">
-                            <span className="font-semibold">{appointmentStats.total}</span> total
+                                {/* Total */}
+                                <div className="pt-2 border-t border-gray-600">
+                                    <div className="flex items-center justify-between text-sm font-medium">
+                                        <span>Total Appointments:</span>
+                                        <span>{appointmentStats.total}</span>
+                                    </div>
+                                </div>
+
+                                {/* Calendar Indicators */}
+                                <div className="pt-2 mt-2 border-t border-gray-600 space-y-2">
+                                    <div className="text-sm font-medium pb-1">
+                                        Calendar Indicators:
+                                    </div>
+                                    <div className="flex items-center gap-2 text-sm">
+                                        <div className="w-2 h-2 bg-blue-100 border-2 border-blue-300 rounded-full"></div>
+                                        <span className="text-gray-100">Today's date</span>
+                                    </div>
+                                    <div className="flex items-center gap-2 text-sm">
+                                        <div className="flex items-center gap-1">
+                                            <div className="w-2 h-2 rounded-full bg-primary"></div>
+                                            <span className="text-xs">(2)</span>
+                                        </div>
+                                        <span className="text-gray-100">
+                                            Number of appointments
+                                        </span>
+                                    </div>
+                                </div>
+
+                                <div className="text-xs text-gray-300 pt-2 border-t border-gray-600">
+                                    Click any day to view appointment details
+                                </div>
+                            </div>
+                        }
+                    >
+                        <div className="flex items-center gap-2">
+                            <Info className="w-5 h-5 text-primary hover:text-primary/80 cursor-help" />
+                            <span className="text-sm text-gray-600">
+                                {appointmentStats.total} total appointments
+                            </span>
                         </div>
-                    )}
+                    </TooltipHelper>
                 </div>
             </div>
 
@@ -526,15 +543,12 @@ const CalendarGrid = ({ appointments = [], className }) => {
 
                                                     {appointment.status && (
                                                         <Badge
-                                                            variant="outline"
-                                                            className={
-                                                                appointment.status === 'confirmed'
-                                                                    ? 'bg-green-50 text-green-700 border-green-200'
-                                                                    : appointment.status ===
-                                                                      'pending'
-                                                                    ? 'bg-yellow-50 text-yellow-700 border-yellow-200'
-                                                                    : 'bg-gray-50 text-gray-700 border-gray-200'
-                                                            }
+                                                            className={cn(
+                                                                'text-xs font-medium',
+                                                                getStatusBadgeColor(
+                                                                    appointment.status
+                                                                )
+                                                            )}
                                                         >
                                                             {appointment.status}
                                                         </Badge>

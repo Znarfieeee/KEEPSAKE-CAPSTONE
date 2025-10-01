@@ -25,7 +25,7 @@ import { format } from 'date-fns'
 import TooltipHelper from '@/util/TooltipHelper'
 import { updateAppointment } from '@/api/doctors/appointment'
 
-const RescheduleAppointmentModal = ({ appointment, onSuccess, onClose }) => {
+const RescheduleAppointmentModal = ({ appointment, onClose }) => {
     // Form state management
     const [formData, setFormData] = useState({
         appointment_date: new Date(),
@@ -127,7 +127,7 @@ const RescheduleAppointmentModal = ({ appointment, onSuccess, onClose }) => {
 
             // Prepare data for API
             const updateData = {
-                appointment_date: formData.appointment_date.toISOString(),
+                appointment_date: format(formData.appointment_date, 'yyyy-MM-dd'),
                 appointment_time: formData.appointment_time,
             }
 
@@ -139,8 +139,18 @@ const RescheduleAppointmentModal = ({ appointment, onSuccess, onClose }) => {
 
             if (response.status === 'success' || response.success) {
                 showToast('success', 'Appointment rescheduled successfully')
+
+                // Dispatch custom event for real-time update
+                if (response.data) {
+                    window.dispatchEvent(
+                        new CustomEvent('appointment-updated', {
+                            detail: response.data,
+                        })
+                    )
+                }
+
                 resetForm()
-                onSuccess?.(response)
+                // Don't call onSuccess - it triggers refresh
                 onClose?.()
             } else {
                 throw new Error(response.message || 'Failed to reschedule appointment')
@@ -181,8 +191,10 @@ const RescheduleAppointmentModal = ({ appointment, onSuccess, onClose }) => {
                 <div className="space-y-4">
                     {/* Patient Info Display */}
                     <div className="bg-gray-50 rounded-lg p-4">
-                        <h4 className="font-medium text-gray-900 mb-2">Appointment Details</h4>
-                        <div className="space-y-1 text-sm">
+                        <h4 className="font-semibold text-lg text-gray-900 mb-2">
+                            Appointment Details
+                        </h4>
+                        <div className="space-y-1 text-sm px-4">
                             <p>
                                 <span className="font-medium">Patient:</span> {patientName}
                             </p>
@@ -342,7 +354,7 @@ const RescheduleAppointmentModal = ({ appointment, onSuccess, onClose }) => {
                         onClick={handleSubmit}
                         disabled={!isFormValid() || loading}
                         isLoading={loading}
-                        className="flex-1 sm:flex-none bg-blue-600 text-white hover:bg-blue-700"
+                        className="flex-1 sm:flex-none bg-primary text-white hover:bg-primary/80 cursor-pointer"
                     >
                         {loading ? 'Rescheduling...' : 'Reschedule'}
                     </LoadingButton>

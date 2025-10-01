@@ -1,10 +1,21 @@
 import React, { useState, useMemo, Suspense, lazy } from 'react'
 
 // UI Components
-import { Filter, Search, RotateCcw, Eye, Calendar, Clock, User, Edit, XCircle } from 'lucide-react'
+import {
+    Filter,
+    Search,
+    RotateCcw,
+    Eye,
+    Calendar,
+    Clock,
+    User,
+    Edit,
+    CalendarX,
+} from 'lucide-react'
 import { cn, getStatusBadgeColor } from '@/util/utils'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogTrigger } from '@/components/ui/dialog'
+import ConfirmationDialog from '@/components/ui/ConfirmationDialog'
 import { showToast } from '@/util/alertHelper'
 import { cancelAppointment } from '@/api/doctors/appointment'
 
@@ -37,6 +48,8 @@ const AllAppointments = ({ appointments, onRefresh, loading = false }) => {
     const [showViewModal, setShowViewModal] = useState(false)
     const [showRescheduleModal, setShowRescheduleModal] = useState(false)
     const [cancellingId, setCancellingId] = useState(null)
+    const [showCancelDialog, setShowCancelDialog] = useState(false)
+    const [appointmentToCancel, setAppointmentToCancel] = useState(null)
 
     // Filter and search appointments
     const filteredAppointments = useMemo(() => {
@@ -80,20 +93,23 @@ const AllAppointments = ({ appointments, onRefresh, loading = false }) => {
         setShowRescheduleModal(true)
     }
 
-    const handleRescheduleSuccess = (response) => {
+    const handleRescheduleSuccess = () => {
         setShowRescheduleModal(false)
         setSelectedAppointment(null)
-        onRefresh?.()
+        // Don't call onRefresh - let real-time updates handle it
     }
 
-    const handleCancelAppointment = async (appointment) => {
-        const appointmentId = appointment.appointment_id || appointment.id
+    const handleCancelClick = (appointment) => {
+        setAppointmentToCancel(appointment)
+        setShowCancelDialog(true)
+    }
 
-        if (!confirm('Are you sure you want to cancel this appointment?')) {
-            return
-        }
+    const handleCancelConfirm = async () => {
+        if (!appointmentToCancel) return
 
+        const appointmentId = appointmentToCancel.appointment_id || appointmentToCancel.id
         setCancellingId(appointmentId)
+
         try {
             const response = await cancelAppointment(appointmentId)
 
@@ -109,14 +125,16 @@ const AllAppointments = ({ appointments, onRefresh, loading = false }) => {
                     )
                 }
 
-                onRefresh?.()
+                // Close dialog and reset
+                setShowCancelDialog(false)
+                setAppointmentToCancel(null)
+
+                // Don't call onRefresh - let real-time updates handle it
             }
         } catch (error) {
             console.error('Error cancelling appointment:', error)
             const errorMessage =
-                error.response?.data?.message ||
-                error.message ||
-                'Failed to cancel appointment'
+                error.response?.data?.message || error.message || 'Failed to cancel appointment'
             showToast('error', errorMessage)
         } finally {
             setCancellingId(null)
@@ -227,6 +245,9 @@ const AllAppointments = ({ appointments, onRefresh, loading = false }) => {
                                     Date & Time
                                 </th>
                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    Type
+                                </th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                     Purpose
                                 </th>
                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -297,6 +318,31 @@ const AllAppointments = ({ appointments, onRefresh, loading = false }) => {
                                         </div>
                                     </td>
                                     <td className="px-6 py-4">
+                                        <span
+                                            className={cn(
+                                                'inline-flex px-2.5 py-1 text-xs font-semibold rounded-full capitalize',
+                                                {
+                                                    'bg-red-100 text-red-700 border border-red-200':
+                                                        appointment.appointment_type ===
+                                                        'emergency',
+                                                    'bg-yellow-100 text-yellow-700 border border-yellow-200':
+                                                        appointment.appointment_type === 'followup',
+                                                    'bg-green-100 text-green-700 border border-green-200':
+                                                        appointment.appointment_type === 'checkup',
+                                                    'bg-purple-100 text-purple-700 border border-purple-200':
+                                                        appointment.appointment_type ===
+                                                        'vaccination',
+                                                    'bg-blue-100 text-blue-700 border border-blue-200':
+                                                        !appointment.appointment_type ||
+                                                        appointment.appointment_type ===
+                                                            'consultation',
+                                                }
+                                            )}
+                                        >
+                                            {appointment.appointment_type || 'Consultation'}
+                                        </span>
+                                    </td>
+                                    <td className="px-6 py-4">
                                         <div className="text-sm text-gray-900">
                                             {appointment.reason || 'General Consultation'}
                                         </div>
@@ -318,7 +364,9 @@ const AllAppointments = ({ appointments, onRefresh, loading = false }) => {
                                                     variant="ghost"
                                                     size="icon"
                                                     className="hover:text-blue-600 hover:bg-blue-100"
-                                                    onClick={() => handleViewAppointment(appointment)}
+                                                    onClick={() =>
+                                                        handleViewAppointment(appointment)
+                                                    }
                                                 >
                                                     <Eye className="size-4" />
                                                 </Button>
@@ -326,15 +374,24 @@ const AllAppointments = ({ appointments, onRefresh, loading = false }) => {
 
                                             {/* Only show reschedule for scheduled/confirmed appointments */}
                                             {(appointment.status?.toLowerCase() === 'scheduled' ||
-                                              appointment.status?.toLowerCase() === 'confirmed') && (
+                                                appointment.status?.toLowerCase() ===
+                                                    'confirmed') && (
                                                 <>
                                                     <TooltipHelper content="Reschedule Appointment">
                                                         <Button
                                                             variant="ghost"
                                                             size="icon"
                                                             className="hover:text-yellow-600 hover:bg-yellow-100"
-                                                            onClick={() => handleRescheduleAppointment(appointment)}
-                                                            disabled={cancellingId === (appointment.appointment_id || appointment.id)}
+                                                            onClick={() =>
+                                                                handleRescheduleAppointment(
+                                                                    appointment
+                                                                )
+                                                            }
+                                                            disabled={
+                                                                cancellingId ===
+                                                                (appointment.appointment_id ||
+                                                                    appointment.id)
+                                                            }
                                                         >
                                                             <Edit className="size-4" />
                                                         </Button>
@@ -345,13 +402,21 @@ const AllAppointments = ({ appointments, onRefresh, loading = false }) => {
                                                             variant="ghost"
                                                             size="icon"
                                                             className="hover:text-red-600 hover:bg-red-100"
-                                                            onClick={() => handleCancelAppointment(appointment)}
-                                                            disabled={cancellingId === (appointment.appointment_id || appointment.id)}
+                                                            onClick={() =>
+                                                                handleCancelClick(appointment)
+                                                            }
+                                                            disabled={
+                                                                cancellingId ===
+                                                                (appointment.appointment_id ||
+                                                                    appointment.id)
+                                                            }
                                                         >
-                                                            {cancellingId === (appointment.appointment_id || appointment.id) ? (
+                                                            {cancellingId ===
+                                                            (appointment.appointment_id ||
+                                                                appointment.id) ? (
                                                                 <div className="size-4 animate-spin rounded-full border-2 border-red-600 border-t-transparent" />
                                                             ) : (
-                                                                <XCircle className="size-4" />
+                                                                <CalendarX className="size-4" />
                                                             )}
                                                         </Button>
                                                     </TooltipHelper>
@@ -378,19 +443,65 @@ const AllAppointments = ({ appointments, onRefresh, loading = false }) => {
                 )}
             </div>
 
+            {/* Legend Footer */}
+            {/* {filteredAppointments.length > 0 && (
+                <div className="px-6 py-3 border-t border-gray-200 bg-gray-50">
+                    <div className="flex items-center justify-between flex-wrap gap-3">
+                        <div className="flex items-center gap-4 flex-wrap">
+                            <span className="text-xs font-semibold text-gray-600 uppercase tracking-wide">
+                                Types:
+                            </span>
+                            <div className="flex items-center gap-1.5">
+                                <div className="w-2.5 h-2.5 bg-blue-500 rounded-full"></div>
+                                <span className="text-xs text-gray-600">Consultation</span>
+                            </div>
+                            <div className="flex items-center gap-1.5">
+                                <div className="w-2.5 h-2.5 bg-green-500 rounded-full"></div>
+                                <span className="text-xs text-gray-600">Check-up</span>
+                            </div>
+                            <div className="flex items-center gap-1.5">
+                                <div className="w-2.5 h-2.5 bg-yellow-500 rounded-full"></div>
+                                <span className="text-xs text-gray-600">Follow-up</span>
+                            </div>
+                            <div className="flex items-center gap-1.5">
+                                <div className="w-2.5 h-2.5 bg-purple-500 rounded-full"></div>
+                                <span className="text-xs text-gray-600">Vaccination</span>
+                            </div>
+                            <div className="flex items-center gap-1.5">
+                                <div className="w-2.5 h-2.5 bg-red-500 rounded-full"></div>
+                                <span className="text-xs text-gray-600">Emergency</span>
+                            </div>
+                        </div>
+                        <div className="text-xs text-gray-500">
+                            Showing {filteredAppointments.length} of {appointments.length}{' '}
+                            appointments
+                        </div>
+                    </div>
+                </div>
+            )} */}
+
             {/* View Appointment Modal */}
             <Dialog open={showViewModal} onOpenChange={setShowViewModal}>
-                <Suspense fallback={<div className="flex items-center justify-center p-8"><div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div></div>}>
-                    <ViewAppointmentModal
-                        appointment={selectedAppointment}
-                        onClose={closeModals}
-                    />
+                <Suspense
+                    fallback={
+                        <div className="flex items-center justify-center p-8">
+                            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
+                        </div>
+                    }
+                >
+                    <ViewAppointmentModal appointment={selectedAppointment} onClose={closeModals} />
                 </Suspense>
             </Dialog>
 
             {/* Reschedule Appointment Modal */}
             <Dialog open={showRescheduleModal} onOpenChange={setShowRescheduleModal}>
-                <Suspense fallback={<div className="flex items-center justify-center p-8"><div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div></div>}>
+                <Suspense
+                    fallback={
+                        <div className="flex items-center justify-center p-8">
+                            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
+                        </div>
+                    }
+                >
                     <RescheduleAppointmentModal
                         appointment={selectedAppointment}
                         onSuccess={handleRescheduleSuccess}
@@ -398,6 +509,23 @@ const AllAppointments = ({ appointments, onRefresh, loading = false }) => {
                     />
                 </Suspense>
             </Dialog>
+
+            {/* Cancel Confirmation Dialog */}
+            <ConfirmationDialog
+                open={showCancelDialog}
+                onOpenChange={setShowCancelDialog}
+                title="Cancel Appointment"
+                description={`Are you sure you want to cancel the appointment for ${
+                    appointmentToCancel?.patient_name ||
+                    `${appointmentToCancel?.patients?.firstname || ''} ${
+                        appointmentToCancel?.patients?.lastname || ''
+                    }`.trim() ||
+                    'this patient'
+                }? This action cannot be undone.`}
+                onConfirm={handleCancelConfirm}
+                destructive={true}
+                loading={cancellingId !== null}
+            />
         </div>
     )
 }

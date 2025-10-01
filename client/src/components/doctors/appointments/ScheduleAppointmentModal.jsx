@@ -37,6 +37,15 @@ import { cn } from '@/util/utils'
 import { format } from 'date-fns'
 import TooltipHelper from '@/util/TooltipHelper'
 
+// Appointment type constants
+const APPOINTMENT_TYPES = {
+    consultation: 'Consultation',
+    followup: 'Follow-up',
+    checkup: 'Check-up',
+    vaccination: 'Vaccination',
+    emergency: 'Emergency',
+}
+
 const ScheduleAppointmentModal = ({ onSuccess, facilityId, doctorId }) => {
     // Form state management
     const [formData, setFormData] = useState({
@@ -46,6 +55,7 @@ const ScheduleAppointmentModal = ({ onSuccess, facilityId, doctorId }) => {
         lastname: '',
         appointment_date: new Date(),
         appointment_time: '',
+        appointment_type: 'consultation', // Default appointment type
         reason: '',
         notes: '',
         doctor_id: doctorId || '', // Initialize with provided doctorId or empty string for any available doctor
@@ -195,6 +205,10 @@ const ScheduleAppointmentModal = ({ onSuccess, facilityId, doctorId }) => {
             }
         }
 
+        if (!formData.appointment_type) {
+            newErrors.appointment_type = 'Appointment type is required'
+        }
+
         if (!formData.reason.trim()) {
             newErrors.reason = 'Reason for visit is required'
         } else if (formData.reason.trim().length < 3) {
@@ -214,6 +228,7 @@ const ScheduleAppointmentModal = ({ onSuccess, facilityId, doctorId }) => {
             String(formData.patientName).trim() &&
             formData.appointment_date &&
             formData.appointment_time &&
+            formData.appointment_type &&
             formData.reason &&
             String(formData.reason).trim() &&
             Object.keys(errors).length === 0
@@ -231,6 +246,7 @@ const ScheduleAppointmentModal = ({ onSuccess, facilityId, doctorId }) => {
             lastname: '',
             appointment_date: new Date(),
             appointment_time: '',
+            appointment_type: 'consultation', // Reset to default type
             reason: '',
             notes: '',
             doctor_id: doctorId || '', // Reset to initial doctor if provided, otherwise empty string
@@ -264,6 +280,7 @@ const ScheduleAppointmentModal = ({ onSuccess, facilityId, doctorId }) => {
                         : formData.doctor_id, // Send null for 'any' or empty
                 appointment_date: format(formData.appointment_date, 'yyyy-MM-dd'),
                 appointment_time: formData.appointment_time,
+                appointment_type: formData.appointment_type,
                 reason: formData.reason.trim(),
                 notes: formData.notes.trim(),
             }
@@ -278,6 +295,9 @@ const ScheduleAppointmentModal = ({ onSuccess, facilityId, doctorId }) => {
 
             // Sanitize the data if sanitizeObject function is available
             const sanitizedData = sanitizeObject ? sanitizeObject(submitData) : submitData
+
+            // Debug: Log the data being sent
+            console.log('Scheduling appointment with data:', sanitizedData)
 
             const response = await scheduleAppointment(sanitizedData)
 
@@ -431,6 +451,37 @@ const ScheduleAppointmentModal = ({ onSuccess, facilityId, doctorId }) => {
                         </Select>
                         {errors.doctor_id && (
                             <p className="text-sm text-red-600">{errors.doctor_id}</p>
+                        )}
+                    </div>
+
+                    {/* Appointment Type */}
+                    <div className="grid gap-2 w-full">
+                        <Label htmlFor="appointment_type">Appointment Type *</Label>
+                        <Select
+                            value={formData.appointment_type}
+                            onValueChange={(value) => handleInputChange('appointment_type', value)}
+                            className="w-full"
+                        >
+                            <SelectTrigger
+                                className={cn(
+                                    'w-full',
+                                    errors.appointment_type && 'border-red-500'
+                                )}
+                            >
+                                <SelectValue placeholder="Select appointment type" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectGroup>
+                                    {Object.entries(APPOINTMENT_TYPES).map(([value, label]) => (
+                                        <SelectItem key={value} value={value}>
+                                            {label}
+                                        </SelectItem>
+                                    ))}
+                                </SelectGroup>
+                            </SelectContent>
+                        </Select>
+                        {errors.appointment_type && (
+                            <p className="text-sm text-red-600">{errors.appointment_type}</p>
                         )}
                     </div>
 
@@ -610,7 +661,7 @@ const ScheduleAppointmentModal = ({ onSuccess, facilityId, doctorId }) => {
                         onClick={handleSubmit}
                         disabled={!isFormValid() || loading}
                         isLoading={loading}
-                        className="flex-1 sm:flex-none bg-blue-600 text-white hover:bg-blue-700"
+                        className="flex-1 sm:flex-none bg-primary text-white hover:bg-primary/80"
                     >
                         {loading ? 'Scheduling...' : 'Schedule Appointment'}
                     </LoadingButton>

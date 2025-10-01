@@ -1,11 +1,9 @@
 import React, { Suspense, lazy, useState } from 'react'
-import { format } from 'date-fns'
 
 // UI Component
 import {
     Calendar,
     Clock,
-    User,
     PlusCircle,
     FileText,
     AlertCircle,
@@ -18,6 +16,7 @@ import { Dialog, DialogTrigger } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
+import { ScrollArea } from '@/components/ui/scroll-area'
 import { showToast } from '@/util/alertHelper'
 import { updateAppointmentStatus, cancelAppointment } from '@/api/doctors/appointment'
 
@@ -93,9 +92,10 @@ const AppointmentCard = ({ appointment, onAction }) => {
 
             if (error.response) {
                 // Server responded with error
-                errorMessage = error.response?.data?.message ||
-                              error.response?.data?.details ||
-                              `Server error (${error.response.status}): ${error.response.statusText}`
+                errorMessage =
+                    error.response?.data?.message ||
+                    error.response?.data?.details ||
+                    `Server error (${error.response.status}): ${error.response.statusText}`
                 console.error('Server response data:', error.response.data)
             } else if (error.request) {
                 // Request was made but no response
@@ -138,18 +138,23 @@ const AppointmentCard = ({ appointment, onAction }) => {
     }
 
     return (
-        <div className="p-4 border-b border-gray-200 hover:bg-gray-50 transition-all duration-200 last:border-b-0 group">
-            <div className="flex items-start justify-between">
-                {/* Patient Info */}
-                <div className="flex items-start space-x-3 flex-1">
-                    <div className="relative">
-                        <div className="h-12 w-12 bg-gradient-to-br from-blue-100 to-blue-200 rounded-full flex items-center justify-center shadow-sm">
-                            <User className="h-6 w-6 text-primary" />
-                        </div>
-                        <div className="absolute -top-1 -right-1">{getTimeIndicator()}</div>
+        <div className="p-3 border-b border-gray-100 hover:bg-gray-50/50 transition-colors last:border-b-0">
+            <div className="flex items-center justify-between gap-3">
+                {/* Time & Patient Info */}
+                <div className="flex items-center gap-3 flex-1 min-w-0">
+                    {/* Time with indicator */}
+                    <div className="flex flex-col items-center min-w-[70px]">
+                        <span className="text-base font-bold text-gray-900">
+                            {formatTime(appointment.appointment_time)}
+                        </span>
+                        {getTimeIndicator()}
                     </div>
+
+                    <Separator orientation="vertical" className="h-12" />
+
+                    {/* Patient Details */}
                     <div className="flex-1 min-w-0">
-                        <div className="flex items-center space-x-2 mb-2">
+                        <div className="flex items-center gap-2 mb-1">
                             <h4 className="font-semibold text-gray-900 truncate">
                                 {appointment.patient_name ||
                                     appointment.patients?.firstname +
@@ -158,69 +163,44 @@ const AppointmentCard = ({ appointment, onAction }) => {
                                     appointment.patient?.full_name ||
                                     'Unknown Patient'}
                             </h4>
-                            <span className="text-lg font-bold text-primary">
-                                {formatTime(appointment.appointment_time)}
-                            </span>
-                        </div>
-
-                        <div className="space-y-1.5">
-                            <div className="flex items-center text-sm text-gray-600">
-                                <FileText className="h-3.5 w-3.5 mr-2 text-gray-400" />
-                                <span className="truncate">
-                                    {appointment.reason || 'General Consultation'}
-                                </span>
-                            </div>
-
-                            {appointment.patients?.date_of_birth && (
-                                <div className="flex items-center text-xs text-gray-500">
-                                    <User className="h-3 w-3 mr-2 text-gray-400" />
-                                    <span>
-                                        Born:{' '}
-                                        {format(
-                                            new Date(appointment.patients.date_of_birth),
-                                            'MMM d, yyyy'
-                                        )}
-                                    </span>
-                                    {appointment.patients?.sex && (
-                                        <span className="ml-3 px-2 py-0.5 bg-gray-100 rounded-full text-xs font-medium">
-                                            {appointment.patients.sex.charAt(0).toUpperCase() +
-                                                appointment.patients.sex.slice(1)}
-                                        </span>
-                                    )}
-                                </div>
-                            )}
-
-                            {appointment.doctor_name && (
-                                <div className="flex items-center text-xs text-primary font-medium">
-                                    <UserCheck className="h-3 w-3 mr-2" />
-                                    <span>Dr. {appointment.doctor_name}</span>
-                                </div>
-                            )}
-
-                            {appointment.notes && (
-                                <div className="flex items-start text-xs text-gray-500 bg-gray-50 rounded-md p-2 mt-2">
-                                    <FileText className="h-3 w-3 mr-2 text-gray-400 mt-0.5 flex-shrink-0" />
-                                    <span className="leading-relaxed">{appointment.notes}</span>
-                                </div>
+                            {appointment.appointment_type && (
+                                <Badge
+                                    variant="outline"
+                                    className={cn('text-xs capitalize px-1.5 py-0 border', {
+                                        'bg-red-50 text-red-700 border-red-200':
+                                            appointment.appointment_type === 'emergency',
+                                        'bg-yellow-50 text-yellow-700 border-yellow-200':
+                                            appointment.appointment_type === 'followup',
+                                        'bg-green-50 text-green-700 border-green-200':
+                                            appointment.appointment_type === 'checkup',
+                                        'bg-purple-50 text-purple-700 border-purple-200':
+                                            appointment.appointment_type === 'vaccination',
+                                        'bg-blue-50 text-blue-700 border-blue-200':
+                                            appointment.appointment_type === 'consultation',
+                                    })}
+                                >
+                                    {appointment.appointment_type}
+                                </Badge>
                             )}
                         </div>
+
+                        <p className="text-sm text-gray-600 truncate">
+                            {appointment.reason || 'General Consultation'}
+                        </p>
+
+                        {appointment.doctor_name && (
+                            <p className="text-xs text-gray-500 mt-0.5">
+                                Dr. {appointment.doctor_name}
+                            </p>
+                        )}
                     </div>
                 </div>
 
                 {/* Status & Actions */}
-                <div className="flex flex-col items-end space-y-2">
+                <div className="flex flex-col items-end gap-2 min-w-fit">
                     <Badge
-                        variant={
-                            appointment.status?.toLowerCase() === 'completed'
-                                ? 'default'
-                                : appointment.status?.toLowerCase() === 'confirmed'
-                                ? 'secondary'
-                                : appointment.status?.toLowerCase() === 'cancelled'
-                                ? 'destructive'
-                                : 'outline'
-                        }
                         className={cn(
-                            'text-xs font-medium',
+                            'text-xs font-medium whitespace-nowrap',
                             getStatusBadgeColor(appointment.status)
                         )}
                     >
@@ -229,7 +209,8 @@ const AppointmentCard = ({ appointment, onAction }) => {
                     </Badge>
 
                     <div className="flex items-center space-x-1">
-                        {(appointment.status?.toLowerCase() === 'scheduled' || !appointment.status) && (
+                        {(appointment.status?.toLowerCase() === 'scheduled' ||
+                            !appointment.status) && (
                             <>
                                 <Button
                                     onClick={handleConfirm}
@@ -370,9 +351,9 @@ const TodaySchedule = ({ appointments, loading = false, onAppointmentAction, onR
     })
 
     return (
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 h-full flex flex-col">
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 flex flex-col h-[490px]">
             {/* Header */}
-            <div className="px-6 py-3 border-b border-gray-200">
+            <div className="px-6 py-3 border-b border-gray-200 flex-shrink-0">
                 <div className="flex items-center justify-between">
                     <div>
                         <h3 className="text-xl font-bold text-gray-900 flex items-center">
@@ -390,55 +371,37 @@ const TodaySchedule = ({ appointments, loading = false, onAppointmentAction, onR
                             </p>
                         </div>
                         <Separator orientation="vertical" className="h-8" />
-                        <div className="text-center">
+                        {/* <div className="text-center">
                             <p className="text-2xl font-bold text-accent">
                                 {upcomingAppointments.length}
                             </p>
                             <p className="text-xs text-gray-500 font-medium uppercase tracking-wide">
                                 Remaining
                             </p>
-                        </div>
+                        </div> */}
                     </div>
                 </div>
             </div>
 
-            {/* Appointments List */}
-            <div className="flex-1 overflow-y-auto">
+            {/* Appointments List - ScrollArea for constant height */}
+            <div className="flex-1 min-h-0">
                 {loading ? (
                     <div className="flex items-center justify-center py-8">
-                        <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
+                        <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
                     </div>
                 ) : sortedAppointments.length > 0 ? (
-                    <div>
+                    <ScrollArea className="h-full">
                         {(upcomingAppointments.length > 0
                             ? upcomingAppointments
                             : sortedAppointments
-                        )
-                            .slice(0, 8)
-                            .map((appointment) => (
-                                <AppointmentCard
-                                    key={appointment.appointment_id || appointment.id}
-                                    appointment={appointment}
-                                    onAction={onAppointmentAction}
-                                />
-                            ))}
-
-                        {sortedAppointments.length > 8 && (
-                            <div className="p-4 text-center border-t border-gray-200 bg-gray-50">
-                                <p className="text-sm text-gray-600 font-medium">
-                                    +{sortedAppointments.length - 8} more appointments today
-                                </p>
-                                <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    className="mt-2 text-primary hover:text-primary/80"
-                                    onClick={() => onRefresh?.()}
-                                >
-                                    View All Appointments
-                                </Button>
-                            </div>
-                        )}
-                    </div>
+                        ).map((appointment) => (
+                            <AppointmentCard
+                                key={appointment.appointment_id || appointment.id}
+                                appointment={appointment}
+                                onAction={onAppointmentAction}
+                            />
+                        ))}
+                    </ScrollArea>
                 ) : (
                     <div className="flex flex-col items-center justify-center py-12 text-center">
                         <div className="w-24 h-24 bg-blue-100 rounded-full flex items-center justify-center mb-4">
@@ -473,10 +436,10 @@ const TodaySchedule = ({ appointments, loading = false, onAppointmentAction, onR
                 )}
             </div>
 
-            {/* Enhanced Footer */}
+            {/* Enhanced Footer with Legend */}
             {sortedAppointments.length > 0 && (
-                <div className="px-6 py-4 border-t border-gray-200 bg-gradient-to-r from-gray-50 to-blue-50">
-                    <div className="flex items-center justify-between">
+                <div className="border-t border-gray-200 bg-gradient-to-r from-gray-50 to-gray-100 flex-shrink-0">
+                    <div className="px-6 py-3 flex items-center justify-between border-b border-gray-200">
                         <div className="flex items-center space-x-3">
                             <Clock className="h-4 w-4 text-gray-400" />
                             <div className="text-sm">
@@ -489,17 +452,12 @@ const TodaySchedule = ({ appointments, loading = false, onAppointmentAction, onR
                             </div>
                         </div>
                         <div className="flex items-center space-x-2">
-                            <Badge variant="secondary" className="text-xs">
-                                {upcomingAppointments.length} remaining
-                            </Badge>
-                            <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => onRefresh?.()}
-                                className="text-xs text-primary hover:text-primary/80"
-                            >
-                                Refresh
-                            </Button>
+                            <span className="text-sm text-gray-600">
+                                <span className="font-semibold text-gray-900">
+                                    {upcomingAppointments.length}
+                                </span>{' '}
+                                remaining
+                            </span>
                         </div>
                     </div>
                 </div>
