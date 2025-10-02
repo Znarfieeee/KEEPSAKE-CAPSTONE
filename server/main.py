@@ -10,8 +10,6 @@ from config.settings import supabase_anon_client
 from utils.audit_logger import configure_audit_logger
 from utils.redis_client import get_redis_client, clear_corrupted_sessions
 
-
-
 from routes.auth_routes import auth_bp
 from routes.admin_routes import admin_bp
 from routes.admin.admin_facility import facility_bp
@@ -21,6 +19,7 @@ from routes.pediapro.doctor_patient_prescriptions import patrx_bp
 from routes.auth_routes import init_google_oauth
 from routes.pediapro.doctor_appointments import appointment_bp
 from routes.facility_admin.facility_users import fusers_bp
+from routes.user_settings import settings_bp as user_settings_bp
 
 app = Flask("keepsake")
 
@@ -40,6 +39,7 @@ app.register_blueprint(patrecord_bp)
 app.register_blueprint(patrx_bp)
 app.register_blueprint(appointment_bp)
 app.register_blueprint(fusers_bp)
+app.register_blueprint(user_settings_bp)
 
 # Redis session configuration with enhanced error handling
 def setup_redis_session():

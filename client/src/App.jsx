@@ -11,6 +11,7 @@ import AuthSuccess from '@/pages/AuthSuccess'
 import AuthError from '@/pages/AuthError'
 import QrScanner from '@/pages/QrScanner'
 import ForgotPassword from '@/pages/ForgotPassword'
+import Settings from '@/pages/Settings'
 
 // Admin
 import AdminDashboard from '@/pages/systemAdmin/AdminDashboard'
@@ -119,6 +120,10 @@ function App() {
                             path: 'maintenance_mode',
                             element: <MaintenancePage />,
                         },
+                        {
+                            path: 'settings',
+                            element: <Settings />,
+                        },
                     ],
                 },
                 {
@@ -188,6 +193,10 @@ function App() {
                         {
                             path: 'maintenance_mode',
                             element: <div>Maintenance Mode Page</div>,
+                        },
+                        {
+                            path: 'settings',
+                            element: <Settings />,
                         },
                     ],
                 },
