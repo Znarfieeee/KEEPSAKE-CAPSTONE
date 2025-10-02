@@ -82,7 +82,8 @@ const EmailSettings = () => {
                         <p className="text-sm font-medium text-yellow-900">Important Notice</p>
                         <p className="text-sm text-yellow-700 mt-1">
                             Changing your email will require you to log in again with your new email
-                            address. Make sure you have access to the new email address before proceeding.
+                            address. Make sure you have access to the new email address before
+                            proceeding.
                         </p>
                     </div>
                 </div>
@@ -159,7 +160,7 @@ const EmailSettings = () => {
 
             {/* Confirmation Dialog */}
             <Dialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
-                <DialogContent>
+                <DialogContent className="w-xl" showCloseButton={false}>
                     <DialogHeader>
                         <DialogTitle>Confirm Email Change</DialogTitle>
                         <DialogDescription className="space-y-3 pt-4">
@@ -177,14 +178,15 @@ const EmailSettings = () => {
                                 </div>
                             </div>
                             <p className="text-gray-700">
-                                You will be logged out and need to sign in again with your new email address.
+                                You will be logged out and need to sign in again with your new email
+                                address.
                             </p>
                         </DialogDescription>
                     </DialogHeader>
-                    <DialogFooter className="gap-2">
+                    <DialogFooter className="gap-2 justify-between mt-12">
                         <Button
                             onClick={() => setShowConfirmDialog(false)}
-                            variant="outline"
+                            variant="destructive"
                             disabled={loading}
                         >
                             Cancel

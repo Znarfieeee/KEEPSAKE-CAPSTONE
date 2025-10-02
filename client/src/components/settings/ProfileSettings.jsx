@@ -1,49 +1,37 @@
 import { useState, useEffect } from 'react'
-import { useAuth } from '../../context/auth'
-import { getProfile, updateProfile } from '../../api/settings'
-import { showToast } from '../../util/alertHelper'
-import { Input } from '../ui/input'
-import { Label } from '../ui/label'
-import { Button } from '../ui/Button'
+import { useAuth } from '@/context/auth'
+
+// UI Components
+import { updateProfile } from '@/api/settings'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Button } from '@/components/ui/Button'
 import { Loader2 } from 'lucide-react'
-import SettingsSkeleton from './SettingsSkeleton'
+
+// Helper
+import { showToast } from '@/util/alertHelper'
 
 const ProfileSettings = () => {
-    const { user } = useAuth()
+    const { user, updateUser } = useAuth()
     const [loading, setLoading] = useState(false)
-    const [fetchingProfile, setFetchingProfile] = useState(true)
     const [profileData, setProfileData] = useState({
-        firstname: '',
-        lastname: '',
-        middlename: '',
-        specialty: '',
-        license_number: '',
+        firstname: user?.firstname || '',
+        lastname: user?.lastname || '',
+        specialty: user?.specialty || '',
+        license_number: user?.license_number || '',
     })
 
+    // Update profile data when user context changes
     useEffect(() => {
-        fetchProfile()
-    }, [])
-
-    const fetchProfile = async () => {
-        try {
-            setFetchingProfile(true)
-            const response = await getProfile()
-            if (response.status === 'success') {
-                const { data } = response
-                setProfileData({
-                    firstname: data.firstname || '',
-                    lastname: data.lastname || '',
-                    middlename: data.middlename || '',
-                    specialty: data.specialty || '',
-                    license_number: data.license_number || '',
-                })
-            }
-        } catch (error) {
-            showToast('error', error.message || 'Failed to load profile')
-        } finally {
-            setFetchingProfile(false)
+        if (user) {
+            setProfileData({
+                firstname: user.firstname || '',
+                lastname: user.lastname || '',
+                specialty: user.specialty || '',
+                license_number: user.license_number || '',
+            })
         }
-    }
+    }, [user])
 
     const handleChange = (e) => {
         const { name, value } = e.target
@@ -68,16 +56,17 @@ const ProfileSettings = () => {
 
             if (response.status === 'success') {
                 showToast('success', 'Profile updated successfully')
+
+                // Update AuthContext with the returned user data
+                if (response.user) {
+                    updateUser(response.user)
+                }
             }
         } catch (error) {
             showToast('error', error.message || 'Failed to update profile')
         } finally {
             setLoading(false)
         }
-    }
-
-    if (fetchingProfile) {
-        return <SettingsSkeleton />
     }
 
     return (
@@ -110,18 +99,6 @@ const ProfileSettings = () => {
                         onChange={handleChange}
                         placeholder="Enter your last name"
                         required
-                    />
-                </div>
-
-                {/* Middle Name */}
-                <div className="space-y-2">
-                    <Label htmlFor="middlename">Middle Name</Label>
-                    <Input
-                        id="middlename"
-                        name="middlename"
-                        value={profileData.middlename}
-                        onChange={handleChange}
-                        placeholder="Enter your middle name (optional)"
                     />
                 </div>
 
@@ -166,12 +143,7 @@ const ProfileSettings = () => {
                     </div>
                     <div className="space-y-2">
                         <Label htmlFor="role">Role</Label>
-                        <Input
-                            id="role"
-                            value={user?.role || ''}
-                            disabled
-                            className="capitalize"
-                        />
+                        <Input id="role" value={user?.role || ''} disabled className="capitalize" />
                     </div>
                 </div>
             </div>

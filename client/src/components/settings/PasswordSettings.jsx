@@ -119,6 +119,7 @@ const PasswordSettings = () => {
                         type="button"
                         onClick={() => togglePasswordVisibility('current')}
                         className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                        tabIndex="-1"
                     >
                         {showPasswords.current ? (
                             <EyeOff className="h-4 w-4" />
@@ -148,6 +149,7 @@ const PasswordSettings = () => {
                         type="button"
                         onClick={() => togglePasswordVisibility('new')}
                         className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                        tabIndex="-1"
                     >
                         {showPasswords.new ? (
                             <EyeOff className="h-4 w-4" />
@@ -163,11 +165,23 @@ const PasswordSettings = () => {
                         <p className="text-sm font-medium text-gray-700 mb-2">
                             Password Requirements:
                         </p>
-                        <PasswordCheck check={passwordChecks.length} label="At least 8 characters" />
-                        <PasswordCheck check={passwordChecks.uppercase} label="One uppercase letter" />
-                        <PasswordCheck check={passwordChecks.lowercase} label="One lowercase letter" />
+                        <PasswordCheck
+                            check={passwordChecks.length}
+                            label="At least 8 characters"
+                        />
+                        <PasswordCheck
+                            check={passwordChecks.uppercase}
+                            label="One uppercase letter"
+                        />
+                        <PasswordCheck
+                            check={passwordChecks.lowercase}
+                            label="One lowercase letter"
+                        />
                         <PasswordCheck check={passwordChecks.number} label="One number" />
-                        <PasswordCheck check={passwordChecks.special} label="One special character" />
+                        <PasswordCheck
+                            check={passwordChecks.special}
+                            label="One special character"
+                        />
                     </div>
                 )}
             </div>
@@ -191,6 +205,7 @@ const PasswordSettings = () => {
                         type="button"
                         onClick={() => togglePasswordVisibility('confirm')}
                         className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                        tabIndex="-1"
                     >
                         {showPasswords.confirm ? (
                             <EyeOff className="h-4 w-4" />
@@ -199,17 +214,22 @@ const PasswordSettings = () => {
                         )}
                     </button>
                 </div>
-                {passwords.confirm_password && passwords.new_password !== passwords.confirm_password && (
-                    <p className="text-sm text-red-500 flex items-center gap-1">
-                        <XCircle className="h-4 w-4" />
-                        Passwords do not match
-                    </p>
-                )}
+                {passwords.confirm_password &&
+                    passwords.new_password !== passwords.confirm_password && (
+                        <p className="text-sm text-red-500 flex items-center gap-1">
+                            <XCircle className="h-4 w-4" />
+                            Passwords do not match
+                        </p>
+                    )}
             </div>
 
             {/* Submit Button */}
             <div className="flex justify-end pt-6 border-t">
-                <Button type="submit" disabled={loading || !isPasswordValid} className="min-w-[140px]">
+                <Button
+                    type="submit"
+                    disabled={loading || !isPasswordValid}
+                    className="min-w-[140px]"
+                >
                     {loading ? (
                         <>
                             <Loader2 className="mr-2 h-4 w-4 animate-spin" />

@@ -1,11 +1,11 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from '../../context/auth'
-import { getProfile, updatePhone } from '../../api/settings'
+import { updatePhone } from '../../api/settings'
 import { showToast } from '../../util/alertHelper'
 import { Input } from '../ui/input'
 import { Label } from '../ui/label'
 import { Button } from '../ui/Button'
-import { Loader2, Phone, AlertCircle, Eye, EyeOff } from 'lucide-react'
+import { Loader2, AlertCircle, Eye, EyeOff } from 'lucide-react'
 import {
     Dialog,
     DialogContent,
@@ -14,35 +14,22 @@ import {
     DialogHeader,
     DialogTitle,
 } from '../ui/dialog'
-import SettingsSkeleton from './SettingsSkeleton'
 
 const PhoneSettings = () => {
-    const { user } = useAuth()
+    const { user, updateUser } = useAuth()
     const [loading, setLoading] = useState(false)
-    const [fetchingProfile, setFetchingProfile] = useState(true)
     const [showConfirmDialog, setShowConfirmDialog] = useState(false)
     const [showPassword, setShowPassword] = useState(false)
-    const [currentPhone, setCurrentPhone] = useState('')
+    const [currentPhone, setCurrentPhone] = useState(user?.phone_number || 'Not set')
     const [newPhone, setNewPhone] = useState('')
     const [password, setPassword] = useState('')
 
+    // Update current phone when user context changes
     useEffect(() => {
-        fetchProfile()
-    }, [])
-
-    const fetchProfile = async () => {
-        try {
-            setFetchingProfile(true)
-            const response = await getProfile()
-            if (response.status === 'success') {
-                setCurrentPhone(response.data.phone_number || 'Not set')
-            }
-        } catch (error) {
-            showToast('error', error.message || 'Failed to load profile')
-        } finally {
-            setFetchingProfile(false)
+        if (user) {
+            setCurrentPhone(user.phone_number || 'Not set')
         }
-    }
+    }, [user])
 
     const handleOpenDialog = () => {
         // Validation
@@ -64,21 +51,22 @@ const PhoneSettings = () => {
 
             if (response.status === 'success') {
                 showToast('success', 'Phone number updated successfully')
+
+                // Update AuthContext with the returned user data
+                if (response.user) {
+                    updateUser(response.user)
+                }
+
                 setCurrentPhone(newPhone)
                 setNewPhone('')
                 setPassword('')
                 setShowConfirmDialog(false)
-                fetchProfile() // Refresh profile data
             }
         } catch (error) {
             showToast('error', error.message || 'Failed to update phone number')
         } finally {
             setLoading(false)
         }
-    }
-
-    if (fetchingProfile) {
-        return <SettingsSkeleton />
     }
 
     return (
@@ -90,8 +78,9 @@ const PhoneSettings = () => {
                     <div className="flex-1">
                         <p className="text-sm font-medium text-blue-900">Phone Number Usage</p>
                         <p className="text-sm text-blue-700 mt-1">
-                            Your phone number is used for account recovery and important notifications.
-                            Enter your number in international format (e.g., +1234567890).
+                            Your phone number is used for account recovery and important
+                            notifications. Enter your number in international format (e.g.,
+                            +1234567890).
                         </p>
                     </div>
                 </div>
@@ -171,7 +160,7 @@ const PhoneSettings = () => {
 
             {/* Confirmation Dialog */}
             <Dialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
-                <DialogContent>
+                <DialogContent className="w-xl">
                     <DialogHeader>
                         <DialogTitle>Confirm Phone Number Change</DialogTitle>
                         <DialogDescription className="space-y-3 pt-4">
@@ -181,7 +170,9 @@ const PhoneSettings = () => {
                             <div className="bg-gray-50 p-3 rounded-lg space-y-2">
                                 <div className="flex justify-between text-sm">
                                     <span className="text-gray-600">Current:</span>
-                                    <span className="font-medium text-gray-900">{currentPhone}</span>
+                                    <span className="font-medium text-gray-900">
+                                        {currentPhone}
+                                    </span>
                                 </div>
                                 <div className="flex justify-between text-sm">
                                     <span className="text-gray-600">New:</span>
@@ -189,14 +180,15 @@ const PhoneSettings = () => {
                                 </div>
                             </div>
                             <p className="text-gray-700">
-                                This phone number will be used for account recovery and notifications.
+                                This phone number will be used for account recovery and
+                                notifications.
                             </p>
                         </DialogDescription>
                     </DialogHeader>
-                    <DialogFooter className="gap-2">
+                    <DialogFooter className="gap-2 justify-between mt-12">
                         <Button
                             onClick={() => setShowConfirmDialog(false)}
-                            variant="outline"
+                            variant="destructive"
                             disabled={loading}
                         >
                             Cancel

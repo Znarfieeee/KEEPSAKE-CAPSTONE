@@ -230,7 +230,7 @@ function App() {
                         },
                         {
                             path: 'settings',
-                            element: <DoctorSettings />,
+                            element: <Settings />,
                         },
                         {
                             path: 'help_support',

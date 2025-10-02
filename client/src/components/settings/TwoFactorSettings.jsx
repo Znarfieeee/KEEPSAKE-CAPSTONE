@@ -1,35 +1,20 @@
-import { useState, useEffect } from 'react'
-import { get2FAStatus, enable2FA, disable2FA } from '../../api/settings'
-import { showToast } from '../../util/alertHelper'
-import { Button } from '../ui/Button'
+import { useState } from 'react'
+import { enable2FA, disable2FA } from '@/api/settings'
+
+// UI Components
+import { Button } from '@/components/ui/Button'
 import { Loader2, Shield, CheckCircle, XCircle, AlertCircle } from 'lucide-react'
-import SettingsSkeleton from './SettingsSkeleton'
+
+// Helper
+import { showToast } from '@/util/alertHelper'
 
 const TwoFactorSettings = () => {
     const [loading, setLoading] = useState(false)
-    const [fetchingStatus, setFetchingStatus] = useState(true)
     const [is2FAEnabled, setIs2FAEnabled] = useState(false)
     const [twoFAMethod, setTwoFAMethod] = useState(null)
 
-    useEffect(() => {
-        fetch2FAStatus()
-    }, [])
-
-    const fetch2FAStatus = async () => {
-        try {
-            setFetchingStatus(true)
-            const response = await get2FAStatus()
-
-            if (response.status === 'success') {
-                setIs2FAEnabled(response.data.enabled)
-                setTwoFAMethod(response.data.method)
-            }
-        } catch (error) {
-            showToast('error', error.message || 'Failed to load 2FA status')
-        } finally {
-            setFetchingStatus(false)
-        }
-    }
+    // 2FA is not yet implemented, so these are hardcoded to false
+    // When implementing 2FA, fetch from backend or user context
 
     const handleEnable2FA = async () => {
         try {
@@ -38,7 +23,6 @@ const TwoFactorSettings = () => {
 
             if (response.status === 'success') {
                 showToast('info', response.message || '2FA feature coming soon')
-                fetch2FAStatus()
             }
         } catch (error) {
             showToast('error', error.message || 'Failed to enable 2FA')
@@ -54,7 +38,6 @@ const TwoFactorSettings = () => {
 
             if (response.status === 'success') {
                 showToast('info', response.message || '2FA feature coming soon')
-                fetch2FAStatus()
             }
         } catch (error) {
             showToast('error', error.message || 'Failed to disable 2FA')
@@ -63,18 +46,12 @@ const TwoFactorSettings = () => {
         }
     }
 
-    if (fetchingStatus) {
-        return <SettingsSkeleton />
-    }
-
     return (
         <div className="max-w-2xl space-y-6">
             {/* 2FA Status Card */}
             <div
                 className={`border rounded-lg p-6 ${
-                    is2FAEnabled
-                        ? 'bg-green-50 border-green-200'
-                        : 'bg-gray-50 border-gray-200'
+                    is2FAEnabled ? 'bg-green-50 border-green-200' : 'bg-gray-50 border-gray-200'
                 }`}
             >
                 <div className="flex items-start gap-4">
@@ -100,7 +77,8 @@ const TwoFactorSettings = () => {
                         </p>
                         {is2FAEnabled && twoFAMethod && (
                             <p className="mt-2 text-sm text-gray-700">
-                                Method: <span className="font-medium capitalize">{twoFAMethod}</span>
+                                Method:{' '}
+                                <span className="font-medium capitalize">{twoFAMethod}</span>
                             </p>
                         )}
                     </div>
@@ -131,8 +109,8 @@ const TwoFactorSettings = () => {
                     <div className="flex-1">
                         <p className="text-sm font-medium text-yellow-900">Feature Coming Soon</p>
                         <p className="text-sm text-yellow-700 mt-1">
-                            Two-factor authentication is currently under development. We're working on
-                            implementing multiple authentication methods including:
+                            Two-factor authentication is currently under development. We're working
+                            on implementing multiple authentication methods including:
                         </p>
                         <ul className="mt-2 space-y-1 text-sm text-yellow-700 list-disc list-inside">
                             <li>Authenticator apps (TOTP)</li>
@@ -162,11 +140,7 @@ const TwoFactorSettings = () => {
                         )}
                     </Button>
                 ) : (
-                    <Button
-                        onClick={handleEnable2FA}
-                        disabled={loading}
-                        className="min-w-[140px]"
-                    >
+                    <Button onClick={handleEnable2FA} disabled={loading} className="min-w-[140px]">
                         {loading ? (
                             <>
                                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />

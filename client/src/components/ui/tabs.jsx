@@ -49,8 +49,8 @@ function TabsContent({ className, orientation = 'horizontal', ...props }) {
         <TabsPrimitive.Content
             data-slot="tabs-content"
             className={cn(
-                'flex-1 outline-none w-screen',
-                orientation === 'vertical' ? 'ml-2' : 'mt-2',
+                'flex-1 outline-none min-w-0 w-full',
+                orientation === 'vertical' ? 'ml-4' : 'mt-2',
                 className
             )}
             {...props}

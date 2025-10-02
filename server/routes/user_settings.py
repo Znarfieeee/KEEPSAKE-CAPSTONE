@@ -3,9 +3,14 @@ from utils.access_control import require_auth
 from config.settings import supabase, supabase_service_role_client
 from gotrue.errors import AuthApiError
 from datetime import datetime
+from utils.sessions import get_session_data, update_session_activity
+from utils.redis_client import redis_client
 import re
+import json
 
 settings_bp = Blueprint('user_settings', __name__)
+SESSION_PREFIX = 'keepsake_session:'
+SESSION_TIMEOUT = 1800  # 30 minutes
 
 # Email validation regex
 EMAIL_REGEX = re.compile(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$')
@@ -78,7 +83,7 @@ def update_profile():
         data = request.json or {}
 
         # Fields that can be updated
-        allowed_fields = ['firstname', 'lastname', 'middlename', 'specialty', 'license_number']
+        allowed_fields = ['firstname', 'lastname', 'specialty', 'license_number']
         update_data = {}
 
         for field in allowed_fields:
@@ -91,44 +96,63 @@ def update_profile():
                 "message": "No valid fields to update"
             }), 400
 
-        # Update timestamp
-        update_data['updated_at'] = datetime.utcnow().isoformat()
+        # Update auth.users.raw_user_meta_data using database function
+        # The trigger will automatically sync to public.users
+        try:
+            result = supabase.rpc('update_auth_user_metadata', {
+                'p_user_id': user_id,
+                'p_metadata': update_data
+            }).execute()
 
-        # Update in users table
-        response = supabase.table('users').update(update_data).eq('user_id', user_id).execute()
-
-        if not response.data:
+            if not result.data:
+                raise Exception("Failed to update user metadata")
+        except Exception as auth_error:
+            current_app.logger.error(f"Failed to update auth metadata: {str(auth_error)}")
             return jsonify({
                 "status": "error",
                 "message": "Failed to update profile"
             }), 500
 
-        # Update user metadata in Supabase Auth
-        try:
-            auth_update = {}
-            if 'firstname' in update_data:
-                auth_update['firstname'] = update_data['firstname']
-            if 'lastname' in update_data:
-                auth_update['lastname'] = update_data['lastname']
-            if 'specialty' in update_data:
-                auth_update['specialty'] = update_data['specialty']
-            if 'license_number' in update_data:
-                auth_update['license_number'] = update_data['license_number']
+        # Update Redis session with new user data
+        session_id = request.cookies.get('session_id')
+        if session_id:
+            try:
+                session_data = get_session_data(session_id)
+                if session_data:
+                    # Update session data with new values
+                    for field in allowed_fields:
+                        if field in update_data:
+                            session_data[field] = update_data[field]
 
-            if auth_update:
-                supabase_service_role_client().auth.admin.update_user_by_id(
-                    user_id,
-                    {"user_metadata": auth_update}
-                )
-        except Exception as auth_error:
-            current_app.logger.warning(f"Failed to update auth metadata: {str(auth_error)}")
+                    session_data['last_activity'] = datetime.utcnow().isoformat()
+
+                    # Re-serialize and store in Redis
+                    session_json = json.dumps(session_data, ensure_ascii=False, separators=(',', ':'))
+                    redis_client.setex(f"{SESSION_PREFIX}{session_id}", SESSION_TIMEOUT, session_json)
+
+                    current_app.logger.info(f"Redis session updated for user {user_id}")
+            except Exception as session_error:
+                current_app.logger.warning(f"Failed to update Redis session: {str(session_error)}")
 
         current_app.logger.info(f"AUDIT: User {user_id} updated profile from IP {request.remote_addr}")
+
+        # Return updated user data for frontend to update AuthContext
+        updated_user = {
+            "id": user_id,
+            "email": request.current_user.get('email'),
+            "role": request.current_user.get('role'),
+            "firstname": update_data.get('firstname', request.current_user.get('firstname')),
+            "lastname": update_data.get('lastname', request.current_user.get('lastname')),
+            "specialty": update_data.get('specialty', request.current_user.get('specialty')),
+            "license_number": update_data.get('license_number', request.current_user.get('license_number')),
+            "phone_number": request.current_user.get('phone_number'),
+            "facility_id": request.current_user.get('facility_id'),
+        }
 
         return jsonify({
             "status": "success",
             "message": "Profile updated successfully",
-            "data": response.data[0]
+            "user": updated_user
         }), 200
 
     except Exception as e:
@@ -188,12 +212,15 @@ def change_password():
                 "message": "Current password is incorrect"
             }), 401
 
-        # Update password using service role client
+        # Update password using database function
         try:
-            supabase_service_role_client().auth.admin.update_user_by_id(
-                user_id,
-                {"password": new_password}
-            )
+            result = supabase.rpc('update_auth_user_password', {
+                'p_user_id': user_id,
+                'p_new_password': new_password
+            }).execute()
+
+            if not result.data:
+                raise Exception("Failed to update password")
 
             current_app.logger.info(f"AUDIT: User {email} changed password from IP {request.remote_addr}")
 
@@ -265,26 +292,15 @@ def update_email():
                 "message": "Password is incorrect"
             }), 401
 
-        # Check if email already exists
-        existing_user = supabase.table('users').select('user_id').eq('email', new_email).execute()
-        if existing_user.data:
-            return jsonify({
-                "status": "error",
-                "message": "Email is already in use"
-            }), 409
-
-        # Update email in Supabase Auth
+        # Update email in auth.users using database function (trigger will sync to public.users)
         try:
-            supabase_service_role_client().auth.admin.update_user_by_id(
-                user_id,
-                {"email": new_email}
-            )
+            result = supabase.rpc('update_auth_user_email', {
+                'p_user_id': user_id,
+                'p_new_email': new_email
+            }).execute()
 
-            # Update email in users table
-            supabase.table('users').update({
-                "email": new_email,
-                "updated_at": datetime.utcnow().isoformat()
-            }).eq('user_id', user_id).execute()
+            if not result.data:
+                raise Exception("Failed to update email")
 
             current_app.logger.info(f"AUDIT: User {current_email} changed email to {new_email} from IP {request.remote_addr}")
 
@@ -294,7 +310,16 @@ def update_email():
             }), 200
 
         except Exception as update_error:
-            current_app.logger.error(f"Failed to update email: {str(update_error)}")
+            error_msg = str(update_error)
+            current_app.logger.error(f"Failed to update email: {error_msg}")
+
+            # Check for specific error messages
+            if "already in use" in error_msg.lower():
+                return jsonify({
+                    "status": "error",
+                    "message": "Email is already in use"
+                }), 409
+
             return jsonify({
                 "status": "error",
                 "message": "Failed to update email"
@@ -344,33 +369,58 @@ def update_phone():
                 "message": "Password is incorrect"
             }), 401
 
-        # Update phone in users table
-        response = supabase.table('users').update({
-            "phone_number": new_phone,
-            "updated_at": datetime.utcnow().isoformat()
-        }).eq('user_id', user_id).execute()
+        # Update auth.users.raw_user_meta_data using database function (trigger will sync to public.users)
+        try:
+            result = supabase.rpc('update_auth_user_metadata', {
+                'p_user_id': user_id,
+                'p_metadata': {"phone_number": new_phone}
+            }).execute()
 
-        if not response.data:
+            if not result.data:
+                raise Exception("Failed to update phone number")
+        except Exception as auth_error:
+            current_app.logger.error(f"Failed to update auth metadata: {str(auth_error)}")
             return jsonify({
                 "status": "error",
                 "message": "Failed to update phone number"
             }), 500
 
-        # Update user metadata in Supabase Auth
-        try:
-            supabase_service_role_client().auth.admin.update_user_by_id(
-                user_id,
-                {"user_metadata": {"phone_number": new_phone}}
-            )
-        except Exception as auth_error:
-            current_app.logger.warning(f"Failed to update auth metadata: {str(auth_error)}")
+        # Update Redis session with new phone number
+        session_id = request.cookies.get('session_id')
+        if session_id:
+            try:
+                session_data = get_session_data(session_id)
+                if session_data:
+                    session_data['phone_number'] = new_phone
+                    session_data['last_activity'] = datetime.utcnow().isoformat()
+
+                    session_json = json.dumps(session_data, ensure_ascii=False, separators=(',', ':'))
+                    redis_client.setex(f"{SESSION_PREFIX}{session_id}", SESSION_TIMEOUT, session_json)
+
+                    current_app.logger.info(f"Redis session updated with new phone for user {user_id}")
+            except Exception as session_error:
+                current_app.logger.warning(f"Failed to update Redis session: {str(session_error)}")
 
         current_app.logger.info(f"AUDIT: User {user_id} updated phone number from IP {request.remote_addr}")
+
+        # Return updated user data for frontend
+        updated_user = {
+            "id": user_id,
+            "email": request.current_user.get('email'),
+            "role": request.current_user.get('role'),
+            "firstname": request.current_user.get('firstname'),
+            "lastname": request.current_user.get('lastname'),
+            "middlename": request.current_user.get('middlename'),
+            "specialty": request.current_user.get('specialty'),
+            "license_number": request.current_user.get('license_number'),
+            "phone_number": new_phone,
+            "facility_id": request.current_user.get('facility_id'),
+        }
 
         return jsonify({
             "status": "success",
             "message": "Phone number updated successfully",
-            "data": response.data[0]
+            "user": updated_user
         }), 200
 
     except Exception as e:

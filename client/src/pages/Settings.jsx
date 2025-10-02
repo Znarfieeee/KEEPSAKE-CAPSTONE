@@ -1,14 +1,16 @@
 import { useState } from 'react'
-import { useAuth } from '../context/auth'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card'
+import { useAuth } from '@/context/auth'
+
+// UI Components
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { User, Lock, Mail, Phone, Shield, AlertTriangle } from 'lucide-react'
-import ProfileSettings from '../components/settings/ProfileSettings'
-import PasswordSettings from '../components/settings/PasswordSettings'
-import EmailSettings from '../components/settings/EmailSettings'
-import PhoneSettings from '../components/settings/PhoneSettings'
-import TwoFactorSettings from '../components/settings/TwoFactorSettings'
-import AccountDeactivation from '../components/settings/AccountDeactivation'
+import ProfileSettings from '@/components/settings/ProfileSettings'
+import PasswordSettings from '@/components/settings/PasswordSettings'
+import EmailSettings from '@/components/settings/EmailSettings'
+import PhoneSettings from '@/components/settings/PhoneSettings'
+import TwoFactorSettings from '@/components/settings/TwoFactorSettings'
+import AccountDeactivation from '@/components/settings/AccountDeactivation'
 
 const Settings = () => {
     const { user } = useAuth()
@@ -30,11 +32,11 @@ const Settings = () => {
                     value={activeTab}
                     onValueChange={setActiveTab}
                     orientation="vertical"
-                    className="w-full"
+                    className="w-full h-full"
                 >
-                    <div className="flex flex-col md:flex-row gap-6 items-start">
+                    <div className="flex flex-col md:flex-row gap-6 items-start w-full">
                         {/* Vertical Tab List */}
-                        <TabsList className="flex flex-col md:w-64 w-full h-fit gap-1 bg-white border border-gray-200 rounded-lg p-2 shadow-sm">
+                        <TabsList className="flex flex-col md:w-64 flex-shrink-0 w-full h-fit gap-1 bg-white border border-gray-200 rounded-lg p-2 shadow-sm sticky top-6">
                             <TabsTrigger
                                 value="profile"
                                 className="w-full justify-start gap-3 px-4 py-3 rounded-md data-[state=active]:bg-primary data-[state=active]:text-white hover:bg-gray-50 transition-colors"
@@ -86,9 +88,12 @@ const Settings = () => {
                             <TabsContent value="profile" className="mt-0 w-full h-full">
                                 <Card className="shadow-sm h-full">
                                     <CardHeader className="border-b bg-gray-50/50">
-                                        <CardTitle className="text-xl">Profile Information</CardTitle>
+                                        <CardTitle className="text-xl">
+                                            Profile Information
+                                        </CardTitle>
                                         <CardDescription>
-                                            Update your personal information and professional details
+                                            Update your personal information and professional
+                                            details
                                         </CardDescription>
                                     </CardHeader>
                                     <CardContent className="p-6">
@@ -98,7 +103,7 @@ const Settings = () => {
                             </TabsContent>
 
                             {/* Password Tab */}
-                            <TabsContent value="password" className="mt-0 w-full h-full">
+                            <TabsContent value="password" className="mt-0 flex-1 min-w-0 w-full">
                                 <Card className="shadow-sm h-full">
                                     <CardHeader className="border-b bg-gray-50/50">
                                         <CardTitle className="text-xl">Change Password</CardTitle>
@@ -118,7 +123,8 @@ const Settings = () => {
                                     <CardHeader className="border-b bg-gray-50/50">
                                         <CardTitle className="text-xl">Email Address</CardTitle>
                                         <CardDescription>
-                                            Change your email address used for login and notifications
+                                            Change your email address used for login and
+                                            notifications
                                         </CardDescription>
                                     </CardHeader>
                                     <CardContent className="p-6">
@@ -133,7 +139,8 @@ const Settings = () => {
                                     <CardHeader className="border-b bg-gray-50/50">
                                         <CardTitle className="text-xl">Phone Number</CardTitle>
                                         <CardDescription>
-                                            Update your phone number for account recovery and notifications
+                                            Update your phone number for account recovery and
+                                            notifications
                                         </CardDescription>
                                     </CardHeader>
                                     <CardContent className="p-6">
@@ -146,7 +153,9 @@ const Settings = () => {
                             <TabsContent value="2fa" className="mt-0 w-full h-full">
                                 <Card className="shadow-sm h-full">
                                     <CardHeader className="border-b bg-gray-50/50">
-                                        <CardTitle className="text-xl">Two-Factor Authentication</CardTitle>
+                                        <CardTitle className="text-xl">
+                                            Two-Factor Authentication
+                                        </CardTitle>
                                         <CardDescription>
                                             Add an extra layer of security to your account
                                         </CardDescription>
