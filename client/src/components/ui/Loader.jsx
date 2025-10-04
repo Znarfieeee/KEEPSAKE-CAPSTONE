@@ -1,5 +1,5 @@
-import React from "react"
-import styled from "styled-components"
+import React from 'react'
+import styled from 'styled-components'
 
 const Loader = () => {
     return (
@@ -7,12 +7,7 @@ const Loader = () => {
             <div className="loading">
                 <svg viewBox="0 0 128 96" preserveAspectRatio="xMidYMid meet">
                     <defs>
-                        <linearGradient
-                            id="loaderGradient"
-                            x1="0%"
-                            y1="0%"
-                            x2="100%"
-                            y2="0%">
+                        <linearGradient id="loaderGradient" x1="0%" y1="0%" x2="100%" y2="0%">
                             <stop offset="0%" stopColor="#00bcd4" />
                             <stop offset="100%" stopColor="#0082a6" />
                         </linearGradient>
@@ -33,16 +28,19 @@ const Loader = () => {
 
 const StyledWrapper = styled.div`
     position: fixed;
-    inset: 0;
+    width: 100%;
+    height: 100%;
+    min-height: inherit;
     display: flex;
     justify-content: center;
     align-items: center;
-    background-color: #fffafa;
-    z-index: 9999;
+    background-color: transparent;
 
     .loading {
         width: 128px;
         height: 96px;
+        max-width: 100%;
+        max-height: 100%;
     }
 
     .loading svg {
@@ -69,31 +67,11 @@ const StyledWrapper = styled.div`
         animation: dash_682 1.4s linear infinite;
     }
 
+    /* Responsive sizing */
     @media (min-width: 640px) {
         .loading {
-            width: 160px;
-            height: 120px;
-        }
-    }
-
-    @media (min-width: 768px) {
-        .loading {
-            width: 160;
-            height: 120px;
-        }
-    }
-
-    @media (min-width: 1024px) {
-        .loading {
-            width: 160;
-            height: 120;
-        }
-    }
-
-    @media (min-width: 1280px) {
-        .loading {
-            width: 160;
-            height: 120px;
+            width: min(160px, 100%);
+            height: min(120px, 100%);
         }
     }
 

@@ -65,14 +65,19 @@ const Settings = () => {
                                 <Phone className="h-5 w-5" />
                                 <span className="font-medium">Phone Number</span>
                             </TabsTrigger>
-                            <TabsTrigger
-                                value="2fa"
-                                className="w-full justify-start gap-3 px-4 py-3 rounded-md data-[state=active]:bg-primary data-[state=active]:text-white hover:bg-gray-50 transition-colors"
-                            >
-                                <Shield className="h-5 w-5" />
-                                <span className="font-medium">Two-Factor Auth</span>
-                            </TabsTrigger>
-                            <div className="border-t my-2" />
+                            {user?.role === 'parent' && (
+                                <>
+                                    <TabsTrigger
+                                        value="2fa"
+                                        className="w-full justify-start gap-3 px-4 py-3 rounded-md data-[state=active]:bg-primary data-[state=active]:text-white hover:bg-gray-50 transition-colors"
+                                    >
+                                        <Shield className="h-5 w-5" />
+                                        <span className="font-medium">Two-Factor Auth</span>
+                                    </TabsTrigger>
+                                    <div className="border-t my-2" />
+                                </>
+                            )}
+
                             <TabsTrigger
                                 value="account"
                                 className="w-full justify-start gap-3 px-4 py-3 rounded-md data-[state=active]:bg-red-500 data-[state=active]:text-white hover:bg-red-50 hover:text-red-700 transition-colors"

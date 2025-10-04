@@ -3,6 +3,7 @@ import React, { useState } from 'react'
 // UI Components
 import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/badge'
+import { FaHospitalUser } from 'react-icons/fa6'
 import { Eye, Trash2, ChevronLeft, ChevronRight, UserPen, TableOfContents } from 'lucide-react'
 import ConfirmationDialog from '@/components/ui/ConfirmationDialog'
 
@@ -134,7 +135,7 @@ const FacilityTable = ({
                                                   size="icon"
                                                   onClick={() => onGoto()}
                                               >
-                                                  <TableOfContents className="size-4" />
+                                                  <FaHospitalUser className="size-4" />
                                               </Button>
                                           </TooltipHelper>
                                           <TooltipHelper content="Edit Facility">

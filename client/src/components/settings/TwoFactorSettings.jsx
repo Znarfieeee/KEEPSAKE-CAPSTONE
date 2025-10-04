@@ -1,20 +1,47 @@
-import { useState } from 'react'
-import { enable2FA, disable2FA } from '@/api/settings'
+import { useState, useEffect } from 'react'
+import { enable2FA, disable2FA, get2FAStatus, verify2FACode } from '@/api/settings'
 
 // UI Components
 import { Button } from '@/components/ui/Button'
-import { Loader2, Shield, CheckCircle, XCircle, AlertCircle } from 'lucide-react'
+import { Input } from '@/components/ui/Input'
+import { Label } from '@/components/ui/Label'
+import { Shield, CheckCircle, XCircle, AlertCircle, Mail } from 'lucide-react'
+import Loader from '@/components/ui/Loader'
 
 // Helper
 import { showToast } from '@/util/alertHelper'
 
 const TwoFactorSettings = () => {
     const [loading, setLoading] = useState(false)
+    const [fetchingStatus, setFetchingStatus] = useState(true)
     const [is2FAEnabled, setIs2FAEnabled] = useState(false)
     const [twoFAMethod, setTwoFAMethod] = useState(null)
+    const [showVerification, setShowVerification] = useState(false)
+    const [showDisableConfirm, setShowDisableConfirm] = useState(false)
+    const [verificationCode, setVerificationCode] = useState('')
+    const [password, setPassword] = useState('')
+    const [codeSent, setCodeSent] = useState(false)
 
-    // 2FA is not yet implemented, so these are hardcoded to false
-    // When implementing 2FA, fetch from backend or user context
+    // Fetch 2FA status on component mount
+    useEffect(() => {
+        fetchTwoFactorStatus()
+    }, [])
+
+    const fetchTwoFactorStatus = async () => {
+        try {
+            setFetchingStatus(true)
+            const response = await get2FAStatus()
+
+            if (response.status === 'success') {
+                setIs2FAEnabled(response.data.enabled)
+                setTwoFAMethod(response.data.method)
+            }
+        } catch (error) {
+            console.error('Failed to fetch 2FA status:', error)
+        } finally {
+            setFetchingStatus(false)
+        }
+    }
 
     const handleEnable2FA = async () => {
         try {
@@ -22,28 +49,91 @@ const TwoFactorSettings = () => {
             const response = await enable2FA()
 
             if (response.status === 'success') {
-                showToast('info', response.message || '2FA feature coming soon')
+                setCodeSent(true)
+                setShowVerification(true)
+                showToast('success', response.message || 'Verification code sent to your email')
+                // For testing - remove in production
+                if (response.code) {
+                    console.log('2FA Verification Code:', response.code)
+                }
             }
         } catch (error) {
-            showToast('error', error.message || 'Failed to enable 2FA')
+            showToast('error', error.message || 'Failed to send verification code')
+        } finally {
+            setLoading(false)
+        }
+    }
+
+    const handleVerifyCode = async () => {
+        if (!verificationCode || verificationCode.length !== 6) {
+            showToast('error', 'Please enter a valid 6-digit code')
+            return
+        }
+
+        try {
+            setLoading(true)
+            const response = await verify2FACode(verificationCode)
+
+            if (response.status === 'success') {
+                showToast('success', response.message || '2FA enabled successfully')
+                setIs2FAEnabled(true)
+                setTwoFAMethod('email')
+                setShowVerification(false)
+                setVerificationCode('')
+                setCodeSent(false)
+            }
+        } catch (error) {
+            showToast('error', error.message || 'Invalid verification code')
         } finally {
             setLoading(false)
         }
     }
 
     const handleDisable2FA = async () => {
+        if (!password) {
+            showToast('error', 'Password is required to disable 2FA')
+            return
+        }
+
         try {
             setLoading(true)
-            const response = await disable2FA()
+            const response = await disable2FA(password)
 
             if (response.status === 'success') {
-                showToast('info', response.message || '2FA feature coming soon')
+                showToast('success', response.message || '2FA disabled successfully')
+                setIs2FAEnabled(false)
+                setTwoFAMethod(null)
+                setShowDisableConfirm(false)
+                setPassword('')
             }
         } catch (error) {
             showToast('error', error.message || 'Failed to disable 2FA')
         } finally {
             setLoading(false)
         }
+    }
+
+    const handleCancelVerification = () => {
+        setShowVerification(false)
+        setVerificationCode('')
+        setCodeSent(false)
+    }
+
+    const handleCancelDisable = () => {
+        setShowDisableConfirm(false)
+        setPassword('')
+    }
+
+    if (fetchingStatus) {
+        return (
+            <div className="max-w-2xl space-y-6">
+                <div className=" rounded-lg p-6 bg-white relative min-h-[200px] flex items-center justify-center">
+                    <div className="absolute inset-0 bg-white/80">
+                        <Loader />
+                    </div>
+                </div>
+            </div>
+        )
     }
 
     return (
@@ -102,56 +192,126 @@ const TwoFactorSettings = () => {
                 </div>
             </div>
 
-            {/* Coming Soon Notice */}
+            {/* Email Verification Form */}
+            {showVerification && !is2FAEnabled && (
+                <div className="bg-white border border-gray-200 rounded-lg p-6">
+                    <div className="flex items-center gap-3 mb-4">
+                        <Mail className="h-6 w-6 text-blue-600" />
+                        <h4 className="text-lg font-semibold text-gray-900">Verify Your Email</h4>
+                    </div>
+                    <p className="text-sm text-gray-600 mb-4">
+                        We've sent a 6-digit verification code to your email. Please enter it below
+                        to enable 2FA.
+                    </p>
+                    <div className="space-y-4">
+                        <div>
+                            <Label htmlFor="verification-code">Verification Code</Label>
+                            <Input
+                                id="verification-code"
+                                type="text"
+                                placeholder="000000"
+                                maxLength={6}
+                                value={verificationCode}
+                                onChange={(e) =>
+                                    setVerificationCode(e.target.value.replace(/\D/g, ''))
+                                }
+                                className="mt-1"
+                            />
+                        </div>
+                        <div className="flex gap-3 justify-end">
+                            <Button
+                                onClick={handleCancelVerification}
+                                variant="outline"
+                                disabled={loading}
+                            >
+                                Cancel
+                            </Button>
+                            <Button onClick={handleVerifyCode} disabled={loading}>
+                                {loading ? 'Verifying...' : 'Verify & Enable'}
+                            </Button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Disable 2FA Form */}
+            {showDisableConfirm && is2FAEnabled && (
+                <div className="bg-white border border-red-200 rounded-lg p-6">
+                    <h4 className="text-lg font-semibold text-gray-900 mb-4">Disable 2FA</h4>
+                    <p className="text-sm text-gray-600 mb-4">
+                        Please enter your password to confirm disabling two-factor authentication.
+                    </p>
+                    <div className="space-y-4">
+                        <div>
+                            <Label htmlFor="password-confirm">Password</Label>
+                            <Input
+                                id="password-confirm"
+                                type="password"
+                                placeholder="Enter your password"
+                                value={password}
+                                onChange={(e) => setPassword(e.target.value)}
+                                className="mt-1"
+                            />
+                        </div>
+                        <div className="flex gap-3 justify-end">
+                            <Button
+                                onClick={handleCancelDisable}
+                                variant="outline"
+                                disabled={loading}
+                            >
+                                Cancel
+                            </Button>
+                            <Button
+                                onClick={handleDisable2FA}
+                                variant="destructive"
+                                disabled={loading}
+                            >
+                                {loading ? 'Disabling...' : 'Confirm Disable'}
+                            </Button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* SMS Coming Soon */}
             <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
                 <div className="flex items-start gap-3">
                     <AlertCircle className="h-5 w-5 text-yellow-600 mt-0.5" />
                     <div className="flex-1">
-                        <p className="text-sm font-medium text-yellow-900">Feature Coming Soon</p>
-                        <p className="text-sm text-yellow-700 mt-1">
-                            Two-factor authentication is currently under development. We're working
-                            on implementing multiple authentication methods including:
+                        <p className="text-sm font-medium text-yellow-900">
+                            SMS Verification Coming Soon
                         </p>
-                        <ul className="mt-2 space-y-1 text-sm text-yellow-700 list-disc list-inside">
-                            <li>Authenticator apps (TOTP)</li>
-                            <li>SMS verification</li>
-                            <li>Email verification codes</li>
-                        </ul>
+                        <p className="text-sm text-yellow-700 mt-1">
+                            SMS-based two-factor authentication will be available soon. Currently,
+                            only email verification is supported.
+                        </p>
                     </div>
                 </div>
             </div>
 
             {/* Action Buttons */}
-            <div className="flex justify-end pt-6 border-t">
-                {is2FAEnabled ? (
-                    <Button
-                        onClick={handleDisable2FA}
-                        disabled={loading}
-                        variant="destructive"
-                        className="min-w-[140px]"
-                    >
-                        {loading ? (
-                            <>
-                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                Disabling...
-                            </>
-                        ) : (
-                            'Disable 2FA'
-                        )}
-                    </Button>
-                ) : (
-                    <Button onClick={handleEnable2FA} disabled={loading} className="min-w-[140px]">
-                        {loading ? (
-                            <>
-                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                Enabling...
-                            </>
-                        ) : (
-                            'Enable 2FA'
-                        )}
-                    </Button>
-                )}
-            </div>
+            {!showVerification && !showDisableConfirm && (
+                <div className="flex justify-end pt-6 border-t">
+                    {is2FAEnabled ? (
+                        <Button
+                            onClick={() => setShowDisableConfirm(true)}
+                            disabled={loading}
+                            variant="destructive"
+                            className="min-w-[140px]"
+                        >
+                            Disable 2FA
+                        </Button>
+                    ) : (
+                        <Button
+                            onClick={handleEnable2FA}
+                            disabled={loading}
+                            className="min-w-[140px]"
+                        >
+                            {loading ? 'Sending...' : 'Enable 2FA'}
+                        </Button>
+                    )}
+                </div>
+            )}
         </div>
     )
 }

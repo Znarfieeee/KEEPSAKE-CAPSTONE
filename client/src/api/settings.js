@@ -83,28 +83,55 @@ export const changePassword = async (passwordData) => {
 }
 
 /**
- * Update user email address
+ * Request email change with verification code
  */
-export const updateEmail = async (emailData) => {
+export const requestEmailChange = async (newEmail) => {
     try {
-        const response = await fetch(`${API_BASE_URL}/settings/update-email`, {
+        const response = await fetch(`${API_BASE_URL}/settings/request-email-change`, {
             method: 'POST',
             credentials: 'include',
             headers: {
                 'Content-Type': 'application/json',
             },
-            body: JSON.stringify(emailData),
+            body: JSON.stringify({ new_email: newEmail }),
         })
 
         const data = await response.json()
 
         if (!response.ok) {
-            throw new Error(data.message || 'Failed to update email')
+            throw new Error(data.message || 'Failed to request email change')
         }
 
         return data
     } catch (error) {
-        console.error('Update email error:', error)
+        console.error('Request email change error:', error)
+        throw error
+    }
+}
+
+/**
+ * Verify email change code
+ */
+export const verifyEmailChange = async (code) => {
+    try {
+        const response = await fetch(`${API_BASE_URL}/settings/verify-email-change`, {
+            method: 'POST',
+            credentials: 'include',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ code }),
+        })
+
+        const data = await response.json()
+
+        if (!response.ok) {
+            throw new Error(data.message || 'Failed to verify email change')
+        }
+
+        return data
+    } catch (error) {
+        console.error('Verify email change error:', error)
         throw error
     }
 }
@@ -184,6 +211,33 @@ export const enable2FA = async () => {
         return data
     } catch (error) {
         console.error('Enable 2FA error:', error)
+        throw error
+    }
+}
+
+/**
+ * Verify 2FA code
+ */
+export const verify2FACode = async (code) => {
+    try {
+        const response = await fetch(`${API_BASE_URL}/settings/2fa/verify`, {
+            method: 'POST',
+            credentials: 'include',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ code }),
+        })
+
+        const data = await response.json()
+
+        if (!response.ok) {
+            throw new Error(data.message || 'Failed to verify 2FA code')
+        }
+
+        return data
+    } catch (error) {
+        console.error('Verify 2FA code error:', error)
         throw error
     }
 }
