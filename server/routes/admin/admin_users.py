@@ -1,6 +1,6 @@
 from flask import Blueprint, jsonify, request, current_app
 from utils.access_control import require_auth, require_role
-from config.settings import supabase, supabase_anon_client
+from config.settings import supabase, supabase_anon_client, supabase_service_role_client
 from gotrue.errors import AuthApiError
 from datetime import datetime
 from utils.invalidate_cache import invalidate_caches
@@ -9,6 +9,9 @@ import json
 
 users_bp = Blueprint('users', __name__)
 redis_client = get_redis_client()
+
+# Admin routes need service role client to bypass RLS
+admin_supabase = supabase_service_role_client()
 
 USERS_CACHE_KEY = 'users:all'
 USERS_CACHE_PREFIX = 'users:'
@@ -35,7 +38,8 @@ def get_all_users():
                 }), 200
         
         # Get users data from the database if there's no cache
-        response = supabase.table('users').select('*, facility_users!facility_users_user_id_fkey(*, healthcare_facilities(facility_name))').neq('role', 'admin').execute()
+        # Use admin_supabase to bypass RLS (admins can see all users)
+        response = admin_supabase.table('users').select('*, facility_users!facility_users_user_id_fkey(*, healthcare_facilities(facility_name))').neq('role', 'admin').execute()
         
         if getattr(response, 'error', None):
             current_app.logger.error(f"Failed to fetch users: {response.error}")
@@ -166,7 +170,7 @@ def get_user_by_id(user_id):
     Like looking up a specific employee's complete profile. """
     
     try:
-        response = supabase.table('users').select(
+        response = admin_supabase.table('users').select(
             '*, facility_users!facility_users_user_id_fkey(*, healthcare_facilities(facility_name))'
         ).eq('user_id', user_id).execute()
         
@@ -223,7 +227,7 @@ def update_user(user_id):
         update_fields['updated_at'] = datetime.utcnow().isoformat()
 
         # Update user in database
-        response = supabase.table('users').update(update_fields).eq('user_id', user_id).execute()
+        response = admin_supabase.table('users').update(update_fields).eq('user_id', user_id).execute()
 
         if getattr(response, 'error', None):
             current_app.logger.error(f"Failed to update user: {response.error}")
@@ -268,7 +272,7 @@ def update_user_status(user_id):
                 "message": "is_active field is required"
             }), 400
 
-        response = supabase.table('users').update({
+        response = admin_supabase.table('users').update({
             'is_active': is_active,
             'updated_at': datetime.utcnow().isoformat()
         }).eq('user_id', user_id).execute()
@@ -299,7 +303,7 @@ def update_user_status(user_id):
 @require_auth
 @require_role('admin')
 def assign_user_to_facility(user_id):
-    """Assign user to a facility with role and department"""
+    """Assign or transfer user to a facility with role and department"""
     try:
         data = request.json or {}
         facility_id = data.get('facility_id')
@@ -315,20 +319,47 @@ def assign_user_to_facility(user_id):
                 "message": "Facility ID and role are required"
             }), 400
 
-        # Check if user already assigned to this facility
-        existing = supabase.table('facility_users').select('*').eq('user_id', user_id).eq('facility_id', facility_id).execute()
+        # Check if user already has ANY facility assignment
+        existing_assignment = admin_supabase.table('facility_users').select('*').eq('user_id', user_id).execute()
 
-        if existing.data:
-            # Update existing assignment
-            response = supabase.table('facility_users').update({
-                'role': facility_role,
-                'department': department,
-                'start_date': start_date,
-                'updated_at': datetime.utcnow().isoformat()
-            }).eq('user_id', user_id).eq('facility_id', facility_id).execute()
+        if existing_assignment.data:
+            # User is already assigned to a facility
+            existing = existing_assignment.data[0]
+
+            if existing['facility_id'] == facility_id:
+                # Same facility - just update the role/department
+                response = admin_supabase.table('facility_users').update({
+                    'role': facility_role,
+                    'department': department,
+                    'start_date': start_date,
+                    'updated_at': datetime.utcnow().isoformat()
+                }).eq('user_id', user_id).eq('facility_id', facility_id).execute()
+            else:
+                # Different facility - delete old assignment and create new one (transfer)
+                # First, delete the old assignment
+                delete_response = admin_supabase.table('facility_users').delete().eq('user_id', user_id).execute()
+
+                if getattr(delete_response, 'error', None):
+                    current_app.logger.error(f"Failed to delete old facility assignment: {delete_response.error}")
+                    return jsonify({
+                        "status": "error",
+                        "message": "Failed to remove previous facility assignment"
+                    }), 500
+
+                # Then create the new assignment
+                response = admin_supabase.table('facility_users').insert({
+                    'user_id': user_id,
+                    'facility_id': facility_id,
+                    'role': facility_role,
+                    'department': department,
+                    'start_date': start_date or datetime.utcnow().date().isoformat(),
+                    'assigned_by': assigned_by,
+                    'created_at': datetime.utcnow().isoformat(),
+                    'updated_at': datetime.utcnow().isoformat()
+                }).execute()
         else:
-            # Create new assignment
-            response = supabase.table('facility_users').insert({
+            # No existing assignment - create new one
+            response = admin_supabase.table('facility_users').insert({
                 'user_id': user_id,
                 'facility_id': facility_id,
                 'role': facility_role,
@@ -367,7 +398,7 @@ def assign_user_to_facility(user_id):
 def remove_user_from_facility(user_id, facility_id):
     """Remove user from a facility"""
     try:
-        response = supabase.table('facility_users').delete().eq('user_id', user_id).eq('facility_id', facility_id).execute()
+        response = admin_supabase.table('facility_users').delete().eq('user_id', user_id).eq('facility_id', facility_id).execute()
 
         if getattr(response, 'error', None):
             current_app.logger.error(f"Failed to remove user from facility: {response.error}")
@@ -397,10 +428,10 @@ def delete_user(user_id):
     """Permanently delete a user and all associated data"""
     try:
         # First, remove user from all facilities
-        supabase.table('facility_users').delete().eq('user_id', user_id).execute()
+        admin_supabase.table('facility_users').delete().eq('user_id', user_id).execute()
 
         # Delete user from public.users table (this will cascade to other tables)
-        user_response = supabase.table('users').delete().eq('user_id', user_id).execute()
+        user_response = admin_supabase.table('users').delete().eq('user_id', user_id).execute()
 
         if getattr(user_response, 'error', None):
             current_app.logger.error(f"Failed to delete user from database: {user_response.error}")
@@ -411,7 +442,7 @@ def delete_user(user_id):
 
         # Delete from Supabase Auth (this is optional, depends on your auth strategy)
         try:
-            auth_response = supabase.auth.admin.delete_user(user_id)
+            auth_response = admin_supabase.auth.admin.delete_user(user_id)
         except Exception as auth_error:
             current_app.logger.warning(f"Could not delete user from auth: {auth_error}")
             # Continue anyway as the main user record is deleted
