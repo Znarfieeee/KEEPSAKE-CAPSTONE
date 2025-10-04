@@ -3,35 +3,34 @@ import React, { useState } from 'react'
 // UI Components
 import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/badge'
-import { PiUsersThree } from 'react-icons/pi'
-import { Eye, Trash2, ChevronLeft, ChevronRight, UserPen } from 'lucide-react'
+import { Eye, Trash2, ChevronLeft, ChevronRight, UserPen, Building2 } from 'lucide-react'
 import ConfirmationDialog from '@/components/ui/ConfirmationDialog'
 
 // Helper
 import { TooltipHelper } from '@/util/TooltipHelper'
-import { cn, getFacilityStatusStyles } from '@/util/utils'
+import { cn, getUserStatusBadgeColor, formatUserStatus } from '@/util/utils'
 
 // Status Badge Component
 const StatusBadge = ({ status }) => {
-    const styles = getFacilityStatusStyles(status)
+    const badgeColor = getUserStatusBadgeColor(status)
     return (
         <Badge
             variant="outline"
-            className={cn(
-                'gap-1.5 px-2.5 py-0.5 border font-medium capitalize',
-                styles.background,
-                styles.text,
-                styles.border
-            )}
+            className={cn('gap-1.5 px-2.5 py-0.5 border font-medium capitalize', badgeColor)}
         >
-            <span className={cn('size-1.5 rounded-full animate-pulse', styles.dot)} />
-            {status?.toLowerCase()}
+            <span
+                className={cn(
+                    'size-1.5 rounded-full animate-pulse',
+                    status === 'active' ? 'bg-green-500' : 'bg-gray-400'
+                )}
+            />
+            {formatUserStatus(status)}
         </Badge>
     )
 }
 
-const FacilityTable = ({
-    facilities = [],
+const FacilityUsersTable = ({
+    facilityUsers = [],
     page,
     setPage,
     itemsPerPage,
@@ -42,24 +41,24 @@ const FacilityTable = ({
     onDelete,
     loading = false,
 }) => {
-    const [deleteDialog, setDeleteDialog] = useState({ open: false, facility: null })
+    const [deleteDialog, setDeleteDialog] = useState({ open: false, user: null })
     const [isDeleting, setIsDeleting] = useState(false)
 
-    const totalPages = Math.ceil(facilities.length / itemsPerPage) || 1
+    const totalPages = Math.ceil(facilityUsers.length / itemsPerPage) || 1
     const startIdx = (page - 1) * itemsPerPage
-    const currentData = facilities.slice(startIdx, startIdx + itemsPerPage)
+    const currentData = facilityUsers.slice(startIdx, startIdx + itemsPerPage)
 
-    const handleDeleteClick = (facility) => {
-        setDeleteDialog({ open: true, facility })
+    const handleDeleteClick = (user) => {
+        setDeleteDialog({ open: true, user })
     }
 
     const handleConfirmDelete = async () => {
         try {
             setIsDeleting(true)
-            await onDelete(deleteDialog.facility)
-            setDeleteDialog({ open: false, facility: null })
+            await onDelete(deleteDialog.user)
+            setDeleteDialog({ open: false, user: null })
         } catch (error) {
-            console.error('Error deleting facility:', error)
+            console.error('Error deleting user from facility:', error)
         } finally {
             setIsDeleting(false)
         }
@@ -73,12 +72,14 @@ const FacilityTable = ({
             <table className="w-full text-sm">
                 <thead className="border-b border-gray-300 text-xs uppercase text-muted-foreground">
                     <tr className="text-left text-black">
-                        <th className="py-3 px-2">Facility Name</th>
-                        <th className="py-3 px-2">Address</th>
-                        <th className="py-3 px-2">Plan</th>
-                        <th className="py-3 px-2">Type</th>
-                        <th className="py-3 px-2">Subscription Expiry</th>
-                        <th className="py-3 px-2">Assigned Admin</th>
+                        <th className="py-3 px-2">Full Name</th>
+                        <th className="py-3 px-2">Email</th>
+                        <th className="py-3 px-2">Role</th>
+                        <th className="py-3 px-2">Department</th>
+                        <th className="py-3 px-2">Specialty</th>
+                        <th className="py-3 px-2">Contact Number</th>
+                        <th className="py-3 px-2">Facility</th>
+                        <th className="py-3 px-2">Start Date</th>
                         <th className="py-3 px-2">Status</th>
                         <th className="py-3 px-2">Actions</th>
                     </tr>
@@ -87,74 +88,85 @@ const FacilityTable = ({
                     {loading
                         ? Array.from({ length: itemsPerPage }).map((_, idx) => (
                               <tr key={idx} className="border-b last:border-none animate-pulse">
-                                  {Array.from({ length: 8 }).map((__, cIdx) => (
+                                  {Array.from({ length: 10 }).map((__, cIdx) => (
                                       <td key={cIdx} className="p-2 whitespace-nowrap">
                                           <div className="h-4 bg-gray-300 rounded w-full" />
                                       </td>
                                   ))}
                               </tr>
                           ))
-                        : currentData.map((facility) => (
+                        : currentData.map((user) => (
                               <tr
-                                  key={facility.id}
+                                  key={user.user_id}
                                   className="border-b border-gray-200 last:border-none"
                               >
-                                  <td className="p-2 whitespace-nowrap">{facility.name}</td>
                                   <td className="p-2 whitespace-nowrap">
-                                      {facility.location.length > 30
-                                          ? `${facility.location.substring(0, 30)}...`
-                                          : facility.location}
+                                      {user.firstname} {user.lastname}
                                   </td>
-                                  <td className="p-2 whitespace-nowrap capitalize">
-                                      {facility.plan}
-                                  </td>
-                                  <td className="p-2 whitespace-nowrap capitalize">
-                                      {facility.type}
-                                  </td>
-                                  <td className="p-2 whitespace-nowrap">{facility.expiry}</td>
-                                  <td className="p-2 whitespace-nowrap">{facility.admin}</td>
+                                  <td className="p-2 whitespace-nowrap">{user.email}</td>
+                                  <td className="p-2 whitespace-nowrap capitalize">{user.role}</td>
                                   <td className="p-2 whitespace-nowrap">
-                                      <StatusBadge status={facility.status} />
+                                      {user.department || '—'}
+                                  </td>
+                                  <td className="p-2 whitespace-nowrap">
+                                      {user.specialty || '—'}
+                                  </td>
+                                  <td className="p-2 whitespace-nowrap">
+                                      {user.phone_number || '—'}
+                                  </td>
+                                  <td className="p-2 whitespace-nowrap">
+                                      {user.facility_name.length > 25
+                                          ? `${user.facility_name.substring(0, 25)}...`
+                                          : user.facility_name}
+                                  </td>
+                                  <td className="p-2 whitespace-nowrap">
+                                      {user.start_date
+                                          ? new Date(user.start_date).toLocaleDateString()
+                                          : '—'}
+                                  </td>
+                                  <td className="p-2 whitespace-nowrap">
+                                      <StatusBadge
+                                          status={user.is_active ? 'active' : 'inactive'}
+                                      />
                                   </td>
                                   <td className="p-2 whitespace-nowrap">
                                       <div className="flex gap-1">
-                                          <TooltipHelper content="View Facility">
+                                          <TooltipHelper content="View User Details">
                                               <Button
                                                   variant="ghost"
                                                   size="icon"
                                                   className="hover:text-blue-600 hover:bg-blue-100"
-                                                  onClick={() => onView(facility)}
+                                                  onClick={() => onView(user)}
                                                   title="View"
                                               >
                                                   <Eye className="size-4" />
                                               </Button>
                                           </TooltipHelper>
-                                          <TooltipHelper content="View Facility Users">
+                                          <TooltipHelper content="Go-to Facility">
                                               <Button
                                                   variant="ghost"
                                                   size="icon"
-                                                  className="hover:text-purple-600 hover:bg-purple-100"
-                                                  onClick={() => onGoto(facility)}
+                                                  onClick={() => onGoto(user.facility_id)}
                                               >
-                                                  <PiUsersThree className="size-4" />
+                                                  <Building2 className="size-4" />
                                               </Button>
                                           </TooltipHelper>
-                                          <TooltipHelper content="Edit Facility">
+                                          <TooltipHelper content="Edit User Assignment">
                                               <Button
                                                   variant="ghost"
                                                   size="icon"
                                                   className="hover:text-green-600 hover:bg-green-100"
-                                                  onClick={() => onEdit(facility)}
+                                                  onClick={() => onEdit(user)}
                                               >
                                                   <UserPen className="size-4" />
                                               </Button>
                                           </TooltipHelper>
-                                          <TooltipHelper content="Delete facility">
+                                          <TooltipHelper content="Remove from facility">
                                               <Button
                                                   variant="ghost"
                                                   size="icon"
                                                   className="hover:text-red-600 hover:bg-red-100"
-                                                  onClick={() => handleDeleteClick(facility)}
+                                                  onClick={() => handleDeleteClick(user)}
                                               >
                                                   <Trash2 className="size-4" />
                                               </Button>
@@ -184,8 +196,8 @@ const FacilityTable = ({
                 </div>
                 <div className="flex items-center gap-2 text-sm">
                     <span>
-                        {startIdx + 1}-{Math.min(startIdx + itemsPerPage, facilities.length)} of{' '}
-                        {facilities.length}
+                        {startIdx + 1}-{Math.min(startIdx + itemsPerPage, facilityUsers.length)}{' '}
+                        of {facilityUsers.length}
                     </span>
                     <Button size="icon" variant="ghost" onClick={handlePrev} disabled={page === 1}>
                         <ChevronLeft className="size-4" />
@@ -205,26 +217,29 @@ const FacilityTable = ({
             <ConfirmationDialog
                 open={deleteDialog.open}
                 onOpenChange={(open) => setDeleteDialog((prev) => ({ ...prev, open }))}
-                title="Delete Facility"
+                title="Remove User from Facility"
                 description={
                     <>
-                        Are you sure you want to delete{' '}
-                        <strong>"{deleteDialog.facility?.name}"</strong>?
+                        Are you sure you want to remove{' '}
+                        <strong>
+                            "{deleteDialog.user?.firstname} {deleteDialog.user?.lastname}"
+                        </strong>{' '}
+                        from <strong>"{deleteDialog.user?.facility_name}"</strong>?
                         <br />
                         <br />
                         This action will:
                         <ul className="list-disc list-inside mt-2 space-y-1 text-left">
-                            <li>Deactivate the facility</li>
-                            <li>Prevent new user assignments</li>
-                            <li>Maintain data for auditing purposes</li>
+                            <li>Remove user's access to this facility</li>
+                            <li>Revoke facility-specific permissions</li>
+                            <li>Maintain audit trail for compliance</li>
                         </ul>
                         <br />
                         <span className="font-semibold text-red-600">
-                            This action cannot be easily undone.
+                            This action can be reversed by re-assigning the user.
                         </span>
                     </>
                 }
-                confirmText="DELETE"
+                confirmText="REMOVE"
                 onConfirm={handleConfirmDelete}
                 requireTyping={true}
                 destructive={true}
@@ -234,4 +249,4 @@ const FacilityTable = ({
     )
 }
 
-export default FacilityTable
+export default FacilityUsersTable

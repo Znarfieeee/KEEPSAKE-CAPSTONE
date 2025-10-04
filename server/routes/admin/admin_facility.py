@@ -834,10 +834,151 @@ def invite_facility_user(facility_id):
             "message": "Invitation sent successfully",
             "invite_id": invite_result.data[0]['id']
         }), 201
-        
+
     except Exception as e:
         current_app.logger.error(f"Failed to send invitation: {str(e)}")
         return jsonify({
             "status": "error",
             "message": f"Failed to send invitation: {str(e)}"
+        }), 500
+
+# Get all users assigned to facilities
+@facility_bp.route('/admin/facility-users', methods=['GET'])
+@require_auth
+@require_role('admin')
+def get_all_facility_users():
+    """Get all users with their facility assignments"""
+    try:
+        current_user = getattr(request, 'current_user', {})
+        bust_cache = request.args.get('bust_cache', 'false').lower() == 'true'
+
+        current_app.logger.info(f"Admin {current_user.get('email', 'unknown')} fetching facility users (bust_cache={bust_cache})")
+
+        # Check cache first
+        cache_key = f"{FACILITY_USERS_CACHE_PREFIX}all"
+        if not bust_cache:
+            cached = redis_client.get(cache_key)
+            if cached:
+                cached_data = json.loads(cached)
+                return jsonify({
+                    "status": "success",
+                    "data": cached_data,
+                    "cached": True,
+                    "timestamp": datetime.datetime.utcnow().isoformat()
+                }), 200
+
+        # Fetch from database with JOIN to get user and facility details
+        resp = supabase.table('facility_users').select(
+            'facility_id, user_id, role, department, start_date, end_date, '
+            'users!facility_users_user_id_fkey(email, firstname, lastname, phone_number, is_active, specialty, license_number), '
+            'healthcare_facilities!facility_users_facility_id_fkey(facility_name, subscription_status)'
+        ).execute()
+
+        if getattr(resp, 'error', None):
+            current_app.logger.error(f"Failed to fetch facility users: {resp.error}")
+            return jsonify({
+                "status": "error",
+                "message": "Failed to fetch facility users"
+            }), 500
+
+        # Transform the data to flatten the nested structure
+        facility_users = []
+        for item in resp.data:
+            user_data = item.get('users', {})
+            facility_data = item.get('healthcare_facilities', {})
+
+            facility_users.append({
+                'facility_id': item['facility_id'],
+                'user_id': item['user_id'],
+                'role': item['role'],
+                'department': item.get('department'),
+                'start_date': item.get('start_date'),
+                'end_date': item.get('end_date'),
+                'email': user_data.get('email'),
+                'firstname': user_data.get('firstname'),
+                'lastname': user_data.get('lastname'),
+                'phone_number': user_data.get('phone_number'),
+                'is_active': user_data.get('is_active'),
+                'specialty': user_data.get('specialty'),
+                'license_number': user_data.get('license_number'),
+                'facility_name': facility_data.get('facility_name'),
+                'facility_status': facility_data.get('subscription_status')
+            })
+
+        # Cache the result for 5 minutes
+        redis_client.setex(cache_key, 300, json.dumps(facility_users))
+        current_app.logger.info(f"Fetched {len(facility_users)} facility user assignments from database")
+
+        return jsonify({
+            "status": "success",
+            "data": facility_users,
+            "cached": False,
+            "count": len(facility_users)
+        }), 200
+
+    except Exception as e:
+        current_app.logger.error(f"Error fetching facility users: {str(e)}")
+        return jsonify({
+            "status": "error",
+            "message": f"An error occurred while fetching facility users: {str(e)}"
+        }), 500
+
+# Get users for a specific facility
+@facility_bp.route('/admin/facilities/<facility_id>/users', methods=['GET'])
+@require_auth
+@require_role('admin')
+def get_facility_users_by_id(facility_id):
+    """Get all users assigned to a specific facility"""
+    try:
+        current_user = getattr(request, 'current_user', {})
+        current_app.logger.info(f"User {current_user.get('email', 'unknown')} fetching users for facility {facility_id}")
+
+        resp = supabase.table('facility_users').select(
+            'facility_id, user_id, role, department, start_date, end_date, '
+            'users!facility_users_user_id_fkey(email, firstname, lastname, phone_number, is_active, specialty, license_number), '
+            'healthcare_facilities!facility_users_facility_id_fkey(facility_name, subscription_status)'
+        ).eq('facility_id', facility_id).execute()
+
+        if getattr(resp, 'error', None):
+            current_app.logger.error(f"Failed to fetch users for facility {facility_id}: {resp.error}")
+            return jsonify({
+                "status": "error",
+                "message": "Failed to fetch facility users"
+            }), 500
+
+        # Transform the data
+        facility_users = []
+        for item in resp.data:
+            user_data = item.get('users', {})
+            facility_data = item.get('healthcare_facilities', {})
+
+            facility_users.append({
+                'facility_id': item['facility_id'],
+                'user_id': item['user_id'],
+                'role': item['role'],
+                'department': item.get('department'),
+                'start_date': item.get('start_date'),
+                'end_date': item.get('end_date'),
+                'email': user_data.get('email'),
+                'firstname': user_data.get('firstname'),
+                'lastname': user_data.get('lastname'),
+                'phone_number': user_data.get('phone_number'),
+                'is_active': user_data.get('is_active'),
+                'specialty': user_data.get('specialty'),
+                'license_number': user_data.get('license_number'),
+                'facility_name': facility_data.get('facility_name'),
+                'facility_status': facility_data.get('subscription_status')
+            })
+
+        return jsonify({
+            "status": "success",
+            "data": facility_users,
+            "count": len(facility_users)
+        }), 200
+
+    except Exception as e:
+        current_app.logger.error(f"Error fetching users for facility {facility_id}: {str(e)}")
+        return jsonify({
+            "status": "error",
+            "message": f"An error occurred: {str(e)}"
         }), 500

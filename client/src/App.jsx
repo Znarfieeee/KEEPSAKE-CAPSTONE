@@ -16,6 +16,7 @@ import Settings from '@/pages/Settings'
 // Admin
 import AdminDashboard from '@/pages/systemAdmin/AdminDashboard'
 import FacilitiesRegistry from '@/pages/systemAdmin/FacilitiesRegistry'
+import FacilityUsersRegistry from '@/pages/systemAdmin/FacilityUsersRegistry'
 import UsersRegistry from '@/pages/systemAdmin/UsersRegistry'
 import SubscriptionPage from '@/pages/systemAdmin/SubscriptionPage'
 import TokenInvitations from '@/pages/systemAdmin/TokenInvitations'
@@ -91,6 +92,10 @@ function App() {
                         {
                             path: 'facilities',
                             element: <FacilitiesRegistry />,
+                        },
+                        {
+                            path: 'facility-users',
+                            element: <FacilityUsersRegistry />,
                         },
                         {
                             path: 'users',

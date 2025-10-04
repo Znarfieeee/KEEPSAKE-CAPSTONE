@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useCallback, useState, lazy, Suspense } from 'react'
 import { useAuth } from '@/context/auth'
+import { useNavigate } from 'react-router-dom'
 import { useFacilitiesRealtime, supabase } from '@/hook/useSupabaseRealtime'
 import { showToast } from '@/util/alertHelper'
 import { updateFacility, deactivateFacility } from '@/api/admin/facility'
@@ -21,6 +22,7 @@ const FacilityDetailModal = lazy(() =>
 
 const FacilitiesRegistry = () => {
     const { user } = useAuth()
+    const navigate = useNavigate()
     const [facilities, setFacilities] = useState([])
     const [loading, setLoading] = useState(true)
 
@@ -260,10 +262,6 @@ const FacilitiesRegistry = () => {
         setShowDetail(true)
     }
 
-    const handleGoto = () => {
-        alert('Going to facility')
-    }
-
     const handleEditFacility = (facility) => {
         setEditingFacility(facility)
         setShowEdit(true)
@@ -350,6 +348,11 @@ const FacilitiesRegistry = () => {
 
     const handleReports = () => {
         showToast('info', 'Reports dashboard coming soon')
+    }
+
+    const handleGoto = (facility) => {
+        // Navigate to facility users page with facility filter
+        navigate(`/admin/facility-users?facility=${facility.id}`)
     }
 
     /* ------------------------------------------------------------ */
