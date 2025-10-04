@@ -163,3 +163,17 @@ export const formatUserStatus = (status) => {
 
     return statusMap[status?.toLowerCase()] || status || 'Unknown'
 }
+
+/**
+ * Get sex badge color based on gender
+ * @param {string} sex - Person's sex (male/female)
+ * @returns {string} - CSS classes for sex badge
+ */
+export const getSexBadgeColor = (sex) => {
+    const sexColors = {
+        male: 'bg-blue-100 text-blue-800',
+        female: 'bg-pink-100 text-pink-800',
+    }
+
+    return sexColors[sex?.toLowerCase()] || 'bg-gray-100 text-gray-800'
+}

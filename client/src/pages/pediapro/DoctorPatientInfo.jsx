@@ -1,5 +1,5 @@
 import React, { useState, useEffect, lazy, Suspense } from 'react'
-import { useParams, useNavigate, Link } from 'react-router-dom'
+import { useParams, useNavigate, useLocation, Link } from 'react-router-dom'
 
 // UI Components
 import { IoMdArrowBack } from 'react-icons/io'
@@ -22,6 +22,7 @@ const EditPatientModal = lazy(() => import('@/components/doctors/patient_records
 const DoctorPatientInfo = () => {
     const { patientId } = useParams()
     const navigate = useNavigate()
+    const location = useLocation()
     const [patient, setPatient] = useState(null)
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState(null)
@@ -37,6 +38,15 @@ const DoctorPatientInfo = () => {
                 const response = await getPatientById(patientId)
                 if (response.status === 'success' && response.data) {
                     setPatient(response.data)
+
+                    // Update location state with patient data for breadcrumb display
+                    // This ensures breadcrumbs show patient name even after page refresh
+                    if (!location.state?.patient) {
+                        navigate(location.pathname, {
+                            replace: true,
+                            state: { patient: response.data }
+                        })
+                    }
                 } else {
                     throw new Error('Invalid response format')
                 }
@@ -49,7 +59,7 @@ const DoctorPatientInfo = () => {
         }
 
         fetchPatientData()
-    }, [patientId])
+    }, [patientId, location.pathname, location.state?.patient, navigate])
 
     if (loading) {
         return <LoadingSkeleton />
