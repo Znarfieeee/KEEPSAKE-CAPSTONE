@@ -69,34 +69,57 @@ def add_user():
 
     data = request.json or {}
 
+    # Basic Information
     email = data.get("email")
     password = data.get("password")
     firstname = data.get("firstname")
+    middlename = data.get("middlename")
     lastname = data.get("lastname")
-    specialty = data.get("specialty")
+    phone_number = data.get("phone_number")
     role = data.get("role")
+
+    # Professional Details
+    employee_id_number = data.get("employee_id_number")
+    specialty = data.get("specialty")
+    license_number = data.get("license_number")
+    years_of_experience = data.get("years_of_experience")
+    education = data.get("education")
+    certifications = data.get("certifications")
+    job_title = data.get("job_title")
+
+    # Parent-specific fields
+    relationship_to_patient = data.get("relationship_to_patient")
+    address = data.get("address")
+    emergency_contact_name = data.get("emergency_contact_name")
+    emergency_contact_phone = data.get("emergency_contact_phone")
+
+    # Subscription
     plan = data.get('plan')
     sub_expiry = data.get('subscription_expires')
-    license_number = data.get("license_number")
-    phone_number = data.get("phone_number")
-    middlename = data.get("middlename")
     is_subscribed = data.get('is_subscribed', False)
 
     # Basic validation
-    if not email or not password:
+    required_fields = {
+        'email': email,
+        'password': password,
+        'firstname': firstname,
+        'lastname': lastname,
+        'phone_number': phone_number,
+        'role': role
+    }
+    
+    missing_fields = [field for field, value in required_fields.items() if not value]
+    
+    if missing_fields:
         return (
-            jsonify({"status": "error", "message": "Email and password are required."}),
+            jsonify({
+                "status": "error",
+                "message": f"Missing required fields: {', '.join(missing_fields)}",
+                "fields": missing_fields
+            }),
             400,
         )
-        
-    if not firstname or not lastname or not phone_number:
-        return (
-            jsonify({"status": "error", "message": "Firstname, lastname, and phone number are required."}),
-            400,
-        )
-        
-    invalidate_caches('')
-        
+
     try:
         signup_resp = supabase.auth.sign_up(
             {
@@ -104,16 +127,32 @@ def add_user():
                 "password": password,
                 "options": {
                     "data": {
+                        # Basic Information
                         "firstname": firstname,
                         "middlename": middlename,
                         "lastname": lastname,
-                        "specialty": specialty,
+                        "phone_number": phone_number,
                         "role": role,
+
+                        # Professional Details
+                        "employee_id_number": employee_id_number,
+                        "specialty": specialty,
+                        "license_number": license_number,
+                        "years_of_experience": years_of_experience,
+                        "education": education,
+                        "certifications": certifications,
+                        "job_title": job_title,
+
+                        # Parent-specific fields
+                        "relationship_to_patient": relationship_to_patient,
+                        "address": address,
+                        "emergency_contact_name": emergency_contact_name,
+                        "emergency_contact_phone": emergency_contact_phone,
+
+                        # Subscription
                         "plan": plan,
                         "subscription_expires": sub_expiry,
                         "is_subscribed": is_subscribed,
-                        "license_number": license_number,
-                        "phone_number": phone_number,
                     }
                 },
             }
