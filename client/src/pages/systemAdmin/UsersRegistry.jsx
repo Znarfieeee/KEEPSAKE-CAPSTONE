@@ -5,6 +5,8 @@ import { getUserById, updateUserStatus, deleteUser } from '@/api/admin/users'
 import { useUsersRealtime, useFacilityUsersRealtime, supabase } from '@/hook/useSupabaseRealtime'
 
 // UI Components
+import { Dialog } from '@/components/ui/dialog'
+import { Loader2 } from 'lucide-react'
 import UserRegistryHeader from '@/components/System Administrator/sysAdmin_users/UserRegistryHeader'
 import UserFilters from '@/components/System Administrator/sysAdmin_users/UserFilters'
 import UserTable from '@/components/System Administrator/sysAdmin_users/UserTable'
@@ -56,9 +58,7 @@ const UserAssignFacility = lazy(() =>
 const EditUserModal = lazy(() =>
     import('../../components/System Administrator/sysAdmin_users/EditUserModal')
 )
-const ConfirmationDialog = lazy(() =>
-    import('../../components/ui/ConfirmationDialog')
-)
+const ConfirmationDialog = lazy(() => import('../../components/ui/ConfirmationDialog'))
 
 const UsersRegistry = () => {
     const { user } = useAuth()
@@ -334,26 +334,165 @@ const UsersRegistry = () => {
         onFacilityUserChange: handleFacilityUserChange,
     })
 
+    // Listen for custom events from EditUserModal and RegisterUserModal
+    useEffect(() => {
+        const handleUserCreated = (event) => {
+            const newUserData = event.detail
+            console.log('User created event received:', newUserData)
+
+            // Format the new user data
+            const formattedUser = {
+                id: newUserData.id,
+                email: newUserData.email,
+                firstname: newUserData.firstname,
+                lastname: newUserData.lastname,
+                role: displayRoles(newUserData.role),
+                specialty: newUserData.specialty || '—',
+                license_number: newUserData.license_number || '—',
+                contact: newUserData.phone_number || '—',
+                sub_exp: newUserData.subscription_expires,
+                plan: newUserData.is_subscribed ? 'Premium' : 'Free',
+                status: newUserData.status || 'active',
+                statusBadgeColor: getUserStatusBadgeColor(newUserData.status || 'active'),
+                statusDisplay: formatUserStatus(newUserData.status || 'active'),
+                created_at: new Date().toLocaleDateString(),
+                updated_at: '—',
+                last_login: 'Never',
+                assigned_facility: 'Loading...', // Will be updated by real-time subscription
+                facility_role: '—',
+                facility_id: null,
+            }
+
+            setUsers((prev) => {
+                // Check if user already exists (prevent duplicates)
+                const exists = prev.some((u) => u.id === formattedUser.id)
+                if (exists) return prev
+                return [formattedUser, ...prev] // Add to beginning for newest first
+            })
+
+            // Fetch facility assignment if applicable
+            if (newUserData.id) {
+                setTimeout(() => updateUserFacilityInfo(newUserData.id), 500)
+            }
+        }
+
+        const handleUserUpdated = (event) => {
+            const updatedUserData = event.detail
+            console.log('User updated event received:', updatedUserData)
+
+            setUsers((prev) =>
+                prev.map((u) => {
+                    if (u.id === updatedUserData.id) {
+                        // Format the updated user data
+                        return {
+                            ...u,
+                            firstname: updatedUserData.firstname || u.firstname,
+                            lastname: updatedUserData.lastname || u.lastname,
+                            contact: updatedUserData.phone_number || u.contact,
+                            role: displayRoles(updatedUserData.role) || u.role,
+                            specialty: updatedUserData.specialty || '—',
+                            license_number: updatedUserData.license_number || '—',
+                            plan: updatedUserData.is_subscribed ? 'Premium' : 'Free',
+                            sub_exp: updatedUserData.subscription_expires || u.sub_exp,
+                            status: updatedUserData.status || u.status,
+                            statusBadgeColor: getUserStatusBadgeColor(
+                                updatedUserData.status || u.status
+                            ),
+                            statusDisplay: formatUserStatus(updatedUserData.status || u.status),
+                        }
+                    }
+                    return u
+                })
+            )
+
+            // Update edit modal if it's showing this user
+            if (showEdit && editUser?.id === updatedUserData.id) {
+                setEditUser((prev) => ({ ...prev, ...updatedUserData }))
+            }
+
+            // Update detail modal if it's showing this user
+            if (showDetail && detailUser?.id === updatedUserData.id) {
+                setDetailUser((prev) => ({ ...prev, ...updatedUserData }))
+            }
+        }
+
+        const handleUserDeleted = (event) => {
+            const { id } = event.detail
+            console.log('User deleted event received:', id)
+
+            setUsers((prev) => prev.filter((u) => u.id !== id))
+
+            // Close modals if showing deleted user
+            if (showEdit && editUser?.id === id) {
+                setShowEdit(false)
+                setEditUser(null)
+            }
+            if (showDetail && detailUser?.id === id) {
+                setShowDetail(false)
+                setDetailUser(null)
+            }
+        }
+
+        window.addEventListener('user-created', handleUserCreated)
+        window.addEventListener('user-updated', handleUserUpdated)
+        window.addEventListener('user-deleted', handleUserDeleted)
+
+        return () => {
+            window.removeEventListener('user-created', handleUserCreated)
+            window.removeEventListener('user-updated', handleUserUpdated)
+            window.removeEventListener('user-deleted', handleUserDeleted)
+        }
+    }, [showEdit, editUser, showDetail, detailUser, updateUserFacilityInfo])
+
+    const searchTerms = useMemo(() => search.toLowerCase().trim(), [search])
+
+    const matchField = useCallback(
+        (field) => {
+            return String(field).toLowerCase().includes(searchTerms)
+        },
+        [searchTerms]
+    )
+
+    const matchSearch = useCallback(
+        (u) => {
+            if (!searchTerms) return true
+            return [u.firstname, u.lastname, u.email, u.specialty, u.assigned_facility].some(
+                matchField
+            )
+        },
+        [searchTerms, matchField]
+    )
+
+    const matchStatus = useCallback(
+        (u) => {
+            return !statusFilter || statusFilter === 'all' || u.status === statusFilter
+        },
+        [statusFilter]
+    )
+
+    const matchType = useCallback(
+        (u) => {
+            return (
+                !typeFilter ||
+                typeFilter === 'all' ||
+                u.role.toLowerCase() === typeFilter.toLowerCase()
+            )
+        },
+        [typeFilter]
+    )
+
+    const matchPlan = useCallback(
+        (u) => {
+            if (!planFilter || planFilter === 'all') return true
+            const expectedPlan = planFilter === 'true' ? 'premium' : 'freemium'
+            return u.plan.toLowerCase() === expectedPlan
+        },
+        [planFilter]
+    )
+
     const filteredUsers = useMemo(() => {
-        return users.filter((u) => {
-            const matchesSearch = search
-                ? [u.firstname, u.lastname, u.email, u.specialty, u.assigned_facility].some(
-                      (field) => String(field).toLowerCase().includes(search.toLowerCase())
-                  )
-                : true
-            const matchesStatus =
-                statusFilter && statusFilter !== 'all' ? u.status === statusFilter : true
-            const matchesType =
-                typeFilter && typeFilter !== 'all'
-                    ? u.role.toLowerCase() === typeFilter.toLowerCase()
-                    : true
-            const matchesPlan =
-                planFilter && planFilter !== 'all'
-                    ? u.plan.toLowerCase() === (planFilter === 'true' ? 'premium' : 'freemium')
-                    : true
-            return matchesSearch && matchesStatus && matchesType && matchesPlan
-        })
-    }, [users, search, statusFilter, typeFilter, planFilter])
+        return users.filter((u) => matchSearch(u) && matchStatus(u) && matchType(u) && matchPlan(u))
+    }, [users, matchSearch, matchStatus, matchType, matchPlan])
 
     // Role-based guard
     if (user.role !== 'admin') {
@@ -398,7 +537,10 @@ const UsersRegistry = () => {
                         return u
                     })
                 )
-                showToast('success', `User ${newStatus === 'active' ? 'activated' : 'deactivated'} successfully`)
+                showToast(
+                    'success',
+                    `User ${newStatus === 'active' ? 'activated' : 'deactivated'} successfully`
+                )
             } else {
                 showToast('error', response.message || 'Failed to update user status')
             }
@@ -594,8 +736,12 @@ const UsersRegistry = () => {
                     <ConfirmationDialog
                         open={showStatusDialog}
                         onOpenChange={setShowStatusDialog}
-                        title={`${confirmationUser.status === 'active' ? 'Deactivate' : 'Activate'} User`}
-                        description={`Are you sure you want to ${confirmationUser.status === 'active' ? 'deactivate' : 'activate'} user "${confirmationUser.firstname} ${confirmationUser.lastname}"?`}
+                        title={`${
+                            confirmationUser.status === 'active' ? 'Deactivate' : 'Activate'
+                        } User`}
+                        description={`Are you sure you want to ${
+                            confirmationUser.status === 'active' ? 'deactivate' : 'activate'
+                        } user "${confirmationUser.firstname} ${confirmationUser.lastname}"?`}
                         loading={actionLoading}
                         onConfirm={confirmStatusToggle}
                     />

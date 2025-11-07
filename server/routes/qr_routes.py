@@ -2,6 +2,7 @@ from flask import Blueprint, jsonify, request
 from config.settings import supabase
 from utils.access_control import require_auth
 from utils.sanitize import sanitize_request_data
+from utils.notification_utils import create_qr_access_alert
 from datetime import datetime, timedelta, timezone
 import secrets
 import os
@@ -255,6 +256,17 @@ def validate_qr_access():
             'last_accessed_at': datetime.now(timezone.utc).isoformat(),
             'last_accessed_by': scanning_user['id']
         }).eq('qr_id', qr_data['qr_id']).execute()
+
+        # 8. Create QR access alert notification
+        try:
+            create_qr_access_alert(
+                qr_id=qr_data['qr_id'],
+                accessed_by_user_id=scanning_user['id'],
+                patient_id=patient_id
+            )
+        except Exception as notif_error:
+            # Log notification error but don't fail the request
+            print(f"Failed to create QR access notification: {notif_error}")
 
         return jsonify({
             "status": 200,

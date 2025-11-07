@@ -12,7 +12,7 @@ import { TbHeartbeat } from 'react-icons/tb'
 import { MdQrCodeScanner } from 'react-icons/md'
 import Hamburger from '@/components/ui/Hamburger'
 import AccountPlaceholder from '@/components/AccountPlaceholder'
-import NotificationPlaceholder from '@/components/ui/NotificationPlaceholder'
+import NotificationBell from '@/components/notifications/NotificationBell'
 
 const mainSideNavLinks = [
     {
@@ -104,7 +104,7 @@ function PediaproLayout() {
                         />
                     </div>
                     <div className="flex items-center gap-2 mr-6">
-                        <NotificationPlaceholder className=" text-black" />
+                        <NotificationBell />
                         <AccountPlaceholder className=" text-black" />
                     </div>
                 </div>

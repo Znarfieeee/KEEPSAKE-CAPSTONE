@@ -1,11 +1,15 @@
-import React, { useState, useEffect } from 'react'
-import { updateUser } from '@/api/admin/users'
-import { sanitizeObject } from '@/util/sanitize'
-
-// UI Components
-import { showToast } from '@/util/alertHelper'
-import { Button } from '@/components/ui/Button'
-import LoadingButton from '@/components/ui/LoadingButton'
+import React, { useState, useEffect, useCallback } from 'react'
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogHeader,
+    DialogTitle,
+    DialogFooter,
+} from '@/components/ui/dialog'
+import { Button } from '@/components/ui/button'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { PhoneNumberInput } from '@/components/ui/phone-number'
@@ -17,130 +21,160 @@ import {
     SelectValue,
 } from '@/components/ui/select'
 import { Switch } from '@/components/ui/switch'
-import { X } from 'lucide-react'
+import { showToast } from '@/util/alertHelper'
+import { cn } from '@/lib/utils'
+import { User, Briefcase, Shield, Save, Ban, Trash2 } from 'lucide-react'
+
+// Import API functions
+import { updateUser, updateUserStatus, deleteUser } from '@/api/admin/users'
+import { sanitizeObject } from '@/util/sanitize'
+
+// Tab Item Component
+const TabItem = ({ value, icon: Icon, children, className }) => (
+    <TabsTrigger
+        value={value}
+        className={cn(
+            'bg-muted overflow-hidden rounded-b-none border-x border-t border-gray-200 data-[state=active]:z-10 data-[state=active]:shadow-none',
+            className
+        )}
+    >
+        {Icon && <Icon className="-ms-0.5 me-1.5 opacity-60" size={16} aria-hidden="true" />}
+        {children}
+    </TabsTrigger>
+)
 
 const EditUserModal = ({ open, user, onClose }) => {
-    const [form, setForm] = useState({
-        email: '',
-        firstname: '',
-        lastname: '',
-        specialty: '',
-        role: '',
-        license_number: '',
-        phone_number: '',
-        subscription_expires: '',
-        is_subscribed: false,
-    })
+    // Form states
+    const [basicForm, setBasicForm] = useState({})
+    const [professionalForm, setProfessionalForm] = useState({})
+    const [subscriptionForm, setSubscriptionForm] = useState({})
+
+    // Modal states
+    const [activeTab, setActiveTab] = useState('basic')
     const [loading, setLoading] = useState(false)
-    const [errors, setErrors] = useState({})
+    const [deleteLoading, setDeleteLoading] = useState(false)
+    const [statusLoading, setStatusLoading] = useState(false)
 
-    // Map display roles back to database values (optimize by moving outside useEffect)
-    const mapRoleToValue = (displayRole) => {
+    // Map display roles back to database values
+    const mapRoleToValue = useCallback((displayRole) => {
         if (!displayRole) return ''
-        switch (displayRole) {
-            case 'Admin':
-                return 'admin'
-            case 'Facility Admin':
-                return 'facility_admin'
-            case 'System Admin':
-                return 'admin'
-            case 'Doctor':
-                return 'doctor'
-            case 'Nurse':
-                return 'nurse'
-            case 'Staff':
-                return 'staff'
-            default:
-                return displayRole.toLowerCase().replace(' ', '_')
+        const roleMap = {
+            Admin: 'admin',
+            'Facility Admin': 'facility_admin',
+            'System Admin': 'admin',
+            Doctor: 'doctor',
+            Nurse: 'nurse',
+            Staff: 'staff',
+            Parent: 'parent',
         }
-    }
+        return roleMap[displayRole] || displayRole.toLowerCase().replace(' ', '_')
+    }, [])
 
-    // Initialize form when user prop changes
+    // Format phone number
+    const formatPhoneNumber = useCallback((contact) => {
+        if (!contact || contact === '—') return ''
+        if (contact.startsWith('+')) return contact
+        return contact
+    }, [])
+
+    // Initialize form data
     useEffect(() => {
         if (!user || !open) return
 
-        // Simplified phone number processing
-        const formatPhoneNumber = (contact) => {
-            if (!contact || contact === '—') return ''
-            // If already in international format, use as-is
-            if (contact.startsWith('+')) return contact
-            // Otherwise, just return the original for PhoneNumberInput to handle
-            return contact
-        }
-
-        setForm({
+        setBasicForm({
             email: user.email || '',
             firstname: user.firstname || '',
             lastname: user.lastname || '',
-            specialty: user.specialty === '—' ? '' : user.specialty || '',
-            role: mapRoleToValue(user.role),
-            license_number: user.license_number === '—' ? '' : user.license_number || '',
             phone_number: formatPhoneNumber(user.contact),
-            subscription_expires: user.sub_exp || '',
-            is_subscribed: user.plan === 'Premium',
         })
-        setErrors({})
-    }, [user?.id, open]) // Only re-run if user ID changes or modal opens
 
-    // Form validation
+        setProfessionalForm({
+            role: mapRoleToValue(user.role),
+            specialty: user.specialty === '—' ? '' : user.specialty || '',
+            license_number: user.license_number === '—' ? '' : user.license_number || '',
+        })
+
+        setSubscriptionForm({
+            is_subscribed: user.plan === 'Premium',
+            subscription_expires: user.sub_exp || '',
+        })
+    }, [user, open, mapRoleToValue, formatPhoneNumber])
+
+    // Helper to update form fields
+    const updateForm = (setFormFn, field, value) =>
+        setFormFn((prev) => ({ ...prev, [field]: value }))
+
+    // Validate form
     const validateForm = () => {
-        const newErrors = {}
-
-        if (!form.firstname.trim()) {
-            newErrors.firstname = 'First name is required'
+        if (!basicForm.firstname?.trim()) {
+            showToast('error', 'First name is required')
+            setActiveTab('basic')
+            return false
         }
 
-        if (!form.lastname.trim()) {
-            newErrors.lastname = 'Last name is required'
+        if (!basicForm.lastname?.trim()) {
+            showToast('error', 'Last name is required')
+            setActiveTab('basic')
+            return false
         }
 
-        if (!form.role) {
-            newErrors.role = 'Role is required'
+        if (!professionalForm.role) {
+            showToast('error', 'Role is required')
+            setActiveTab('professional')
+            return false
         }
 
-        if (!form.specialty.trim()) {
-            newErrors.specialty = 'Specialty is required'
+        // Specialty is only required for non-parent users
+        if (professionalForm.role !== 'parent' && !professionalForm.specialty?.trim()) {
+            showToast('error', 'Specialty is required for medical professionals')
+            setActiveTab('professional')
+            return false
         }
 
-        if (form.phone_number && form.phone_number.length > 0) {
-            // Basic validation for international phone numbers
-            const cleanPhone = form.phone_number.replace(/[\s\-\(\)]/g, '')
-            if (!/^\+[1-9]\d{1,14}$/.test(cleanPhone)) {
-                newErrors.phone_number = 'Invalid phone number format'
-            }
-        }
-
-        setErrors(newErrors)
-        return Object.keys(newErrors).length === 0
+        return true
     }
 
-    const handleSubmit = async (e) => {
-        e.preventDefault()
-
-        if (!validateForm()) {
-            showToast('error', 'Please fix the errors in the form')
-            return
-        }
+    // Handle form submission
+    const handleSubmit = async () => {
+        if (!validateForm()) return
 
         try {
             setLoading(true)
 
             const updatePayload = sanitizeObject({
-                firstname: form.firstname.trim(),
-                lastname: form.lastname.trim(),
-                specialty: form.specialty.trim(),
-                role: form.role,
-                license_number: form.license_number.trim() || null,
-                phone_number: form.phone_number || null,
-                subscription_expires: form.subscription_expires || null,
-                is_subscribed: form.is_subscribed,
+                firstname: basicForm.firstname.trim(),
+                lastname: basicForm.lastname.trim(),
+                phone_number: basicForm.phone_number || null,
+                role: professionalForm.role,
+                specialty: professionalForm.specialty?.trim() || null,
+                license_number: professionalForm.license_number?.trim() || null,
+                is_subscribed: subscriptionForm.is_subscribed,
+                subscription_expires: subscriptionForm.subscription_expires || null,
             })
 
             const response = await updateUser(user.id, updatePayload)
 
             if (response.status === 'success') {
                 showToast('success', 'User updated successfully')
-                onClose()
+
+                // Dispatch event for real-time updates with complete data
+                if (typeof window !== 'undefined') {
+                    const updatedUser = {
+                        ...user,
+                        ...updatePayload,
+                        id: user.id,
+                    }
+                    console.log('Dispatching user-updated event:', updatedUser)
+                    window.dispatchEvent(
+                        new CustomEvent('user-updated', {
+                            detail: updatedUser,
+                        })
+                    )
+                }
+
+                setTimeout(() => {
+                    onClose()
+                }, 500)
             } else {
                 showToast('error', response.message || 'Failed to update user')
             }
@@ -152,226 +186,415 @@ const EditUserModal = ({ open, user, onClose }) => {
         }
     }
 
-    const handleClose = () => {
-        setForm({
-            email: '',
-            firstname: '',
-            lastname: '',
-            specialty: '',
-            role: '',
-            license_number: '',
-            phone_number: '',
-            subscription_expires: '',
-            is_subscribed: false,
-        })
-        setErrors({})
-        onClose()
+    // Handle status toggle (disable/enable)
+    const handleStatusToggle = async () => {
+        const newStatus = user.status === 'active' ? 'inactive' : 'active'
+        const action = newStatus === 'active' ? 'enable' : 'disable'
+
+        if (!confirm(`Are you sure you want to ${action} this user?`)) {
+            return
+        }
+
+        try {
+            setStatusLoading(true)
+            const response = await updateUserStatus(user.id, newStatus)
+
+            if (response.status === 'success') {
+                showToast('success', `User ${action}d successfully`)
+
+                // Dispatch event for real-time updates
+                if (typeof window !== 'undefined') {
+                    window.dispatchEvent(
+                        new CustomEvent('user-updated', {
+                            detail: { ...user, status: newStatus },
+                        })
+                    )
+                }
+
+                onClose()
+            } else {
+                showToast('error', response.message || `Failed to ${action} user`)
+            }
+        } catch (error) {
+            console.error('Status update error:', error)
+            showToast('error', error.message || `Failed to ${action} user`)
+        } finally {
+            setStatusLoading(false)
+        }
     }
 
-    if (!open || !user) return null
+    // Handle delete
+    const handleDelete = async () => {
+        const confirmText = `${user.firstname} ${user.lastname}`
+        const userInput = prompt(
+            `Are you sure you want to delete this user? This action cannot be undone.\n\nType "${confirmText}" to confirm:`
+        )
 
-    return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center">
-            {/* Overlay */}
-            <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={handleClose} />
+        if (userInput !== confirmText) {
+            if (userInput !== null) {
+                showToast('error', 'Confirmation text does not match')
+            }
+            return
+        }
 
-            {/* Modal */}
-            <div className="relative bg-white text-black dark:bg-background rounded-lg shadow-lg w-full max-w-lg mx-4 p-6 z-10">
-                {/* Header */}
-                <div className="flex items-center justify-between mb-6">
-                    <h2 className="text-xl font-semibold">Edit User</h2>
-                    <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={handleClose}
-                        className="hover:bg-gray-100 dark:hover:bg-gray-800"
-                    >
-                        <X className="size-4" />
-                    </Button>
-                </div>
+        try {
+            setDeleteLoading(true)
+            const response = await deleteUser(user.id)
 
-                {/* Form */}
-                <form
-                    onSubmit={handleSubmit}
-                    className="space-y-4 max-h-[60vh] overflow-y-auto pr-1"
-                >
-                    {/* Basic Information */}
-                    <div className="space-y-4">
+            if (response.status === 'success') {
+                showToast('success', 'User deleted successfully')
+
+                // Dispatch event for real-time updates
+                if (typeof window !== 'undefined') {
+                    window.dispatchEvent(
+                        new CustomEvent('user-deleted', {
+                            detail: { id: user.id },
+                        })
+                    )
+                }
+
+                onClose()
+            } else {
+                showToast('error', response.message || 'Failed to delete user')
+            }
+        } catch (error) {
+            console.error('Delete error:', error)
+            showToast('error', error.message || 'Failed to delete user')
+        } finally {
+            setDeleteLoading(false)
+        }
+    }
+
+    // Handle modal close
+    const handleClose = () => {
+        if (!loading && !deleteLoading && !statusLoading) {
+            onClose()
+        }
+    }
+
+    if (!user || !open) return null
+
+    // Define tabs
+    const tabs = [
+        {
+            value: 'basic',
+            label: 'BASIC INFO',
+            icon: User,
+            content: (
+                <div className="space-y-4">
+                    <div>
+                        <Label htmlFor="email">Email Address</Label>
+                        <Input
+                            id="email"
+                            type="email"
+                            value={basicForm.email}
+                            readOnly
+                            className="bg-gray-50 cursor-not-allowed"
+                            placeholder="user@example.com"
+                        />
+                        <p className="text-xs text-muted-foreground mt-1">
+                            Email cannot be changed for security reasons
+                        </p>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
                         <div>
-                            <Label htmlFor="email">Email Address</Label>
+                            <Label htmlFor="firstname">First Name *</Label>
                             <Input
-                                id="email"
-                                type="email"
-                                value={form.email}
-                                readOnly
-                                className="bg-gray-50 cursor-not-allowed"
-                                placeholder="user@example.com"
-                            />
-                            <p className="text-xs text-muted-foreground mt-1">
-                                Email cannot be changed for security reasons
-                            </p>
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-3">
-                            <div>
-                                <Label htmlFor="firstname">First Name *</Label>
-                                <Input
-                                    id="firstname"
-                                    value={form.firstname}
-                                    onChange={(e) =>
-                                        setForm({ ...form, firstname: e.target.value })
-                                    }
-                                    placeholder="Juan"
-                                    className={errors.firstname ? 'border-red-500' : ''}
-                                />
-                                {errors.firstname && (
-                                    <p className="text-red-500 text-xs mt-1">{errors.firstname}</p>
-                                )}
-                            </div>
-                            <div>
-                                <Label htmlFor="lastname">Last Name *</Label>
-                                <Input
-                                    id="lastname"
-                                    value={form.lastname}
-                                    onChange={(e) => setForm({ ...form, lastname: e.target.value })}
-                                    placeholder="De la Cruz"
-                                    className={errors.lastname ? 'border-red-500' : ''}
-                                />
-                                {errors.lastname && (
-                                    <p className="text-red-500 text-xs mt-1">{errors.lastname}</p>
-                                )}
-                            </div>
-                        </div>
-
-                        <div>
-                            <Label htmlFor="phone_number">Phone Number</Label>
-                            <PhoneNumberInput
-                                value={form.phone_number}
-                                onChange={(value) =>
-                                    setForm({ ...form, phone_number: value || '' })
+                                id="firstname"
+                                value={basicForm.firstname}
+                                onChange={(e) =>
+                                    updateForm(setBasicForm, 'firstname', e.target.value)
                                 }
-                                placeholder="Enter phone number"
-                                className={errors.phone_number ? 'border-red-500' : ''}
+                                placeholder="Juan"
+                                autoComplete="given-name"
                             />
-                            {errors.phone_number && (
-                                <p className="text-red-500 text-xs mt-1">{errors.phone_number}</p>
-                            )}
+                        </div>
+                        <div>
+                            <Label htmlFor="lastname">Last Name *</Label>
+                            <Input
+                                id="lastname"
+                                value={basicForm.lastname}
+                                onChange={(e) =>
+                                    updateForm(setBasicForm, 'lastname', e.target.value)
+                                }
+                                placeholder="De la Cruz"
+                                autoComplete="family-name"
+                            />
                         </div>
                     </div>
 
-                    {/* Professional Details */}
-                    <div className="space-y-4">
-                        <div>
-                            <Label htmlFor="role">Role *</Label>
-                            <Select
-                                value={form.role}
-                                onValueChange={(value) => setForm({ ...form, role: value })}
-                            >
-                                <SelectTrigger className={errors.role ? 'border-red-500' : ''}>
-                                    <SelectValue placeholder="Select a role" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="doctor">Doctor</SelectItem>
-                                    <SelectItem value="nurse">Nurse</SelectItem>
-                                    <SelectItem value="staff">Staff</SelectItem>
-                                    <SelectItem value="facility_admin">Facility Admin</SelectItem>
-                                    <SelectItem value="admin">Admin</SelectItem>
-                                </SelectContent>
-                            </Select>
-                            {errors.role && (
-                                <p className="text-red-500 text-xs mt-1">{errors.role}</p>
-                            )}
+                    <div>
+                        <Label htmlFor="phone_number">Phone Number</Label>
+                        <PhoneNumberInput
+                            value={basicForm.phone_number}
+                            onChange={(value) =>
+                                updateForm(setBasicForm, 'phone_number', value || '')
+                            }
+                            placeholder="Enter phone number"
+                        />
+                    </div>
+                </div>
+            ),
+        },
+        {
+            value: 'professional',
+            label: 'PROFESSIONAL',
+            icon: Briefcase,
+            content: (
+                <div className="space-y-4">
+                    {professionalForm.role === 'parent' && (
+                        <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
+                            <p className="text-sm text-blue-800">
+                                <strong>Parent User:</strong> Specialty and license fields are not
+                                required for parent accounts.
+                            </p>
                         </div>
+                    )}
 
-                        <div>
-                            <Label htmlFor="specialty">Specialty *</Label>
-                            <Input
-                                id="specialty"
-                                value={form.specialty}
-                                onChange={(e) => setForm({ ...form, specialty: e.target.value })}
-                                placeholder="e.g., Pediatrician"
-                                className={errors.specialty ? 'border-red-500' : ''}
-                            />
-                            {errors.specialty && (
-                                <p className="text-red-500 text-xs mt-1">{errors.specialty}</p>
-                            )}
-                        </div>
-
-                        <div>
-                            <Label htmlFor="license_number">License Number</Label>
-                            <Input
-                                id="license_number"
-                                value={form.license_number}
-                                onChange={(e) =>
-                                    setForm({ ...form, license_number: e.target.value })
+                    <div>
+                        <Label htmlFor="role">Role *</Label>
+                        <Select
+                            value={professionalForm.role}
+                            onValueChange={(value) => {
+                                // Auto-clear specialty and license for parent users
+                                if (value === 'parent') {
+                                    setProfessionalForm((prev) => ({
+                                        ...prev,
+                                        role: value,
+                                        specialty: '',
+                                        license_number: '',
+                                    }))
+                                } else {
+                                    updateForm(setProfessionalForm, 'role', value)
                                 }
-                                placeholder="Professional license number"
-                            />
+                            }}
+                        >
+                            <SelectTrigger>
+                                <SelectValue placeholder="Select a role" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="doctor">Doctor</SelectItem>
+                                <SelectItem value="nurse">Nurse</SelectItem>
+                                <SelectItem value="staff">Staff</SelectItem>
+                                <SelectItem value="facility_admin">Facility Admin</SelectItem>
+                                <SelectItem value="admin">Admin</SelectItem>
+                                <SelectItem value="parent">Parent</SelectItem>
+                            </SelectContent>
+                        </Select>
+                    </div>
+
+                    <div>
+                        <Label htmlFor="specialty">
+                            Specialty {professionalForm.role !== 'parent' && '*'}
+                        </Label>
+                        <Input
+                            id="specialty"
+                            value={professionalForm.specialty}
+                            onChange={(e) =>
+                                updateForm(setProfessionalForm, 'specialty', e.target.value)
+                            }
+                            placeholder={
+                                professionalForm.role === 'parent'
+                                    ? 'N/A for parent users'
+                                    : 'e.g., Pediatrician'
+                            }
+                            disabled={professionalForm.role === 'parent'}
+                        />
+                        {professionalForm.role !== 'parent' && (
                             <p className="text-xs text-muted-foreground mt-1">
                                 Required for medical professionals
                             </p>
-                        </div>
-                    </div>
-
-                    {/* Subscription Details */}
-                    <div className="space-y-4">
-                        <div className="flex items-center justify-between">
-                            <div>
-                                <Label htmlFor="is_subscribed">Premium Subscription</Label>
-                                <p className="text-xs text-muted-foreground">
-                                    Enable premium features for this user
-                                </p>
-                            </div>
-                            <Switch
-                                id="is_subscribed"
-                                checked={form.is_subscribed}
-                                onCheckedChange={(checked) =>
-                                    setForm({ ...form, is_subscribed: checked })
-                                }
-                            />
-                        </div>
-
-                        {form.is_subscribed && (
-                            <div>
-                                <Label htmlFor="subscription_expires">Subscription Expires</Label>
-                                <Input
-                                    type="date"
-                                    id="subscription_expires"
-                                    value={form.subscription_expires}
-                                    onChange={(e) =>
-                                        setForm({ ...form, subscription_expires: e.target.value })
-                                    }
-                                />
-                                <p className="text-xs text-muted-foreground mt-1">
-                                    Leave empty for no expiration
-                                </p>
-                            </div>
                         )}
                     </div>
-                </form>
 
-                {/* Actions */}
-                <div className="flex justify-end gap-3 mt-6 pt-4 border-t">
-                    <Button
-                        type="button"
-                        variant="outline"
-                        onClick={handleClose}
-                        disabled={loading}
-                    >
-                        Cancel
-                    </Button>
-                    <LoadingButton
-                        type="submit"
-                        onClick={handleSubmit}
-                        isLoading={loading}
-                        disabled={loading}
-                        className="bg-primary text-white hover:bg-primary/90"
-                    >
-                        Update User
-                    </LoadingButton>
+                    <div>
+                        <Label htmlFor="license_number">License Number</Label>
+                        <Input
+                            id="license_number"
+                            value={professionalForm.license_number}
+                            onChange={(e) =>
+                                updateForm(setProfessionalForm, 'license_number', e.target.value)
+                            }
+                            placeholder={
+                                professionalForm.role === 'parent'
+                                    ? 'N/A for parent users'
+                                    : 'Professional license number'
+                            }
+                            disabled={professionalForm.role === 'parent'}
+                        />
+                        {professionalForm.role !== 'parent' && (
+                            <p className="text-xs text-muted-foreground mt-1">
+                                Required for doctors and nurses
+                            </p>
+                        )}
+                    </div>
                 </div>
-            </div>
-        </div>
+            ),
+        },
+        {
+            value: 'subscription',
+            label: 'SUBSCRIPTION',
+            icon: Shield,
+            content: (
+                <div className="space-y-4">
+                    <div className="flex items-center justify-between p-4 border rounded-lg">
+                        <div>
+                            <Label htmlFor="is_subscribed" className="text-base">
+                                Premium Subscription
+                            </Label>
+                            <p className="text-sm text-muted-foreground">
+                                Enable premium features for this user
+                            </p>
+                        </div>
+                        <Switch
+                            id="is_subscribed"
+                            checked={subscriptionForm.is_subscribed}
+                            onCheckedChange={(checked) =>
+                                updateForm(setSubscriptionForm, 'is_subscribed', checked)
+                            }
+                        />
+                    </div>
+
+                    {subscriptionForm.is_subscribed && (
+                        <div>
+                            <Label htmlFor="subscription_expires">Subscription Expires</Label>
+                            <Input
+                                type="date"
+                                id="subscription_expires"
+                                value={subscriptionForm.subscription_expires}
+                                onChange={(e) =>
+                                    updateForm(
+                                        setSubscriptionForm,
+                                        'subscription_expires',
+                                        e.target.value
+                                    )
+                                }
+                            />
+                            <p className="text-xs text-muted-foreground mt-1">
+                                Leave empty for no expiration
+                            </p>
+                        </div>
+                    )}
+
+                    <div className="p-4 bg-gray-50 rounded-lg">
+                        <h4 className="font-medium mb-2">Current Status</h4>
+                        <div className="grid grid-cols-2 gap-4 text-sm">
+                            <div>
+                                <span className="text-muted-foreground">Status:</span>
+                                <span
+                                    className={cn(
+                                        'ml-2 font-medium',
+                                        user.status === 'active' ? 'text-green-600' : 'text-red-600'
+                                    )}
+                                >
+                                    {user.status === 'active' ? 'Active' : 'Inactive'}
+                                </span>
+                            </div>
+                            <div>
+                                <span className="text-muted-foreground">Plan:</span>
+                                <span className="ml-2 font-medium">
+                                    {subscriptionForm.is_subscribed ? 'Premium' : 'Free'}
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            ),
+        },
+    ]
+
+    return (
+        <Dialog open={open} onOpenChange={handleClose} modal>
+            <DialogContent className="max-w-4xl max-h-[95vh]" showCloseButton={false}>
+                <DialogHeader>
+                    <DialogTitle className="text-xl font-semibold">
+                        Edit User: {user.firstname} {user.lastname}
+                    </DialogTitle>
+                    <DialogDescription>
+                        Update user information using the tabs below. Navigate between sections
+                        freely.
+                    </DialogDescription>
+                </DialogHeader>
+
+                <div className="flex-1 overflow-hidden mt-6">
+                    <Tabs
+                        value={activeTab}
+                        onValueChange={setActiveTab}
+                        className="w-full h-full flex flex-col"
+                    >
+                        <ScrollArea className="w-full">
+                            <TabsList className="before:bg-border relative h-auto w-max gap-0.5 bg-transparent p-0 before:absolute before:inset-x-0 before:bottom-0 before:h-px">
+                                {tabs.map((tab) => (
+                                    <TabItem key={tab.value} value={tab.value} icon={tab.icon}>
+                                        {tab.label}
+                                    </TabItem>
+                                ))}
+                            </TabsList>
+                            <ScrollBar orientation="horizontal" />
+                        </ScrollArea>
+
+                        <div className="flex-1 overflow-y-auto">
+                            {tabs.map((tab) => (
+                                <TabsContent key={tab.value} value={tab.value} className="mt-4">
+                                    <div className="space-y-4">{tab.content}</div>
+                                </TabsContent>
+                            ))}
+                        </div>
+                    </Tabs>
+                </div>
+
+                <DialogFooter className="flex justify-between mt-8">
+                    <div className="flex gap-2">
+                        <Button
+                            variant="outline"
+                            onClick={handleStatusToggle}
+                            disabled={loading || deleteLoading || statusLoading}
+                            className={cn(
+                                user.status === 'active'
+                                    ? 'border-orange-500 text-orange-600 hover:bg-orange-50'
+                                    : 'border-green-500 text-green-600 hover:bg-green-50'
+                            )}
+                        >
+                            <Ban size={16} className="mr-2" />
+                            {statusLoading
+                                ? 'Processing...'
+                                : user.status === 'active'
+                                ? 'Disable User'
+                                : 'Enable User'}
+                        </Button>
+                        <Button
+                            variant="destructive"
+                            onClick={handleDelete}
+                            disabled={loading || deleteLoading || statusLoading}
+                        >
+                            <Trash2 size={16} className="mr-2" />
+                            {deleteLoading ? 'Deleting...' : 'Delete User'}
+                        </Button>
+                    </div>
+                    <div className="flex gap-2">
+                        <Button
+                            variant="outline"
+                            onClick={handleClose}
+                            disabled={loading || deleteLoading || statusLoading}
+                        >
+                            Cancel
+                        </Button>
+                        <Button
+                            onClick={handleSubmit}
+                            disabled={loading || deleteLoading || statusLoading}
+                            className={cn(
+                                'bg-primary text-primary-foreground hover:bg-primary/90',
+                                loading && 'opacity-50 cursor-not-allowed'
+                            )}
+                        >
+                            <Save size={16} className="mr-2" />
+                            {loading ? 'Updating...' : 'Update User'}
+                        </Button>
+                    </div>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
     )
 }
 

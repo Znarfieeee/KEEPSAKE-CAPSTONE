@@ -4,6 +4,7 @@ import React from 'react'
 import { Button } from '@/components/ui/Button'
 import { TooltipHelper } from '@/util/TooltipHelper'
 import { UserStatusBadge } from '@/components/ui/StatusBadge'
+import { getRoleBadgeColor } from '@/util/utils.jsx'
 import {
     Eye,
     Ban,
@@ -68,7 +69,15 @@ const UserTable = ({
                                   <td className="p-2 whitespace-nowrap">
                                       {`${user.firstname} ${user.lastname}`}
                                   </td>
-                                  <td className="p-2 whitespace-nowrap">{user.role}</td>
+                                  <td className="p-2 whitespace-nowrap">
+                                      <span
+                                          className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${getRoleBadgeColor(
+                                              user.role
+                                          )}`}
+                                      >
+                                          {user.role}
+                                      </span>
+                                  </td>
                                   <td className="p-2 whitespace-nowrap capitalize">{user.plan}</td>
                                   <td className="p-2 whitespace-nowrap">{user.sub_exp || '—'}</td>
                                   <td className="p-2 whitespace-nowrap">{user.last_login}</td>

@@ -102,7 +102,6 @@ const UserAssignFacility = ({ open, onClose, userId, user }) => {
                 }
             } catch (error) {
                 console.error('Failed to load facilities:', error)
-                showToast('error', 'Failed to load facilities. Please try again.')
             } finally {
                 setIsFetching(false)
             }

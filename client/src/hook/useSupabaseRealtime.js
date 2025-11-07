@@ -43,52 +43,79 @@ export const useSupabaseRealtime = ({
     )
 
     useEffect(() => {
-        let subscription = supabase
-            .channel(`${table}_changes`)
-            .on(
-                'postgres_changes',
-                {
-                    event: 'INSERT',
-                    schema: 'public',
-                    table: table,
-                    ...(filter && { filter }),
-                },
-                handleInsert
-            )
-            .on(
-                'postgres_changes',
-                {
-                    event: 'UPDATE',
-                    schema: 'public',
-                    table: table,
-                    ...(filter && { filter }),
-                },
-                handleUpdate
-            )
-            .on(
-                'postgres_changes',
-                {
-                    event: 'PUT',
-                    schema: 'public',
-                    table: table,
-                    ...(filter && { filter }),
-                },
-                handleUpdate
-            )
-            .on(
-                'postgres_changes',
-                {
-                    event: 'DELETE',
-                    schema: 'public',
-                    table: table,
-                    ...(filter && { filter }),
-                },
-                handleDelete
-            )
-            .subscribe()
+        // Skip subscription if filter is explicitly null (e.g., userId is not available)
+        if (filter === null && table === 'notifications') {
+            console.log('Skipping real-time subscription - user not authenticated')
+            return
+        }
+
+        let subscription
+        try {
+            subscription = supabase
+                .channel(`${table}_changes`)
+                .on(
+                    'postgres_changes',
+                    {
+                        event: 'INSERT',
+                        schema: 'public',
+                        table: table,
+                        ...(filter && { filter }),
+                    },
+                    handleInsert
+                )
+                .on(
+                    'postgres_changes',
+                    {
+                        event: 'UPDATE',
+                        schema: 'public',
+                        table: table,
+                        ...(filter && { filter }),
+                    },
+                    handleUpdate
+                )
+                .on(
+                    'postgres_changes',
+                    {
+                        event: 'PUT',
+                        schema: 'public',
+                        table: table,
+                        ...(filter && { filter }),
+                    },
+                    handleUpdate
+                )
+                .on(
+                    'postgres_changes',
+                    {
+                        event: 'DELETE',
+                        schema: 'public',
+                        table: table,
+                        ...(filter && { filter }),
+                    },
+                    handleDelete
+                )
+                .subscribe((status) => {
+                    if (status === 'SUBSCRIBED') {
+                        console.log(`Real-time subscription active for ${table}`)
+                    } else if (status === 'CHANNEL_ERROR') {
+                        console.error(`Real-time subscription error for ${table}`)
+                    } else if (status === 'TIMED_OUT') {
+                        console.warn(`Real-time subscription timed out for ${table}`)
+                    } else if (status === 'CLOSED') {
+                        console.log(`Real-time subscription closed for ${table}`)
+                    }
+                })
+        } catch (error) {
+            console.error('Error setting up real-time subscription:', error)
+        }
 
         return () => {
-            supabase.removeChannel(subscription)
+            if (subscription) {
+                try {
+                    supabase.removeChannel(subscription)
+                } catch (error) {
+                    console.error('Error removing real-time channel:', error)
+                }
+            }
         }
     }, [table, handleInsert, handleUpdate, handleDelete, filter, ...dependencies])
 
@@ -759,6 +786,57 @@ export const useAuditLogsRealtime = ({ onAuditLogChange }) => {
         onUpdate: handleUpdate,
         onDelete: handleDelete,
         dependencies: [onAuditLogChange],
+    })
+}
+
+export const useNotificationsRealtime = ({ userId, onNotificationChange }) => {
+    const handleInsert = useCallback(
+        (newNotification) => {
+            // Only process notifications for this user
+            if (newNotification.user_id === userId) {
+                onNotificationChange({
+                    type: 'INSERT',
+                    notification: newNotification,
+                })
+            }
+        },
+        [userId, onNotificationChange]
+    )
+
+    const handleUpdate = useCallback(
+        (updatedNotification, oldNotification) => {
+            // Only process notifications for this user
+            if (updatedNotification.user_id === userId) {
+                onNotificationChange({
+                    type: 'UPDATE',
+                    notification: updatedNotification,
+                    oldNotification: oldNotification,
+                })
+            }
+        },
+        [userId, onNotificationChange]
+    )
+
+    const handleDelete = useCallback(
+        (deletedNotification) => {
+            // Only process notifications for this user
+            if (deletedNotification.user_id === userId) {
+                onNotificationChange({
+                    type: 'DELETE',
+                    notification: deletedNotification,
+                })
+            }
+        },
+        [userId, onNotificationChange]
+    )
+
+    return useSupabaseRealtime({
+        table: 'notifications',
+        onInsert: handleInsert,
+        onUpdate: handleUpdate,
+        onDelete: handleDelete,
+        filter: userId ? `user_id=eq.${userId}` : null,
+        dependencies: [onNotificationChange, userId],
     })
 }
 

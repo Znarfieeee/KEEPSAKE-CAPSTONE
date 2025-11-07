@@ -22,6 +22,7 @@ from routes.pediapro.doctor_appointments import appointment_bp
 from routes.facility_admin.facility_users import fusers_bp
 from routes.user_settings import settings_bp as user_settings_bp
 from routes.qr_routes import qr_bp
+from routes.notification_routes import notification_bp
 
 app = Flask("keepsake")
 
@@ -44,6 +45,7 @@ app.register_blueprint(appointment_bp)
 app.register_blueprint(fusers_bp)
 app.register_blueprint(user_settings_bp)
 app.register_blueprint(qr_bp)
+app.register_blueprint(notification_bp)
 
 # Redis session configuration with enhanced error handling
 def setup_redis_session():
