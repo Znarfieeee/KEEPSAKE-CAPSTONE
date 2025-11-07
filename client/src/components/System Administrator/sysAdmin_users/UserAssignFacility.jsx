@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { assignUserToFacility } from '@/api/admin/users'
 
 // UI Components
@@ -34,6 +34,7 @@ import {
     FormLabel,
     FormMessage,
 } from '@/components/ui/form'
+import { Search, Check } from 'lucide-react'
 
 const formSchema = z.object({
     facility_id: z.string().min(1, 'Please select a facility'),
@@ -70,6 +71,11 @@ const UserAssignFacility = ({ open, onClose, userId, user }) => {
     const [facilities, setFacilities] = useState([])
     const [loading, setLoading] = useState(false)
     const [isFetching, setIsFetching] = useState(true)
+    const [searchQuery, setSearchQuery] = useState('')
+    const [showSuggestions, setShowSuggestions] = useState(false)
+    const [selectedFacility, setSelectedFacility] = useState(null)
+    const searchInputRef = useRef(null)
+    const suggestionsRef = useRef(null)
 
     const form = useForm({
         resolver: zodResolver(formSchema),
@@ -81,6 +87,11 @@ const UserAssignFacility = ({ open, onClose, userId, user }) => {
         },
     })
 
+    // Filter facilities based on search query
+    const filteredFacilities = facilities.filter((facility) =>
+        facility.facility_name?.toLowerCase().includes(searchQuery.toLowerCase())
+    )
+
     useEffect(() => {
         const loadFacilities = async () => {
             setIsFetching(true)
@@ -91,7 +102,6 @@ const UserAssignFacility = ({ open, onClose, userId, user }) => {
                 }
             } catch (error) {
                 console.error('Failed to load facilities:', error)
-                showToast('error', 'Failed to load facilities. Please try again.')
             } finally {
                 setIsFetching(false)
             }
@@ -102,26 +112,68 @@ const UserAssignFacility = ({ open, onClose, userId, user }) => {
                 facility_id: '',
                 facility_role: '',
                 department: 'none',
-                start_date: new Date().toISOString().split('T')[0], // Reset to today's date
-            }) // Reset form when reopening
+                start_date: new Date().toISOString().split('T')[0],
+            })
+            setSearchQuery('')
+            setSelectedFacility(null)
+            setShowSuggestions(false)
             loadFacilities()
         }
     }, [open, form])
 
+    // Handle click outside to close suggestions
+    useEffect(() => {
+        const handleClickOutside = (event) => {
+            if (
+                suggestionsRef.current &&
+                !suggestionsRef.current.contains(event.target) &&
+                searchInputRef.current &&
+                !searchInputRef.current.contains(event.target)
+            ) {
+                setShowSuggestions(false)
+            }
+        }
+
+        document.addEventListener('mousedown', handleClickOutside)
+        return () => document.removeEventListener('mousedown', handleClickOutside)
+    }, [])
+
+    const handleFacilitySelect = (facility) => {
+        setSelectedFacility(facility)
+        setSearchQuery(facility.facility_name)
+        setShowSuggestions(false)
+        form.setValue('facility_id', facility.facility_id)
+    }
+
+    const handleSearchChange = (e) => {
+        const value = e.target.value
+        setSearchQuery(value)
+        setShowSuggestions(true)
+
+        if (!value) {
+            setSelectedFacility(null)
+            form.setValue('facility_id', '')
+        }
+    }
+
     const onSubmit = async (data) => {
         if (isFetching) return
 
+        if (!selectedFacility) {
+            showToast('error', 'Please select a facility from the suggestions')
+            return
+        }
+
         setLoading(true)
         try {
-            const selectedFacility = facilities.find((f) => f.facility_id === data.facility_id)
             const selectedRole = facilityRoles.find((r) => r.value === data.facility_role)
 
-            if (!selectedFacility || !selectedRole) {
-                throw new Error('Invalid facility or role selection')
+            if (!selectedRole) {
+                throw new Error('Invalid role selection')
             }
 
             const response = await assignUserToFacility(userId, {
-                facility_id: data.facility_id,
+                facility_id: selectedFacility.facility_id,
                 facility_role: data.facility_role,
                 department: data.department === 'none' ? null : data.department,
                 start_date: data.start_date,
@@ -135,6 +187,8 @@ const UserAssignFacility = ({ open, onClose, userId, user }) => {
                 showToast('success', message)
                 onClose()
                 form.reset()
+                setSearchQuery('')
+                setSelectedFacility(null)
             } else {
                 throw new Error(
                     response.message ||
@@ -226,48 +280,79 @@ const UserAssignFacility = ({ open, onClose, userId, user }) => {
                             </div>
 
                             <div>
-                                <h3 className="text-sm font-medium mb-2">Select Facility</h3>
+                                <h3 className="text-sm font-medium mb-2">Search Facility</h3>
                                 <FormField
                                     control={form.control}
                                     name="facility_id"
                                     render={({ field }) => (
                                         <FormItem>
-                                            <Select
-                                                onValueChange={field.onChange}
-                                                defaultValue={field.value}
-                                                disabled={loading || isFetching}
-                                            >
-                                                <FormControl>
-                                                    <SelectTrigger className="w-full bg-white">
-                                                        {isFetching ? (
-                                                            <div className="flex items-center gap-2">
-                                                                <div className="size-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-                                                                <span className="text-muted-foreground">
-                                                                    Loading facilities...
-                                                                </span>
-                                                            </div>
-                                                        ) : (
-                                                            <SelectValue placeholder="Select a facility" />
+                                            <FormControl>
+                                                <div className="relative">
+                                                    <div className="relative">
+                                                        {/* <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" /> */}
+                                                        <Input
+                                                            ref={searchInputRef}
+                                                            type="text"
+                                                            placeholder="Type to search facilities..."
+                                                            value={searchQuery}
+                                                            onChange={handleSearchChange}
+                                                            onFocus={() => setShowSuggestions(true)}
+                                                            disabled={loading || isFetching}
+                                                            className=" bg-white"
+                                                        />
+                                                        {selectedFacility && (
+                                                            <Check className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-green-600" />
                                                         )}
-                                                    </SelectTrigger>
-                                                </FormControl>
-                                                <SelectContent>
-                                                    {facilities.length === 0 ? (
-                                                        <div className="relative flex items-center justify-center py-2 px-2 text-sm text-muted-foreground">
-                                                            No facilities available
+                                                    </div>
+
+                                                    {/* Autocomplete Suggestions */}
+                                                    {showSuggestions && searchQuery && (
+                                                        <div
+                                                            ref={suggestionsRef}
+                                                            className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-60 overflow-auto"
+                                                        >
+                                                            {isFetching ? (
+                                                                <div className="px-4 py-3 text-sm text-muted-foreground flex items-center gap-2">
+                                                                    <div className="size-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                                                                    Loading facilities...
+                                                                </div>
+                                                            ) : filteredFacilities.length > 0 ? (
+                                                                filteredFacilities.map(
+                                                                    (facility) => (
+                                                                        <button
+                                                                            key={
+                                                                                facility.facility_id
+                                                                            }
+                                                                            type="button"
+                                                                            onClick={() =>
+                                                                                handleFacilitySelect(
+                                                                                    facility
+                                                                                )
+                                                                            }
+                                                                            className="w-full text-left px-4 py-2 hover:bg-gray-100 transition-colors text-sm flex items-center justify-between"
+                                                                        >
+                                                                            <span>
+                                                                                {
+                                                                                    facility.facility_name
+                                                                                }
+                                                                            </span>
+                                                                            {selectedFacility?.facility_id ===
+                                                                                facility.facility_id && (
+                                                                                <Check className="h-4 w-4 text-green-600" />
+                                                                            )}
+                                                                        </button>
+                                                                    )
+                                                                )
+                                                            ) : (
+                                                                <div className="px-4 py-3 text-sm text-muted-foreground">
+                                                                    No facilities found matching "
+                                                                    {searchQuery}"
+                                                                </div>
+                                                            )}
                                                         </div>
-                                                    ) : (
-                                                        facilities.map((facility) => (
-                                                            <SelectItem
-                                                                key={facility.facility_id}
-                                                                value={facility.facility_id}
-                                                            >
-                                                                {facility.facility_name}
-                                                            </SelectItem>
-                                                        ))
                                                     )}
-                                                </SelectContent>
-                                            </Select>
+                                                </div>
+                                            </FormControl>
                                             <FormMessage />
                                         </FormItem>
                                     )}

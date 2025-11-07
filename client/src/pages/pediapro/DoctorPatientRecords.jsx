@@ -1,6 +1,7 @@
 import React, { useState, useCallback, useEffect, useMemo, lazy, Suspense } from 'react'
 import { useAuth } from '@/context/auth'
 import {
+    getPatients,
     getPatientById,
     updatePatientRecord,
     deactivate_patient,
@@ -19,7 +20,6 @@ import { Dialog, DialogTrigger } from '@/components/ui/dialog'
 // Helper
 import { showToast } from '@/util/alertHelper'
 import { usePatientsRealtime } from '@/hook/useSupabaseRealtime'
-import { supabase } from '@/lib/supabaseClient'
 
 // Import modals - Lazy loaded with preloading
 const StepperAddPatientModal = lazy(() =>
@@ -159,22 +159,23 @@ function DoctorPatientRecords() {
         try {
             setLoading(true)
 
-            const { data: patientData, error: patientError } = await supabase
-                .from('patients')
-                .select('*')
-                .eq('is_active', true)
-                .order('created_at', { ascending: false })
+            // Use backend API which enforces facility isolation via RLS
+            const response = await getPatients()
 
-            if (patientError) {
-                showToast('error', 'Failed to load patients')
-                console.error('Patient fetch error: ', patientError)
-                return
+            if (response.status === 'success') {
+                // Backend returns formatted data from facility_patients junction
+                const formattedPatients = response.data.map(item => {
+                    // Extract patient data from nested structure
+                    const patient = item.patients || item
+                    return formatPatient(patient)
+                })
+                setPatients(formattedPatients)
+            } else {
+                showToast('error', response.message || 'Failed to load patients')
             }
-
-            setPatients(patientData.map(formatPatient))
         } catch (error) {
             showToast('error', 'Failed to load patients')
-            console.error('Error: ', error)
+            console.error('Error fetching patients:', error)
         } finally {
             setLoading(false)
         }

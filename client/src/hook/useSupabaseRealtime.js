@@ -43,52 +43,79 @@ export const useSupabaseRealtime = ({
     )
 
     useEffect(() => {
-        let subscription = supabase
-            .channel(`${table}_changes`)
-            .on(
-                'postgres_changes',
-                {
-                    event: 'INSERT',
-                    schema: 'public',
-                    table: table,
-                    ...(filter && { filter }),
-                },
-                handleInsert
-            )
-            .on(
-                'postgres_changes',
-                {
-                    event: 'UPDATE',
-                    schema: 'public',
-                    table: table,
-                    ...(filter && { filter }),
-                },
-                handleUpdate
-            )
-            .on(
-                'postgres_changes',
-                {
-                    event: 'PUT',
-                    schema: 'public',
-                    table: table,
-                    ...(filter && { filter }),
-                },
-                handleUpdate
-            )
-            .on(
-                'postgres_changes',
-                {
-                    event: 'DELETE',
-                    schema: 'public',
-                    table: table,
-                    ...(filter && { filter }),
-                },
-                handleDelete
-            )
-            .subscribe()
+        // Skip subscription if filter is explicitly null (e.g., userId is not available)
+        if (filter === null && table === 'notifications') {
+            console.log('Skipping real-time subscription - user not authenticated')
+            return
+        }
+
+        let subscription
+        try {
+            subscription = supabase
+                .channel(`${table}_changes`)
+                .on(
+                    'postgres_changes',
+                    {
+                        event: 'INSERT',
+                        schema: 'public',
+                        table: table,
+                        ...(filter && { filter }),
+                    },
+                    handleInsert
+                )
+                .on(
+                    'postgres_changes',
+                    {
+                        event: 'UPDATE',
+                        schema: 'public',
+                        table: table,
+                        ...(filter && { filter }),
+                    },
+                    handleUpdate
+                )
+                .on(
+                    'postgres_changes',
+                    {
+                        event: 'PUT',
+                        schema: 'public',
+                        table: table,
+                        ...(filter && { filter }),
+                    },
+                    handleUpdate
+                )
+                .on(
+                    'postgres_changes',
+                    {
+                        event: 'DELETE',
+                        schema: 'public',
+                        table: table,
+                        ...(filter && { filter }),
+                    },
+                    handleDelete
+                )
+                .subscribe((status) => {
+                    if (status === 'SUBSCRIBED') {
+                        console.log(`Real-time subscription active for ${table}`)
+                    } else if (status === 'CHANNEL_ERROR') {
+                        console.error(`Real-time subscription error for ${table}`)
+                    } else if (status === 'TIMED_OUT') {
+                        console.warn(`Real-time subscription timed out for ${table}`)
+                    } else if (status === 'CLOSED') {
+                        console.log(`Real-time subscription closed for ${table}`)
+                    }
+                })
+        } catch (error) {
+            console.error('Error setting up real-time subscription:', error)
+        }
 
         return () => {
-            supabase.removeChannel(subscription)
+            if (subscription) {
+                try {
+                    supabase.removeChannel(subscription)
+                } catch (error) {
+                    console.error('Error removing real-time channel:', error)
+                }
+            }
         }
     }, [table, handleInsert, handleUpdate, handleDelete, filter, ...dependencies])
 
@@ -654,6 +681,162 @@ export const useAppointmentsRealtime = ({ onAppointmentChange, doctorId, facilit
         onDelete: handleDelete,
         filter: filter,
         dependencies: [onAppointmentChange, doctorId, facilityId],
+    })
+}
+
+export const useAuditLogsRealtime = ({ onAuditLogChange }) => {
+    const formatAuditLog = useCallback(
+        (raw) => ({
+            log_id: raw.log_id,
+            user_id: raw.user_id,
+            action_type: raw.action_type,
+            table_name: raw.table_name,
+            record_id: raw.record_id,
+            patient_id: raw.patient_id,
+            action_timestamp: raw.action_timestamp,
+            ip_address: raw.ip_address,
+            old_values: raw.old_values,
+            new_values: raw.new_values,
+            session_id: raw.session_id,
+            users: raw.users || null,
+        }),
+        []
+    )
+
+    const handleInsert = useCallback(
+        async (newLog) => {
+            // Fetch user info for the audit log
+            let userInfo = null
+            try {
+                const { data, error } = await supabase
+                    .from('users')
+                    .select('user_id, email, firstname, lastname, role')
+                    .eq('user_id', newLog.user_id)
+                    .single()
+
+                if (!error && data) {
+                    userInfo = data
+                }
+            } catch (error) {
+                console.error('Error fetching user info for audit log:', error)
+            }
+
+            const formatted = {
+                ...formatAuditLog(newLog),
+                users: userInfo,
+            }
+
+            onAuditLogChange({
+                type: 'INSERT',
+                auditLog: formatted,
+                raw: newLog,
+            })
+        },
+        [formatAuditLog, onAuditLogChange]
+    )
+
+    const handleUpdate = useCallback(
+        async (updatedLog, oldLog) => {
+            // Fetch user info for the audit log
+            let userInfo = null
+            try {
+                const { data, error } = await supabase
+                    .from('users')
+                    .select('user_id, email, firstname, lastname, role')
+                    .eq('user_id', updatedLog.user_id)
+                    .single()
+
+                if (!error && data) {
+                    userInfo = data
+                }
+            } catch (error) {
+                console.error('Error fetching user info for audit log:', error)
+            }
+
+            const formatted = {
+                ...formatAuditLog(updatedLog),
+                users: userInfo,
+            }
+
+            onAuditLogChange({
+                type: 'UPDATE',
+                auditLog: formatted,
+                raw: updatedLog,
+                oldRaw: oldLog,
+            })
+        },
+        [formatAuditLog, onAuditLogChange]
+    )
+
+    const handleDelete = useCallback(
+        (deletedLog) => {
+            const formatted = formatAuditLog(deletedLog)
+            onAuditLogChange({
+                type: 'DELETE',
+                auditLog: formatted,
+                raw: deletedLog,
+            })
+        },
+        [formatAuditLog, onAuditLogChange]
+    )
+
+    return useSupabaseRealtime({
+        table: 'audit_logs',
+        onInsert: handleInsert,
+        onUpdate: handleUpdate,
+        onDelete: handleDelete,
+        dependencies: [onAuditLogChange],
+    })
+}
+
+export const useNotificationsRealtime = ({ userId, onNotificationChange }) => {
+    const handleInsert = useCallback(
+        (newNotification) => {
+            // Only process notifications for this user
+            if (newNotification.user_id === userId) {
+                onNotificationChange({
+                    type: 'INSERT',
+                    notification: newNotification,
+                })
+            }
+        },
+        [userId, onNotificationChange]
+    )
+
+    const handleUpdate = useCallback(
+        (updatedNotification, oldNotification) => {
+            // Only process notifications for this user
+            if (updatedNotification.user_id === userId) {
+                onNotificationChange({
+                    type: 'UPDATE',
+                    notification: updatedNotification,
+                    oldNotification: oldNotification,
+                })
+            }
+        },
+        [userId, onNotificationChange]
+    )
+
+    const handleDelete = useCallback(
+        (deletedNotification) => {
+            // Only process notifications for this user
+            if (deletedNotification.user_id === userId) {
+                onNotificationChange({
+                    type: 'DELETE',
+                    notification: deletedNotification,
+                })
+            }
+        },
+        [userId, onNotificationChange]
+    )
+
+    return useSupabaseRealtime({
+        table: 'notifications',
+        onInsert: handleInsert,
+        onUpdate: handleUpdate,
+        onDelete: handleDelete,
+        filter: userId ? `user_id=eq.${userId}` : null,
+        dependencies: [onNotificationChange, userId],
     })
 }
 

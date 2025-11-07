@@ -11,10 +11,12 @@ import AuthSuccess from '@/pages/AuthSuccess'
 import AuthError from '@/pages/AuthError'
 import QrScanner from '@/pages/QrScanner'
 import ForgotPassword from '@/pages/ForgotPassword'
+import Settings from '@/pages/Settings'
 
 // Admin
 import AdminDashboard from '@/pages/systemAdmin/AdminDashboard'
 import FacilitiesRegistry from '@/pages/systemAdmin/FacilitiesRegistry'
+import FacilityUsersRegistry from '@/pages/systemAdmin/FacilityUsersRegistry'
 import UsersRegistry from '@/pages/systemAdmin/UsersRegistry'
 import SubscriptionPage from '@/pages/systemAdmin/SubscriptionPage'
 import TokenInvitations from '@/pages/systemAdmin/TokenInvitations'
@@ -92,6 +94,10 @@ function App() {
                             element: <FacilitiesRegistry />,
                         },
                         {
+                            path: 'facility-users',
+                            element: <FacilityUsersRegistry />,
+                        },
+                        {
                             path: 'users',
                             element: <UsersRegistry />,
                         },
@@ -118,6 +124,10 @@ function App() {
                         {
                             path: 'maintenance_mode',
                             element: <MaintenancePage />,
+                        },
+                        {
+                            path: 'settings',
+                            element: <Settings />,
                         },
                     ],
                 },
@@ -189,6 +199,10 @@ function App() {
                             path: 'maintenance_mode',
                             element: <div>Maintenance Mode Page</div>,
                         },
+                        {
+                            path: 'settings',
+                            element: <Settings />,
+                        },
                     ],
                 },
                 {
@@ -221,7 +235,7 @@ function App() {
                         },
                         {
                             path: 'settings',
-                            element: <DoctorSettings />,
+                            element: <Settings />,
                         },
                         {
                             path: 'help_support',

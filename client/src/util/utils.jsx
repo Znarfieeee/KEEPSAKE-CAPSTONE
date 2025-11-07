@@ -163,3 +163,37 @@ export const formatUserStatus = (status) => {
 
     return statusMap[status?.toLowerCase()] || status || 'Unknown'
 }
+
+/**
+ * Get role badge color based on user role
+ * @param {string} role - User role
+ * @returns {string} - CSS classes for role badge
+ */
+export const getRoleBadgeColor = (role) => {
+    const roleColors = {
+        admin: 'bg-violet-100 text-violet-800 border-violet-200',
+        doctor: 'bg-cyan-100 text-cyan-800 border-cyan-200',
+        nurse: 'bg-emerald-100 text-emerald-800 border-emerald-200',
+        staff: 'bg-amber-100 text-amber-800 border-amber-200',
+        'facility admin': 'bg-fuchsia-100 text-fuchsia-800 border-fuchsia-200',
+        'vital custodian': 'bg-lime-100 text-lime-800 border-lime-200',
+        parent: 'bg-slate-100 text-slate-800 border-slate-200',
+        guardian: 'bg-pink-100 text-pink-800 border-pink-200',
+    }
+
+    return roleColors[role?.toLowerCase()] || 'bg-gray-100 text-gray-800 border-gray-200'
+}
+
+/**
+ * Get sex badge color based on gender
+ * @param {string} sex - Person's sex (male/female)
+ * @returns {string} - CSS classes for sex badge
+ */
+export const getSexBadgeColor = (sex) => {
+    const sexColors = {
+        male: 'bg-blue-100 text-blue-800',
+        female: 'bg-pink-100 text-pink-800',
+    }
+
+    return sexColors[sex?.toLowerCase()] || 'bg-gray-100 text-gray-800'
+}

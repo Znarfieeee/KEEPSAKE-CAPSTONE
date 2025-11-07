@@ -1,12 +1,12 @@
-import React from "react"
-import { useAuth } from "../context/auth"
-import { useNavigate } from "react-router-dom"
+import React from 'react'
+import { useAuth } from '../context/auth'
+import { useNavigate } from 'react-router-dom'
 
 // UI Components
-import { AiOutlineUser } from "react-icons/ai"
-import { BiLogOut } from "react-icons/bi"
-import { BiCog } from "react-icons/bi"
-import { Avatar, Menu, Portal } from "@chakra-ui/react"
+import { AiOutlineUser } from 'react-icons/ai'
+import { BiLogOut } from 'react-icons/bi'
+import { BiCog } from 'react-icons/bi'
+import { Avatar, Menu, Portal } from '@chakra-ui/react'
 
 const AccountPlaceholder = () => {
     const { signOut, user } = useAuth()
@@ -16,18 +16,19 @@ const AccountPlaceholder = () => {
         try {
             await signOut()
         } catch (e) {
-            console.error("Logout failed", e)
+            console.error('Logout failed', e)
         } finally {
             // After sign-out, redirect to login page
-            navigate("/login")
+            navigate('/login')
         }
     }
     return (
         <div>
-            <Menu.Root positioning={{ placement: "bottom-end" }}>
+            <Menu.Root positioning={{ placement: 'bottom-end' }}>
                 <Menu.Trigger
                     rounded="full"
-                    className="cursor-pointer hover:bg-gray-200 transition-all duration-300 delay-30">
+                    className="cursor-pointer hover:bg-gray-200 transition-all duration-300 delay-30"
+                >
                     <Avatar.Root size="sm">
                         <AiOutlineUser className="text-2xl" />
                     </Avatar.Root>
@@ -36,22 +37,18 @@ const AccountPlaceholder = () => {
                     <Menu.Positioner className="w-50">
                         <Menu.Content className="flex flex-col gap-2">
                             <span className="px-3 flex flex-col gap-0.5">
-                                <h1>
-                                    {`${user?.firstname || ""} ${
-                                        user?.lastname || ""
-                                    }`}
-                                </h1>
+                                <h1>{`${user?.firstname || ''} ${user?.lastname || ''}`}</h1>
                                 {user?.specialty && (
                                     <p className="text-sm text-gray-500 capitalize">
-                                        {user?.role === "admin"
-                                            ? "System Administrator"
+                                        {user?.role === 'admin'
+                                            ? 'System Administrator'
                                             : user?.specialty}
                                     </p>
                                 )}
                                 {user?.role && (
                                     <p className="text-sm text-gray-500 capitalize">
-                                        {user?.role === "facility_admin"
-                                            ? "Facility Admin"
+                                        {user?.role === 'facility_admin'
+                                            ? 'Facility Admin'
                                             : user?.role}
                                     </p>
                                 )}
@@ -60,14 +57,30 @@ const AccountPlaceholder = () => {
                             <Menu.Item
                                 value="settings"
                                 className="bg-white cursor-pointer"
-                                onClick={() => navigate("/admin/settings")}>
+                                onClick={() => {
+                                    switch (user?.role) {
+                                        case 'admin':
+                                            navigate('/admin/settings')
+                                            break
+                                        case 'facility_admin':
+                                            navigate('/facility-admin/settings')
+                                            break
+                                        case 'doctor':
+                                            navigate('/pediapro/settings')
+                                            break
+                                        default:
+                                            navigate('/settings')
+                                    }
+                                }}
+                            >
                                 <BiCog className="text-xl" />
                                 Settings
                             </Menu.Item>
                             <Menu.Item
                                 value="logout"
                                 className="bg-white cursor-pointer"
-                                onClick={handleLogout}>
+                                onClick={handleLogout}
+                            >
                                 <BiLogOut className="text-xl" />
                                 Logout
                             </Menu.Item>
