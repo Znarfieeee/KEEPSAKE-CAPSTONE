@@ -3,7 +3,8 @@ import React, { useState } from 'react'
 // UI Components
 import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/badge'
-import { Eye, Trash2, ChevronLeft, ChevronRight, UserPen, TableOfContents } from 'lucide-react'
+import { PiUsersThree } from 'react-icons/pi'
+import { Eye, Trash2, ChevronLeft, ChevronRight, UserPen } from 'lucide-react'
 import ConfirmationDialog from '@/components/ui/ConfirmationDialog'
 
 // Helper
@@ -128,13 +129,14 @@ const FacilityTable = ({
                                                   <Eye className="size-4" />
                                               </Button>
                                           </TooltipHelper>
-                                          <TooltipHelper content="Go-to Facility">
+                                          <TooltipHelper content="View Facility Users">
                                               <Button
                                                   variant="ghost"
                                                   size="icon"
-                                                  onClick={() => onGoto()}
+                                                  className="hover:text-purple-600 hover:bg-purple-100"
+                                                  onClick={() => onGoto(facility)}
                                               >
-                                                  <TableOfContents className="size-4" />
+                                                  <PiUsersThree className="size-4" />
                                               </Button>
                                           </TooltipHelper>
                                           <TooltipHelper content="Edit Facility">

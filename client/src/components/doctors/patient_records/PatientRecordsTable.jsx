@@ -15,6 +15,7 @@ import {
 // Helper
 import { TooltipHelper } from '@/util/TooltipHelper'
 import { NoResults } from '@/components/ui/no-results'
+import { getSexBadgeColor } from '@/util/utils'
 
 const PatientRecordsTable = ({
     records = [],
@@ -63,8 +64,8 @@ const PatientRecordsTable = ({
                 <thead className="border-b border-gray-300 text-xs uppercase text-muted-foreground">
                     <tr className="text-left">
                         <th className="py-3 px-2">Name</th>
-                        <th className="py-3 px-2">Sex</th>
-                        <th className="py-3 px-2">Age</th>
+                        <th className="py-3 px-2 text-center">Sex</th>
+                        <th className="py-3 px-2 text-center">Age</th>
                         <th className="py-3 px-2">
                             Birthdate{' '}
                             <span className="text-xs font-medium text-gray-400">(YYYY-MM-DD)</span>
@@ -95,11 +96,19 @@ const PatientRecordsTable = ({
                                 className="border-b border-gray-200 last:border-none"
                             >
                                 <td className="p-2 whitespace-nowrap">{`${patient.firstname} ${patient.lastname}`}</td>
-                                <td className="p-2 whitespace-nowrap">
-                                    {patient.sex.charAt(0).toUpperCase() +
-                                        patient.sex.slice(1).toLowerCase()}
+                                <td className="p-2 whitespace-nowrap text-center">
+                                    <span
+                                        className={`inline-flex items-center rounded-md px-2 py-1 text-xs font-medium ${getSexBadgeColor(
+                                            patient.sex
+                                        )}`}
+                                    >
+                                        {patient.sex.charAt(0).toUpperCase() +
+                                            patient.sex.slice(1).toLowerCase()}
+                                    </span>
                                 </td>
-                                <td className="p-2 whitespace-nowrap capitalize">{patient.age}</td>
+                                <td className="p-2 whitespace-nowrap capitalize  text-center">
+                                    {patient.age}
+                                </td>
                                 <td className="p-2 whitespace-nowrap">{patient.birthdate}</td>
                                 <td className="p-2 whitespace-nowrap">
                                     <div className="flex gap-1">

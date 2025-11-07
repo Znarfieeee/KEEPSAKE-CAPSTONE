@@ -157,12 +157,27 @@ def upsert_related_record(table_name, payload, patient_id):
 @require_auth
 @require_role('doctor', 'facility_admin', 'nurse')
 def get_patient_records():
+    """
+    Fetch patients with facility-based isolation.
+    Only returns patients that are registered at the user's facility via facility_patients table.
+    """
     try:
+        current_user = request.current_user
+        user_facility_id = current_user.get('facility_id')
+
+        if not user_facility_id:
+            current_app.logger.error(f"AUDIT: User {current_user.get('email')} has no facility_id assigned")
+            return jsonify({
+                "status": "error",
+                "message": "User is not assigned to any facility"
+            }), 403
+
         bust_cache = request.args.get('bust_cache', 'false').lower() == 'true'
-        
+        facility_cache_key = f"{PATIENT_CACHE_PREFIX}facility:{user_facility_id}"
+
         if not bust_cache:
-            cached = redis_client.get(PATIENT_CACHE_KEY)
-            
+            cached = redis_client.get(facility_cache_key)
+
             if cached:
                 cached_data = json.loads(cached)
                 return jsonify({
@@ -171,29 +186,77 @@ def get_patient_records():
                     "cached": True,
                     "timestamp": datetime.datetime.utcnow().isoformat()
                 }), 200
-                
-        resp = supabase.table('patients').select('*').execute()
-        
+
+        # Fetch only patients registered at the user's facility through facility_patients junction table
+        resp = supabase.table('facility_patients')\
+            .select('''
+                facility_patient_id,
+                registered_at,
+                registration_method,
+                is_active,
+                patients (
+                    patient_id,
+                    firstname,
+                    lastname,
+                    middlename,
+                    date_of_birth,
+                    sex,
+                    birth_weight,
+                    birth_height,
+                    bloodtype,
+                    gestation_weeks,
+                    created_by,
+                    is_active,
+                    created_at,
+                    updated_at
+                )
+            ''')\
+            .eq('facility_id', user_facility_id)\
+            .eq('is_active', True)\
+            .order('registered_at', desc=True)\
+            .execute()
+
         if getattr(resp, 'error', None):
+            current_app.logger.error(f"AUDIT: Failed to fetch patients for facility {user_facility_id}: {resp.error.message}")
             return jsonify({
                 "status": "error",
                 "message": "Failed to fetch patients",
                 "details": resp.error.message if resp.error else "Unknown"
             }), 400
-            
-        redis_client.setex(PATIENT_CACHE_KEY, 300, json.dumps(resp.data))
-        
+
+        # Extract patient data from the nested response and flatten it
+        patients_data = []
+        for record in resp.data or []:
+            if record.get('patients'):
+                patient = record['patients']
+                # Add facility-specific metadata
+                patient['facility_registration'] = {
+                    'facility_patient_id': record.get('facility_patient_id'),
+                    'registered_at': record.get('registered_at'),
+                    'registration_method': record.get('registration_method')
+                }
+                patients_data.append(patient)
+
+        current_app.logger.info(f"AUDIT: User {current_user.get('email')} fetched {len(patients_data)} patients from facility {user_facility_id}")
+
+        # Cache the facility-specific results
+        redis_client.setex(facility_cache_key, 300, json.dumps(patients_data))
+
         return jsonify({
             "status": "success",
-            "data": resp.data,
+            "data": patients_data,
             "cached": False,
+            "facility_id": user_facility_id,
             "timestamp": datetime.datetime.utcnow().isoformat()
         }), 200
-                
+
     except Exception as e:
+        current_app.logger.error(f"AUDIT: Error fetching patients: {str(e)}")
+        import traceback
+        current_app.logger.error(f"Traceback: {traceback.format_exc()}")
         return jsonify({
             "status": "error",
-            "message": f"Error fetching facilities: {str(e)}",
+            "message": f"Error fetching patients: {str(e)}",
         }), 500
 
 @patrecord_bp.route('/patient_records', methods=['POST'])
@@ -287,6 +350,32 @@ def add_patient_record():
                     "status": "error",
                     "message": "Failed to retrieve patient ID from created record"
                 }), 500
+
+            # Register patient to the user's facility
+            user_facility_id = current_user.get('facility_id')
+            if user_facility_id:
+                try:
+                    facility_patient_payload = {
+                        'facility_id': user_facility_id,
+                        'patient_id': patient_id,
+                        'registered_by': created_by,
+                        'registration_method': 'manual',
+                        'is_active': True
+                    }
+
+                    facility_patient_resp = supabase.table('facility_patients').insert(facility_patient_payload).execute()
+
+                    if getattr(facility_patient_resp, 'error', None):
+                        current_app.logger.error(f"AUDIT: Failed to register patient {patient_id} to facility {user_facility_id}: {facility_patient_resp.error.message}")
+                        # Don't fail the entire operation, but log the error
+                    else:
+                        current_app.logger.info(f"AUDIT: Successfully registered patient {patient_id} to facility {user_facility_id}")
+
+                except Exception as facility_error:
+                    current_app.logger.error(f"AUDIT: Exception registering patient to facility: {str(facility_error)}")
+                    # Don't fail the entire operation
+            else:
+                current_app.logger.warning(f"AUDIT: User {current_user.get('email')} has no facility_id, patient {patient_id} not registered to any facility")
 
             invalidate_caches('patient')
 
@@ -1517,6 +1606,118 @@ def get_patient_record_by_id(patient_id):
         return jsonify({
             "status": "error",
             "message": f"Error fetching patient: {str(e)}"
+        }), 500
+
+@patrecord_bp.route('/patient_record/<patient_id>/register_to_facility', methods=['POST'])
+@require_auth
+@require_role('doctor', 'facility_admin')
+def register_patient_to_facility(patient_id):
+    """
+    Register an existing patient to the user's facility.
+    This will be used for QR code scanning in the future.
+    For now, it allows manual registration of patients to facilities.
+    """
+    try:
+        current_user = request.current_user
+        user_facility_id = current_user.get('facility_id')
+
+        if not user_facility_id:
+            return jsonify({
+                "status": "error",
+                "message": "User is not assigned to any facility"
+            }), 403
+
+        # Verify patient exists
+        patient_check = supabase.table('patients').select('*').eq('patient_id', patient_id).single().execute()
+        if not patient_check.data:
+            return jsonify({
+                "status": "error",
+                "message": "Patient not found"
+            }), 404
+
+        # Check if patient is already registered to this facility
+        existing_check = supabase.table('facility_patients')\
+            .select('*')\
+            .eq('facility_id', user_facility_id)\
+            .eq('patient_id', patient_id)\
+            .execute()
+
+        if existing_check.data and len(existing_check.data) > 0:
+            existing_record = existing_check.data[0]
+            if existing_record.get('is_active'):
+                return jsonify({
+                    "status": "error",
+                    "message": "Patient is already registered to this facility"
+                }), 409
+            else:
+                # Reactivate the existing record
+                update_resp = supabase.table('facility_patients')\
+                    .update({
+                        'is_active': True,
+                        'deactivated_at': None,
+                        'deactivated_by': None,
+                        'deactivation_reason': None
+                    })\
+                    .eq('facility_patient_id', existing_record['facility_patient_id'])\
+                    .execute()
+
+                if getattr(update_resp, 'error', None):
+                    return jsonify({
+                        "status": "error",
+                        "message": "Failed to reactivate patient registration",
+                        "details": update_resp.error.message
+                    }), 500
+
+                current_app.logger.info(f"AUDIT: Reactivated patient {patient_id} registration to facility {user_facility_id} by {current_user.get('email')}")
+
+                return jsonify({
+                    "status": "success",
+                    "message": "Patient registration reactivated successfully",
+                    "data": update_resp.data[0]
+                }), 200
+
+        # Register new patient to facility
+        data = request.json or {}
+        registration_method = data.get('registration_method', 'manual')
+
+        facility_patient_payload = {
+            'facility_id': user_facility_id,
+            'patient_id': patient_id,
+            'registered_by': current_user.get('id'),
+            'registration_method': registration_method,
+            'is_active': True
+        }
+
+        # Add QR code data if provided
+        if data.get('qr_code_scanned'):
+            facility_patient_payload['qr_code_scanned_at'] = datetime.datetime.utcnow().isoformat()
+            facility_patient_payload['qr_code_scanned_by'] = current_user.get('id')
+
+        resp = supabase.table('facility_patients').insert(facility_patient_payload).execute()
+
+        if getattr(resp, 'error', None):
+            current_app.logger.error(f"AUDIT: Failed to register patient {patient_id} to facility {user_facility_id}: {resp.error.message}")
+            return jsonify({
+                "status": "error",
+                "message": "Failed to register patient to facility",
+                "details": resp.error.message
+            }), 500
+
+        invalidate_caches('patient')
+
+        current_app.logger.info(f"AUDIT: Successfully registered patient {patient_id} to facility {user_facility_id} by {current_user.get('email')}")
+
+        return jsonify({
+            "status": "success",
+            "message": "Patient registered to facility successfully",
+            "data": resp.data[0]
+        }), 201
+
+    except Exception as e:
+        current_app.logger.error(f"AUDIT: Error registering patient to facility: {str(e)}")
+        return jsonify({
+            "status": "error",
+            "message": f"Error registering patient to facility: {str(e)}"
         }), 500
 
 @patrecord_bp.route('/patient_record/<patient_id>', methods=['DELETE'])

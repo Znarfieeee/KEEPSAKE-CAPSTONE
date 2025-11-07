@@ -83,6 +83,25 @@ function Breadcrumbs() {
         filteredSegments.push(seg)
     }
 
+    // Helper function to check if a string is a UUID
+    const isUUID = (str) => {
+        const uuidPattern = /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i
+        return uuidPattern.test(str)
+    }
+
+    // Helper function to get display label for a segment
+    const getSegmentLabel = (seg) => {
+        // Check if segment is a UUID and we have patient data in location state
+        if (isUUID(seg) && location.state?.patient) {
+            const patient = location.state.patient
+            const fullName = `${patient.firstname} ${patient.middlename || ''} ${patient.lastname}`.replace(/\s+/g, ' ').trim()
+            return fullName
+        }
+
+        // Otherwise use predefined labels or the segment itself
+        return SEGMENT_LABELS[seg] || seg
+    }
+
     // Rebuild the path accounting for skipped dashboard segments
     let pathAcc = ''
     let originalIndex = 0
@@ -106,7 +125,7 @@ function Breadcrumbs() {
                     }
 
                     const isLast = idx === filteredSegments.length - 1
-                    const label = SEGMENT_LABELS[seg] || seg
+                    const label = getSegmentLabel(seg)
 
                     return (
                         <React.Fragment key={idx}>

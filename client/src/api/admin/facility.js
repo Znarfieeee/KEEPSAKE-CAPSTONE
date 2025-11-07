@@ -46,10 +46,28 @@ export const deactivateFacility = async (facilityId) => {
   return response.data
 }
 
+export const getAllFacilityUsers = async ({ bust_cache = false } = {}) => {
+  const response = await axios.get(
+    `${backendConnection()}/admin/facility-users${bust_cache ? '?bust_cache=true' : ''}`,
+    axiosConfig
+  )
+  return response.data
+}
+
+export const getFacilityUsers = async (facilityId) => {
+  const response = await axios.get(
+    `${backendConnection()}/admin/facilities/${facilityId}/users`,
+    axiosConfig
+  )
+  return response.data
+}
+
 export default {
   getFacilities,
   getFacilityById,
   createFacility,
   updateFacility,
   deactivateFacility,
+  getAllFacilityUsers,
+  getFacilityUsers,
 }

@@ -38,6 +38,7 @@
         "clsx": "^2.1.1",
         "date-fns": "^4.1.0",
         "framer-motion": "^12.23.12",
+        "input-otp": "^1.4.2",
         "html5-qrcode": "^2.3.8",
         "lodash": "^4.17.21",
         "lucide-react": "^0.525.0",

@@ -319,6 +319,13 @@ export const AuthProvider = ({ children }) => {
         return () => window.removeEventListener('online', handleOnline)
     }, [isAuthenticated, runRefreshSession])
 
+    const updateUser = useCallback((updatedUserData) => {
+        setUser((prevUser) => ({
+            ...prevUser,
+            ...updatedUserData,
+        }))
+    }, [])
+
     const contextValue = {
         // Core auth state
         user,
@@ -332,6 +339,7 @@ export const AuthProvider = ({ children }) => {
         signOut,
         checkExistingSession,
         refreshSession: runRefreshSession,
+        updateUser,
 
         // Legacy/debug
         btnClicked,

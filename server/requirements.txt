@@ -17,3 +17,6 @@ requests
 # Additional security and logging
 werkzeug>=2.0.0
 gunicorn  # For production deployment
+
+# Notification scheduler
+schedule>=1.2.0  # For periodic notification checks

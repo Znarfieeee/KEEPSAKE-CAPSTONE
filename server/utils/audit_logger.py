@@ -53,6 +53,54 @@ def configure_audit_logger(logfile: str = DEFAULT_LOGFILE_PATH,
 
     return logger
 
+def create_audit_log(log_data: dict):
+    """Create a comprehensive audit log entry with structured data
+
+    Args:
+        log_data (dict): Dictionary containing audit information with fields:
+            - user_id: ID of the user performing the action
+            - action_type: Type of action (CREATE, VIEW, UPDATE, DELETE, ERROR, DENIED)
+            - table_name: Name of the table being accessed
+            - patient_id: Optional - ID of the patient whose data is being accessed
+            - qr_id: Optional - ID of the QR code being used
+            - error_details: Optional - Details of any error that occurred
+            - ip_address: Optional - IP address of the requestor
+            - new_values: Optional - New values being set
+            - reason: Optional - Reason for denial or error
+    """
+    try:
+        # Structure the log message
+        message_parts = [
+            f"USER[{log_data.get('user_id', 'unknown')}]",
+            f"ACTION[{log_data.get('action_type', 'UNKNOWN')}]",
+            f"TABLE[{log_data.get('table_name', 'unknown')}]"
+        ]
+
+        # Add optional fields if present
+        if 'patient_id' in log_data:
+            message_parts.append(f"PATIENT[{log_data['patient_id']}]")
+        if 'qr_id' in log_data:
+            message_parts.append(f"QR[{log_data['qr_id']}]")
+        if 'ip_address' in log_data:
+            message_parts.append(f"IP[{log_data['ip_address']}]")
+        if 'reason' in log_data:
+            message_parts.append(f"REASON[{log_data['reason']}]")
+        if 'error_details' in log_data:
+            message_parts.append(f"ERROR[{log_data['error_details']}]")
+        if 'new_values' in log_data:
+            message_parts.append(f"VALUES{json.dumps(log_data['new_values'], sort_keys=True)}")
+
+        # Combine all parts into one message
+        log_message = ' '.join(message_parts)
+
+        # Log using the configured logger
+        current_app.logger.info(f"AUDIT: {log_message}")
+
+    except Exception as e:
+        # Fallback logging in case of error
+        current_app.logger.error(f"AUDIT LOGGING ERROR: Failed to create audit log - {str(e)}")
+        current_app.logger.error(f"Original log data: {json.dumps(log_data)}")
+
 def audit_access(action):
     """Decorator for HIPAA audit logging"""
     def decorator(f):
@@ -61,13 +109,24 @@ def audit_access(action):
             user_id = getattr(request, 'current_user', {}).get('id', 'anonymous')
             patient_id = request.json.get('patient_id') if request.json else request.args.get('patient_id')
             
-            # Log access attempt
-            current_app.logger.info(f"AUDIT: User {user_id} attempted {action} on patient {patient_id} from IP {request.remote_addr}")
+            # Log access attempt using create_audit_log
+            create_audit_log({
+                'user_id': user_id,
+                'action_type': f'ATTEMPT_{action}',
+                'patient_id': patient_id,
+                'ip_address': request.remote_addr
+            })
             
             result = f(*args, **kwargs)
             
-            # Log successful access
-            current_app.logger.info(f"AUDIT: User {user_id} successfully performed {action} on patient {patient_id}")
+            # Log successful access using create_audit_log
+            create_audit_log({
+                'user_id': user_id,
+                'action_type': action,
+                'patient_id': patient_id,
+                'ip_address': request.remote_addr,
+                'new_values': {'status': 'success'}
+            })
             
             return result
         return decorated
