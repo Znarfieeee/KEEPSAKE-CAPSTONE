@@ -1,4 +1,5 @@
 import React, { memo, useState, useEffect, useRef } from "react"
+import { useNavigate } from "react-router-dom"
 import { FcGoogle } from "react-icons/fc"
 import { useAuth } from "../../context/auth"
 import backendConnection from "../../api/backendApi"
@@ -6,7 +7,8 @@ import backendConnection from "../../api/backendApi"
 const GoogleButton = memo(({ className = "", disabled = false }) => {
     const [isLoading, setIsLoading] = useState(false)
     const [error, setError] = useState(null)
-    const { isAuthenticated, checkExistingSession } = useAuth()
+    const { isAuthenticated, checkExistingSession, user } = useAuth()
+    const navigate = useNavigate()
     const popupRef = useRef(null)
     const pollTimerRef = useRef(null)
 
@@ -25,6 +27,29 @@ const GoogleButton = memo(({ className = "", disabled = false }) => {
         if (pollTimerRef.current) {
             clearInterval(pollTimerRef.current)
             pollTimerRef.current = null
+        }
+    }
+
+    // Helper function to navigate based on user role
+    const navigateBasedOnRole = (userRole) => {
+        switch (userRole) {
+            case 'admin':
+                navigate('/admin')
+                break
+            case 'doctor':
+                navigate('/pediapro')
+                break
+            case 'parent':
+                navigate('/parent')
+                break
+            case 'vital_custodian':
+                navigate('/vital_custodian')
+                break
+            case 'facility_admin':
+                navigate('/facility_admin')
+                break
+            default:
+                navigate('/')
         }
     }
 
@@ -50,24 +75,33 @@ const GoogleButton = memo(({ className = "", disabled = false }) => {
                         if (hasSession) {
                             console.log("Session validated after Google auth")
                             setError(null)
+                            setIsLoading(false)
+
+                            // Navigate based on user role after short delay to ensure state is updated
+                            setTimeout(() => {
+                                if (user && user.role) {
+                                    navigateBasedOnRole(user.role)
+                                }
+                            }, 100)
                         } else {
                             setError(
                                 "Session validation failed after authentication"
                             )
                             clearErrorAfterTimeout()
+                            setIsLoading(false)
                         }
                     } catch (err) {
                         console.error("Session check failed:", err)
                         setError("Failed to validate session")
                         clearErrorAfterTimeout()
+                        setIsLoading(false)
                     }
                 } else {
                     console.error("Google auth error from popup:", authError)
                     setError(authError || "Authentication failed")
                     clearErrorAfterTimeout()
+                    setIsLoading(false)
                 }
-
-                setIsLoading(false)
             }
         }
 
@@ -76,7 +110,7 @@ const GoogleButton = memo(({ className = "", disabled = false }) => {
             window.removeEventListener("message", handleMessage)
             cleanup()
         }
-    }, [checkExistingSession])
+    }, [checkExistingSession, user, navigate])
 
     const startPolling = () => {
         pollTimerRef.current = setInterval(() => {

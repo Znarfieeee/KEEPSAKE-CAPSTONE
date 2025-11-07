@@ -28,24 +28,33 @@ oauth = OAuth()
 def init_google_oauth(app):
     """Initialize Google OAuth with the application"""
     oauth.init_app(app)
+
+    # Check if Google OAuth credentials are configured
     if not os.environ.get('GOOGLE_CLIENT_ID') or not os.environ.get('GOOGLE_CLIENT_SECRET'):
-        raise ValueError("Google OAuth credentials are not properly configured in environment variables")
-        
-    return oauth.register(
-        name='google',
-        client_id=os.environ.get('GOOGLE_CLIENT_ID'),
-        client_secret=os.environ.get('GOOGLE_CLIENT_SECRET'),
-        server_metadata_url='https://accounts.google.com/.well-known/openid-configuration',
-        authorize_url='https://accounts.google.com/o/oauth2/auth',
-        authorize_params=None,
-        token_url='https://accounts.google.com/o/oauth2/token',
-        access_token_url='https://accounts.google.com/o/oauth2/token',
-        refresh_token_url=None,
-        client_kwargs={
-            'scope': 'openid email profile',
-            'token_endpoint_auth_method': 'client_secret_basic'
-        }
-    )
+        app.logger.warning("Google OAuth credentials not configured - Google sign-in will be disabled")
+        return None
+
+    try:
+        google_client = oauth.register(
+            name='google',
+            client_id=os.environ.get('GOOGLE_CLIENT_ID'),
+            client_secret=os.environ.get('GOOGLE_CLIENT_SECRET'),
+            server_metadata_url='https://accounts.google.com/.well-known/openid-configuration',
+            authorize_url='https://accounts.google.com/o/oauth2/auth',
+            authorize_params=None,
+            token_url='https://accounts.google.com/o/oauth2/token',
+            access_token_url='https://accounts.google.com/o/oauth2/token',
+            refresh_token_url=None,
+            client_kwargs={
+                'scope': 'openid email profile',
+                'token_endpoint_auth_method': 'client_secret_post'
+            }
+        )
+        app.logger.info("Google OAuth initialized successfully")
+        return google_client
+    except Exception as e:
+        app.logger.error(f"Failed to initialize Google OAuth: {e}")
+        raise
 
 def render_popup_success(message):
     """Render a success page that communicates with the parent window"""
@@ -147,8 +156,10 @@ def render_popup_success(message):
 
 def render_popup_error(error_message):
     """Render an error page that communicates with the parent window"""
-    # Ensure error message is safely encoded
-    error_message = "Authentication Failed"
+    # Keep the original error message (don't override it)
+    # Sanitize for XSS by escaping HTML characters
+    import html
+    error_message = html.escape(error_message) if error_message else "Authentication Failed"
     
     html_content = f"""
     <!DOCTYPE html>
@@ -244,25 +255,36 @@ def render_popup_error(error_message):
 @auth_bp.route('/auth/google', methods=['GET'])
 def google_login():
     try:
+        # Check if Google OAuth is configured
+        if not hasattr(oauth, 'google'):
+            current_app.logger.error("Google OAuth not initialized - missing credentials")
+            return render_popup_error("Google Sign-In is not configured on this server. Please contact your administrator.")
+
         google = oauth.google
-        
+
+        # Use the request's scheme and host to build the redirect URI
         redirect_uri = request.url_root.rstrip('/') + '/auth/google/callback'
-    
-        current_app.logger.info(f"AUDIT: Google OAuth initiated from IP {request.remote_addr}")
-        
+
+        current_app.logger.info(f"AUDIT: Google OAuth initiated from IP {request.remote_addr} - Redirect URI: {redirect_uri}")
+
         return google.authorize_redirect(redirect_uri)
-    
+
+    except AttributeError as e:
+        current_app.logger.error(f"AUDIT: Google OAuth not configured - Error: {str(e)}")
+        return render_popup_error("Google Sign-In is not available. Please use email and password to log in.")
     except Exception as e:
         current_app.logger.error(f"AUDIT: Google OAuth initiation failed from IP {request.remote_addr} - Error: {str(e)}")
-        return jsonify({
-            "status": "error",
-            "message": "Failed to initiate Google authentication"
-        }), 500
+        return render_popup_error("Failed to initiate Google authentication. Please try again.")
 
 @auth_bp.route('/auth/google/callback', methods=['GET'])
 def google_callback():
     """Handle Google OAuth callback"""
     try:
+        # Check if Google OAuth is configured
+        if not hasattr(oauth, 'google'):
+            current_app.logger.error("Google OAuth not initialized - missing credentials")
+            return render_popup_error("Google Sign-In is not configured on this server.")
+
         # Check for existing session first (same logic as regular login)
         session_id = request.cookies.get('session_id')
         if session_id:
@@ -280,9 +302,9 @@ def google_callback():
                     'phone_number': existing_session.get('phone_number'),
                     'last_sign_in_at': existing_session.get('last_sign_in_at')
                 }
-                
+
                 current_app.logger.info(f"AUDIT: User {existing_session.get('email')} reused existing session via Google auth from IP {request.remote_addr}")
-                
+
                 return render_popup_success("Authentication successful")
 
         google = oauth.google
@@ -315,18 +337,29 @@ def google_callback():
             
             if not user_query.data:
                 current_app.logger.warning(f"AUDIT: Google OAuth attempted for unregistered email {google_email} from IP {request.remote_addr}")
-                return render_popup_error("Account not found. Please contact your administrator.")
+                return render_popup_error("No account found with this email. Self-registration is disabled. Please contact your healthcare facility to register an account.")
             
             user_record = user_query.data[0]
             
             if not user_record.get('is_active', False):
                 current_app.logger.warning(f"AUDIT: Google OAuth attempted for inactive account {google_email} from IP {request.remote_addr}")
-                return render_popup_error("Account is inactive. Please contact your administrator.")
+                return render_popup_error("Your account has been deactivated. Please contact your healthcare facility administrator for assistance.")
             
             last_sign_in = datetime.datetime.utcnow().isoformat()
             
-            user_data = {
-                'id': user_record['user_id'],
+            # Get the user's facility_id from facility_users table
+            get_facility_id = supabase.table('facility_users')\
+                .select('facility_id')\
+                .eq('user_id', user_record['user_id'])\
+                .execute()
+
+            facility_id = get_facility_id.data[0]['facility_id'] if get_facility_id.data else None
+
+            # Create session in Redis (without Supabase tokens since this is Google auth)
+            session_id = create_session_id()
+            session_data = {
+                "id": user_record['user_id'],
+                "user_id": user_record['user_id'],
                 'email': user_record['email'],
                 'role': user_record.get('role'),
                 'firstname': user_record.get('firstname', google_given_name),
@@ -334,20 +367,14 @@ def google_callback():
                 'specialty': user_record.get('specialty', ''),
                 'license_number': user_record.get('license_number', ''),
                 'phone_number': user_record.get('phone_number', ''),
+                'facility_id': facility_id,
                 'last_sign_in_at': last_sign_in,
-            }
-            
-            # Create session in Redis (without Supabase tokens since this is Google auth)
-            session_id = create_session_id()
-            session_data = {
-                "user_id": user_record['user_id'],
-                **user_data,
                 'access_token': None,  # Google auth doesn't use Supabase tokens
                 'refresh_token': None,
                 'expires_at': (datetime.datetime.utcnow() + datetime.timedelta(seconds=SESSION_TIMEOUT)).isoformat(),
                 'auth_provider': 'google'
             }
-            
+
             store_session_data(session_id, session_data)
             
             current_app.logger.info(f"AUDIT: User {google_email} logged in successfully via Google from IP {request.remote_addr} - Session: {session_id}")
@@ -370,14 +397,55 @@ def google_callback():
 
             return response
                 
+        except UnicodeDecodeError as unicode_error:
+            current_app.logger.error(f"AUDIT: Unicode decode error during Google auth for {google_email} from IP {request.remote_addr} - Error: {str(unicode_error)}")
+            # Clear corrupted sessions
+            try:
+                from utils.redis_client import clear_corrupted_sessions
+                clear_corrupted_sessions()
+            except:
+                pass
+            return render_popup_error("Session data error. Please try logging in again.")
         except Exception as db_error:
             current_app.logger.error(f"AUDIT: Database error during Google auth for {google_email} from IP {request.remote_addr} - Error: {str(db_error)}")
-            return render_popup_error("Database connection error")
-            
+            return render_popup_error("Database connection error. Please try again later.")
+
+    except UnicodeDecodeError as unicode_error:
+        current_app.logger.error(f"AUDIT: Unicode decode error in Google OAuth callback from IP {request.remote_addr} - Error: {str(unicode_error)}")
+        # Clear corrupted sessions
+        try:
+            from utils.redis_client import clear_corrupted_sessions
+            clear_corrupted_sessions()
+        except:
+            pass
+        return render_popup_error("Session encoding error. Please try logging in again.")
+    except AttributeError as e:
+        current_app.logger.error(f"AUDIT: Google OAuth not configured - Error: {str(e)}")
+        return render_popup_error("Google Sign-In is not available. Please use email and password to log in.")
     except Exception as e:
         current_app.logger.error(f"AUDIT: Google OAuth callback failed from IP {request.remote_addr} - Error: {str(e)}")
-        return render_popup_error("Authentication failed")
+        return render_popup_error("Authentication failed. Please try again.")
 
+
+@auth_bp.route('/auth/cleanup-sessions', methods=['POST'])
+def cleanup_sessions_endpoint():
+    """Manual endpoint to clean up corrupted sessions - useful for testing"""
+    try:
+        from utils.redis_client import clear_corrupted_sessions
+        corrupted_count = clear_corrupted_sessions()
+
+        return jsonify({
+            "status": "success",
+            "message": f"Cleaned up {corrupted_count} corrupted sessions",
+            "cleaned_count": corrupted_count
+        }), 200
+
+    except Exception as e:
+        current_app.logger.error(f"Session cleanup failed: {str(e)}")
+        return jsonify({
+            "status": "error",
+            "message": f"Cleanup failed: {str(e)}"
+        }), 500
 
 # Invite new user to the platform via email
 @auth_bp.route('/create_invite', methods=['POST'])

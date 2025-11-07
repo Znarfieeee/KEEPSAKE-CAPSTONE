@@ -2,6 +2,7 @@ import React from 'react'
 import { createBrowserRouter, RouterProvider, Outlet } from 'react-router-dom'
 import ProtectedRoute from './components/ProtectedRoute'
 import { AuthProvider } from './context/AuthContext'
+import { QrScannerProvider } from './context/QrScannerContext'
 
 // Pages
 import Landing_page from '@/pages/Landing_page'
@@ -10,6 +11,7 @@ import NotFound from '@/pages/NotFound'
 import AuthSuccess from '@/pages/AuthSuccess'
 import AuthError from '@/pages/AuthError'
 import QrScanner from '@/pages/QrScanner'
+import QrCodeGeneratorTest from '@/pages/QrCodeGeneratorTest'
 import ForgotPassword from '@/pages/ForgotPassword'
 
 // Admin
@@ -36,13 +38,21 @@ import DoctorSettings from '@/pages/pediapro/DoctorSettings'
 import DoctorSupport from '@/pages/pediapro/DoctorSupport'
 import DoctorPatientInfo from './pages/pediapro/DoctorPatientInfo'
 
+// Parent (Keepsaker)
+import ParentDashboard from '@/pages/parent/ParentDashboard'
+import ParentChildrenList from '@/pages/parent/ParentChildrenList'
+import ChildProfile from '@/pages/parent/ChildProfile'
+
 import AdminLayout from '@/layout/AdminLayout'
 import FacilityAdminLayout from '@/layout/FacilityAdminLayout'
 import PediaproLayout from '@/layout/PediaproLayout'
+import ParentLayout from '@/layout/ParentLayout'
 
 const AuthWrapper = () => (
     <AuthProvider>
-        <Outlet />
+        <QrScannerProvider>
+            <Outlet />
+        </QrScannerProvider>
     </AuthProvider>
 )
 
@@ -58,6 +68,10 @@ function App() {
                 {
                     path: '/qr_scanner',
                     element: <QrScanner />,
+                },
+                {
+                    path: '/qr_generator_test',
+                    element: <QrCodeGeneratorTest />,
                 },
                 {
                     path: '/login',
@@ -226,6 +240,40 @@ function App() {
                         {
                             path: 'help_support',
                             element: <DoctorSupport />,
+                        },
+                    ],
+                },
+                {
+                    path: '/parent',
+                    element: (
+                        <ProtectedRoute requiredRole="parent">
+                            <ParentLayout />
+                        </ProtectedRoute>
+                    ),
+                    children: [
+                        {
+                            index: true,
+                            element: <ParentDashboard />,
+                        },
+                        {
+                            path: 'children',
+                            element: <ParentChildrenList />,
+                        },
+                        {
+                            path: 'child/:patientId',
+                            element: <ChildProfile />,
+                        },
+                        {
+                            path: 'appointments',
+                            element: <div>Parent Appointments Page - Coming Soon</div>,
+                        },
+                        {
+                            path: 'settings',
+                            element: <div>Parent Settings Page - Coming Soon</div>,
+                        },
+                        {
+                            path: 'help_support',
+                            element: <div>Parent Help & Support Page - Coming Soon</div>,
                         },
                     ],
                 },

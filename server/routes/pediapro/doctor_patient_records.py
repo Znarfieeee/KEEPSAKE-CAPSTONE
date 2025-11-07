@@ -4,6 +4,7 @@ from config.settings import supabase, supabase_service_role_client
 from postgrest.exceptions import APIError as AuthApiError
 from utils.redis_client import get_redis_client
 from utils.invalidate_cache import invalidate_caches
+from utils.gen_password import generate_password
 import json, datetime
 
 # Create blueprint for patient routes
@@ -599,126 +600,705 @@ def delete_allergy_record(patient_id, allergy_id):
             "message": f"Error deleting allergy record: {str(e)}"
         }), 500
 
-@patrecord_bp.route('/patient_record/<patient_id>/parent_access', methods=['POST'])
-@require_auth
-@require_role('doctor', 'facility_admin')
-def add_parent_access(patient_id):
-    """Grant parent/guardian access to a patient record"""
-    try:
-        data = request.json or {}
-        current_user = request.current_user
-
-        current_app.logger.info(f"DEBUG: Adding parent access for patient {patient_id} with data: {data}")
-
-        # Verify patient exists
-        patient_check = supabase.table('patients').select('patient_id').eq('patient_id', patient_id).single().execute()
-        if not patient_check.data:
-            return jsonify({
-                "status": "error",
-                "message": "Patient not found"
-            }), 404
-
-        # Verify the user being granted access exists
-        user_id = data.get('user_id')
-        if not user_id:
-            return jsonify({
-                "status": "error",
-                "message": "User ID is required"
-            }), 400
-
-        user_check = supabase.table('users').select('user_id').eq('user_id', user_id).single().execute()
-        if not user_check.data:
-            return jsonify({
-                "status": "error",
-                "message": "User not found"
-            }), 404
-
-        granted_by = current_user.get('id')
-        parent_access_payload = {
-            "patient_id": patient_id,
-            "user_id": user_id,
-            "relationship": data.get('relationship', 'parent'),
-            "granted_by": granted_by,
-            "granted_at": data.get('granted_at') or datetime.datetime.now().date().isoformat(),
-            "is_active": True
-        }
-
-        current_app.logger.info(f"DEBUG: Parent access payload: {parent_access_payload}")
-
-        # Insert new parent access record
-        resp = supabase.table('parent_access').insert(parent_access_payload).execute()
-
-        if getattr(resp, 'error', None):
-            current_app.logger.error(f"DEBUG: Error inserting parent access: {resp.error.message if resp.error else 'Unknown'}")
-            return jsonify({
-                "status": "error",
-                "message": "Failed to grant parent access",
-                "details": resp.error.message if resp.error else "Unknown"
-            }), 400
-
-        current_app.logger.info(f"DEBUG: Successfully granted parent access: {resp.data}")
-        invalidate_caches('patient', patient_id)
-
-        return jsonify({
-            "status": "success",
-            "message": "Parent access granted successfully",
-            "data": resp.data
-        }), 201
-
-    except Exception as e:
-        current_app.logger.error(f"DEBUG: Exception granting parent access: {str(e)}")
-        return jsonify({
-            "status": "error",
-            "message": f"Error granting parent access: {str(e)}"
-        }), 500
-
 @patrecord_bp.route('/patient_record/<patient_id>/parent_access/<access_id>', methods=['PUT'])
 @require_auth
 @require_role('doctor', 'facility_admin')
-def update_parent_access(patient_id, access_id):
-    """Update parent access (e.g., change relationship or revoke access)"""
+def update_parent_relationship(patient_id, access_id):
+    """
+    Update the relationship type for an existing parent-child assignment.
+
+    Use this to change relationship from 'parent' to 'guardian', etc.
+    To revoke access entirely, use DELETE /patient_record/<patient_id>/remove-parent/<access_id>
+    """
     try:
         data = request.json or {}
         current_user = request.current_user
 
         # Verify patient exists
-        patient_check = supabase.table('patients').select('patient_id').eq('patient_id', patient_id).single().execute()
+        patient_check = supabase.table('patients').select('patient_id, firstname, lastname').eq('patient_id', patient_id).single().execute()
         if not patient_check.data:
             return jsonify({
                 "status": "error",
                 "message": "Patient not found"
             }), 404
 
-        update_payload = {}
-        if 'relationship' in data:
-            update_payload['relationship'] = data['relationship']
-        if 'is_active' in data:
-            update_payload['is_active'] = data['is_active']
-            if not data['is_active']:
-                update_payload['revoked_at'] = datetime.datetime.now().date().isoformat()
+        # Validate relationship is provided
+        relationship = data.get('relationship')
+        if not relationship:
+            return jsonify({
+                "status": "error",
+                "message": "relationship field is required"
+            }), 400
 
-        # Update specific parent access record
+        # Validate relationship type
+        valid_relationships = ['parent', 'guardian', 'caregiver', 'family_member']
+        if relationship not in valid_relationships:
+            return jsonify({
+                "status": "error",
+                "message": f"Invalid relationship. Must be one of: {', '.join(valid_relationships)}"
+            }), 400
+
+        # Verify access record exists and is active
+        access_check = supabase.table('parent_access').select('''
+            access_id,
+            relationship,
+            is_active,
+            users!parent_access_user_id_fkey(
+                firstname,
+                lastname,
+                email
+            )
+        ''').eq('access_id', access_id).eq('patient_id', patient_id).single().execute()
+
+        if not access_check.data:
+            return jsonify({
+                "status": "error",
+                "message": "Parent access record not found"
+            }), 404
+
+        access_record = access_check.data
+        if not access_record.get('is_active'):
+            return jsonify({
+                "status": "error",
+                "message": "Cannot update revoked parent access. Please create a new assignment."
+            }), 400
+
+        # Update only the relationship
+        update_payload = {
+            'relationship': relationship
+        }
+
         resp = supabase.table('parent_access').update(update_payload).eq('access_id', access_id).eq('patient_id', patient_id).execute()
 
         if getattr(resp, 'error', None):
             return jsonify({
                 "status": "error",
-                "message": "Failed to update parent access",
+                "message": "Failed to update parent relationship",
                 "details": resp.error.message if resp.error else "Unknown"
             }), 400
 
         invalidate_caches('patient', patient_id)
 
+        parent_user = access_record.get('users')
+        parent_name = f"{parent_user['firstname']} {parent_user['lastname']}" if parent_user else "Unknown"
+        patient_name = f"{patient_check.data['firstname']} {patient_check.data['lastname']}"
+
+        current_app.logger.info(f"AUDIT: User {current_user.get('email')} updated relationship for {parent_name} to '{relationship}' for patient {patient_name}")
+
         return jsonify({
             "status": "success",
-            "message": "Parent access updated successfully",
+            "message": f"Successfully updated {parent_name}'s relationship to {patient_name} as '{relationship}'",
             "data": resp.data
         }), 200
 
     except Exception as e:
+        current_app.logger.error(f"Error in update_parent_relationship: {str(e)}")
+        import traceback
+        current_app.logger.error(f"Traceback: {traceback.format_exc()}")
         return jsonify({
             "status": "error",
-            "message": f"Error updating parent access: {str(e)}"
+            "message": f"Error updating parent relationship: {str(e)}"
+        }), 500
+
+# ============================================================================
+# COMPREHENSIVE PARENT-CHILD ASSIGNMENT ROUTES
+# ============================================================================
+
+@patrecord_bp.route('/patient_record/<patient_id>/parents', methods=['GET'])
+@require_auth
+@require_role('doctor', 'facility_admin', 'nurse')
+def get_patient_parents(patient_id):
+    """
+    Get all parents/guardians assigned to a specific patient.
+    Returns complete parent information with relationship details.
+    """
+    try:
+        current_user = request.current_user
+        current_app.logger.info(f"AUDIT: User {current_user.get('email')} fetching parents for patient {patient_id}")
+
+        # Verify patient exists
+        patient_check = supabase.table('patients').select('patient_id, firstname, lastname').eq('patient_id', patient_id).single().execute()
+        if not patient_check.data:
+            return jsonify({
+                "status": "error",
+                "message": "Patient not found"
+            }), 404
+
+        # Get all active parent access records with user details
+        parent_access_resp = supabase.table('parent_access').select('''
+            access_id,
+            relationship,
+            granted_at,
+            revoked_at,
+            is_active,
+            users!parent_access_user_id_fkey(
+                user_id,
+                email,
+                firstname,
+                lastname,
+                phone_number,
+                is_active
+            ),
+            granted_by_user:users!parent_access_granted_by_fkey(
+                firstname,
+                lastname,
+                email
+            )
+        ''').eq('patient_id', patient_id).order('granted_at', desc=True).execute()
+
+        if getattr(parent_access_resp, 'error', None):
+            current_app.logger.error(f"Error fetching parents: {parent_access_resp.error.message}")
+            return jsonify({
+                "status": "error",
+                "message": "Failed to fetch parent information",
+                "details": parent_access_resp.error.message
+            }), 400
+
+        parents_data = []
+        for access_record in parent_access_resp.data:
+            parent_user = access_record.get('users')
+            granted_by = access_record.get('granted_by_user')
+
+            if parent_user:
+                parents_data.append({
+                    'access_id': access_record['access_id'],
+                    'relationship': access_record['relationship'],
+                    'granted_at': access_record['granted_at'],
+                    'revoked_at': access_record['revoked_at'],
+                    'is_active': access_record['is_active'],
+                    'parent': {
+                        'user_id': parent_user['user_id'],
+                        'email': parent_user['email'],
+                        'firstname': parent_user['firstname'],
+                        'lastname': parent_user['lastname'],
+                        'phone_number': parent_user['phone_number'],
+                        'is_active': parent_user['is_active']
+                    },
+                    'granted_by': {
+                        'name': f"{granted_by['firstname']} {granted_by['lastname']}" if granted_by else "Unknown",
+                        'email': granted_by['email'] if granted_by else None
+                    }
+                })
+
+        current_app.logger.info(f"AUDIT: Found {len(parents_data)} parents for patient {patient_id}")
+
+        return jsonify({
+            "status": "success",
+            "data": {
+                "patient": patient_check.data,
+                "parents": parents_data,
+                "count": len(parents_data)
+            }
+        }), 200
+
+    except Exception as e:
+        current_app.logger.error(f"Error in get_patient_parents: {str(e)}")
+        import traceback
+        current_app.logger.error(f"Traceback: {traceback.format_exc()}")
+        return jsonify({
+            "status": "error",
+            "message": f"Error fetching parent information: {str(e)}"
+        }), 500
+
+@patrecord_bp.route('/parents/search', methods=['GET'])
+@require_auth
+@require_role('doctor', 'facility_admin', 'nurse')
+def search_parents():
+    """
+    Search for existing parent users by email or phone number.
+    This helps doctors find existing parent accounts before creating new ones.
+
+    Query params:
+    - email: Search by email (exact or partial match)
+    - phone: Search by phone number (partial match)
+    """
+    try:
+        current_user = request.current_user
+        email = request.args.get('email', '').strip()
+        phone = request.args.get('phone', '').strip()
+
+        if not email and not phone:
+            return jsonify({
+                "status": "error",
+                "message": "Please provide either email or phone number to search"
+            }), 400
+
+        current_app.logger.info(f"AUDIT: User {current_user.get('email')} searching for parents with email='{email}' phone='{phone}'")
+
+        # Build search query
+        query = supabase.table('users').select('user_id, email, firstname, lastname, phone_number, is_active, created_at')
+
+        # Search by email or phone
+        if email:
+            query = query.ilike('email', f'%{email}%')
+        if phone:
+            query = query.ilike('phone_number', f'%{phone}%')
+
+        # Only search for parent role users
+        query = query.eq('role', 'parent')
+
+        search_resp = query.limit(20).execute()
+
+        if getattr(search_resp, 'error', None):
+            current_app.logger.error(f"Error searching parents: {search_resp.error.message}")
+            return jsonify({
+                "status": "error",
+                "message": "Failed to search for parents",
+                "details": search_resp.error.message
+            }), 400
+
+        parents = search_resp.data or []
+
+        current_app.logger.info(f"AUDIT: Found {len(parents)} parent users matching search criteria")
+
+        return jsonify({
+            "status": "success",
+            "data": {
+                "parents": parents,
+                "count": len(parents),
+                "search_criteria": {
+                    "email": email if email else None,
+                    "phone": phone if phone else None
+                }
+            }
+        }), 200
+
+    except Exception as e:
+        current_app.logger.error(f"Error in search_parents: {str(e)}")
+        import traceback
+        current_app.logger.error(f"Traceback: {traceback.format_exc()}")
+        return jsonify({
+            "status": "error",
+            "message": f"Error searching for parents: {str(e)}"
+        }), 500
+
+@patrecord_bp.route('/patient_record/<patient_id>/assign-parent', methods=['POST'])
+@require_auth
+@require_role('doctor', 'facility_admin')
+def assign_existing_parent_to_child(patient_id):
+    """
+    Assign an existing parent user to a child (patient).
+    This route is for linking existing parent accounts to patients.
+
+    Required fields:
+    - parent_user_id: The user_id of the existing parent
+    - relationship: Type of relationship (parent, guardian, caregiver, family_member)
+
+    This route checks for duplicate assignments and validates the parent user.
+    """
+    try:
+        data = request.json or {}
+        current_user = request.current_user
+        parent_user_id = data.get('parent_user_id')
+        relationship = data.get('relationship', 'parent')
+
+        current_app.logger.info(f"AUDIT: User {current_user.get('email')} assigning parent {parent_user_id} to patient {patient_id}")
+
+        # Validate required fields
+        if not parent_user_id:
+            return jsonify({
+                "status": "error",
+                "message": "parent_user_id is required"
+            }), 400
+
+        # Validate relationship type
+        valid_relationships = ['parent', 'guardian', 'caregiver', 'family_member']
+        if relationship not in valid_relationships:
+            return jsonify({
+                "status": "error",
+                "message": f"Invalid relationship. Must be one of: {', '.join(valid_relationships)}"
+            }), 400
+
+        # Verify patient exists
+        patient_check = supabase.table('patients').select('patient_id, firstname, lastname').eq('patient_id', patient_id).single().execute()
+        if not patient_check.data:
+            current_app.logger.warning(f"AUDIT: Patient {patient_id} not found")
+            return jsonify({
+                "status": "error",
+                "message": "Patient not found"
+            }), 404
+
+        # Verify parent user exists and has parent role
+        parent_check = supabase.table('users').select('user_id, email, firstname, lastname, role, is_active').eq('user_id', parent_user_id).single().execute()
+        if not parent_check.data:
+            current_app.logger.warning(f"AUDIT: Parent user {parent_user_id} not found")
+            return jsonify({
+                "status": "error",
+                "message": "Parent user not found"
+            }), 404
+
+        parent_user = parent_check.data
+        if parent_user['role'] != 'parent':
+            return jsonify({
+                "status": "error",
+                "message": f"User must have 'parent' role. Current role: {parent_user['role']}"
+            }), 400
+
+        # Check for existing active assignment
+        existing_check = supabase.table('parent_access')\
+            .select('access_id, is_active')\
+            .eq('patient_id', patient_id)\
+            .eq('user_id', parent_user_id)\
+            .eq('is_active', True)\
+            .execute()
+
+        if existing_check.data and len(existing_check.data) > 0:
+            current_app.logger.warning(f"AUDIT: Parent {parent_user_id} already assigned to patient {patient_id}")
+            return jsonify({
+                "status": "error",
+                "message": f"{parent_user['firstname']} {parent_user['lastname']} is already assigned to this patient"
+            }), 409
+
+        # Create parent access record
+        granted_by = current_user.get('id')
+        parent_access_payload = {
+            "patient_id": patient_id,
+            "user_id": parent_user_id,
+            "relationship": relationship,
+            "granted_by": granted_by,
+            "granted_at": datetime.datetime.now().date().isoformat(),
+            "is_active": True
+        }
+
+        resp = supabase.table('parent_access').insert(parent_access_payload).execute()
+
+        if getattr(resp, 'error', None):
+            current_app.logger.error(f"Error assigning parent: {resp.error.message}")
+            return jsonify({
+                "status": "error",
+                "message": "Failed to assign parent to patient",
+                "details": resp.error.message
+            }), 400
+
+        invalidate_caches('patient', patient_id)
+
+        patient_name = f"{patient_check.data['firstname']} {patient_check.data['lastname']}"
+        parent_name = f"{parent_user['firstname']} {parent_user['lastname']}"
+
+        current_app.logger.info(f"AUDIT: Successfully assigned parent {parent_name} ({parent_user['email']}) to patient {patient_name}")
+
+        return jsonify({
+            "status": "success",
+            "message": f"Successfully assigned {parent_name} as {relationship} to {patient_name}",
+            "data": {
+                "access_record": resp.data[0] if resp.data else None,
+                "parent": parent_user,
+                "patient": patient_check.data
+            }
+        }), 201
+
+    except Exception as e:
+        current_app.logger.error(f"Error in assign_existing_parent_to_child: {str(e)}")
+        import traceback
+        current_app.logger.error(f"Traceback: {traceback.format_exc()}")
+        return jsonify({
+            "status": "error",
+            "message": f"Error assigning parent to patient: {str(e)}"
+        }), 500
+
+@patrecord_bp.route('/patient_record/<patient_id>/create-and-assign-parent', methods=['POST'])
+@require_auth
+@require_role('doctor', 'facility_admin')
+def create_and_assign_parent(patient_id):
+    """
+    Create a new parent user account and immediately assign them to a patient.
+    This is a convenience route that combines user creation and parent assignment.
+
+    Required fields:
+    - email: Parent's email (must be unique)
+    - firstname: Parent's first name
+    - lastname: Parent's last name
+    - relationship: Type of relationship (parent, guardian, caregiver, family_member)
+
+    Optional fields:
+    - phone_number: Parent's phone number
+    - facility_id: Facility to assign the parent to
+
+    The system will:
+    1. Check if email already exists
+    2. Create a new parent user with auto-generated password
+    3. Assign the parent to the patient
+    4. Return the generated password (doctor should share with parent)
+    """
+    try:
+        data = request.json or {}
+        current_user = request.current_user
+
+        current_app.logger.info(f"AUDIT: User {current_user.get('email')} creating and assigning new parent to patient {patient_id}")
+
+        # Validate required fields
+        required_fields = ['email', 'firstname', 'lastname', 'relationship']
+        missing_fields = [field for field in required_fields if not data.get(field)]
+
+        if missing_fields:
+            return jsonify({
+                "status": "error",
+                "message": f"Missing required fields: {', '.join(missing_fields)}"
+            }), 400
+
+        email = data.get('email').strip().lower()
+        firstname = data.get('firstname').strip()
+        lastname = data.get('lastname').strip()
+        phone_number = data.get('phone_number', '').strip()
+        relationship = data.get('relationship', 'parent')
+        facility_id = data.get('facility_id')  # Optional
+
+        # Validate relationship type
+        valid_relationships = ['parent', 'guardian', 'caregiver', 'family_member']
+        if relationship not in valid_relationships:
+            return jsonify({
+                "status": "error",
+                "message": f"Invalid relationship. Must be one of: {', '.join(valid_relationships)}"
+            }), 400
+
+        # Verify patient exists
+        patient_check = supabase.table('patients').select('patient_id, firstname, lastname').eq('patient_id', patient_id).single().execute()
+        if not patient_check.data:
+            current_app.logger.warning(f"AUDIT: Patient {patient_id} not found")
+            return jsonify({
+                "status": "error",
+                "message": "Patient not found"
+            }), 404
+
+        # Check if email already exists
+        email_check = supabase.table('users').select('user_id, email, role').eq('email', email).execute()
+        if email_check.data and len(email_check.data) > 0:
+            existing_user = email_check.data[0]
+            current_app.logger.warning(f"AUDIT: Email {email} already exists with role {existing_user['role']}")
+            return jsonify({
+                "status": "error",
+                "message": f"Email {email} is already registered",
+                "suggestion": "Use the 'assign existing parent' route if this parent already has an account"
+            }), 409
+
+        # Generate secure password
+        generated_password = generate_password()
+
+        # Create parent user in Supabase Auth
+        try:
+            auth_resp = supabase_service_role_client.auth.admin.create_user({
+                "email": email,
+                "password": generated_password,
+                "email_confirm": True,
+                "user_metadata": {
+                    "firstname": firstname,
+                    "lastname": lastname,
+                    "role": "parent"
+                }
+            })
+
+            if not auth_resp or not auth_resp.user:
+                current_app.logger.error(f"AUDIT: Failed to create auth user for parent {email}")
+                return jsonify({
+                    "status": "error",
+                    "message": "Failed to create parent account in authentication system"
+                }), 500
+
+            auth_user_id = auth_resp.user.id
+            current_app.logger.info(f"AUDIT: Created auth user {auth_user_id} for parent {email}")
+
+        except Exception as auth_error:
+            current_app.logger.error(f"AUDIT: Auth error creating parent user: {str(auth_error)}")
+            return jsonify({
+                "status": "error",
+                "message": "Failed to create parent account",
+                "details": str(auth_error)
+            }), 500
+
+        # Create parent record in users table
+        user_payload = {
+            "user_id": auth_user_id,
+            "email": email,
+            "password": "hashed_by_supabase_auth",  # Actual password is managed by Supabase Auth
+            "firstname": firstname,
+            "lastname": lastname,
+            "role": "parent",
+            "phone_number": phone_number if phone_number else None,
+            "is_active": True,
+            "is_subscribed": False
+        }
+
+        user_resp = supabase.table('users').insert(user_payload).execute()
+
+        if getattr(user_resp, 'error', None):
+            current_app.logger.error(f"AUDIT: Failed to create user record for parent {email}: {user_resp.error.message}")
+            # Try to clean up auth user
+            try:
+                supabase_service_role_client.auth.admin.delete_user(auth_user_id)
+            except:
+                pass
+            return jsonify({
+                "status": "error",
+                "message": "Failed to create parent user record",
+                "details": user_resp.error.message
+            }), 500
+
+        parent_user = user_resp.data[0] if user_resp.data else None
+        if not parent_user:
+            return jsonify({
+                "status": "error",
+                "message": "Failed to retrieve created parent user"
+            }), 500
+
+        parent_user_id = parent_user['user_id']
+        current_app.logger.info(f"AUDIT: Created parent user record {parent_user_id} for {email}")
+
+        # If facility_id provided, assign parent to facility
+        if facility_id:
+            try:
+                facility_user_payload = {
+                    "user_id": parent_user_id,
+                    "facility_id": facility_id,
+                    "assigned_by": current_user.get('id'),
+                    "is_active": True
+                }
+                facility_resp = supabase.table('facility_users').insert(facility_user_payload).execute()
+                if not getattr(facility_resp, 'error', None):
+                    current_app.logger.info(f"AUDIT: Assigned parent {parent_user_id} to facility {facility_id}")
+            except Exception as fac_error:
+                current_app.logger.warning(f"AUDIT: Failed to assign parent to facility: {str(fac_error)}")
+                # Continue even if facility assignment fails
+
+        # Create parent access record (assign to patient)
+        granted_by = current_user.get('id')
+        parent_access_payload = {
+            "patient_id": patient_id,
+            "user_id": parent_user_id,
+            "relationship": relationship,
+            "granted_by": granted_by,
+            "granted_at": datetime.datetime.now().date().isoformat(),
+            "is_active": True
+        }
+
+        access_resp = supabase.table('parent_access').insert(parent_access_payload).execute()
+
+        if getattr(access_resp, 'error', None):
+            current_app.logger.error(f"AUDIT: Failed to assign parent {parent_user_id} to patient {patient_id}: {access_resp.error.message}")
+            return jsonify({
+                "status": "error",
+                "message": "Parent account created but failed to assign to patient",
+                "details": access_resp.error.message,
+                "parent_user_id": parent_user_id
+            }), 400
+
+        invalidate_caches('patient', patient_id)
+
+        patient_name = f"{patient_check.data['firstname']} {patient_check.data['lastname']}"
+        parent_name = f"{firstname} {lastname}"
+
+        current_app.logger.info(f"AUDIT: Successfully created and assigned parent {parent_name} ({email}) to patient {patient_name}")
+
+        return jsonify({
+            "status": "success",
+            "message": f"Successfully created parent account for {parent_name} and assigned as {relationship} to {patient_name}",
+            "data": {
+                "parent_user": {
+                    "user_id": parent_user_id,
+                    "email": email,
+                    "firstname": firstname,
+                    "lastname": lastname,
+                    "phone_number": phone_number,
+                    "role": "parent"
+                },
+                "generated_password": generated_password,
+                "access_record": access_resp.data[0] if access_resp.data else None,
+                "patient": patient_check.data
+            },
+            "important": "Please share the generated password with the parent securely. They should change it after first login."
+        }), 201
+
+    except Exception as e:
+        current_app.logger.error(f"Error in create_and_assign_parent: {str(e)}")
+        import traceback
+        current_app.logger.error(f"Traceback: {traceback.format_exc()}")
+        return jsonify({
+            "status": "error",
+            "message": f"Error creating and assigning parent: {str(e)}"
+        }), 500
+
+@patrecord_bp.route('/patient_record/<patient_id>/remove-parent/<access_id>', methods=['DELETE'])
+@require_auth
+@require_role('doctor', 'facility_admin')
+def remove_parent_assignment(patient_id, access_id):
+    """
+    Remove a parent's access to a patient's records.
+    This soft-deletes the parent_access record by setting is_active=False and revoked_at.
+
+    The parent user account remains intact; only the relationship is removed.
+    """
+    try:
+        current_user = request.current_user
+
+        current_app.logger.info(f"AUDIT: User {current_user.get('email')} removing parent access {access_id} from patient {patient_id}")
+
+        # Verify patient exists
+        patient_check = supabase.table('patients').select('patient_id, firstname, lastname').eq('patient_id', patient_id).single().execute()
+        if not patient_check.data:
+            return jsonify({
+                "status": "error",
+                "message": "Patient not found"
+            }), 404
+
+        # Verify parent access record exists
+        access_check = supabase.table('parent_access').select('''
+            access_id,
+            relationship,
+            is_active,
+            users!parent_access_user_id_fkey(
+                firstname,
+                lastname,
+                email
+            )
+        ''').eq('access_id', access_id).eq('patient_id', patient_id).single().execute()
+
+        if not access_check.data:
+            return jsonify({
+                "status": "error",
+                "message": "Parent access record not found"
+            }), 404
+
+        access_record = access_check.data
+        parent_user = access_record.get('users')
+
+        # Soft delete: Set is_active=False and revoked_at
+        update_payload = {
+            "is_active": False,
+            "revoked_at": datetime.datetime.now().date().isoformat()
+        }
+
+        resp = supabase.table('parent_access').update(update_payload).eq('access_id', access_id).execute()
+
+        if getattr(resp, 'error', None):
+            current_app.logger.error(f"Error removing parent access: {resp.error.message}")
+            return jsonify({
+                "status": "error",
+                "message": "Failed to remove parent access",
+                "details": resp.error.message
+            }), 400
+
+        invalidate_caches('patient', patient_id)
+
+        patient_name = f"{patient_check.data['firstname']} {patient_check.data['lastname']}"
+        parent_name = f"{parent_user['firstname']} {parent_user['lastname']}" if parent_user else "Unknown"
+
+        current_app.logger.info(f"AUDIT: Successfully removed parent {parent_name} access from patient {patient_name}")
+
+        return jsonify({
+            "status": "success",
+            "message": f"Successfully removed {parent_name}'s access to {patient_name}'s records",
+            "data": {
+                "access_id": access_id,
+                "revoked_at": update_payload['revoked_at']
+            }
+        }), 200
+
+    except Exception as e:
+        current_app.logger.error(f"Error in remove_parent_assignment: {str(e)}")
+        import traceback
+        current_app.logger.error(f"Traceback: {traceback.format_exc()}")
+        return jsonify({
+            "status": "error",
+            "message": f"Error removing parent assignment: {str(e)}"
         }), 500
 
 @patrecord_bp.route('/patient_record/<patient_id>', methods=['PUT'])
@@ -1033,3 +1613,4 @@ def delete_patient_record(patient_id):
             "message": "An unexpected error occurred while deleting the patient record",
             "details": str(e)
         }), 500
+        

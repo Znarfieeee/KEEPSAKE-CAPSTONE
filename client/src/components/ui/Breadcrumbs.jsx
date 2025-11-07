@@ -49,18 +49,19 @@ const SEGMENT_LABELS = {
 
     // Doctor
     pediapro: 'Dashboard',
+    children: 'My Children',
     // appointments: 'Appointments',
     patient_records: 'Patient Records',
     // reports: 'Reports',
 
     // Parent
-    keepsaker: 'Dashboard',
+    parent: 'Dashboard',
 
     // Nurse || Staff
     vital_custodian: 'Dashboard',
 }
 
-const DASHBOARD_SEGMENTS = ['admin', 'facility_admin', 'pediapro', 'keepsaker', 'vital_custodian']
+const DASHBOARD_SEGMENTS = ['admin', 'facility_admin', 'pediapro', 'parent', 'vital_custodian']
 
 function Breadcrumbs() {
     const location = useLocation()

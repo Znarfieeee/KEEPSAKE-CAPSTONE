@@ -21,8 +21,17 @@ from routes.pediapro.doctor_patient_prescriptions import patrx_bp
 from routes.auth_routes import init_google_oauth
 from routes.pediapro.doctor_appointments import appointment_bp
 from routes.facility_admin.facility_users import fusers_bp
+from routes.parent.parent_routes import parent_bp
 
 app = Flask("keepsake")
+
+# Clear corrupted sessions before initializing OAuth
+try:
+    corrupted_count = clear_corrupted_sessions()
+    if corrupted_count > 0:
+        print(f"🧹 Cleared {corrupted_count} corrupted sessions on startup")
+except Exception as e:
+    print(f"⚠️  Warning: Could not clear corrupted sessions: {e}")
 
 # Initializing google OAuth w/ error handling
 try:
@@ -40,6 +49,7 @@ app.register_blueprint(patrecord_bp)
 app.register_blueprint(patrx_bp)
 app.register_blueprint(appointment_bp)
 app.register_blueprint(fusers_bp)
+app.register_blueprint(parent_bp)
 
 # Redis session configuration with enhanced error handling
 def setup_redis_session():

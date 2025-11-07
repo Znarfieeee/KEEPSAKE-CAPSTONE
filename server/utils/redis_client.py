@@ -9,19 +9,25 @@ import logging
 logger = logging.getLogger(__name__)
 
 def get_redis_client():
-    """Return a configured Redis client."""
-    
+    """Return a configured Redis client with proper encoding."""
+
     # Get Redis configuration from environment variables with proper type conversion
     host = os.environ.get("REDIS_HOST")
     port = int(os.environ.get("REDIS_PORT"))
     ssl = os.environ.get("REDIS_SSL").lower() == "true"
-    
+    password = os.environ.get("REDIS_PASSWORD")
+
     return redis.Redis(
         host=host,
         port=port,
+        password=password,
         db=1,
         decode_responses=True,
-        ssl=ssl
+        # encoding='utf-8',
+        # encoding_errors='replace',  # Replace invalid UTF-8 bytes instead of crashing
+        ssl=ssl,
+        # socket_connect_timeout=5,
+        # socket_keepalive=True
     )
     
 def clear_corrupted_sessions():
