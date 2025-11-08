@@ -1149,30 +1149,48 @@ def create_and_assign_parent(patient_id):
                 "message": "Patient not found"
             }), 404
 
-        # Check if email already exists
-        email_check = supabase.table('users').select('user_id, email, role').eq('email', email).execute()
+        # Check if email already exists in users table
+        email_check = supabase.table('users').select('user_id, email, role, is_active').eq('email', email).execute()
         if email_check.data and len(email_check.data) > 0:
             existing_user = email_check.data[0]
-            current_app.logger.warning(f"AUDIT: Email {email} already exists with role {existing_user['role']}")
-            return jsonify({
-                "status": "error",
-                "message": f"Email {email} is already registered",
-                "suggestion": "Use the 'assign existing parent' route if this parent already has an account"
-            }), 409
+            current_app.logger.warning(f"AUDIT: Email {email} already exists in users table with role {existing_user['role']}")
 
-        # Generate secure password
-        generated_password = generate_password()
+            # If user exists and has parent role, suggest using assign existing parent
+            if existing_user['role'] == 'parent':
+                return jsonify({
+                    "status": "error",
+                    "message": f"A parent account with email {email} already exists",
+                    "suggestion": "Use the 'Assign Existing Parent' option instead",
+                    "existing_user_id": existing_user['user_id']
+                }), 409
+            else:
+                return jsonify({
+                    "status": "error",
+                    "message": f"Email {email} is already registered with role: {existing_user['role']}",
+                    "suggestion": "Please use a different email address"
+                }), 409
+
+        # Set default password (user will be required to change on first login)
+        default_password = "keepsake123"
+
+        # Get the service role client
+        service_client = supabase_service_role_client()
+        auth_user_id = None
 
         # Create parent user in Supabase Auth
         try:
-            auth_resp = supabase_service_role_client.auth.admin.create_user({
+            current_app.logger.info(f"AUDIT: Attempting to create auth user for {email}")
+
+            auth_resp = service_client.auth.admin.create_user({
                 "email": email,
-                "password": generated_password,
-                "email_confirm": True,
+                "password": default_password,
+                "email_confirm": True,  # Auto-confirm email so they can login immediately
                 "user_metadata": {
                     "firstname": firstname,
                     "lastname": lastname,
-                    "role": "parent"
+                    "role": "parent",
+                    "must_change_password": True,  # Flag to force password change on first login
+                    "is_first_login": True
                 }
             })
 
@@ -1184,49 +1202,141 @@ def create_and_assign_parent(patient_id):
                 }), 500
 
             auth_user_id = auth_resp.user.id
-            current_app.logger.info(f"AUDIT: Created auth user {auth_user_id} for parent {email}")
+            current_app.logger.info(f"AUDIT: Created auth user {auth_user_id} for parent {email} with default password")
 
         except Exception as auth_error:
-            current_app.logger.error(f"AUDIT: Auth error creating parent user: {str(auth_error)}")
-            return jsonify({
-                "status": "error",
-                "message": "Failed to create parent account",
-                "details": str(auth_error)
-            }), 500
+            error_message = str(auth_error)
+            current_app.logger.error(f"AUDIT: Auth error creating parent user: {error_message}")
+            import traceback
+            current_app.logger.error(f"AUDIT: Traceback: {traceback.format_exc()}")
 
-        # Create parent record in users table
-        user_payload = {
-            "user_id": auth_user_id,
-            "email": email,
-            "password": "hashed_by_supabase_auth",  # Actual password is managed by Supabase Auth
-            "firstname": firstname,
-            "lastname": lastname,
-            "role": "parent",
-            "phone_number": phone_number if phone_number else None,
-            "is_active": True,
-            "is_subscribed": False
-        }
+            # Check if error is due to user already existing in auth
+            if "already registered" in error_message.lower() or "already exists" in error_message.lower() or "unique" in error_message.lower():
+                # Try to get the existing auth user
+                try:
+                    current_app.logger.info(f"AUDIT: Email {email} already exists in Supabase Auth, attempting to retrieve user")
+                    # List users by email to get the auth user
+                    auth_users = service_client.auth.admin.list_users()
+                    existing_auth_user = None
 
-        user_resp = supabase.table('users').insert(user_payload).execute()
+                    for user in auth_users:
+                        if hasattr(user, 'email') and user.email == email:
+                            existing_auth_user = user
+                            break
 
-        if getattr(user_resp, 'error', None):
-            current_app.logger.error(f"AUDIT: Failed to create user record for parent {email}: {user_resp.error.message}")
-            # Try to clean up auth user
+                    if existing_auth_user:
+                        auth_user_id = existing_auth_user.id
+                        current_app.logger.info(f"AUDIT: Found existing auth user {auth_user_id} for {email}")
+                    else:
+                        return jsonify({
+                            "status": "error",
+                            "message": f"Email {email} is already registered in the system but could not be retrieved",
+                            "suggestion": "Please contact system administrator"
+                        }), 409
+                except Exception as retrieval_error:
+                    current_app.logger.error(f"AUDIT: Failed to retrieve existing auth user: {str(retrieval_error)}")
+                    return jsonify({
+                        "status": "error",
+                        "message": f"Email {email} is already registered but could not be retrieved",
+                        "details": str(retrieval_error)
+                    }), 409
+            else:
+                return jsonify({
+                    "status": "error",
+                    "message": "Failed to create parent account",
+                    "details": error_message
+                }), 500
+
+        # Now create or verify parent record in users table
+        try:
+            # Double-check if user record already exists with this user_id
+            user_id_check = supabase.table('users').select('user_id, email, role').eq('user_id', auth_user_id).execute()
+
+            if user_id_check.data and len(user_id_check.data) > 0:
+                # User record already exists, use it
+                parent_user = user_id_check.data[0]
+                current_app.logger.info(f"AUDIT: User record already exists for {auth_user_id}, using existing record")
+            else:
+                # Create new user record
+                user_payload = {
+                    "user_id": auth_user_id,
+                    "email": email,
+                    "password": "hashed_by_supabase_auth",  # Actual password is managed by Supabase Auth
+                    "firstname": firstname,
+                    "lastname": lastname,
+                    "role": "parent",
+                    "phone_number": phone_number if phone_number else None,
+                    "is_active": True,
+                    "is_subscribed": False
+                }
+
+                user_resp = supabase.table('users').insert(user_payload).execute()
+
+                if getattr(user_resp, 'error', None):
+                    error_code = getattr(user_resp.error, 'code', None)
+                    error_message = getattr(user_resp.error, 'message', 'Unknown error')
+
+                    current_app.logger.error(f"AUDIT: Failed to create user record for parent {email}: {error_message} (code: {error_code})")
+
+                    # If duplicate key error, try to fetch the existing record
+                    if error_code == '23505':  # Unique constraint violation
+                        current_app.logger.info(f"AUDIT: User record may already exist for {auth_user_id}, attempting to fetch")
+                        existing_check = supabase.table('users').select('*').eq('user_id', auth_user_id).execute()
+                        if existing_check.data and len(existing_check.data) > 0:
+                            parent_user = existing_check.data[0]
+                            current_app.logger.info(f"AUDIT: Successfully retrieved existing user record for {auth_user_id}")
+                        else:
+                            # Clean up auth user since we can't create the database record
+                            try:
+                                service_client.auth.admin.delete_user(auth_user_id)
+                                current_app.logger.info(f"AUDIT: Cleaned up auth user {auth_user_id}")
+                            except Exception as cleanup_error:
+                                current_app.logger.warning(f"Failed to cleanup auth user: {str(cleanup_error)}")
+
+                            return jsonify({
+                                "status": "error",
+                                "message": "Failed to create parent user record due to constraint violation",
+                                "details": error_message
+                            }), 500
+                    else:
+                        # Clean up auth user for other errors
+                        try:
+                            service_client.auth.admin.delete_user(auth_user_id)
+                            current_app.logger.info(f"AUDIT: Cleaned up auth user {auth_user_id}")
+                        except Exception as cleanup_error:
+                            current_app.logger.warning(f"Failed to cleanup auth user: {str(cleanup_error)}")
+
+                        return jsonify({
+                            "status": "error",
+                            "message": "Failed to create parent user record",
+                            "details": error_message
+                        }), 500
+                else:
+                    parent_user = user_resp.data[0] if user_resp.data else None
+
+        except Exception as db_error:
+            current_app.logger.error(f"AUDIT: Database error creating user record: {str(db_error)}")
+            import traceback
+            current_app.logger.error(f"AUDIT: Traceback: {traceback.format_exc()}")
+
+            # Clean up auth user
             try:
-                supabase_service_role_client.auth.admin.delete_user(auth_user_id)
-            except:
-                pass
+                if auth_user_id:
+                    service_client.auth.admin.delete_user(auth_user_id)
+                    current_app.logger.info(f"AUDIT: Cleaned up auth user {auth_user_id}")
+            except Exception as cleanup_error:
+                current_app.logger.warning(f"Failed to cleanup auth user: {str(cleanup_error)}")
+
             return jsonify({
                 "status": "error",
-                "message": "Failed to create parent user record",
-                "details": user_resp.error.message
+                "message": "Database error while creating parent user",
+                "details": str(db_error)
             }), 500
 
-        parent_user = user_resp.data[0] if user_resp.data else None
         if not parent_user:
             return jsonify({
                 "status": "error",
-                "message": "Failed to retrieve created parent user"
+                "message": "Failed to retrieve parent user record"
             }), 500
 
         parent_user_id = parent_user['user_id']
@@ -1289,11 +1399,12 @@ def create_and_assign_parent(patient_id):
                     "phone_number": phone_number,
                     "role": "parent"
                 },
-                "generated_password": generated_password,
+                "generated_password": default_password,
+                "default_password": default_password,
                 "access_record": access_resp.data[0] if access_resp.data else None,
                 "patient": patient_check.data
             },
-            "important": "Please share the generated password with the parent securely. They should change it after first login."
+            "important": "Please share the default password 'keepsake123' with the parent securely. They will be required to change it on first login."
         }), 201
 
     except Exception as e:

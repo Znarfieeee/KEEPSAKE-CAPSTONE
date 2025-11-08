@@ -9,6 +9,8 @@ import PatientInformation from '@/components/doctors/patient_records/PatientInfo
 import PatientVitals from '@/components/doctors/patient_records/PatientVitals'
 import PatientImmunization from '@/components/doctors/patient_records/PatientImmunization'
 import PatientPrescription from '@/components/doctors/patient_records/PatientPrescriptions'
+import { getPatientById } from '@/api/doctors/patient'
+import { showToast } from '@/util/alertHelper'
 
 const TabItem = ({ value, icon: Icon, children }) => (
     <TabsTrigger
@@ -29,6 +31,19 @@ const PatientRecordsTabs = ({ patient: initialPatient }) => {
     const handlePrescriptionAdded = (newPrescription) => {
         setPrescriptions((prev) => [newPrescription, ...prev])
     }
+
+    // Refresh patient data from the server
+    const refreshPatientData = useCallback(async () => {
+        try {
+            const response = await getPatientById(patient.patient_id || patient.id)
+            if (response.status === 'success') {
+                setPatient(response.data)
+            }
+        } catch (error) {
+            console.error('Error refreshing patient data:', error)
+            showToast('error', 'Failed to refresh patient data')
+        }
+    }, [patient?.patient_id, patient?.id])
 
     // Handle patient updates from EditPatientModal
     const handlePatientUpdate = useCallback((event) => {
@@ -138,7 +153,7 @@ const PatientRecordsTabs = ({ patient: initialPatient }) => {
             icon: FileText,
             content: (
                 <div>
-                    <PatientInformation patient={patient} />
+                    <PatientInformation patient={patient} onUpdate={refreshPatientData} />
                 </div>
             ),
         },

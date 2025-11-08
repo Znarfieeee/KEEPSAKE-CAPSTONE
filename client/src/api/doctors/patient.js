@@ -344,6 +344,189 @@ export const updateAllergyRecord = async (patientId, allergyData) => {
   }
 }
 
+// ============================================================================
+// PARENT ACCESS MANAGEMENT API FUNCTIONS
+// ============================================================================
+
+/**
+ * Search for existing parent users by email or phone
+ * @param {string} email - Email to search for
+ * @param {string} phone - Phone number to search for
+ */
+export const searchParents = async (email = '', phone = '') => {
+  try {
+    const params = new URLSearchParams()
+    if (email) params.append('email', email)
+    if (phone) params.append('phone', phone)
+
+    const response = await axios.get(
+      `${backendConnection()}/parents/search?${params.toString()}`,
+      axiosConfig
+    )
+    return response.data
+  } catch (error) {
+    console.error('Search parents error:', error)
+    if (error.response) {
+      const errorData = error.response.data
+      throw {
+        ...error,
+        message: errorData?.message || 'Failed to search for parents',
+        details: errorData?.details,
+        status: error.response.status
+      }
+    }
+    throw error
+  }
+}
+
+/**
+ * Get all parents/guardians assigned to a specific patient
+ * @param {string} patientId - Patient ID
+ */
+export const getPatientParents = async (patientId) => {
+  try {
+    const response = await axios.get(
+      `${backendConnection()}/patient_record/${patientId}/parents`,
+      axiosConfig
+    )
+    return response.data
+  } catch (error) {
+    console.error('Get patient parents error:', error)
+    if (error.response) {
+      const errorData = error.response.data
+      throw {
+        ...error,
+        message: errorData?.message || 'Failed to fetch parent information',
+        details: errorData?.details,
+        status: error.response.status
+      }
+    }
+    throw error
+  }
+}
+
+/**
+ * Assign an existing parent user to a patient
+ * @param {string} patientId - Patient ID
+ * @param {object} data - { parent_user_id, relationship }
+ */
+export const assignExistingParent = async (patientId, data) => {
+  try {
+    console.log('Assigning existing parent to patient:', patientId, data)
+    const response = await axios.post(
+      `${backendConnection()}/patient_record/${patientId}/assign-parent`,
+      data,
+      axiosConfig
+    )
+    console.log('Assign parent response:', response.data)
+    return response.data
+  } catch (error) {
+    console.error('Assign existing parent error:', error)
+    if (error.response) {
+      const errorData = error.response.data
+      throw {
+        ...error,
+        message: errorData?.message || 'Failed to assign parent to patient',
+        details: errorData?.details,
+        status: error.response.status
+      }
+    }
+    throw error
+  }
+}
+
+/**
+ * Create a new parent user and assign them to a patient
+ * @param {string} patientId - Patient ID
+ * @param {object} data - { email, firstname, lastname, phone_number, relationship, facility_id }
+ */
+export const createAndAssignParent = async (patientId, data) => {
+  try {
+    console.log('Creating and assigning new parent to patient:', patientId, data)
+    const response = await axios.post(
+      `${backendConnection()}/patient_record/${patientId}/create-and-assign-parent`,
+      data,
+      axiosConfig
+    )
+    console.log('Create and assign parent response:', response.data)
+    return response.data
+  } catch (error) {
+    console.error('Create and assign parent error:', error)
+    if (error.response) {
+      const errorData = error.response.data
+      throw {
+        ...error,
+        message: errorData?.message || 'Failed to create and assign parent',
+        details: errorData?.details,
+        suggestion: errorData?.suggestion,
+        existing_user_id: errorData?.existing_user_id,
+        status: error.response.status
+      }
+    }
+    throw error
+  }
+}
+
+/**
+ * Update parent relationship type
+ * @param {string} patientId - Patient ID
+ * @param {string} accessId - Parent access ID
+ * @param {object} data - { relationship }
+ */
+export const updateParentRelationship = async (patientId, accessId, data) => {
+  try {
+    console.log('Updating parent relationship:', patientId, accessId, data)
+    const response = await axios.put(
+      `${backendConnection()}/patient_record/${patientId}/parent_access/${accessId}`,
+      data,
+      axiosConfig
+    )
+    console.log('Update parent relationship response:', response.data)
+    return response.data
+  } catch (error) {
+    console.error('Update parent relationship error:', error)
+    if (error.response) {
+      const errorData = error.response.data
+      throw {
+        ...error,
+        message: errorData?.message || 'Failed to update parent relationship',
+        details: errorData?.details,
+        status: error.response.status
+      }
+    }
+    throw error
+  }
+}
+
+/**
+ * Remove parent access from a patient
+ * @param {string} patientId - Patient ID
+ * @param {string} accessId - Parent access ID
+ */
+export const removeParentAccess = async (patientId, accessId) => {
+  try {
+    console.log('Removing parent access:', patientId, accessId)
+    const response = await axios.delete(
+      `${backendConnection()}/patient_record/${patientId}/remove-parent/${accessId}`,
+      axiosConfig
+    )
+    console.log('Remove parent access response:', response.data)
+    return response.data
+  } catch (error) {
+    console.error('Remove parent access error:', error)
+    if (error.response) {
+      const errorData = error.response.data
+      throw {
+        ...error,
+        message: errorData?.message || 'Failed to remove parent access',
+        details: errorData?.details,
+        status: error.response.status
+      }
+    }
+    throw error
+  }
+}
+
 export default {
   getPatients,
   getPatientById,
@@ -359,4 +542,11 @@ export default {
   updateScreeningRecord,
   addAllergyRecord,
   updateAllergyRecord,
+  // Parent access management
+  searchParents,
+  getPatientParents,
+  assignExistingParent,
+  createAndAssignParent,
+  updateParentRelationship,
+  removeParentAccess,
 }
