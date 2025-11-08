@@ -1,7 +1,12 @@
-import React, { useState, useEffect, useCallback } from 'react'
-import { getAuditLogs, getAuditStats, clearAuditLogs, exportAuditLogs } from '@/api/admin/auditLogs'
+import React, { useState, useEffect, useCallback, useRef } from 'react'
+import {
+    getAuditLogs,
+    getAuditStats,
+    clearAuditLogs,
+    exportAuditLogs,
+    getAuditedTables,
+} from '@/api/admin/auditLogs'
 import { useAuditLogsRealtime } from '@/hook/useSupabaseRealtime'
-import { showToast } from '@/util/alertHelper'
 
 // Components
 import { Button } from '@/components/ui/Button'
@@ -11,9 +16,29 @@ import AuditLogsTable from '@/components/System Administrator/sysAdmin_auditLogs
 import AuditLogDetailsDialog from '@/components/System Administrator/sysAdmin_auditLogs/AuditLogDetailsDialog'
 import ConfirmationDialog from '@/components/ui/ConfirmationDialog'
 import { TooltipHelper } from '@/util/TooltipHelper'
+import { AuditLogsPageSkeleton } from '@/components/System Administrator/sysAdmin_auditLogs/AuditLogsSkeleton'
+
+import { showToast } from '@/util/alertHelper'
 
 // Icons
-import { RefreshCw, Trash2, Download } from 'lucide-react'
+import { RefreshCw, Trash2, Download, AlertCircle } from 'lucide-react'
+
+// Debounce utility
+const useDebounce = (value, delay) => {
+    const [debouncedValue, setDebouncedValue] = useState(value)
+
+    useEffect(() => {
+        const handler = setTimeout(() => {
+            setDebouncedValue(value)
+        }, delay)
+
+        return () => {
+            clearTimeout(handler)
+        }
+    }, [value, delay])
+
+    return debouncedValue
+}
 
 const AuditLogsPage = () => {
     const [logs, setLogs] = useState([])
@@ -40,19 +65,47 @@ const AuditLogsPage = () => {
     const [showClearDialog, setShowClearDialog] = useState(false)
     const [isClearing, setIsClearing] = useState(false)
     const [isExporting, setIsExporting] = useState(false)
+    const [retryCount, setRetryCount] = useState(0)
+    const [errorMessage, setErrorMessage] = useState(null)
+    const [initialLoading, setInitialLoading] = useState(true)
+    const [tablesList, setTablesList] = useState([])
 
-    // Fetch audit logs
+    // Refs for abort controllers
+    const logsAbortController = useRef(null)
+    const statsAbortController = useRef(null)
+    const exportAbortController = useRef(null)
+
+    // Debounced search
+    const debouncedSearch = useDebounce(filters.search, 500)
+
+    // Cleanup abort controllers on unmount
+    useEffect(() => {
+        return () => {
+            logsAbortController.current?.abort()
+            statsAbortController.current?.abort()
+            exportAbortController.current?.abort()
+        }
+    }, [])
+
+    // Fetch audit logs with retry logic and request cancellation
     const fetchAuditLogs = useCallback(
-        async (page = 1) => {
+        async (page = 1, shouldRetry = true) => {
+            // Cancel any ongoing request
+            logsAbortController.current?.abort()
+            logsAbortController.current = new AbortController()
+
             setLoading(true)
+            setErrorMessage(null)
+
             try {
                 const params = {
                     page,
                     limit: pagination.limit,
                     ...filters,
+                    search: debouncedSearch, // Use debounced search
                 }
 
-                const response = await getAuditLogs(params)
+                const response = await getAuditLogs(params, logsAbortController.current.signal)
 
                 // Extract data from axios response
                 const responseData = response.data
@@ -65,41 +118,86 @@ const AuditLogsPage = () => {
                         total: responseData.pagination?.total || 0,
                         total_pages: responseData.pagination?.total_pages || 0,
                     })
+                    setRetryCount(0) // Reset retry count on success
                 } else {
                     console.error('Response status not success:', responseData)
+                    setErrorMessage(responseData.message || 'Failed to fetch audit logs')
                 }
             } catch (error) {
+                // Ignore abort errors
+                if (error.name === 'AbortError' || error.name === 'CanceledError') {
+                    console.log('Request was cancelled')
+                    return
+                }
+
                 console.error('Error fetching audit logs:', error)
-                const errorMessage =
+                const errorMsg =
                     error.response?.data?.message || error.message || 'Failed to fetch audit logs'
+
+                // Handle specific error cases
                 if (error.response?.status === 401) {
                     showToast('error', 'Session expired. Please log in again.')
-                    // You might want to redirect to login here
+                    setErrorMessage('Session expired. Please refresh the page and log in again.')
+                } else if (error.response?.status === 403) {
+                    showToast('error', 'You do not have permission to access audit logs.')
+                    setErrorMessage('Access denied. Please contact your administrator.')
+                } else if (error.response?.status >= 500) {
+                    setErrorMessage('Server error. Retrying...')
+                    // Retry logic for server errors
+                    if (shouldRetry && retryCount < 3) {
+                        setRetryCount((prev) => prev + 1)
+                        setTimeout(() => {
+                            fetchAuditLogs(page, true)
+                        }, 1000 * (retryCount + 1)) // Exponential backoff
+                    } else {
+                        showToast('error', 'Failed to fetch audit logs after multiple attempts.')
+                    }
                 } else {
-                    showToast('error', errorMessage)
+                    showToast('error', errorMsg)
+                    setErrorMessage(errorMsg)
                 }
             } finally {
                 setLoading(false)
             }
         },
-        [filters, pagination.limit]
+        [filters, pagination.limit, debouncedSearch, retryCount]
     )
 
-    // Fetch audit statistics
+    // Fetch audit statistics with request cancellation
     const fetchStats = useCallback(async () => {
+        // Cancel any ongoing request
+        statsAbortController.current?.abort()
+        statsAbortController.current = new AbortController()
+
         setStatsLoading(true)
         try {
-            const response = await getAuditStats()
-            // The API client already returns response.data
-            const responseData = response
+            const responseData = await getAuditStats(statsAbortController.current.signal)
 
             if (responseData.status === 'success') {
                 setStats(responseData.data)
             }
         } catch (error) {
+            // Ignore abort errors
+            if (error.name === 'AbortError' || error.name === 'CanceledError') {
+                console.log('Stats request was cancelled')
+                return
+            }
             console.error('Error fetching audit stats:', error)
         } finally {
             setStatsLoading(false)
+        }
+    }, [])
+
+    // Fetch list of audited tables
+    const fetchTablesList = useCallback(async () => {
+        try {
+            const responseData = await getAuditedTables()
+            if (responseData.status === 'success') {
+                setTablesList(responseData.data || [])
+            }
+        } catch (error) {
+            console.error('Error fetching tables list:', error)
+            // Fail silently - not critical for functionality
         }
     }, [])
 
@@ -134,10 +232,22 @@ const AuditLogsPage = () => {
 
     // Initial load
     useEffect(() => {
-        fetchAuditLogs(1)
-        fetchStats()
+        const loadInitialData = async () => {
+            setInitialLoading(true)
+            await Promise.all([fetchAuditLogs(1), fetchStats(), fetchTablesList()])
+            setInitialLoading(false)
+        }
+        loadInitialData()
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [])
+
+    // Refetch when debounced search or filters change
+    useEffect(() => {
+        if (debouncedSearch !== filters.search || debouncedSearch) {
+            fetchAuditLogs(1)
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [debouncedSearch])
 
     // Handle filter changes
     const handleFilterChange = (field, value) => {
@@ -175,13 +285,51 @@ const AuditLogsPage = () => {
     // Toggle filters
     const toggleFilters = () => setShowFilters(!showFilters)
 
-    // Handle clear all audit logs
+    // Handle clear all audit logs with automatic export backup
     const handleClearLogs = async () => {
         setIsClearing(true)
         try {
+            // First, export the logs as a backup
+            showToast('info', 'Creating backup before clearing...')
+
+            try {
+                exportAbortController.current?.abort()
+                exportAbortController.current = new AbortController()
+
+                const exportResponse = await exportAuditLogs(filters, exportAbortController.current.signal)
+
+                // Create blob and download backup
+                const blob = new Blob([exportResponse.data], { type: 'text/csv' })
+                const url = window.URL.createObjectURL(blob)
+                const link = document.createElement('a')
+                link.href = url
+                link.setAttribute(
+                    'download',
+                    `audit_logs_backup_${new Date().toISOString().split('T')[0]}.csv`
+                )
+                document.body.appendChild(link)
+                link.click()
+                link.remove()
+                window.URL.revokeObjectURL(url)
+
+                showToast('success', 'Backup created successfully')
+            } catch (exportError) {
+                if (exportError.name !== 'AbortError' && exportError.name !== 'CanceledError') {
+                    console.error('Error creating backup:', exportError)
+                    showToast(
+                        'warning',
+                        'Could not create backup, but will proceed with clearing. Please export manually if needed.'
+                    )
+                }
+            }
+
+            // Wait a moment for the backup to complete
+            await new Promise((resolve) => setTimeout(resolve, 1000))
+
+            // Now clear the logs
             const response = await clearAuditLogs()
             if (response.status === 'success') {
-                showToast('success', response.message)
+                showToast('success', response.message || 'Audit logs cleared successfully')
                 setLogs([])
                 fetchStats()
                 setShowClearDialog(false)
@@ -202,7 +350,16 @@ const AuditLogsPage = () => {
     const handleExportLogs = async () => {
         setIsExporting(true)
         try {
-            const response = await exportAuditLogs(filters)
+            // Cancel any ongoing export request
+            exportAbortController.current?.abort()
+            exportAbortController.current = new AbortController()
+
+            const response = await exportAuditLogs(filters, exportAbortController.current.signal)
+
+            // Validate response
+            if (!response || !response.data) {
+                throw new Error('Invalid response from server')
+            }
 
             // Create blob and download
             const blob = new Blob([response.data], { type: 'text/csv' })
@@ -228,6 +385,12 @@ const AuditLogsPage = () => {
 
             showToast('success', 'Audit logs exported successfully')
         } catch (error) {
+            // Ignore abort errors
+            if (error.name === 'AbortError' || error.name === 'CanceledError') {
+                console.log('Export was cancelled')
+                return
+            }
+
             console.error('Error exporting audit logs:', error)
             const errorMessage =
                 error.response?.data?.message || error.message || 'Failed to export audit logs'
@@ -237,13 +400,23 @@ const AuditLogsPage = () => {
         }
     }
 
+    // Show full page skeleton on initial load
+    if (initialLoading) {
+        return <AuditLogsPageSkeleton />
+    }
+
     return (
         <div className="container mx-auto py-6 px-4 max-w-7xl">
             {/* Header */}
             <div className="flex justify-between items-center mb-6">
-                <h1 className="text-3xl font-bold">Audit Logs</h1>
+                <div>
+                    <h1 className="text-3xl font-bold">Audit Logs</h1>
+                    <p className="text-sm text-muted-foreground mt-1">
+                        Track all system activities and changes
+                    </p>
+                </div>
                 <div className="flex gap-2">
-                    <TooltipHelper content={isExporting ? 'Exporting...' : 'Export CSV'}>
+                    <TooltipHelper content={isExporting ? 'Exporting...' : 'Export to CSV'}>
                         <Button
                             variant="outline"
                             size="sm"
@@ -261,11 +434,12 @@ const AuditLogsPage = () => {
                                 fetchAuditLogs(pagination.page)
                                 fetchStats()
                             }}
+                            disabled={loading}
                         >
-                            <RefreshCw className="w-4 h-4" />
+                            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
                         </Button>
                     </TooltipHelper>
-                    <TooltipHelper content="Clear Audit Logs">
+                    <TooltipHelper content="Clear All Logs (Creates backup first)">
                         <Button
                             variant="destructive"
                             size="sm"
@@ -278,6 +452,27 @@ const AuditLogsPage = () => {
                 </div>
             </div>
 
+            {/* Error Message Banner */}
+            {errorMessage && (
+                <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg flex items-start gap-3">
+                    <AlertCircle className="w-5 h-5 text-red-600 mt-0.5 flex-shrink-0" />
+                    <div className="flex-1">
+                        <h3 className="font-semibold text-red-800">Error</h3>
+                        <p className="text-sm text-red-700">{errorMessage}</p>
+                    </div>
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                            setErrorMessage(null)
+                            fetchAuditLogs(pagination.page)
+                        }}
+                    >
+                        Retry
+                    </Button>
+                </div>
+            )}
+
             {/* Statistics Cards */}
             <AuditStatsCards stats={stats} statsLoading={statsLoading} />
 
@@ -289,6 +484,7 @@ const AuditLogsPage = () => {
                 onResetFilters={resetFilters}
                 showFilters={showFilters}
                 onToggleFilters={toggleFilters}
+                tablesList={tablesList}
             />
 
             {/* Audit Logs Table */}
@@ -313,7 +509,7 @@ const AuditLogsPage = () => {
                 open={showClearDialog}
                 onOpenChange={setShowClearDialog}
                 title="Clear All Audit Logs"
-                description="This action cannot be undone. This will permanently delete all audit log entries from the database. You may want to export the logs before clearing them."
+                description="This action cannot be undone. A backup CSV file will be automatically downloaded before clearing. This will permanently delete all audit log entries from the database."
                 confirmText="clear all logs"
                 requireTyping={true}
                 destructive={true}

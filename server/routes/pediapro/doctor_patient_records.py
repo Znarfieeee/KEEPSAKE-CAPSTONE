@@ -1548,8 +1548,12 @@ def get_patient_record_by_id(patient_id):
                 else:
                     related_data['prescriptions'] = rx_resp.data or []
 
-                # Get vaccinations
-                vaccination_resp = supabase.table('vaccinations').select('*').eq('patient_id', patient_id).execute()
+                # Get vaccinations (exclude soft-deleted records)
+                vaccination_resp = supabase.table('vaccinations')\
+                    .select('*')\
+                    .eq('patient_id', patient_id)\
+                    .eq('is_deleted', False)\
+                    .execute()
                 if getattr(vaccination_resp, 'error', None):
                     current_app.logger.error(f"Error fetching vaccinations for patient {patient_id}: {vaccination_resp.error.message}")
                     related_data['vaccinations'] = []
@@ -1594,7 +1598,7 @@ def get_patient_record_by_id(patient_id):
                 }
 
             patient_data['related_records'] = related_data
-            current_app.logger.info(f"DEBUG: Final related_data structure for patient {patient_id}: {json.dumps(related_data, default=str)}")
+            # current_app.logger.info(f"DEBUG: Final related_data structure for patient {patient_id}: {json.dumps(related_data, default=str)}")
             
         return jsonify({
             "status": "success",

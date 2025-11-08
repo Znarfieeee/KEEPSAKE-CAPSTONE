@@ -1,8 +1,19 @@
-import React from 'react'
-import { Calendar, Syringe, AlertTriangle, CheckCircle } from 'lucide-react'
+import React, { useState } from 'react'
+import { Calendar, Syringe, AlertTriangle, CheckCircle, Plus, Edit, Trash2 } from 'lucide-react'
+import { Button } from '@/components/ui/Button'
+import AddImmunizationDialog from './AddImmunizationDialog'
+import EditImmunizationDialog from './EditImmunizationDialog'
+import ConfirmationDialog from '@/components/ui/ConfirmationDialog'
+import { deleteVaccination } from '@/api/doctor/vaccinations'
+import { showToast } from '@/util/alertHelper'
 
-const PatientImmunization = ({ patient }) => {
-  const vaccinations = patient?.related_records?.vaccinations || []
+const PatientImmunization = ({ patient, onUpdate }) => {
+  const [vaccinations, setVaccinations] = useState(patient?.related_records?.vaccinations || [])
+  const [showAddDialog, setShowAddDialog] = useState(false)
+  const [showEditDialog, setShowEditDialog] = useState(false)
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false)
+  const [selectedVaccination, setSelectedVaccination] = useState(null)
+  const [deleteLoading, setDeleteLoading] = useState(false)
 
   const formatDate = (dateString) => {
     if (!dateString) return '—'
@@ -37,12 +48,106 @@ const PatientImmunization = ({ patient }) => {
     return 'Up to date'
   }
 
+  // Handle successful immunization addition
+  const handleImmunizationAdded = (newVaccination) => {
+    setVaccinations((prev) => [newVaccination, ...prev])
+    // Dispatch custom event for parent to update
+    if (onUpdate) {
+      onUpdate()
+    }
+    // Also dispatch a window event for real-time updates
+    window.dispatchEvent(
+      new CustomEvent('vaccination-created', {
+        detail: newVaccination,
+      })
+    )
+  }
+
+  // Handle edit button click
+  const handleEdit = (vaccination) => {
+    setSelectedVaccination(vaccination)
+    setShowEditDialog(true)
+  }
+
+  // Handle successful immunization update
+  const handleImmunizationUpdated = (updatedVaccination) => {
+    setVaccinations((prev) =>
+      prev.map((v) => (v.vax_id === updatedVaccination.vax_id ? updatedVaccination : v))
+    )
+    // Dispatch custom event for parent to update
+    if (onUpdate) {
+      onUpdate()
+    }
+    // Also dispatch a window event for real-time updates
+    window.dispatchEvent(
+      new CustomEvent('vaccination-updated', {
+        detail: updatedVaccination,
+      })
+    )
+  }
+
+  // Handle delete button click - show confirmation dialog
+  const handleDeleteClick = (vaccination) => {
+    setSelectedVaccination(vaccination)
+    setShowDeleteDialog(true)
+  }
+
+  // Handle confirmed deletion - perform soft delete
+  const handleConfirmDelete = async () => {
+    if (!selectedVaccination) return
+
+    setDeleteLoading(true)
+    try {
+      const response = await deleteVaccination(patient.patient_id, selectedVaccination.vax_id)
+
+      if (response.status === 'success') {
+        showToast('success', 'Immunization record deleted successfully')
+        // Remove from local state
+        setVaccinations((prev) => prev.filter((v) => v.vax_id !== selectedVaccination.vax_id))
+        // Dispatch custom event for parent to update
+        if (onUpdate) {
+          onUpdate()
+        }
+        // Also dispatch a window event for real-time updates
+        window.dispatchEvent(
+          new CustomEvent('vaccination-deleted', {
+            detail: { vax_id: selectedVaccination.vax_id },
+          })
+        )
+        // Close dialog
+        setShowDeleteDialog(false)
+        setSelectedVaccination(null)
+      } else {
+        showToast('error', response.message || 'Failed to delete immunization record')
+      }
+    } catch (error) {
+      console.error('Error deleting immunization:', error)
+      const errorMessage =
+        error.response?.data?.message ||
+        error.message ||
+        'Failed to delete immunization record'
+      showToast('error', errorMessage)
+    } finally {
+      setDeleteLoading(false)
+    }
+  }
+
   return (
     <div className="bg-white rounded-b-lg shadow-sm p-6 mb-6">
       <div className="mb-8">
-        <div className="flex items-center gap-2 mb-6">
-          <Syringe className="w-5 h-5 text-blue-600" />
-          <h2 className="text-lg font-semibold">IMMUNIZATION RECORDS</h2>
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center gap-2">
+            <Syringe className="w-5 h-5 text-blue-600" />
+            <h2 className="text-lg font-semibold">IMMUNIZATION RECORDS</h2>
+          </div>
+          <Button
+            onClick={() => setShowAddDialog(true)}
+            size="sm"
+            className="flex items-center gap-2"
+          >
+            <Plus className="w-4 h-4" />
+            Add Immunization
+          </Button>
         </div>
 
         {vaccinations.length > 0 ? (
@@ -58,6 +163,7 @@ const PatientImmunization = ({ patient }) => {
                     <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">SITE</th>
                     <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">NEXT DUE</th>
                     <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">STATUS</th>
+                    <th className="px-4 py-3 text-center text-sm font-semibold text-gray-700">ACTIONS</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200">
@@ -102,6 +208,28 @@ const PatientImmunization = ({ patient }) => {
                           </span>
                         </div>
                       </td>
+                      <td className="px-4 py-3">
+                        <div className="flex items-center justify-center gap-2">
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => handleEdit(vaccination)}
+                            className="h-8 w-8 p-0"
+                            title="Edit vaccination"
+                          >
+                            <Edit className="w-4 h-4 text-blue-600" />
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => handleDeleteClick(vaccination)}
+                            className="h-8 w-8 p-0"
+                            title="Delete vaccination"
+                          >
+                            <Trash2 className="w-4 h-4 text-red-600" />
+                          </Button>
+                        </div>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -132,9 +260,18 @@ const PatientImmunization = ({ patient }) => {
           <div className="text-center py-8">
             <Syringe className="w-12 h-12 text-gray-300 mx-auto mb-3" />
             <h3 className="text-lg font-medium text-gray-500 mb-1">No Immunization Records</h3>
-            <p className="text-sm text-gray-400">
+            <p className="text-sm text-gray-400 mb-4">
               No vaccination records found for this patient.
             </p>
+            <Button
+              onClick={() => setShowAddDialog(true)}
+              variant="outline"
+              size="sm"
+              className="flex items-center gap-2 mx-auto"
+            >
+              <Plus className="w-4 h-4" />
+              Add First Immunization
+            </Button>
           </div>
         )}
 
@@ -151,6 +288,38 @@ const PatientImmunization = ({ patient }) => {
           </div>
         </div>
       </div>
+
+      {/* Add Immunization Dialog */}
+      <AddImmunizationDialog
+        open={showAddDialog}
+        onOpenChange={setShowAddDialog}
+        patient={patient}
+        onSuccess={handleImmunizationAdded}
+      />
+
+      {/* Edit Immunization Dialog */}
+      <EditImmunizationDialog
+        open={showEditDialog}
+        onOpenChange={setShowEditDialog}
+        patient={patient}
+        vaccination={selectedVaccination}
+        onSuccess={handleImmunizationUpdated}
+      />
+
+      {/* Delete Confirmation Dialog */}
+      <ConfirmationDialog
+        open={showDeleteDialog}
+        onOpenChange={setShowDeleteDialog}
+        onConfirm={handleConfirmDelete}
+        title="Delete Immunization Record"
+        description={
+          selectedVaccination
+            ? `Are you sure you want to delete the ${selectedVaccination.vaccine_name} vaccination record for ${patient.firstname} ${patient.lastname}? This action will mark the record as deleted but preserve it for compliance purposes.`
+            : ''
+        }
+        loading={deleteLoading}
+        destructive={true}
+      />
     </div>
   )
 }

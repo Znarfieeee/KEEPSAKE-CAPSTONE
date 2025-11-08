@@ -283,7 +283,7 @@ function App() {
                         },
                         {
                             path: 'settings',
-                            element: <div>Parent Settings Page - Coming Soon</div>,
+                            element: <Settings />,
                         },
                         {
                             path: 'help_support',

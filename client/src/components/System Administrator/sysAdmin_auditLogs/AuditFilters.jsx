@@ -11,6 +11,7 @@ import {
     SelectValue,
 } from '@/components/ui/select'
 import { Search, Filter } from 'lucide-react'
+import { AuditFiltersSkeleton } from './AuditLogsSkeleton'
 
 const AuditFilters = ({
     filters,
@@ -19,7 +20,14 @@ const AuditFilters = ({
     onResetFilters,
     showFilters,
     onToggleFilters,
+    loading = false, // Add loading prop
+    tablesList = [], // List of available tables
 }) => {
+    // Show skeleton while loading
+    if (loading) {
+        return <AuditFiltersSkeleton />
+    }
+
     return (
         <Card className="mb-6">
             <CardHeader>
@@ -80,12 +88,24 @@ const AuditFilters = ({
                                 <Label htmlFor="table_name" className="mb-2">
                                     Table Name
                                 </Label>
-                                <Input
-                                    id="table_name"
-                                    placeholder="e.g., users, patients..."
-                                    value={filters.table_name}
-                                    onChange={(e) => onFilterChange('table_name', e.target.value)}
-                                />
+                                <Select
+                                    value={filters.table_name || 'all'}
+                                    onValueChange={(value) =>
+                                        onFilterChange('table_name', value === 'all' ? '' : value)
+                                    }
+                                >
+                                    <SelectTrigger id="table_name">
+                                        <SelectValue placeholder="All Tables" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="all">All Tables</SelectItem>
+                                        {tablesList.map((table) => (
+                                            <SelectItem key={table} value={table}>
+                                                {table}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
                             </div>
 
                             <div>
