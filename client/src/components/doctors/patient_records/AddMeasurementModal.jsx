@@ -10,8 +10,8 @@ import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { Label } from '@/components/ui/label'
 
-// Validation schema
-const measurementSchema = z.object({
+// Create validation schema with patient birthdate check
+const createMeasurementSchema = (patientBirthdate) => z.object({
     weight: z.string().optional().refine(
         val => !val || (!isNaN(parseFloat(val)) && parseFloat(val) > 0 && parseFloat(val) < 200),
         { message: 'Weight must be between 0 and 200 kg' }
@@ -32,7 +32,24 @@ const measurementSchema = z.object({
         val => !val || (!isNaN(parseFloat(val)) && parseFloat(val) > 0 && parseFloat(val) < 200),
         { message: 'Abdominal circumference must be between 0 and 200 cm' }
     ),
-    measurement_date: z.string().min(1, 'Measurement date is required')
+    measurement_date: z.string().min(1, 'Measurement date is required').refine(
+        val => {
+            if (!val || !patientBirthdate) return true
+            const birthdate = new Date(patientBirthdate)
+            const measurementDate = new Date(val)
+            return measurementDate >= birthdate
+        },
+        { message: 'Measurement date cannot be before patient birthdate' }
+    ).refine(
+        val => {
+            if (!val) return true
+            const measurementDate = new Date(val)
+            const today = new Date()
+            today.setHours(23, 59, 59, 999) // End of today
+            return measurementDate <= today
+        },
+        { message: 'Measurement date cannot be in the future' }
+    )
 }).refine(
     data => data.weight || data.height || data.head_circumference || data.chest_circumference || data.abdominal_circumference,
     { message: 'At least one measurement must be provided', path: ['weight'] }
@@ -42,13 +59,16 @@ const AddMeasurementModal = ({ isOpen, onClose, patient, onSuccess }) => {
     const [isSubmitting, setIsSubmitting] = useState(false)
     const [error, setError] = useState(null)
 
+    // Get patient birthdate (support both field names)
+    const patientBirthdate = patient?.date_of_birth || patient?.birthdate
+
     const {
         register,
         handleSubmit,
         formState: { errors },
         reset
     } = useForm({
-        resolver: zodResolver(measurementSchema),
+        resolver: zodResolver(createMeasurementSchema(patientBirthdate)),
         defaultValues: {
             measurement_date: new Date().toISOString().split('T')[0]
         }
@@ -145,10 +165,16 @@ const AddMeasurementModal = ({ isOpen, onClose, patient, onSuccess }) => {
                             type="date"
                             {...register('measurement_date')}
                             className="mt-1"
+                            min={patientBirthdate || undefined}
                             max={new Date().toISOString().split('T')[0]}
                         />
                         {errors.measurement_date && (
                             <p className="mt-1 text-sm text-red-600">{errors.measurement_date.message}</p>
+                        )}
+                        {patientBirthdate && (
+                            <p className="mt-1 text-xs text-gray-500">
+                                Patient birthdate: {new Date(patientBirthdate).toLocaleDateString()}
+                            </p>
                         )}
                     </div>
 

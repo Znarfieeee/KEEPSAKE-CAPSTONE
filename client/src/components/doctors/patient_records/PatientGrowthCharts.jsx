@@ -176,16 +176,7 @@ const PatientGrowthCharts = ({ patient, onMeasurementAdded }) => {
 
     // Get patient measurements and calculate Z-scores
     const measurements = useMemo(() => {
-        console.log('=== PatientGrowthCharts Debug ===')
-        console.log('Patient data:', patient)
-        console.log('Patient related_records:', patient?.related_records)
-        console.log('Anthropometric measurements:', patient?.related_records?.anthropometric_measurements)
-
-        const formatted = formatPatientMeasurements(patient)
-        console.log('Formatted measurements:', formatted)
-        console.log('Number of measurements:', formatted.length)
-
-        return formatted
+        return formatPatientMeasurements(patient)
     }, [patient])
 
     // Get patient sex for WHO reference curves (default to male if not specified)
@@ -203,7 +194,7 @@ const PatientGrowthCharts = ({ patient, onMeasurementAdded }) => {
     const chartData = useMemo(() => {
         if (!measurements || measurements.length === 0) return []
 
-        const formatted = measurements
+        return measurements
             .map((m) => ({
                 age: m.ageMonths,
                 value:
@@ -224,11 +215,6 @@ const PatientGrowthCharts = ({ patient, onMeasurementAdded }) => {
                 date: new Date(m.date).toLocaleDateString(),
             }))
             .filter((d) => d.value !== null)
-
-        console.log('Chart data for', selectedChart, ':', formatted)
-        console.log('Chart data points:', formatted.length)
-
-        return formatted
     }, [measurements, selectedChart])
 
     // Merge patient data with WHO reference curves for chart display
@@ -247,9 +233,6 @@ const PatientGrowthCharts = ({ patient, onMeasurementAdded }) => {
             patientDataByAge.get(d.age).push(d)
         })
 
-        console.log('Patient data by age:', patientDataByAge)
-        console.log('Patient ages in map:', Array.from(patientDataByAge.keys()))
-
         // Get all unique age points from WHO curves
         const allAgePoints = new Set()
         Object.values(whoCurves).forEach((curve) => {
@@ -260,8 +243,6 @@ const PatientGrowthCharts = ({ patient, onMeasurementAdded }) => {
 
         // Add patient age points to ensure they're included
         chartData.forEach((d) => allAgePoints.add(d.age))
-
-        console.log('Total age points (WHO + Patient):', allAgePoints.size)
 
         // Build merged data array
         const merged = []
@@ -311,11 +292,6 @@ const PatientGrowthCharts = ({ patient, onMeasurementAdded }) => {
                     merged.push(dataPoint)
                 }
             })
-
-        const patientPoints = merged.filter(d => d.patientValue !== undefined)
-        console.log('Merged data with patient values:', patientPoints)
-        console.log('Total merged data points:', merged.length)
-        console.log('Total patient measurements on chart:', patientPoints.length)
 
         return merged
     }, [chartData, whoCurves])

@@ -357,7 +357,6 @@ export function formatPatientMeasurements(patient) {
     const birthdate = patient.birthdate || patient.date_of_birth
 
     if (!birthdate) {
-        console.warn('Patient has no birthdate field, cannot calculate age for measurements')
         return []
     }
 
