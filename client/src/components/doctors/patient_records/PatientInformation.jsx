@@ -87,7 +87,7 @@ const PatientInformation = ({ patient, onUpdate }) => {
             <div className="mb-10">
                 <div className="flex items-center justify-between mb-4 mt-4">
                     <h2 className="text-lg font-semibold">AUTHORIZED CONTACTS & CAREGIVERS</h2>
-                    <Button onClick={() => setShowInviteModal(true)} className="bg-blue-400">
+                    <Button onClick={() => setShowInviteModal(true)} variant="ghost">
                         <UserPlus className="h-4 w-4" />
                         Invite/Assign Parent
                     </Button>

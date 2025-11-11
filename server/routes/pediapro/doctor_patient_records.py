@@ -388,7 +388,7 @@ def add_patient_record():
                 "patient_id": patient_id,
                 "next_steps": {
                     "delivery_record": f"/patient_record/{patient_id}/delivery",
-                    "anthropometric_data": f"/patient_record/{patient_id}/anthropometric",
+                    "growth_milestones": f"/patient_record/{patient_id}/growth-milestone",
                     "screening_tests": f"/patient_record/{patient_id}/screening",
                     "allergies": f"/patient_record/{patient_id}/allergies",
                     "prescription": f"/patient_record/{patient_id}/prescription",
@@ -472,15 +472,79 @@ def manage_delivery_record(patient_id):
             "message": f"Error managing delivery record: {str(e)}"
         }), 500
 
-@patrecord_bp.route('/patient_record/<patient_id>/anthropometric', methods=['POST', 'PUT'])
+@patrecord_bp.route('/patient_record/<patient_id>/growth-milestone', methods=['POST'])
 @require_auth
 @require_role('doctor', 'facility_admin', 'nurse')
-def manage_anthropometric_record(patient_id):
-    """Dedicated route for anthropometric records"""
+def add_growth_milestone(patient_id):
+    """
+    Add a new growth milestone measurement for tracking child development.
+    This endpoint records anthropometric measurements (weight, height, head circumference, etc.)
+    which are used to generate WHO growth charts and track the child's development over time.
+
+    Patients can have multiple milestone records tracked throughout their growth journey.
+    """
     try:
         data = request.json or {}
         current_user = request.current_user
-        
+
+        current_app.logger.info(f"AUDIT: Adding growth milestone for patient {patient_id} by user {current_user.get('email')}")
+
+        # Verify patient exists
+        patient_check = supabase.table('patients').select('patient_id, firstname, lastname').eq('patient_id', patient_id).single().execute()
+        if not patient_check.data:
+            current_app.logger.warning(f"AUDIT: Patient {patient_id} not found")
+            return jsonify({
+                "status": "error",
+                "message": "Patient not found"
+            }), 404
+
+        recorded_by = current_user.get('id')
+        milestone_payload = prepare_anthropometric_payload(data, patient_id, recorded_by)
+
+        current_app.logger.debug(f"Growth milestone payload: {milestone_payload}")
+
+        # Insert new milestone record
+        resp = supabase.table('anthropometric_measurements').insert(milestone_payload).execute()
+
+        if getattr(resp, 'error', None):
+            current_app.logger.error(f"AUDIT: Error inserting growth milestone: {resp.error.message if resp.error else 'Unknown'}")
+            return jsonify({
+                "status": "error",
+                "message": "Failed to save growth milestone",
+                "details": resp.error.message if resp.error else "Unknown"
+            }), 400
+
+        patient_name = f"{patient_check.data['firstname']} {patient_check.data['lastname']}"
+        current_app.logger.info(f"AUDIT: Successfully added growth milestone for patient {patient_name} (ID: {patient_id})")
+
+        invalidate_caches('patient', patient_id)
+
+        return jsonify({
+            "status": "success",
+            "message": "Growth milestone recorded successfully",
+            "data": resp.data
+        }), 201
+
+    except Exception as e:
+        current_app.logger.error(f"AUDIT: Exception adding growth milestone: {str(e)}")
+        import traceback
+        current_app.logger.error(f"Traceback: {traceback.format_exc()}")
+        return jsonify({
+            "status": "error",
+            "message": f"Error recording growth milestone: {str(e)}"
+        }), 500
+
+@patrecord_bp.route('/patient_record/<patient_id>/growth-milestone/<measurement_id>', methods=['PUT'])
+@require_auth
+@require_role('doctor', 'facility_admin', 'nurse')
+def update_growth_milestone(patient_id, measurement_id):
+    """Update an existing growth milestone measurement"""
+    try:
+        data = request.json or {}
+        current_user = request.current_user
+
+        current_app.logger.info(f"AUDIT: Updating growth milestone {measurement_id} for patient {patient_id}")
+
         # Verify patient exists
         patient_check = supabase.table('patients').select('patient_id').eq('patient_id', patient_id).single().execute()
         if not patient_check.data:
@@ -488,30 +552,77 @@ def manage_anthropometric_record(patient_id):
                 "status": "error",
                 "message": "Patient not found"
             }), 404
-        
+
         recorded_by = current_user.get('id')
-        anthropometric_payload = prepare_anthropometric_payload(data, patient_id, recorded_by)
-        resp = upsert_related_record('anthropometric_measurements', anthropometric_payload, patient_id)
-        
+        milestone_payload = prepare_anthropometric_payload(data, patient_id, recorded_by)
+
+        # Update specific milestone record
+        resp = supabase.table('anthropometric_measurements').update(milestone_payload).eq('measurement_id', measurement_id).eq('patient_id', patient_id).execute()
+
         if getattr(resp, 'error', None):
             return jsonify({
                 "status": "error",
-                "message": "Failed to save anthropometric record",
+                "message": "Failed to update growth milestone",
                 "details": resp.error.message if resp.error else "Unknown"
             }), 400
-            
+
         invalidate_caches('patient', patient_id)
-        
+        current_app.logger.info(f"AUDIT: Successfully updated growth milestone {measurement_id}")
+
         return jsonify({
             "status": "success",
-            "message": "Anthropometric record saved successfully",
+            "message": "Growth milestone updated successfully",
             "data": resp.data
         }), 200
-        
+
     except Exception as e:
+        current_app.logger.error(f"Error updating growth milestone: {str(e)}")
         return jsonify({
             "status": "error",
-            "message": f"Error managing anthropometric record: {str(e)}"
+            "message": f"Error updating growth milestone: {str(e)}"
+        }), 500
+
+@patrecord_bp.route('/patient_record/<patient_id>/growth-milestone/<measurement_id>', methods=['DELETE'])
+@require_auth
+@require_role('doctor', 'facility_admin', 'nurse')
+def delete_growth_milestone(patient_id, measurement_id):
+    """Delete a growth milestone measurement"""
+    try:
+        current_user = request.current_user
+
+        current_app.logger.info(f"AUDIT: Deleting growth milestone {measurement_id} for patient {patient_id}")
+
+        # Verify patient exists
+        patient_check = supabase.table('patients').select('patient_id').eq('patient_id', patient_id).single().execute()
+        if not patient_check.data:
+            return jsonify({
+                "status": "error",
+                "message": "Patient not found"
+            }), 404
+
+        # Delete specific milestone record
+        resp = supabase.table('anthropometric_measurements').delete().eq('measurement_id', measurement_id).eq('patient_id', patient_id).execute()
+
+        if getattr(resp, 'error', None):
+            return jsonify({
+                "status": "error",
+                "message": "Failed to delete growth milestone",
+                "details": resp.error.message if resp.error else "Unknown"
+            }), 400
+
+        invalidate_caches('patient', patient_id)
+        current_app.logger.info(f"AUDIT: Successfully deleted growth milestone {measurement_id}")
+
+        return jsonify({
+            "status": "success",
+            "message": "Growth milestone deleted successfully"
+        }), 200
+
+    except Exception as e:
+        current_app.logger.error(f"Error deleting growth milestone: {str(e)}")
+        return jsonify({
+            "status": "error",
+            "message": f"Error deleting growth milestone: {str(e)}"
         }), 500
 
 @patrecord_bp.route('/patient_record/<patient_id>/screening', methods=['POST', 'PUT'])

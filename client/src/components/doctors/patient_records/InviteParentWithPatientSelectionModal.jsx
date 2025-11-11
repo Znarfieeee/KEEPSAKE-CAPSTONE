@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { X, UserPlus, Search } from 'lucide-react'
+import { Button } from '@/components/ui/Button'
+import { Input } from '@/components/ui/input'
 import InviteParentModal from './InviteParentModal'
 
 const InviteParentWithPatientSelectionModal = ({ open, onClose, patients, onSuccess }) => {
@@ -82,12 +84,13 @@ const InviteParentWithPatientSelectionModal = ({ open, onClose, patients, onSucc
               Choose a patient to assign a parent or guardian to
             </p>
           </div>
-          <button
+          <Button
+            variant="ghost"
+            size="icon"
             onClick={handleCloseAll}
-            className="text-gray-400 hover:text-gray-600 transition-colors"
           >
             <X className="h-6 w-6" />
-          </button>
+          </Button>
         </div>
 
         {/* Content */}
@@ -99,11 +102,11 @@ const InviteParentWithPatientSelectionModal = ({ open, onClose, patients, onSucc
             </label>
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
-              <input
+              <Input
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="pl-10"
                 placeholder="Search by name..."
               />
             </div>
@@ -144,15 +147,15 @@ const InviteParentWithPatientSelectionModal = ({ open, onClose, patients, onSucc
                         </span>
                       )}
                     </div>
-                    <button
-                      className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors text-sm font-medium"
+                    <Button
+                      size="sm"
                       onClick={(e) => {
                         e.stopPropagation()
                         handlePatientSelect(patient)
                       }}
                     >
                       Select
-                    </button>
+                    </Button>
                   </div>
                 </div>
               ))}
@@ -166,12 +169,12 @@ const InviteParentWithPatientSelectionModal = ({ open, onClose, patients, onSucc
 
           {/* Footer */}
           <div className="flex justify-end pt-4 border-t">
-            <button
+            <Button
+              variant="outline"
               onClick={handleCloseAll}
-              className="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors font-medium"
             >
               Cancel
-            </button>
+            </Button>
           </div>
         </div>
       </div>

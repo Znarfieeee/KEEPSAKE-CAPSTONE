@@ -15,6 +15,70 @@ export default defineConfig({
             '@': path.resolve(__dirname, './src'),
         },
     },
+    server: {
+        proxy: {
+            '/api': {
+                target: 'http://localhost:5000',
+                changeOrigin: true,
+                secure: false,
+            },
+            '/patient_record': {
+                target: 'http://localhost:5000',
+                changeOrigin: true,
+                secure: false,
+            },
+            '/patient_records': {
+                target: 'http://localhost:5000',
+                changeOrigin: true,
+                secure: false,
+            },
+            '/auth': {
+                target: 'http://localhost:5000',
+                changeOrigin: true,
+                secure: false,
+            },
+            '/facilities': {
+                target: 'http://localhost:5000',
+                changeOrigin: true,
+                secure: false,
+            },
+            '/users': {
+                target: 'http://localhost:5000',
+                changeOrigin: true,
+                secure: false,
+            },
+            '/appointments': {
+                target: 'http://localhost:5000',
+                changeOrigin: true,
+                secure: false,
+            },
+            '/prescriptions': {
+                target: 'http://localhost:5000',
+                changeOrigin: true,
+                secure: false,
+            },
+            '/vaccinations': {
+                target: 'http://localhost:5000',
+                changeOrigin: true,
+                secure: false,
+            },
+            '/notifications': {
+                target: 'http://localhost:5000',
+                changeOrigin: true,
+                secure: false,
+            },
+            '/qr': {
+                target: 'http://localhost:5000',
+                changeOrigin: true,
+                secure: false,
+            },
+            '/parents': {
+                target: 'http://localhost:5000',
+                changeOrigin: true,
+                secure: false,
+            },
+        },
+    },
     build: {
         rollupOptions: {
             output: {

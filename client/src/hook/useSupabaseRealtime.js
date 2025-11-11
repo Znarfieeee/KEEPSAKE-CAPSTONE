@@ -840,4 +840,114 @@ export const useNotificationsRealtime = ({ userId, onNotificationChange }) => {
     })
 }
 
+/**
+ * Real-time hook for growth milestone measurements
+ * Provides live updates for growth chart data and WHO standards tracking
+ */
+export const useAnthropometricMeasurementsRealtime = ({ patientId, onMeasurementChange }) => {
+    const formatMeasurement = useCallback(
+        (raw) => ({
+            am_id: raw.am_id,
+            patient_id: raw.patient_id,
+            weight: raw.weight,
+            height: raw.height,
+            head_circumference: raw.head_circumference,
+            chest_circumference: raw.chest_circumference,
+            abdominal_circumference: raw.abdominal_circumference,
+            measurement_date: raw.measurement_date,
+            recorded_by: raw.recorded_by,
+            recorded_at: raw.recorded_at,
+        }),
+        []
+    )
+
+    const handleInsert = useCallback(
+        (newMeasurement) => {
+            // Only process measurements for the specified patient
+            if (!patientId || newMeasurement.patient_id === patientId) {
+                const formatted = formatMeasurement(newMeasurement)
+                onMeasurementChange({
+                    type: 'INSERT',
+                    measurement: formatted,
+                    raw: newMeasurement,
+                })
+
+                // Dispatch custom event for immediate UI updates
+                window.dispatchEvent(
+                    new CustomEvent('growth-milestone-added', {
+                        detail: {
+                            patient_id: newMeasurement.patient_id,
+                            data: formatted,
+                        },
+                    })
+                )
+            }
+        },
+        [patientId, formatMeasurement, onMeasurementChange]
+    )
+
+    const handleUpdate = useCallback(
+        (updatedMeasurement, oldMeasurement) => {
+            // Only process measurements for the specified patient
+            if (!patientId || updatedMeasurement.patient_id === patientId) {
+                const formatted = formatMeasurement(updatedMeasurement)
+                onMeasurementChange({
+                    type: 'UPDATE',
+                    measurement: formatted,
+                    raw: updatedMeasurement,
+                    oldRaw: oldMeasurement,
+                })
+
+                // Dispatch custom event for immediate UI updates
+                window.dispatchEvent(
+                    new CustomEvent('anthropometric-measurement-updated', {
+                        detail: {
+                            patient_id: updatedMeasurement.patient_id,
+                            data: formatted,
+                        },
+                    })
+                )
+            }
+        },
+        [patientId, formatMeasurement, onMeasurementChange]
+    )
+
+    const handleDelete = useCallback(
+        (deletedMeasurement) => {
+            // Only process measurements for the specified patient
+            if (!patientId || deletedMeasurement.patient_id === patientId) {
+                const formatted = formatMeasurement(deletedMeasurement)
+                onMeasurementChange({
+                    type: 'DELETE',
+                    measurement: formatted,
+                    raw: deletedMeasurement,
+                })
+
+                // Dispatch custom event for immediate UI updates
+                window.dispatchEvent(
+                    new CustomEvent('anthropometric-measurement-deleted', {
+                        detail: {
+                            patient_id: deletedMeasurement.patient_id,
+                            data: formatted,
+                        },
+                    })
+                )
+            }
+        },
+        [patientId, formatMeasurement, onMeasurementChange]
+    )
+
+    // Create filter for patient-specific subscriptions
+    const filter = patientId ? `patient_id=eq.${patientId}` : null
+
+    return useSupabaseRealtime({
+        table: 'anthropometric_measurements',
+        onInsert: handleInsert,
+        onUpdate: handleUpdate,
+        onDelete: handleDelete,
+        filter: filter,
+        dependencies: [onMeasurementChange, patientId],
+    })
+}
+
 export { supabase }
