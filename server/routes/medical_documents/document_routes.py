@@ -479,8 +479,9 @@ def delete_document(document_id):
         user_role = current_user.get('role')
         facility_id = current_user.get('facility_id')
 
-        # Get document metadata
-        doc_response = supabase.table('medical_documents')\
+        # Get document metadata using service role to bypass RLS
+        # User authentication already verified by @require_auth decorator
+        doc_response = supabase_service_role_client.table('medical_documents')\
             .select('*')\
             .eq('document_id', document_id)\
             .eq('is_deleted', False)\
@@ -511,7 +512,8 @@ def delete_document(document_id):
             }), 403
 
         # Soft delete: update is_deleted flag
-        update_response = supabase.table('medical_documents').update({
+        # Use service role client since we've already verified permissions
+        update_response = supabase_service_role_client.table('medical_documents').update({
             'is_deleted': True,
             'deleted_at': datetime.utcnow().isoformat(),
             'deleted_by': user_id

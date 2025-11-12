@@ -288,19 +288,26 @@ export function PatientDocuments({ patientId, canDelete = false }) {
 
                                     <div className="flex items-center gap-2 ml-4">
                                         <Button
-                                            variant="outline"
+                                            variant="default"
                                             size="sm"
-                                            onClick={() => handlePreviewClick(doc)}
+                                            onClick={(e) => {
+                                                e.stopPropagation()
+                                                handlePreviewClick(doc)
+                                            }}
                                             title="Preview document"
                                         >
                                             <Eye className="w-4 h-4" />
                                         </Button>
 
                                         <Button
-                                            variant="outline"
+                                            variant="default"
                                             size="sm"
-                                            onClick={() => handleDownload(doc)}
+                                            onClick={(e) => {
+                                                e.stopPropagation()
+                                                handleDownload(doc)
+                                            }}
                                             title="Download document"
+                                            className="bg-blue-600 hover:bg-blue-700"
                                         >
                                             <Download className="w-4 h-4" />
                                         </Button>
@@ -309,8 +316,11 @@ export function PatientDocuments({ patientId, canDelete = false }) {
                                             <Button
                                                 variant="outline"
                                                 size="sm"
-                                                onClick={() => handleDeleteClick(doc)}
-                                                className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                                                onClick={(e) => {
+                                                    e.stopPropagation()
+                                                    handleDeleteClick(doc)
+                                                }}
+                                                className="text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200"
                                                 title="Delete document"
                                             >
                                                 <Trash2 className="w-4 h-4" />
