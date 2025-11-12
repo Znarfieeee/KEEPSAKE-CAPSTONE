@@ -4,7 +4,7 @@ import { axiosConfig } from './axiosConfig'
 
 export const getNotifications = async (params = {}) => {
     const response = await axios.get(`${backendConnection()}/notification`, {
-        axiosConfig,
+        ...axiosConfig,
         params: {
             limit: 50,
             ...params,
@@ -16,6 +16,19 @@ export const getNotifications = async (params = {}) => {
 export const markNotificationAsRead = async (notificationId) => {
     const response = await axios.patch(
         `${backendConnection()}/notifications/${notificationId}/mark-read`,
+        {},
+        axiosConfig
+    )
+    return response.data
+}
+
+/**
+ * Mark a notification as unread
+ * @param {string} notificationId - Notification UUID
+ */
+export const markNotificationAsUnread = async (notificationId) => {
+    const response = await axios.patch(
+        `${backendConnection()}/notifications/${notificationId}/mark-unread`,
         {},
         axiosConfig
     )

@@ -18,6 +18,7 @@ const NotificationBell = () => {
         unreadCount,
         loading,
         markAsRead,
+        markAsUnread,
         markAllAsRead,
         archiveNotification,
         deleteNotification,
@@ -77,6 +78,7 @@ const NotificationBell = () => {
                     loading={loading}
                     onClose={() => setIsOpen(false)}
                     onMarkAsRead={markAsRead}
+                    onMarkAsUnread={markAsUnread}
                     onMarkAllAsRead={markAllAsRead}
                     onArchive={archiveNotification}
                     onDelete={deleteNotification}

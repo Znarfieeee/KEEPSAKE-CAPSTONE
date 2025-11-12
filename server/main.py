@@ -33,9 +33,9 @@ app = Flask("keepsake")
 try:
     corrupted_count = clear_corrupted_sessions()
     if corrupted_count > 0:
-        print(f"🧹 Cleared {corrupted_count} corrupted sessions on startup")
+        print(f"[CLEANUP] Cleared {corrupted_count} corrupted sessions on startup")
 except Exception as e:
-    print(f"⚠️  Warning: Could not clear corrupted sessions: {e}")
+    print(f"[WARNING] Could not clear corrupted sessions: {e}")
 
 # Initializing google OAuth w/ error handling
 try:
@@ -56,6 +56,10 @@ app.register_blueprint(vaccinations_bp)
 app.register_blueprint(appointment_bp)
 app.register_blueprint(fusers_bp)
 app.register_blueprint(documents_bp)
+app.register_blueprint(user_settings_bp)
+app.register_blueprint(qr_bp)
+app.register_blueprint(notification_bp)
+app.register_blueprint(parent_bp)
 
 # Redis session configuration with enhanced error handling
 def setup_redis_session():
@@ -143,71 +147,71 @@ def handle_startup_errors():
     """Check all critical dependencies before starting"""
     errors = []
     print("Checking startup errors...")
-    
+
     # Check Redis connection with encoding test
     try:
         ping_result = redis_client.ping()
         if ping_result:
-            print("✅ Redis connection successful")
-            
+            print("[OK] Redis connection successful")
+
             # Test encoding/decoding
-            test_data = {"test": "UTF-8 test: héllo wörld 🌍"}
+            test_data = {"test": "UTF-8 test: hello world"}
             test_key = "startup_encoding_test"
             redis_client.setex(test_key, 10, json.dumps(test_data, ensure_ascii=False))
             retrieved = redis_client.get(test_key)
             parsed = json.loads(retrieved)
             redis_client.delete(test_key)
-            
+
             if parsed == test_data:
-                print("✅ Redis encoding/decoding test passed")
+                print("[OK] Redis encoding/decoding test passed")
             else:
-                errors.append("❌ Redis encoding test failed")
+                errors.append("[ERROR] Redis encoding test failed")
         else:
-            errors.append("❌ Redis connection failed")
-            
+            errors.append("[ERROR] Redis connection failed")
+
     except UnicodeDecodeError as e:
-        errors.append(f"❌ Redis encoding error: {str(e)}")
+        errors.append(f"[ERROR] Redis encoding error: {str(e)}")
         # Try to clear corrupted data
         try:
             clear_corrupted_sessions()
-            print("🧹 Cleared corrupted session data")
+            print("[CLEANUP] Cleared corrupted session data")
         except:
-            errors.append("❌ Could not clear corrupted Redis data")
+            errors.append("[ERROR] Could not clear corrupted Redis data")
     except Exception as e:
-        errors.append(f"❌ Redis connection failed: {str(e)}")
-    
+        errors.append(f"[ERROR] Redis connection failed: {str(e)}")
+
     # Check Supabase connection
     try:
         supabase = supabase_anon_client()
         if supabase:
-            print("✅ Supabase connection successful")
+            print("[OK] Supabase connection successful")
         else:
-            errors.append("❌ Supabase connection failed")
+            errors.append("[ERROR] Supabase connection failed")
     except Exception as e:
-        errors.append(f"❌ Supabase connection failed: {str(e)}")
-    
+        errors.append(f"[ERROR] Supabase connection failed: {str(e)}")
+
     if errors:
-        print("🚨 Startup errors detected:")
+        print("[WARNING] Startup errors detected:")
         for error in errors:
             print(f"  {error}")
-        
+
         # For Redis encoding issues, try to auto-fix
         if any("encoding" in error.lower() for error in errors):
-            print("🔧 Attempting to fix Redis encoding issues...")
+            print("[FIX] Attempting to fix Redis encoding issues...")
             try:
                 # Clear all potentially corrupted session data
                 corrupted_count = clear_corrupted_sessions()
                 if corrupted_count > 0:
-                    print(f"🧹 Cleared {corrupted_count} corrupted sessions")
+                    print(f"[CLEANUP] Cleared {corrupted_count} corrupted sessions")
                     # Retry the startup check
-                    print("🔄 Retrying startup check...")
+                    print("[RETRY] Retrying startup check...")
                     return handle_startup_errors()  # Recursive retry
             except Exception as fix_error:
-                print(f"❌ Auto-fix failed: {fix_error}")
-        
+                print(f"[ERROR] Auto-fix failed: {fix_error}")
+
         sys.exit(1)
-    
-    print("🚀 All systems ready!")
+
+    print("[READY] All systems ready!")
     
 @app.route("/")
 def landing_page():

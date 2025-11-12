@@ -19,6 +19,7 @@ import { Button } from '../ui/Button'
 import { ScrollArea } from '../ui/scroll-area'
 import { Skeleton } from '../ui/skeleton'
 import { useNavigate } from 'react-router-dom'
+import NotificationMenu from './NotificationMenu'
 
 /**
  * NotificationDropdown Component
@@ -30,6 +31,7 @@ const NotificationDropdown = ({
     loading,
     onClose,
     onMarkAsRead,
+    onMarkAsUnread,
     onMarkAllAsRead,
     onArchive,
     onDelete,
@@ -91,7 +93,7 @@ const NotificationDropdown = ({
     })
 
     return (
-        <div className="absolute right-0 mt-2 w-[420px] bg-white rounded-lg shadow-2xl border border-gray-200 z-50 animate-in fade-in slide-in-from-top-2 duration-200">
+        <div className="absolute right-0 mt-2 w-[480px] bg-white rounded-lg shadow-2xl border border-gray-200 z-50 animate-in fade-in slide-in-from-top-2 duration-200">
             {/* Header */}
             <div className="p-4 border-b border-gray-200 bg-gradient-to-r from-blue-50 to-white">
                 <div className="flex items-center justify-between mb-3">
@@ -174,7 +176,7 @@ const NotificationDropdown = ({
             {/* Notification List */}
             <ScrollArea
                 className={`overflow-y-auto ${
-                    filteredNotifications.length === 0 ? 'h-48' : 'max-h-[500px]'
+                    filteredNotifications.length === 0 ? 'h-48' : 'max-h-[420px]'
                 }`}
             >
                 {loading ? (
@@ -210,24 +212,24 @@ const NotificationDropdown = ({
                         </p>
                     </div>
                 ) : (
-                    <div className="divide-y divide-gray-200">
+                    <div className="divide-y divide-gray-100">
                         {filteredNotifications.map((notification) => (
                             <div
                                 key={notification.notification_id}
-                                className={`p-4 hover:bg-gray-50 transition-colors ${
+                                className={`p-3 hover:bg-gray-50 transition-colors ${
                                     !notification.is_read ? 'bg-blue-50' : ''
                                 } ${getPriorityColor(notification.priority)} cursor-pointer`}
                                 onClick={() => handleNotificationClick(notification)}
                             >
-                                <div className="flex gap-3">
-                                    <div className="flex-shrink-0 mt-1">
+                                <div className="flex gap-2.5">
+                                    <div className="flex-shrink-0 mt-0.5">
                                         {getNotificationIcon(notification.notification_type)}
                                     </div>
 
                                     <div className="flex-1 min-w-0">
-                                        <div className="flex items-start justify-between gap-2 mb-1">
+                                        <div className="flex items-start justify-between gap-2 mb-0.5">
                                             <h4
-                                                className={`text-sm font-semibold ${
+                                                className={`text-sm font-semibold leading-tight ${
                                                     !notification.is_read
                                                         ? 'text-gray-900'
                                                         : 'text-gray-700'
@@ -241,7 +243,7 @@ const NotificationDropdown = ({
                                             )}
                                         </div>
 
-                                        <p className="text-sm text-gray-600 mb-2 line-clamp-2">
+                                        <p className="text-xs text-gray-600 mb-1.5 line-clamp-2 leading-relaxed">
                                             {notification.message}
                                         </p>
 
@@ -258,42 +260,13 @@ const NotificationDropdown = ({
                                                 className="flex items-center gap-1"
                                                 onClick={(e) => e.stopPropagation()}
                                             >
-                                                {!notification.is_read && (
-                                                    <button
-                                                        onClick={(e) => {
-                                                            e.stopPropagation()
-                                                            onMarkAsRead(
-                                                                notification.notification_id
-                                                            )
-                                                        }}
-                                                        className="p-1 hover:bg-gray-200 rounded transition-colors"
-                                                        title="Mark as read"
-                                                    >
-                                                        <Check className="h-3.5 w-3.5 text-gray-600" />
-                                                    </button>
-                                                )}
-
-                                                <button
-                                                    onClick={(e) => {
-                                                        e.stopPropagation()
-                                                        onArchive(notification.notification_id)
-                                                    }}
-                                                    className="p-1 hover:bg-gray-200 rounded transition-colors"
-                                                    title="Archive"
-                                                >
-                                                    <Archive className="h-3.5 w-3.5 text-gray-600" />
-                                                </button>
-
-                                                <button
-                                                    onClick={(e) => {
-                                                        e.stopPropagation()
-                                                        onDelete(notification.notification_id)
-                                                    }}
-                                                    className="p-1 hover:bg-red-100  rounded transition-colors"
-                                                    title="Delete"
-                                                >
-                                                    <Trash2 className="h-3.5 w-3.5 text-red-600 " />
-                                                </button>
+                                                <NotificationMenu
+                                                    notification={notification}
+                                                    onMarkAsRead={onMarkAsRead}
+                                                    onMarkAsUnread={onMarkAsUnread}
+                                                    onArchive={onArchive}
+                                                    onDelete={onDelete}
+                                                />
                                             </div>
                                         </div>
                                     </div>

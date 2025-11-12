@@ -97,7 +97,39 @@ def mark_notification_read(notification_id):
 
     except Exception as e:
         current_app.logger.error(f"AUDIIT: Error in mark_notification_read: {str(e)}")
-        
+
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+
+
+@notification_bp.route('/<notification_id>/mark-unread', methods=['PATCH'])
+@require_auth
+def mark_notification_unread(notification_id):
+    """Mark a specific notification as unread"""
+    try:
+        user_id = request.current_user.get('id')
+
+        if not user_id:
+            return jsonify({'status': 'error', 'message': 'User not authenticated'}), 401
+
+        # Verify notification belongs to user
+        notification = supabase_service_role_client().table('notifications').select('*').eq('notification_id', notification_id).eq('user_id', user_id).execute()
+
+        if not notification.data:
+            return jsonify({'status': 'error', 'message': 'Notification not found'}), 404
+
+        # Update notification to unread
+        response = supabase_service_role_client().table('notifications').update({
+            'is_read': False,
+            'read_at': None
+        }).eq('notification_id', notification_id).execute()
+
+        return jsonify({
+            'status': 'success',
+            'notification': response.data[0] if response.data else None
+        }), 200
+
+    except Exception as e:
+        current_app.logger.error(f"AUDIT: Error in mark_notification_unread: {str(e)}")
         return jsonify({'status': 'error', 'message': str(e)}), 500
 
 
