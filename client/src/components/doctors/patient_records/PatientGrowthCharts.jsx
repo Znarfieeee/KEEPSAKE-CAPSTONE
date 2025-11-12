@@ -278,11 +278,11 @@ const PatientGrowthCharts = ({ patient, onMeasurementAdded }) => {
                         for (let i = 1; i < patientPoints.length; i++) {
                             const point = patientPoints[i]
                             const offsetPoint = {
-                                age: age + (i * 0.01), // Tiny offset for visualization
+                                age: age + i * 0.01, // Tiny offset for visualization
                                 ...dataPoint, // Copy WHO reference values
                                 patientValue: point.value,
                                 zScore: point.zScore,
-                                date: point.date
+                                date: point.date,
                             }
                             merged.push(offsetPoint)
                         }
@@ -445,7 +445,7 @@ const PatientGrowthCharts = ({ patient, onMeasurementAdded }) => {
                         )}
 
                         {/* Patient Info Badges */}
-                        <Badge
+                        {/* <Badge
                             variant="outline"
                             className="bg-blue-50 text-blue-700 border-blue-200"
                         >
@@ -456,7 +456,7 @@ const PatientGrowthCharts = ({ patient, onMeasurementAdded }) => {
                             className="bg-purple-50 text-purple-700 border-purple-200"
                         >
                             {currentAge} months old
-                        </Badge>
+                        </Badge> */}
                     </div>
                 </div>
 
@@ -720,7 +720,7 @@ const PatientGrowthCharts = ({ patient, onMeasurementAdded }) => {
                                             r: 8,
                                             fill: '#2563eb',
                                             stroke: '#fff',
-                                            strokeWidth: 2
+                                            strokeWidth: 2,
                                         }}
                                         name="Patient Data"
                                         connectNulls={true}

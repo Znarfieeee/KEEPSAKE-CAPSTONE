@@ -25,6 +25,7 @@ from routes.user_settings import settings_bp as user_settings_bp
 from routes.qr_routes import qr_bp
 from routes.notification_routes import notification_bp
 from routes.parent.parent_routes import parent_bp
+from routes.medical_documents.document_routes import documents_bp
 
 app = Flask("keepsake")
 
@@ -54,6 +55,7 @@ app.register_blueprint(patrx_bp)
 app.register_blueprint(vaccinations_bp)
 app.register_blueprint(appointment_bp)
 app.register_blueprint(fusers_bp)
+app.register_blueprint(documents_bp)
 
 # Redis session configuration with enhanced error handling
 def setup_redis_session():

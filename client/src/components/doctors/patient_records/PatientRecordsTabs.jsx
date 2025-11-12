@@ -2,7 +2,7 @@ import React, { useEffect, useState, useMemo, useCallback } from 'react'
 import { getPatientById } from '@/api/doctors/patient'
 
 // UI Components
-import { FileText, Syringe, Pill, Stethoscope, TrendingUp } from 'lucide-react'
+import { FileText, Syringe, Pill, Stethoscope, TrendingUp, FolderOpen } from 'lucide-react'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area'
 
@@ -11,6 +11,7 @@ import PatientVitals from '@/components/doctors/patient_records/PatientVitals'
 import PatientImmunization from '@/components/doctors/patient_records/PatientImmunization'
 import PatientPrescription from '@/components/doctors/patient_records/PatientPrescriptions'
 import PatientGrowthCharts from '@/components/doctors/patient_records/PatientGrowthCharts'
+import { PatientDocuments } from '@/components/doctors/patient_records/PatientDocuments'
 
 // Helpers
 import { showToast } from '@/util/alertHelper'
@@ -55,8 +56,6 @@ const PatientRecordsTabs = ({ patient: initialPatient }) => {
 
             // Only update if this is the same patient and we have valid data
             if (patient_id === patient?.patient_id && patient_data) {
-                console.log('Updating patient data in tabs:', patient_data)
-                // Ensure the patient data has the required structure
                 const updatedPatient = {
                     ...patient,
                     ...patient_data,
@@ -98,21 +97,6 @@ const PatientRecordsTabs = ({ patient: initialPatient }) => {
             setPrescriptions([])
         }
     }, [patient?.related_records?.prescriptions])
-
-    // Debug log to check if all related data is being received
-    useEffect(() => {
-        if (patient?.related_records) {
-            console.log('Patient related records:', {
-                delivery: patient.related_records.delivery,
-                anthropometric_measurements: patient.related_records.anthropometric_measurements,
-                screening: patient.related_records.screening,
-                allergies: patient.related_records.allergies,
-                prescriptions: patient.related_records.prescriptions,
-                vaccinations: patient.related_records.vaccinations,
-                parent_access: patient.related_records.parent_access,
-            })
-        }
-    }, [patient?.related_records])
 
     // Early return if patient data is not available
     if (!patient) {
@@ -211,6 +195,17 @@ const PatientRecordsTabs = ({ patient: initialPatient }) => {
                         onPrescriptionAdded={handlePrescriptionAdded}
                     />
                 </div>
+            ),
+        },
+        {
+            value: 'documents',
+            label: 'DOCUMENTS',
+            icon: FolderOpen,
+            content: (
+                <PatientDocuments
+                    patientId={patient?.patient_id || patient?.id}
+                    canDelete={true}
+                />
             ),
         },
     ]

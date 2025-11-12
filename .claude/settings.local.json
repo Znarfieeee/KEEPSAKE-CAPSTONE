@@ -13,7 +13,8 @@
       "Bash(netstat:*)",
       "Bash(findstr:*)",
       "Bash(taskkill:*)",
-      "mcp__supabase__get_advisors"
+      "mcp__supabase__get_advisors",
+      "Bash(if not exist \"server\\routes\\medical_documents\" mkdir \"server\\routes\\medical_documents\")"
     ],
     "deny": [],
     "ask": []

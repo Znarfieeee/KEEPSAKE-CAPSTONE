@@ -950,4 +950,149 @@ export const useAnthropometricMeasurementsRealtime = ({ patientId, onMeasurement
     })
 }
 
+/**
+ * Real-time hook for medical documents
+ * Provides live updates for document uploads, updates, and deletions
+ */
+export const useDocumentsRealtime = ({ patientId, onDocumentChange }) => {
+    const formatDocument = useCallback(
+        (raw) => ({
+            document_id: raw.document_id,
+            patient_id: raw.patient_id,
+            facility_id: raw.facility_id,
+            document_type: raw.document_type,
+            document_name: raw.document_name,
+            description: raw.description,
+            storage_bucket: raw.storage_bucket,
+            storage_path: raw.storage_path,
+            file_size: raw.file_size,
+            mime_type: raw.mime_type,
+            version: raw.version,
+            parent_document_id: raw.parent_document_id,
+            is_current_version: raw.is_current_version,
+            uploaded_by: raw.uploaded_by,
+            uploaded_at: raw.uploaded_at,
+            is_deleted: raw.is_deleted,
+            deleted_at: raw.deleted_at,
+            deleted_by: raw.deleted_by,
+            created_at: raw.created_at,
+            updated_at: raw.updated_at,
+        }),
+        []
+    )
+
+    const handleInsert = useCallback(
+        (newDocument) => {
+            // Only process documents for the specified patient (if filter is set)
+            if (!patientId || newDocument.patient_id === patientId) {
+                // Don't show deleted documents
+                if (!newDocument.is_deleted) {
+                    const formatted = formatDocument(newDocument)
+                    onDocumentChange({
+                        type: 'INSERT',
+                        document: formatted,
+                        raw: newDocument,
+                    })
+
+                    // Dispatch custom event for immediate UI updates
+                    window.dispatchEvent(
+                        new CustomEvent('document-uploaded', {
+                            detail: {
+                                patientId: newDocument.patient_id,
+                                document: formatted,
+                            },
+                        })
+                    )
+                }
+            }
+        },
+        [patientId, formatDocument, onDocumentChange]
+    )
+
+    const handleUpdate = useCallback(
+        (updatedDocument, oldDocument) => {
+            // Only process documents for the specified patient (if filter is set)
+            if (!patientId || updatedDocument.patient_id === patientId) {
+                const formatted = formatDocument(updatedDocument)
+
+                // If document was soft deleted, treat it as a DELETE event
+                if (updatedDocument.is_deleted && !oldDocument.is_deleted) {
+                    onDocumentChange({
+                        type: 'DELETE',
+                        document: formatted,
+                        raw: updatedDocument,
+                        oldRaw: oldDocument,
+                    })
+
+                    // Dispatch custom event
+                    window.dispatchEvent(
+                        new CustomEvent('document-deleted', {
+                            detail: {
+                                patientId: updatedDocument.patient_id,
+                                documentId: updatedDocument.document_id,
+                            },
+                        })
+                    )
+                } else if (!updatedDocument.is_deleted) {
+                    // Regular update
+                    onDocumentChange({
+                        type: 'UPDATE',
+                        document: formatted,
+                        raw: updatedDocument,
+                        oldRaw: oldDocument,
+                    })
+
+                    // Dispatch custom event
+                    window.dispatchEvent(
+                        new CustomEvent('document-updated', {
+                            detail: {
+                                patientId: updatedDocument.patient_id,
+                                document: formatted,
+                            },
+                        })
+                    )
+                }
+            }
+        },
+        [patientId, formatDocument, onDocumentChange]
+    )
+
+    const handleDelete = useCallback(
+        (deletedDocument) => {
+            // Only process documents for the specified patient (if filter is set)
+            if (!patientId || deletedDocument.patient_id === patientId) {
+                const formatted = formatDocument(deletedDocument)
+                onDocumentChange({
+                    type: 'DELETE',
+                    document: formatted,
+                    raw: deletedDocument,
+                })
+
+                // Dispatch custom event
+                window.dispatchEvent(
+                    new CustomEvent('document-deleted', {
+                        detail: {
+                            patientId: deletedDocument.patient_id,
+                            documentId: deletedDocument.document_id,
+                        },
+                    })
+                )
+            }
+        },
+        [patientId, formatDocument, onDocumentChange]
+    )
+
+    // Create filter for patient-specific subscriptions
+    const filter = patientId ? `patient_id=eq.${patientId}` : null
+
+    return useSupabaseRealtime({
+        table: 'medical_documents',
+        onInsert: handleInsert,
+        onUpdate: handleUpdate,
+        onDelete: handleDelete,
+        filter: filter,
+        dependencies: [onDocumentChange, patientId],
+    })
+}
+
 export { supabase }

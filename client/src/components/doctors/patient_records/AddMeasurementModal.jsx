@@ -2,58 +2,97 @@ import React, { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import * as z from 'zod'
-import { X, Plus, Ruler, Weight, Brain, Activity } from 'lucide-react'
-import axios from 'axios'
+
+// API
+import { addMeasurement } from '@/api/doctors/measurements'
 
 // UI Components
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { Label } from '@/components/ui/label'
+import { X, Plus, Ruler, Weight, Brain, Activity } from 'lucide-react'
 
 // Create validation schema with patient birthdate check
-const createMeasurementSchema = (patientBirthdate) => z.object({
-    weight: z.string().optional().refine(
-        val => !val || (!isNaN(parseFloat(val)) && parseFloat(val) > 0 && parseFloat(val) < 200),
-        { message: 'Weight must be between 0 and 200 kg' }
-    ),
-    height: z.string().optional().refine(
-        val => !val || (!isNaN(parseFloat(val)) && parseFloat(val) > 0 && parseFloat(val) < 250),
-        { message: 'Height must be between 0 and 250 cm' }
-    ),
-    head_circumference: z.string().optional().refine(
-        val => !val || (!isNaN(parseFloat(val)) && parseFloat(val) > 0 && parseFloat(val) < 100),
-        { message: 'Head circumference must be between 0 and 100 cm' }
-    ),
-    chest_circumference: z.string().optional().refine(
-        val => !val || (!isNaN(parseFloat(val)) && parseFloat(val) > 0 && parseFloat(val) < 200),
-        { message: 'Chest circumference must be between 0 and 200 cm' }
-    ),
-    abdominal_circumference: z.string().optional().refine(
-        val => !val || (!isNaN(parseFloat(val)) && parseFloat(val) > 0 && parseFloat(val) < 200),
-        { message: 'Abdominal circumference must be between 0 and 200 cm' }
-    ),
-    measurement_date: z.string().min(1, 'Measurement date is required').refine(
-        val => {
-            if (!val || !patientBirthdate) return true
-            const birthdate = new Date(patientBirthdate)
-            const measurementDate = new Date(val)
-            return measurementDate >= birthdate
-        },
-        { message: 'Measurement date cannot be before patient birthdate' }
-    ).refine(
-        val => {
-            if (!val) return true
-            const measurementDate = new Date(val)
-            const today = new Date()
-            today.setHours(23, 59, 59, 999) // End of today
-            return measurementDate <= today
-        },
-        { message: 'Measurement date cannot be in the future' }
-    )
-}).refine(
-    data => data.weight || data.height || data.head_circumference || data.chest_circumference || data.abdominal_circumference,
-    { message: 'At least one measurement must be provided', path: ['weight'] }
-)
+const createMeasurementSchema = (patientBirthdate) =>
+    z
+        .object({
+            weight: z
+                .string()
+                .optional()
+                .refine(
+                    (val) =>
+                        !val ||
+                        (!isNaN(parseFloat(val)) && parseFloat(val) > 0 && parseFloat(val) < 200),
+                    { message: 'Weight must be between 0 and 200 kg' }
+                ),
+            height: z
+                .string()
+                .optional()
+                .refine(
+                    (val) =>
+                        !val ||
+                        (!isNaN(parseFloat(val)) && parseFloat(val) > 0 && parseFloat(val) < 250),
+                    { message: 'Height must be between 0 and 250 cm' }
+                ),
+            head_circumference: z
+                .string()
+                .optional()
+                .refine(
+                    (val) =>
+                        !val ||
+                        (!isNaN(parseFloat(val)) && parseFloat(val) > 0 && parseFloat(val) < 100),
+                    { message: 'Head circumference must be between 0 and 100 cm' }
+                ),
+            chest_circumference: z
+                .string()
+                .optional()
+                .refine(
+                    (val) =>
+                        !val ||
+                        (!isNaN(parseFloat(val)) && parseFloat(val) > 0 && parseFloat(val) < 200),
+                    { message: 'Chest circumference must be between 0 and 200 cm' }
+                ),
+            abdominal_circumference: z
+                .string()
+                .optional()
+                .refine(
+                    (val) =>
+                        !val ||
+                        (!isNaN(parseFloat(val)) && parseFloat(val) > 0 && parseFloat(val) < 200),
+                    { message: 'Abdominal circumference must be between 0 and 200 cm' }
+                ),
+            measurement_date: z
+                .string()
+                .min(1, 'Measurement date is required')
+                .refine(
+                    (val) => {
+                        if (!val || !patientBirthdate) return true
+                        const birthdate = new Date(patientBirthdate)
+                        const measurementDate = new Date(val)
+                        return measurementDate >= birthdate
+                    },
+                    { message: 'Measurement date cannot be before patient birthdate' }
+                )
+                .refine(
+                    (val) => {
+                        if (!val) return true
+                        const measurementDate = new Date(val)
+                        const today = new Date()
+                        today.setHours(23, 59, 59, 999) // End of today
+                        return measurementDate <= today
+                    },
+                    { message: 'Measurement date cannot be in the future' }
+                ),
+        })
+        .refine(
+            (data) =>
+                data.weight ||
+                data.height ||
+                data.head_circumference ||
+                data.chest_circumference ||
+                data.abdominal_circumference,
+            { message: 'At least one measurement must be provided', path: ['weight'] }
+        )
 
 const AddMeasurementModal = ({ isOpen, onClose, patient, onSuccess }) => {
     const [isSubmitting, setIsSubmitting] = useState(false)
@@ -66,12 +105,12 @@ const AddMeasurementModal = ({ isOpen, onClose, patient, onSuccess }) => {
         register,
         handleSubmit,
         formState: { errors },
-        reset
+        reset,
     } = useForm({
         resolver: zodResolver(createMeasurementSchema(patientBirthdate)),
         defaultValues: {
-            measurement_date: new Date().toISOString().split('T')[0]
-        }
+            measurement_date: new Date().toISOString().split('T')[0],
+        },
     })
 
     const onSubmit = async (data) => {
@@ -82,38 +121,37 @@ const AddMeasurementModal = ({ isOpen, onClose, patient, onSuccess }) => {
             const measurementData = {
                 weight: data.weight ? parseFloat(data.weight) : null,
                 height: data.height ? parseFloat(data.height) : null,
-                head_circumference: data.head_circumference ? parseFloat(data.head_circumference) : null,
-                chest_circumference: data.chest_circumference ? parseFloat(data.chest_circumference) : null,
-                abdominal_circumference: data.abdominal_circumference ? parseFloat(data.abdominal_circumference) : null,
-                measurement_date: data.measurement_date
+                head_circumference: data.head_circumference
+                    ? parseFloat(data.head_circumference)
+                    : null,
+                chest_circumference: data.chest_circumference
+                    ? parseFloat(data.chest_circumference)
+                    : null,
+                abdominal_circumference: data.abdominal_circumference
+                    ? parseFloat(data.abdominal_circumference)
+                    : null,
+                measurement_date: data.measurement_date,
             }
 
-            const response = await axios.post(
-                `/patient_record/${patient.patient_id}/growth-milestone`,
-                measurementData,
-                {
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    withCredentials: true
-                }
-            )
+            const response = await addMeasurement(patient.patient_id, measurementData)
 
-            if (response.data.status === 'success') {
+            if (response.status === 'success') {
                 // Dispatch custom event for immediate UI update
-                window.dispatchEvent(new CustomEvent('growth-milestone-added', {
-                    detail: { patient_id: patient.patient_id, data: response.data.data }
-                }))
+                window.dispatchEvent(
+                    new CustomEvent('growth-milestone-added', {
+                        detail: { patient_id: patient.patient_id, data: response.data },
+                    })
+                )
 
                 reset()
                 onSuccess?.()
                 onClose()
             } else {
-                throw new Error(response.data.message || 'Failed to save growth milestone')
+                throw new Error(response.message || 'Failed to save growth milestone')
             }
         } catch (err) {
             console.error('Error saving measurement:', err)
-            setError(err.response?.data?.message || err.message || 'Failed to save measurement')
+            setError(err.message || 'Failed to save measurement')
         } finally {
             setIsSubmitting(false)
         }
@@ -135,7 +173,8 @@ const AddMeasurementModal = ({ isOpen, onClose, patient, onSuccess }) => {
                     <div>
                         <h2 className="text-2xl font-bold text-gray-900">Add Measurement</h2>
                         <p className="text-sm text-gray-600 mt-1">
-                            Record anthropometric measurements for {patient?.firstname} {patient?.lastname}
+                            Record anthropometric measurements for {patient?.firstname}{' '}
+                            {patient?.lastname}
                         </p>
                     </div>
                     <button
@@ -157,7 +196,10 @@ const AddMeasurementModal = ({ isOpen, onClose, patient, onSuccess }) => {
 
                     {/* Measurement Date */}
                     <div>
-                        <Label htmlFor="measurement_date" className="text-sm font-medium text-gray-700">
+                        <Label
+                            htmlFor="measurement_date"
+                            className="text-sm font-medium text-gray-700"
+                        >
                             Measurement Date <span className="text-red-500">*</span>
                         </Label>
                         <Input
@@ -169,7 +211,9 @@ const AddMeasurementModal = ({ isOpen, onClose, patient, onSuccess }) => {
                             max={new Date().toISOString().split('T')[0]}
                         />
                         {errors.measurement_date && (
-                            <p className="mt-1 text-sm text-red-600">{errors.measurement_date.message}</p>
+                            <p className="mt-1 text-sm text-red-600">
+                                {errors.measurement_date.message}
+                            </p>
                         )}
                         {patientBirthdate && (
                             <p className="mt-1 text-xs text-gray-500">
@@ -182,7 +226,10 @@ const AddMeasurementModal = ({ isOpen, onClose, patient, onSuccess }) => {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         {/* Weight */}
                         <div>
-                            <Label htmlFor="weight" className="flex items-center gap-2 text-sm font-medium text-gray-700">
+                            <Label
+                                htmlFor="weight"
+                                className="flex items-center gap-2 text-sm font-medium text-gray-700"
+                            >
                                 <Weight className="h-4 w-4 text-blue-500" />
                                 Weight (kg)
                             </Label>
@@ -201,7 +248,10 @@ const AddMeasurementModal = ({ isOpen, onClose, patient, onSuccess }) => {
 
                         {/* Height/Length */}
                         <div>
-                            <Label htmlFor="height" className="flex items-center gap-2 text-sm font-medium text-gray-700">
+                            <Label
+                                htmlFor="height"
+                                className="flex items-center gap-2 text-sm font-medium text-gray-700"
+                            >
                                 <Ruler className="h-4 w-4 text-green-500" />
                                 Height/Length (cm)
                             </Label>
@@ -220,7 +270,10 @@ const AddMeasurementModal = ({ isOpen, onClose, patient, onSuccess }) => {
 
                         {/* Head Circumference */}
                         <div>
-                            <Label htmlFor="head_circumference" className="flex items-center gap-2 text-sm font-medium text-gray-700">
+                            <Label
+                                htmlFor="head_circumference"
+                                className="flex items-center gap-2 text-sm font-medium text-gray-700"
+                            >
                                 <Brain className="h-4 w-4 text-purple-500" />
                                 Head Circumference (cm)
                             </Label>
@@ -233,13 +286,18 @@ const AddMeasurementModal = ({ isOpen, onClose, patient, onSuccess }) => {
                                 className="mt-1"
                             />
                             {errors.head_circumference && (
-                                <p className="mt-1 text-sm text-red-600">{errors.head_circumference.message}</p>
+                                <p className="mt-1 text-sm text-red-600">
+                                    {errors.head_circumference.message}
+                                </p>
                             )}
                         </div>
 
                         {/* Chest Circumference */}
                         <div>
-                            <Label htmlFor="chest_circumference" className="flex items-center gap-2 text-sm font-medium text-gray-700">
+                            <Label
+                                htmlFor="chest_circumference"
+                                className="flex items-center gap-2 text-sm font-medium text-gray-700"
+                            >
                                 <Activity className="h-4 w-4 text-orange-500" />
                                 Chest Circumference (cm)
                             </Label>
@@ -252,13 +310,18 @@ const AddMeasurementModal = ({ isOpen, onClose, patient, onSuccess }) => {
                                 className="mt-1"
                             />
                             {errors.chest_circumference && (
-                                <p className="mt-1 text-sm text-red-600">{errors.chest_circumference.message}</p>
+                                <p className="mt-1 text-sm text-red-600">
+                                    {errors.chest_circumference.message}
+                                </p>
                             )}
                         </div>
 
                         {/* Abdominal Circumference */}
                         <div className="md:col-span-2">
-                            <Label htmlFor="abdominal_circumference" className="flex items-center gap-2 text-sm font-medium text-gray-700">
+                            <Label
+                                htmlFor="abdominal_circumference"
+                                className="flex items-center gap-2 text-sm font-medium text-gray-700"
+                            >
                                 <Activity className="h-4 w-4 text-pink-500" />
                                 Abdominal Circumference (cm)
                             </Label>
@@ -271,7 +334,9 @@ const AddMeasurementModal = ({ isOpen, onClose, patient, onSuccess }) => {
                                 className="mt-1"
                             />
                             {errors.abdominal_circumference && (
-                                <p className="mt-1 text-sm text-red-600">{errors.abdominal_circumference.message}</p>
+                                <p className="mt-1 text-sm text-red-600">
+                                    {errors.abdominal_circumference.message}
+                                </p>
                             )}
                         </div>
                     </div>
@@ -279,7 +344,9 @@ const AddMeasurementModal = ({ isOpen, onClose, patient, onSuccess }) => {
                     {/* Help Text */}
                     <div className="bg-blue-50 border border-blue-200 rounded-md p-4">
                         <p className="text-sm text-blue-800">
-                            <strong>Note:</strong> At least one measurement must be provided. All measurements should be entered in metric units (kg for weight, cm for lengths/circumferences).
+                            <strong>Note:</strong> At least one measurement must be provided. All
+                            measurements should be entered in metric units (kg for weight, cm for
+                            lengths/circumferences).
                         </p>
                     </div>
 
@@ -287,17 +354,13 @@ const AddMeasurementModal = ({ isOpen, onClose, patient, onSuccess }) => {
                     <div className="flex items-center justify-end gap-3 pt-4 border-t border-gray-200">
                         <Button
                             type="button"
-                            variant="outline"
+                            variant="ghost"
                             onClick={handleClose}
                             disabled={isSubmitting}
                         >
                             Cancel
                         </Button>
-                        <Button
-                            type="submit"
-                            disabled={isSubmitting}
-                            className="bg-blue-600 hover:bg-blue-700 text-white"
-                        >
+                        <Button type="submit" disabled={isSubmitting}>
                             {isSubmitting ? (
                                 <>
                                     <span className="animate-spin mr-2">⏳</span>

@@ -168,7 +168,7 @@ function DoctorPatientRecords() {
 
             if (response.status === 'success') {
                 // Backend returns formatted data from facility_patients junction
-                const formattedPatients = response.data.map(item => {
+                const formattedPatients = response.data.map((item) => {
                     // Extract patient data from nested structure
                     const patient = item.patients || item
                     return formatPatient(patient)
@@ -444,16 +444,7 @@ function DoctorPatientRecords() {
                     onInviteParent={handleInviteParent}
                     onRefresh={fetchPatients}
                 />
-                <Suspense
-                    fallback={
-                        <div className="flex items-center justify-center p-8">
-                            <div className="flex items-center gap-2">
-                                <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent"></div>
-                                <span className="text-sm text-gray-600">Loading modal...</span>
-                            </div>
-                        </div>
-                    }
-                >
+                <Suspense fallback={null}>
                     <StepperAddPatientModal
                         open={showAddModal}
                         onClose={() => setShowAddModal(false)}
@@ -508,16 +499,7 @@ function DoctorPatientRecords() {
                     if (!open) setEditingPatient(null)
                 }}
             >
-                <Suspense
-                    fallback={
-                        <div className="flex items-center justify-center p-8">
-                            <div className="flex items-center gap-2">
-                                <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent"></div>
-                                <span className="text-sm text-gray-600">Loading modal...</span>
-                            </div>
-                        </div>
-                    }
-                >
+                <Suspense fallback={null}>
                     <EditPatientModal
                         patient={editingPatient}
                         onClose={() => {
@@ -530,16 +512,7 @@ function DoctorPatientRecords() {
             </Dialog>
 
             {/* Invite Parent with Patient Selection Modal */}
-            <Suspense
-                fallback={
-                    <div className="flex items-center justify-center p-8">
-                        <div className="flex items-center gap-2">
-                            <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent"></div>
-                            <span className="text-sm text-gray-600">Loading...</span>
-                        </div>
-                    </div>
-                }
-            >
+            <Suspense fallback={null}>
                 <InviteParentWithPatientSelectionModal
                     open={showInviteParentModal}
                     onClose={() => setShowInviteParentModal(false)}
