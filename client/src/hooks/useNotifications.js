@@ -24,20 +24,27 @@ export const useNotifications = () => {
     // Get user ID from auth context
     const userId = user?.user_id || user?.id
 
-    // Fetch notifications from API - Simple approach like Facebook
+    // Fetch notifications from API - Loads both active and archived
     const fetchNotifications = useCallback(async () => {
         try {
             setLoading(true)
             setError(null)
 
-            // Load 10 notifications initially
-            const response = await getNotifications({ limit: 10 })
+            // Fetch active notifications
+            const activeResponse = await getNotifications({ limit: 50, is_archived: false })
 
-            if (response.status === 'success') {
-                setNotifications(response.notifications || [])
-                setUnreadCount(response.unread_count || 0)
+            // Fetch archived notifications
+            const archivedResponse = await getNotifications({ limit: 50, is_archived: true })
+
+            if (activeResponse.status === 'success' && archivedResponse.status === 'success') {
+                const allNotifications = [
+                    ...(activeResponse.notifications || []),
+                    ...(archivedResponse.notifications || [])
+                ]
+                setNotifications(allNotifications)
+                setUnreadCount(activeResponse.unread_count || 0)
             } else {
-                throw new Error(response.message || 'Failed to fetch notifications')
+                throw new Error('Failed to fetch notifications')
             }
         } catch (err) {
             console.error('Error fetching notifications:', err)
@@ -49,47 +56,28 @@ export const useNotifications = () => {
         }
     }, [])
 
-    // Mark notification as read
+    // Mark notification as read (with optimistic update)
     const markAsRead = useCallback(async (notificationId) => {
         if (!notificationId) {
             console.error('Invalid notification ID')
             return
         }
 
+        // Optimistic update - update UI immediately
+        setNotifications((prev) =>
+            prev.map((notif) =>
+                notif.notification_id === notificationId
+                    ? { ...notif, is_read: true, read_at: new Date().toISOString() }
+                    : notif
+            )
+        )
+        setUnreadCount((prev) => Math.max(0, prev - 1))
+
         try {
             const response = await markNotificationAsRead(notificationId)
 
-            if (response.status === 'success') {
-                // Update local state
-                setNotifications((prev) =>
-                    prev.map((notif) =>
-                        notif.notification_id === notificationId
-                            ? { ...notif, is_read: true, read_at: new Date().toISOString() }
-                            : notif
-                    )
-                )
-                setUnreadCount((prev) => Math.max(0, prev - 1))
-            } else {
-                throw new Error(response.message || 'Failed to mark notification as read')
-            }
-        } catch (err) {
-            console.error('Error marking notification as read:', err)
-            // Optionally show user-friendly error notification
-        }
-    }, [])
-
-    // Mark notification as unread
-    const markAsUnread = useCallback(async (notificationId) => {
-        if (!notificationId) {
-            console.error('Invalid notification ID')
-            return
-        }
-
-        try {
-            const response = await markNotificationAsUnread(notificationId)
-
-            if (response.status === 'success') {
-                // Update local state
+            if (response.status !== 'success') {
+                // Revert optimistic update on failure
                 setNotifications((prev) =>
                     prev.map((notif) =>
                         notif.notification_id === notificationId
@@ -98,7 +86,43 @@ export const useNotifications = () => {
                     )
                 )
                 setUnreadCount((prev) => prev + 1)
-            } else {
+                throw new Error(response.message || 'Failed to mark notification as read')
+            }
+        } catch (err) {
+            console.error('Error marking notification as read:', err)
+        }
+    }, [])
+
+    // Mark notification as unread (with optimistic update)
+    const markAsUnread = useCallback(async (notificationId) => {
+        if (!notificationId) {
+            console.error('Invalid notification ID')
+            return
+        }
+
+        // Optimistic update - update UI immediately
+        setNotifications((prev) =>
+            prev.map((notif) =>
+                notif.notification_id === notificationId
+                    ? { ...notif, is_read: false, read_at: null }
+                    : notif
+            )
+        )
+        setUnreadCount((prev) => prev + 1)
+
+        try {
+            const response = await markNotificationAsUnread(notificationId)
+
+            if (response.status !== 'success') {
+                // Revert optimistic update on failure
+                setNotifications((prev) =>
+                    prev.map((notif) =>
+                        notif.notification_id === notificationId
+                            ? { ...notif, is_read: true, read_at: new Date().toISOString() }
+                            : notif
+                    )
+                )
+                setUnreadCount((prev) => Math.max(0, prev - 1))
                 throw new Error(response.message || 'Failed to mark notification as unread')
             }
         } catch (err) {
@@ -106,26 +130,35 @@ export const useNotifications = () => {
         }
     }, [])
 
-    // Mark all notifications as read
+    // Mark all notifications as read (with optimistic update)
     const markAllAsRead = useCallback(async () => {
+        // Store original state for potential rollback
+        const originalNotifications = notifications
+        const originalUnreadCount = unreadCount
+
+        // Optimistic update - update UI immediately
+        setNotifications((prev) =>
+            prev.map((notif) => ({
+                ...notif,
+                is_read: true,
+                read_at: new Date().toISOString(),
+            }))
+        )
+        setUnreadCount(0)
+
         try {
             const response = await markAllNotificationsAsRead()
 
-            if (response.status === 'success') {
-                // Update local state
-                setNotifications((prev) =>
-                    prev.map((notif) => ({
-                        ...notif,
-                        is_read: true,
-                        read_at: new Date().toISOString(),
-                    }))
-                )
-                setUnreadCount(0)
+            if (response.status !== 'success') {
+                // Revert optimistic update on failure
+                setNotifications(originalNotifications)
+                setUnreadCount(originalUnreadCount)
+                throw new Error(response.message || 'Failed to mark all notifications as read')
             }
         } catch (err) {
             console.error('Error marking all notifications as read:', err)
         }
-    }, [])
+    }, [notifications, unreadCount])
 
     // Archive notification
     const archiveNotification = useCallback(

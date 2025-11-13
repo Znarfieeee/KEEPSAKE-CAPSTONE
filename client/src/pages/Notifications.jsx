@@ -34,8 +34,8 @@ import NotificationMenu from '../components/notifications/NotificationMenu'
  */
 const NotificationsPage = () => {
     const navigate = useNavigate()
+    const [activeTab, setActiveTab] = useState('all') // all, unread, archived
     const [filterType, setFilterType] = useState('all')
-    const [filterRead, setFilterRead] = useState('all')
 
     const {
         notifications,
@@ -52,26 +52,26 @@ const NotificationsPage = () => {
     const getNotificationIcon = (type) => {
         switch (type) {
             case 'appointment_reminder':
-                return <Bell className="h-6 w-6 text-blue-500" />
+                return <Bell />
             case 'upcoming_appointment':
-                return <Calendar className="h-6 w-6 text-purple-500" />
+                return <Calendar />
             case 'vaccination_due':
-                return <Syringe className="h-6 w-6 text-green-500" />
+                return <Syringe />
             case 'qr_access_alert':
-                return <QrCode className="h-6 w-6 text-orange-500" />
+                return <QrCode />
             case 'system_announcement':
-                return <Megaphone className="h-6 w-6 text-red-500" />
+                return <Megaphone />
             default:
-                return <Bell className="h-6 w-6 text-gray-500" />
+                return <Bell />
         }
     }
 
     const getPriorityBadge = (priority) => {
         const classes = {
-            urgent: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300',
-            high: 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-300',
-            normal: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300',
-            low: 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-300',
+            urgent: 'bg-red-100 text-red-800',
+            high: 'bg-orange-100 text-orange-800',
+            normal: 'bg-blue-100 text-blue-800',
+            low: 'bg-gray-100 text-gray-800',
         }
 
         return (
@@ -85,6 +85,37 @@ const NotificationsPage = () => {
         )
     }
 
+    const getPriorityColor = (priority) => {
+        switch (priority) {
+            case 'urgent':
+                return 'bg-red-50 '
+            case 'high':
+                return 'bg-orange-50 '
+            case 'normal':
+                return 'bg-blue-50'
+            case 'low':
+                return 'bg-gray-50'
+            default:
+                return 'bg-gray-50 '
+        }
+    }
+
+    const getPriorityIndicator = (priority) => {
+        const baseClasses = 'w-3 h-3 rounded-full flex-shrink-0 mt-2 animate-pulse'
+        switch (priority) {
+            case 'urgent':
+                return `${baseClasses} bg-red-500`
+            case 'high':
+                return `${baseClasses} bg-orange-500`
+            case 'normal':
+                return `${baseClasses} bg-blue-500`
+            case 'low':
+                return `${baseClasses} bg-gray-400`
+            default:
+                return `${baseClasses} bg-blue-500`
+        }
+    }
+
     const handleNotificationClick = (notification) => {
         if (!notification.is_read) {
             markAsRead(notification.notification_id)
@@ -95,17 +126,21 @@ const NotificationsPage = () => {
         }
     }
 
-    // Filter notifications
+    // Filter notifications based on active tab and filters
     const filteredNotifications = notifications.filter((notif) => {
+        // Tab filtering
+        if (activeTab === 'unread' && notif.is_read) {
+            return false
+        }
+        if (activeTab === 'archived' && !notif.is_archived) {
+            return false
+        }
+        if (activeTab === 'all' && notif.is_archived) {
+            return false
+        }
+
+        // Type filtering
         if (filterType !== 'all' && notif.notification_type !== filterType) {
-            return false
-        }
-
-        if (filterRead === 'unread' && notif.is_read) {
-            return false
-        }
-
-        if (filterRead === 'read' && !notif.is_read) {
             return false
         }
 
@@ -113,16 +148,16 @@ const NotificationsPage = () => {
     })
 
     return (
-        <div className="min-h-screen bg-gray-50 dark:bg-gray-950 p-6">
+        <div className="min-h-screen bg-gray-50 p-6">
             <div className="max-w-6xl mx-auto">
                 {/* Header */}
                 <div className="flex items-center justify-between mb-6">
                     <div>
-                        <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2 flex items-center gap-2">
+                        <h1 className="text-3xl font-bold text-gray-900 mb-2 flex items-center gap-2">
                             <Bell className="h-8 w-8 text-blue-600" />
                             Notifications
                         </h1>
-                        <p className="text-gray-600 dark:text-gray-400">
+                        <p className="text-gray-600">
                             {unreadCount} unread notification{unreadCount !== 1 ? 's' : ''}
                         </p>
                     </div>
@@ -152,18 +187,63 @@ const NotificationsPage = () => {
                     </div>
                 </div>
 
+                {/* Tabs */}
+                <div className="bg-white rounded-lg shadow mb-6">
+                    <div className="flex border-b border-gray-200">
+                        <button
+                            onClick={() => setActiveTab('all')}
+                            className={`flex-1 px-6 py-4 text-sm font-medium transition-colors ${
+                                activeTab === 'all'
+                                    ? 'text-blue-600 border-b-2 border-blue-600 bg-blue-50'
+                                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                            }`}
+                        >
+                            All Notifications
+                            <span className="ml-2 px-2 py-0.5 text-xs rounded-full bg-gray-100">
+                                {notifications.filter((n) => !n.is_archived).length}
+                            </span>
+                        </button>
+                        <button
+                            onClick={() => setActiveTab('unread')}
+                            className={`flex-1 px-6 py-4 text-sm font-medium transition-colors ${
+                                activeTab === 'unread'
+                                    ? 'text-blue-600 border-b-2 border-blue-600 bg-blue-50'
+                                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                            }`}
+                        >
+                            Unread
+                            {unreadCount > 0 && (
+                                <span className="ml-2 px-2 py-0.5 text-xs rounded-full bg-red-500 text-white">
+                                    {unreadCount}
+                                </span>
+                            )}
+                        </button>
+                        <button
+                            onClick={() => setActiveTab('archived')}
+                            className={`flex-1 px-6 py-4 text-sm font-medium transition-colors ${
+                                activeTab === 'archived'
+                                    ? 'text-blue-600 border-b-2 border-blue-600 bg-blue-50'
+                                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                            }`}
+                        >
+                            Archived
+                            <span className="ml-2 px-2 py-0.5 text-xs rounded-full bg-gray-100">
+                                {notifications.filter((n) => n.is_archived).length}
+                            </span>
+                        </button>
+                    </div>
+                </div>
+
                 {/* Filters */}
-                <div className="bg-white dark:bg-gray-900 rounded-lg shadow p-4 mb-6">
+                <div className="bg-white rounded-lg shadow p-4 mb-6">
                     <div className="flex items-center gap-4">
                         <div className="flex items-center gap-2">
-                            <Filter className="h-4 w-4 text-gray-600 dark:text-gray-400" />
-                            <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                                Filters:
-                            </span>
+                            <Filter className="h-4 w-4 text-gray-600" />
+                            <span className="text-sm font-medium text-gray-700">Filters:</span>
                         </div>
 
                         <Select value={filterType} onValueChange={setFilterType}>
-                            <SelectTrigger className="w-48">
+                            <SelectTrigger className="w-56">
                                 <SelectValue placeholder="All Types" />
                             </SelectTrigger>
                             <SelectContent>
@@ -182,18 +262,7 @@ const NotificationsPage = () => {
                             </SelectContent>
                         </Select>
 
-                        <Select value={filterRead} onValueChange={setFilterRead}>
-                            <SelectTrigger className="w-40">
-                                <SelectValue placeholder="All Status" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="all">All</SelectItem>
-                                <SelectItem value="unread">Unread</SelectItem>
-                                <SelectItem value="read">Read</SelectItem>
-                            </SelectContent>
-                        </Select>
-
-                        <div className="ml-auto text-sm text-gray-600 dark:text-gray-400">
+                        <div className="ml-auto text-sm text-gray-600">
                             Showing {filteredNotifications.length} of {notifications.length}{' '}
                             notifications
                         </div>
@@ -206,7 +275,7 @@ const NotificationsPage = () => {
                         {[1, 2, 3, 4, 5].map((i) => (
                             <div
                                 key={i}
-                                className="bg-white dark:bg-gray-900 rounded-lg shadow p-5 border-l-4 border-l-gray-300"
+                                className="bg-white rounded-lg shadow p-5"
                             >
                                 <div className="flex gap-4">
                                     <Skeleton className="h-6 w-6 rounded" />
@@ -231,15 +300,21 @@ const NotificationsPage = () => {
                         ))}
                     </div>
                 ) : filteredNotifications.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center h-64 bg-white dark:bg-gray-900 rounded-lg shadow">
-                        <Bell className="h-16 w-16 text-gray-300 dark:text-gray-700 mb-4" />
-                        <p className="text-lg text-gray-600 dark:text-gray-400">
-                            No notifications found
+                    <div className="flex flex-col items-center justify-center h-64 bg-white rounded-lg shadow">
+                        <Bell className="h-16 w-16 text-gray-300 mb-4" />
+                        <p className="text-lg text-gray-600">
+                            {activeTab === 'archived' ? 'No archived notifications' :
+                             activeTab === 'unread' ? 'No unread notifications' :
+                             'No notifications found'}
                         </p>
-                        <p className="text-sm text-gray-500 dark:text-gray-500 mt-2">
-                            {filterType !== 'all' || filterRead !== 'all'
+                        <p className="text-sm text-gray-500 mt-2">
+                            {filterType !== 'all'
                                 ? 'Try adjusting your filters'
-                                : "You're all caught up!"}
+                                : activeTab === 'unread'
+                                    ? "You're all caught up!"
+                                    : activeTab === 'archived'
+                                        ? 'Archived notifications will appear here'
+                                        : "You're all caught up!"}
                         </p>
                     </div>
                 ) : (
@@ -247,12 +322,9 @@ const NotificationsPage = () => {
                         {filteredNotifications.map((notification) => (
                             <div
                                 key={notification.notification_id}
-                                // className={`bg-white dark:bg-gray-900 rounded-lg shadow hover:shadow-lg transition-shadow cursor-pointer overflow-hidden border-l-4 ${
-                                //   notification.priority === 'urgent' ? 'border-l-red-500' :
-                                //   notification.priority === 'high' ? 'border-l-orange-500' :
-                                //   notification.priority === 'normal' ? 'border-l-blue-500' :
-                                //   'border-l-gray-500'
-                                // } ${!notification.is_read ? 'bg-blue-50 dark:bg-blue-950/20' : ''}`}
+                                className={`bg-white rounded-lg shadow hover:shadow-lg transition-shadow cursor-pointer overflow-hidden ${getPriorityColor(
+                                    notification.priority
+                                )}`}
                                 onClick={() => handleNotificationClick(notification)}
                             >
                                 <div className="p-5">
@@ -267,8 +339,8 @@ const NotificationsPage = () => {
                                                     <h3
                                                         className={`text-lg font-semibold ${
                                                             !notification.is_read
-                                                                ? 'text-gray-900 dark:text-white'
-                                                                : 'text-gray-700 dark:text-gray-300'
+                                                                ? 'text-gray-900'
+                                                                : 'text-gray-700'
                                                         }`}
                                                     >
                                                         {notification.title}
@@ -277,16 +349,16 @@ const NotificationsPage = () => {
                                                 </div>
 
                                                 {!notification.is_read && (
-                                                    <div className="w-3 h-3 bg-blue-600 rounded-full flex-shrink-0 mt-2"></div>
+                                                    <div className={getPriorityIndicator(notification.priority)}></div>
                                                 )}
                                             </div>
 
-                                            <p className="text-gray-700 dark:text-gray-300 mb-3 whitespace-pre-wrap">
+                                            <p className="text-gray-700 mb-3 whitespace-pre-wrap">
                                                 {notification.message}
                                             </p>
 
                                             <div className="flex items-center justify-between">
-                                                <span className="text-sm text-gray-500 dark:text-gray-500 flex items-center gap-1">
+                                                <span className="text-sm text-gray-500 flex items-center gap-1">
                                                     <Clock className="h-3.5 w-3.5" />
                                                     {formatDistanceToNow(
                                                         new Date(notification.created_at),

@@ -60,15 +60,31 @@ const NotificationDropdown = ({
     const getPriorityColor = (priority) => {
         switch (priority) {
             case 'urgent':
-                return 'border-l-4 border-l-red-500 bg-red-50'
+                return 'bg-red-50'
             case 'high':
-                return 'border-l-4 border-l-orange-500 bg-orange-50'
+                return 'bg-orange-50'
             case 'normal':
-                return 'border-l-4 border-l-blue-500'
+                return 'bg-blue-50'
             case 'low':
-                return 'border-l-4 border-l-gray-500'
+                return 'bg-gray-50'
             default:
-                return 'border-l-4 border-l-gray-300'
+                return 'bg-gray-50'
+        }
+    }
+
+    const getPriorityIndicator = (priority) => {
+        const baseClasses = 'w-2 h-2 rounded-full flex-shrink-0 mt-1 animate-pulse'
+        switch (priority) {
+            case 'urgent':
+                return `${baseClasses} bg-red-500`
+            case 'high':
+                return `${baseClasses} bg-orange-500`
+            case 'normal':
+                return `${baseClasses} bg-blue-500`
+            case 'low':
+                return `${baseClasses} bg-gray-400`
+            default:
+                return `${baseClasses} bg-blue-500`
         }
     }
 
@@ -216,9 +232,7 @@ const NotificationDropdown = ({
                         {filteredNotifications.map((notification) => (
                             <div
                                 key={notification.notification_id}
-                                className={`p-3 hover:bg-gray-50 transition-colors ${
-                                    !notification.is_read ? 'bg-blue-50' : ''
-                                } ${getPriorityColor(notification.priority)} cursor-pointer`}
+                                className={`p-3 hover:bg-gray-100 transition-colors ${getPriorityColor(notification.priority)} cursor-pointer`}
                                 onClick={() => handleNotificationClick(notification)}
                             >
                                 <div className="flex gap-2.5">
@@ -239,7 +253,7 @@ const NotificationDropdown = ({
                                             </h4>
 
                                             {!notification.is_read && (
-                                                <div className="w-2 h-2 bg-blue-600 rounded-full flex-shrink-0 mt-1"></div>
+                                                <div className={getPriorityIndicator(notification.priority)}></div>
                                             )}
                                         </div>
 

@@ -14,6 +14,7 @@ import QrScanner from '@/pages/QrScanner'
 import QrCodeGeneratorTest from '@/pages/QrCodeGeneratorTest'
 import ForgotPassword from '@/pages/ForgotPassword'
 import Settings from '@/pages/Settings'
+import Notifications from '@/pages/Notifications'
 
 // Admin
 import AdminDashboard from '@/pages/systemAdmin/AdminDashboard'
@@ -90,6 +91,14 @@ function App() {
                 {
                     path: '/auth/error',
                     element: <AuthError />,
+                },
+                {
+                    path: '/notifications',
+                    element: (
+                        <ProtectedRoute>
+                            <Notifications />
+                        </ProtectedRoute>
+                    ),
                 },
                 {
                     path: '/admin',
