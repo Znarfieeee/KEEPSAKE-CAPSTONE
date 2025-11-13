@@ -1,5 +1,5 @@
-import React from "react"
-import { mockData } from "./mockdata"
+import React from 'react'
+import { mockData } from './mockdata'
 
 // UI Components
 import {
@@ -11,7 +11,7 @@ import {
     Clock,
     Download,
     FileText,
-} from "lucide-react"
+} from 'lucide-react'
 
 const DoctorReports = () => {
     const StatCard = ({ title, value, subtitle, icon: Icon, change }) => (
@@ -19,12 +19,8 @@ const DoctorReports = () => {
             <div className="flex items-center justify-between">
                 <div>
                     <p className="text-sm font-medium text-gray-600">{title}</p>
-                    <p className="text-3xl font-bold text-gray-900 mt-2">
-                        {value}
-                    </p>
-                    {subtitle && (
-                        <p className="text-sm text-gray-500 mt-1">{subtitle}</p>
-                    )}
+                    <p className="text-3xl font-bold text-gray-900 mt-2">{value}</p>
+                    {subtitle && <p className="text-sm text-gray-500 mt-1">{subtitle}</p>}
                 </div>
                 <div className="h-12 w-12 bg-blue-50 rounded-lg flex items-center justify-center">
                     <Icon className="h-6 w-6 text-blue-600" />
@@ -39,22 +35,19 @@ const DoctorReports = () => {
                 Vaccination Completion by Type
             </h3>
             <div className="space-y-4">
-                {["MMR", "Hepatitis B", "Polio", "DPT"].map((vaccine, idx) => {
+                {['MMR', 'Hepatitis B', 'Polio', 'DPT'].map((vaccine, idx) => {
                     const completion = [95, 88, 92, 85][idx]
                     return (
                         <div key={vaccine}>
                             <div className="flex justify-between mb-1">
-                                <span className="text-sm font-medium text-gray-700">
-                                    {vaccine}
-                                </span>
-                                <span className="text-sm text-gray-500">
-                                    {completion}%
-                                </span>
+                                <span className="text-sm font-medium text-gray-700">{vaccine}</span>
+                                <span className="text-sm text-gray-500">{completion}%</span>
                             </div>
                             <div className="w-full bg-gray-200 rounded-full h-2">
                                 <div
                                     className="bg-blue-600 h-2 rounded-full transition-all duration-500"
-                                    style={{ width: `${completion}%` }}></div>
+                                    style={{ width: `${completion}%` }}
+                                ></div>
                             </div>
                         </div>
                     )
@@ -100,32 +93,32 @@ const DoctorReports = () => {
                     <tbody>
                         {[
                             {
-                                vaccine: "MMR",
-                                age: "12-15 months",
+                                vaccine: 'MMR',
+                                age: '12-15 months',
                                 completed: 86,
                                 pending: 8,
                                 overdue: 4,
                                 rate: 85,
                             },
                             {
-                                vaccine: "DPT",
-                                age: "2-4-6 months",
+                                vaccine: 'DPT',
+                                age: '2-4-6 months',
                                 completed: 74,
                                 pending: 4,
                                 overdue: 2,
                                 rate: 92,
                             },
                             {
-                                vaccine: "Polio",
-                                age: "2-4-6 months",
+                                vaccine: 'Polio',
+                                age: '2-4-6 months',
                                 completed: 70,
                                 pending: 0,
                                 overdue: 4,
                                 rate: 88,
                             },
                             {
-                                vaccine: "Hepatitis B",
-                                age: "Birth-2 months",
+                                vaccine: 'Hepatitis B',
+                                age: 'Birth-2 months',
                                 completed: 72,
                                 pending: 5,
                                 overdue: 3,
@@ -136,18 +129,10 @@ const DoctorReports = () => {
                                 <td className="px-6 py-4 text-sm font-medium text-gray-900">
                                     {row.vaccine}
                                 </td>
-                                <td className="px-6 py-4 text-sm text-gray-500">
-                                    {row.age}
-                                </td>
-                                <td className="px-6 py-4 text-sm text-gray-900">
-                                    {row.completed}
-                                </td>
-                                <td className="px-6 py-4 text-sm text-gray-500">
-                                    {row.pending}
-                                </td>
-                                <td className="px-6 py-4 text-sm text-red-600">
-                                    {row.overdue}
-                                </td>
+                                <td className="px-6 py-4 text-sm text-gray-500">{row.age}</td>
+                                <td className="px-6 py-4 text-sm text-gray-900">{row.completed}</td>
+                                <td className="px-6 py-4 text-sm text-gray-500">{row.pending}</td>
+                                <td className="px-6 py-4 text-sm text-red-600">{row.overdue}</td>
                                 <td className="px-6 py-4 text-sm font-medium text-green-600">
                                     {row.rate}%
                                 </td>
@@ -161,12 +146,8 @@ const DoctorReports = () => {
     return (
         <div className="space-y-6">
             <div className="flex justify-between items-center">
-                <h1 className="text-2xl font-bold text-gray-900">
-                    Reports & Analytics
-                </h1>
-                <p className="text-gray-500">
-                    View and generate reports for your practice
-                </p>
+                <h1 className="text-2xl font-bold text-gray-900">Reports & Analytics</h1>
+                <p className="text-gray-500">View and generate reports for your practice</p>
             </div>
 
             {/* Tab Navigation */}
@@ -192,12 +173,7 @@ const DoctorReports = () => {
                     subtitle="+3% from last month"
                     icon={Users}
                 />
-                <StatCard
-                    title="Appointments"
-                    value="34"
-                    subtitle="This week"
-                    icon={Calendar}
-                />
+                <StatCard title="Appointments" value="34" subtitle="This week" icon={Calendar} />
                 <StatCard
                     title="Vaccinations"
                     value="89%"
@@ -250,9 +226,7 @@ const DoctorReports = () => {
                             />
                         </svg>
                         <div className="absolute inset-0 flex items-center justify-center">
-                            <span className="text-2xl font-bold text-gray-900">
-                                87%
-                            </span>
+                            <span className="text-2xl font-bold text-gray-900">87%</span>
                         </div>
                     </div>
                 </div>
@@ -261,20 +235,17 @@ const DoctorReports = () => {
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <VaccinationChart />
                 <div className="bg-white p-6 rounded-lg shadow-sm border">
-                    <h3 className="text-lg font-semibold text-gray-900 mb-4">
-                        Recent Reports
-                    </h3>
+                    <h3 className="text-lg font-semibold text-gray-900 mb-4">Recent Reports</h3>
                     <div className="space-y-4">
                         {mockData.reports.map((report, idx) => (
                             <div
                                 key={idx}
-                                className="flex items-center justify-between p-3 hover:bg-gray-50 rounded-lg">
+                                className="flex items-center justify-between p-3 hover:bg-gray-50 rounded-lg"
+                            >
                                 <div className="flex items-center space-x-3">
                                     <FileText className="h-8 w-8 text-blue-600" />
                                     <div>
-                                        <p className="font-medium text-gray-900">
-                                            {report.name}
-                                        </p>
+                                        <p className="font-medium text-gray-900">{report.name}</p>
                                         <p className="text-sm text-gray-500">
                                             {report.date} • {report.author}
                                         </p>

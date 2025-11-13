@@ -18,6 +18,7 @@ const NotificationBell = () => {
         unreadCount,
         loading,
         markAsRead,
+        markAsUnread,
         markAllAsRead,
         archiveNotification,
         deleteNotification,
@@ -25,6 +26,7 @@ const NotificationBell = () => {
     } = useNotifications()
 
     const { playSound } = useNotificationSound()
+    const prevUnreadCountRef = useRef(unreadCount)
 
     // Close dropdown when clicking outside
     useEffect(() => {
@@ -43,11 +45,12 @@ const NotificationBell = () => {
         }
     }, [isOpen])
 
-    // Play sound when new notification arrives
+    // Play sound only when a NEW notification arrives (unread count increases)
     useEffect(() => {
-        if (unreadCount > 0) {
+        if (unreadCount > prevUnreadCountRef.current) {
             playSound()
         }
+        prevUnreadCountRef.current = unreadCount
     }, [unreadCount, playSound])
 
     const handleToggle = () => {
@@ -77,6 +80,7 @@ const NotificationBell = () => {
                     loading={loading}
                     onClose={() => setIsOpen(false)}
                     onMarkAsRead={markAsRead}
+                    onMarkAsUnread={markAsUnread}
                     onMarkAllAsRead={markAllAsRead}
                     onArchive={archiveNotification}
                     onDelete={deleteNotification}

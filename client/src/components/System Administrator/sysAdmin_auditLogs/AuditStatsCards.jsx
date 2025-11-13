@@ -1,13 +1,21 @@
 import React from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
+import { AuditStatsCardsSkeleton } from './AuditLogsSkeleton'
 
 const AuditStatsCards = ({ stats, statsLoading }) => {
-    const totalActions =
-        (stats?.action_stats?.create || 0) +
-        (stats?.action_stats?.update || 0) +
-        (stats?.action_stats?.delete || 0) +
-        (stats?.action_stats?.view || 0)
+    // Use backend-calculated total if available, otherwise calculate from action_stats
+    const totalActions = stats?.total_actions !== undefined
+        ? stats.total_actions
+        : (stats?.action_stats?.create || 0) +
+          (stats?.action_stats?.update || 0) +
+          (stats?.action_stats?.delete || 0) +
+          (stats?.action_stats?.view || 0)
+
+    // Show skeleton while loading
+    if (statsLoading) {
+        return <AuditStatsCardsSkeleton />
+    }
 
     return (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
@@ -18,13 +26,7 @@ const AuditStatsCards = ({ stats, statsLoading }) => {
                     </CardTitle>
                 </CardHeader>
                 <CardContent>
-                    <div className="text-2xl font-bold">
-                        {statsLoading ? (
-                            <div className="h-8 w-16 bg-gray-200 rounded animate-pulse" />
-                        ) : (
-                            totalActions
-                        )}
-                    </div>
+                    <div className="text-2xl font-bold">{totalActions.toLocaleString()}</div>
                     <p className="text-xs text-muted-foreground mt-1">All time</p>
                 </CardContent>
             </Card>
@@ -37,11 +39,7 @@ const AuditStatsCards = ({ stats, statsLoading }) => {
                 </CardHeader>
                 <CardContent>
                     <div className="text-2xl font-bold">
-                        {statsLoading ? (
-                            <div className="h-8 w-16 bg-gray-200 rounded animate-pulse" />
-                        ) : (
-                            stats?.action_stats?.create || 0
-                        )}
+                        {(stats?.action_stats?.create || 0).toLocaleString()}
                     </div>
                     <Badge className="mt-1 bg-green-100 text-green-800 border-green-300">
                         CREATE
@@ -57,11 +55,7 @@ const AuditStatsCards = ({ stats, statsLoading }) => {
                 </CardHeader>
                 <CardContent>
                     <div className="text-2xl font-bold">
-                        {statsLoading ? (
-                            <div className="h-8 w-16 bg-gray-200 rounded animate-pulse" />
-                        ) : (
-                            stats?.action_stats?.update || 0
-                        )}
+                        {(stats?.action_stats?.update || 0).toLocaleString()}
                     </div>
                     <Badge className="mt-1 bg-blue-100 text-blue-800 border-blue-300">
                         UPDATE
@@ -77,11 +71,7 @@ const AuditStatsCards = ({ stats, statsLoading }) => {
                 </CardHeader>
                 <CardContent>
                     <div className="text-2xl font-bold">
-                        {statsLoading ? (
-                            <div className="h-8 w-16 bg-gray-200 rounded animate-pulse" />
-                        ) : (
-                            stats?.action_stats?.delete || 0
-                        )}
+                        {(stats?.action_stats?.delete || 0).toLocaleString()}
                     </div>
                     <Badge className="mt-1 bg-red-100 text-red-800 border-red-300">DELETE</Badge>
                 </CardContent>
@@ -95,11 +85,7 @@ const AuditStatsCards = ({ stats, statsLoading }) => {
                 </CardHeader>
                 <CardContent>
                     <div className="text-2xl font-bold">
-                        {statsLoading ? (
-                            <div className="h-8 w-16 bg-gray-200 rounded animate-pulse" />
-                        ) : (
-                            stats?.recent_activity_24h || 0
-                        )}
+                        {(stats?.recent_activity_24h || 0).toLocaleString()}
                     </div>
                     <p className="text-xs text-muted-foreground mt-1">Recent activity</p>
                 </CardContent>

@@ -20,6 +20,7 @@ export const useNotificationSound = () => {
     const [loading, setLoading] = useState(true);
     const audioRef = useRef(null);
     const lastPlayedRef = useRef(0);
+    const audioUnlockedRef = useRef(false);
 
     // Fetch notification preferences
     const fetchPreferences = useCallback(async () => {
@@ -36,11 +37,38 @@ export const useNotificationSound = () => {
         }
     }, []);
 
-    // Initialize audio element
+    // Initialize audio element and enable on user interaction
     useEffect(() => {
         if (!audioRef.current) {
             audioRef.current = new Audio();
+            audioRef.current.volume = 0.5; // Set default volume
         }
+
+        // Unlock audio on first user interaction
+        const unlockAudio = () => {
+            if (!audioUnlockedRef.current && audioRef.current) {
+                // Play and immediately pause to unlock audio context
+                audioRef.current.play().then(() => {
+                    audioRef.current.pause();
+                    audioRef.current.currentTime = 0;
+                    audioUnlockedRef.current = true;
+                }).catch(() => {
+                    // Audio unlock failed, will try again on next interaction
+                });
+            }
+        };
+
+        // Listen for user interactions to unlock audio
+        const events = ['click', 'touchstart', 'keydown'];
+        events.forEach(event => {
+            document.addEventListener(event, unlockAudio, { once: true });
+        });
+
+        return () => {
+            events.forEach(event => {
+                document.removeEventListener(event, unlockAudio);
+            });
+        };
     }, []);
 
     // Fetch preferences on mount

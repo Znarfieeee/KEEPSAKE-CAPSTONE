@@ -27,6 +27,7 @@ def get_notifications():
         # Query parameters
         is_read = request.args.get('is_read')
         notification_type = request.args.get('notification_type')
+        is_archived = request.args.get('is_archived')
         limit = int(request.args.get('limit', 50))
         offset = int(request.args.get('offset', 0))
 
@@ -43,9 +44,16 @@ def get_notifications():
         if notification_type:
             query = query.eq('notification_type', notification_type)
 
-        # Exclude archived and expired notifications
-        query = query.eq('is_archived', False)
-        query = query.or_(f'expires_at.is.null,expires_at.gt.{datetime.utcnow().isoformat()}')
+        # Handle archived filter
+        if is_archived is not None:
+            query = query.eq('is_archived', is_archived.lower() == 'true')
+        else:
+            # By default, exclude archived notifications
+            query = query.eq('is_archived', False)
+
+        # Only apply expiration filter for non-archived notifications
+        if is_archived != 'true':
+            query = query.or_(f'expires_at.is.null,expires_at.gt.{datetime.utcnow().isoformat()}')
 
         # Order and paginate
         query = query.order('created_at', desc=True).range(offset, offset + limit - 1)
@@ -68,7 +76,7 @@ def get_notifications():
         traceback.print_exc()
         return jsonify({'status': 'error', 'message': str(e)}), 500
 
-@notification_bp.route('/<notification_id>/mark-read', methods=['PATCH'])
+@notification_bp.route('/notifications/<notification_id>/mark-read', methods=['PATCH'])
 @require_auth
 def mark_notification_read(notification_id):
     """Mark a specific notification as read"""
@@ -97,11 +105,43 @@ def mark_notification_read(notification_id):
 
     except Exception as e:
         current_app.logger.error(f"AUDIIT: Error in mark_notification_read: {str(e)}")
-        
+
         return jsonify({'status': 'error', 'message': str(e)}), 500
 
 
-@notification_bp.route('/notification/mark-all-read', methods=['PATCH'])
+@notification_bp.route('/notifications/<notification_id>/mark-unread', methods=['PATCH'])
+@require_auth
+def mark_notification_unread(notification_id):
+    """Mark a specific notification as unread"""
+    try:
+        user_id = request.current_user.get('id')
+
+        if not user_id:
+            return jsonify({'status': 'error', 'message': 'User not authenticated'}), 401
+
+        # Verify notification belongs to user
+        notification = supabase_service_role_client().table('notifications').select('*').eq('notification_id', notification_id).eq('user_id', user_id).execute()
+
+        if not notification.data:
+            return jsonify({'status': 'error', 'message': 'Notification not found'}), 404
+
+        # Update notification to unread
+        response = supabase_service_role_client().table('notifications').update({
+            'is_read': False,
+            'read_at': None
+        }).eq('notification_id', notification_id).execute()
+
+        return jsonify({
+            'status': 'success',
+            'notification': response.data[0] if response.data else None
+        }), 200
+
+    except Exception as e:
+        current_app.logger.error(f"AUDIT: Error in mark_notification_unread: {str(e)}")
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+
+
+@notification_bp.route('/notifications/mark-all-read', methods=['PATCH'])
 @require_auth
 def mark_all_notifications_read():
     """Mark all notifications as read for the current user"""
@@ -130,7 +170,7 @@ def mark_all_notifications_read():
             }), 500
 
 
-@notification_bp.route('/notification/<notification_id>/archive', methods=['PATCH'])
+@notification_bp.route('/notifications/<notification_id>/archive', methods=['PATCH'])
 @require_auth
 def archive_notification(notification_id):
     """Archive a specific notification"""
@@ -165,7 +205,7 @@ def archive_notification(notification_id):
             }), 500
 
 
-@notification_bp.route('/notification/<notification_id>', methods=['DELETE'])
+@notification_bp.route('/notifications/<notification_id>', methods=['DELETE'])
 @require_auth
 def delete_notification(notification_id):
     """Delete a specific notification"""

@@ -2,7 +2,6 @@ import React from 'react'
 import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent } from '@/components/ui/card'
-import { Skeleton } from '@/components/ui/skeleton'
 import {
     Database,
     Eye,
@@ -14,6 +13,7 @@ import {
     ChevronRight,
 } from 'lucide-react'
 import { cn } from '@/util/utils'
+import { AuditLogsTableSkeleton } from './AuditLogsSkeleton'
 
 const AuditLogsTable = ({
     logs,
@@ -72,57 +72,16 @@ const AuditLogsTable = ({
         return formatTimestamp(timestamp)
     }
 
+    // Show skeleton while loading
+    if (loading) {
+        return <AuditLogsTableSkeleton rows={pagination.limit || 10} />
+    }
+
     return (
         <Card>
             <CardContent className="p-0">
                 <div className="overflow-x-auto">
-                    {loading ? (
-                        <table className="w-full text-sm">
-                            <thead className="border-b border-gray-300 text-xs uppercase text-muted-foreground">
-                                <tr className="text-left">
-                                    <th className="py-3 px-4">Timestamp</th>
-                                    <th className="py-3 px-4">User</th>
-                                    <th className="py-3 px-4">Action</th>
-                                    <th className="py-3 px-4">Table</th>
-                                    <th className="py-3 px-4">IP Address</th>
-                                    <th className="py-3 px-4">Details</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {[...Array(5)].map((_, index) => (
-                                    <tr
-                                        key={index}
-                                        className="border-b border-gray-200 last:border-none"
-                                    >
-                                        <td className="py-3 px-4">
-                                            <div className="flex flex-col gap-1">
-                                                <Skeleton className="h-4 w-24" />
-                                                <Skeleton className="h-3 w-32" />
-                                            </div>
-                                        </td>
-                                        <td className="py-3 px-4">
-                                            <div className="flex flex-col gap-1">
-                                                <Skeleton className="h-4 w-32" />
-                                                <Skeleton className="h-3 w-40" />
-                                            </div>
-                                        </td>
-                                        <td className="py-3 px-4">
-                                            <Skeleton className="h-6 w-20" />
-                                        </td>
-                                        <td className="py-3 px-4">
-                                            <Skeleton className="h-6 w-24" />
-                                        </td>
-                                        <td className="py-3 px-4">
-                                            <Skeleton className="h-4 w-28" />
-                                        </td>
-                                        <td className="py-3 px-4">
-                                            <Skeleton className="h-8 w-16" />
-                                        </td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    ) : logs.length === 0 ? (
+                    {logs.length === 0 ? (
                         <div className="flex flex-col justify-center items-center py-20">
                             <Database className="w-12 h-12 text-gray-400 mb-4" />
                             <p className="text-gray-500">No audit logs found</p>

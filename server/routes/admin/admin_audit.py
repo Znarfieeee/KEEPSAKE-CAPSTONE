@@ -25,8 +25,8 @@ def get_audit_logs():
         offset = (page - 1) * limit
 
         # Build query
-        query = supabase.table('audit_logs').select(
-            '''
+        query = supabase.table("audit_logs").select(
+            """
             *,
             users!audit_logs_user_id_fkey(
                 user_id,
@@ -35,8 +35,8 @@ def get_audit_logs():
                 lastname,
                 role
             )
-            ''',
-            count='exact'
+            """,
+            count="exact"
         )
 
         # Apply filters
@@ -74,8 +74,14 @@ def get_audit_logs():
                 "message": "Failed to fetch audit logs"
             }), 500
 
-        # Filter by search query if provided (client-side filtering for user names/emails)
+        # Get logs data
         logs = response.data
+
+        # Get total count (before search filtering)
+        total_count = response.count if hasattr(response, 'count') else len(logs)
+
+        # Filter by search query if provided (post-filtering for user names/emails)
+        # Note: This is post-filtering because Supabase doesn't support filtering on joined tables directly
         if search_query and logs:
             search_lower = search_query.lower()
             logs = [
@@ -86,9 +92,8 @@ def get_audit_logs():
                     search_lower in (log['users'].get('lastname') or '').lower()
                 )) or search_lower in (log.get('table_name') or '').lower()
             ]
-
-        # Get total count
-        total_count = response.count if hasattr(response, 'count') else len(logs)
+            # Update total count after filtering
+            total_count = len(logs)
 
         return jsonify({
             "status": "success",
@@ -120,7 +125,11 @@ def get_audit_logs():
 def get_audit_stats():
     """Get audit log statistics for dashboard"""
     try:
-        # Get counts by action type
+        # Get total count of all audit logs
+        total_response = supabase.table('audit_logs').select('*', count='exact', head=True).execute()
+        total_count = total_response.count if hasattr(total_response, 'count') else 0
+
+        # Get counts by action type (all time)
         action_stats = {}
         for action in ['CREATE', 'UPDATE', 'DELETE', 'VIEW']:
             response = supabase.table('audit_logs').select('*', count='exact', head=True).eq('action_type', action).execute()
@@ -131,11 +140,28 @@ def get_audit_stats():
         recent_response = supabase.table('audit_logs').select('*', count='exact', head=True).gte('action_timestamp', yesterday).execute()
         recent_count = recent_response.count if hasattr(recent_response, 'count') else 0
 
+        # Get most active tables (top 5)
+        table_response = supabase.table('audit_logs').select('table_name').execute()
+        table_counts = {}
+        if table_response.data:
+            for log in table_response.data:
+                table_name = log.get('table_name')
+                if table_name:
+                    table_counts[table_name] = table_counts.get(table_name, 0) + 1
+
+        most_active_tables = sorted(
+            [{"table": k, "count": v} for k, v in table_counts.items()],
+            key=lambda x: x['count'],
+            reverse=True
+        )[:5]
+
         return jsonify({
             "status": "success",
             "data": {
+                "total_actions": total_count,
                 "action_stats": action_stats,
-                "recent_activity_24h": recent_count
+                "recent_activity_24h": recent_count,
+                "most_active_tables": most_active_tables
             }
         }), 200
 
@@ -144,6 +170,7 @@ def get_audit_stats():
         return jsonify({
             "status": "success",
             "data": {
+                "total_actions": 0,
                 "action_stats": {"create": 0, "update": 0, "delete": 0, "view": 0},
                 "recent_activity_24h": 0,
                 "most_active_tables": []
@@ -227,6 +254,43 @@ def clear_audit_logs():
         return jsonify({
             "status": "error",
             "message": f"An error occurred while clearing audit logs: {str(e)}"
+        }), 500
+
+@audit_bp.route('/admin/audit-logs/tables', methods=['GET'])
+@require_auth
+@require_role('admin')
+def get_auditable_tables():
+    """Get list of tables that have audit logs"""
+    try:
+        # Query distinct table names from audit_logs
+        response = supabase.table('audit_logs').select('table_name').execute()
+
+        if getattr(response, 'error', None):
+            current_app.logger.error(f"Failed to fetch table names: {response.error}")
+            return jsonify({
+                "status": "error",
+                "message": "Failed to fetch table names"
+            }), 500
+
+        # Extract unique table names and sort them
+        table_names = set()
+        if response.data:
+            for log in response.data:
+                if log.get('table_name'):
+                    table_names.add(log.get('table_name'))
+
+        sorted_tables = sorted(list(table_names))
+
+        return jsonify({
+            "status": "success",
+            "data": sorted_tables
+        }), 200
+
+    except Exception as e:
+        current_app.logger.error(f"Error fetching table names: {str(e)}")
+        return jsonify({
+            "status": "error",
+            "message": f"An error occurred while fetching table names: {str(e)}"
         }), 500
 
 @audit_bp.route('/admin/audit-logs/export', methods=['GET'])

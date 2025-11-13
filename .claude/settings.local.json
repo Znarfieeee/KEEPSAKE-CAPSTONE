@@ -1,16 +1,22 @@
 {
-    "permissions": {
-        "allow": [
-            "Bash(npm run:*)",
-            "WebSearch",
-            "mcp__supabase__list_tables",
-            "Bash(mcp list:*)",
-            "mcp__supabase__apply_migration",
-            "mcp__supabase__execute_sql",
-            "mcp__supabase__get_project_url",
-            "Bash(claude mcp:*)"
-        ],
-        "deny": [],
-        "ask": []
-    }
+  "permissions": {
+    "allow": [
+      "Bash(npm run:*)",
+      "WebSearch",
+      "mcp__supabase__list_tables",
+      "Bash(mcp list:*)",
+      "mcp__supabase__apply_migration",
+      "mcp__supabase__execute_sql",
+      "mcp__supabase__get_project_url",
+      "Bash(claude mcp:*)",
+      "Bash(lsof:*)",
+      "Bash(netstat:*)",
+      "Bash(findstr:*)",
+      "Bash(taskkill:*)",
+      "mcp__supabase__get_advisors",
+      "Bash(if not exist \"server\\routes\\medical_documents\" mkdir \"server\\routes\\medical_documents\")"
+    ],
+    "deny": [],
+    "ask": []
+  }
 }

@@ -26,6 +26,9 @@ const StepperAddPatientModal = lazy(() =>
     import('@/components/doctors/patient_records/StepperAddPatientModal')
 )
 const EditPatientModal = lazy(() => import('@/components/doctors/patient_records/EditPatientModal'))
+const InviteParentWithPatientSelectionModal = lazy(() =>
+    import('@/components/doctors/patient_records/InviteParentWithPatientSelectionModal')
+)
 
 // Preload the EditPatientModal when component mounts or when user interacts
 const preloadEditModal = () => {
@@ -53,6 +56,7 @@ function DoctorPatientRecords() {
     const [showAddModal, setShowAddModal] = useState(false)
     const [showEditModal, setShowEditModal] = useState(false)
     const [showDetailModal, setShowDetailModal] = useState(false)
+    const [showInviteParentModal, setShowInviteParentModal] = useState(false)
     const [selectedPatient, setSelectedPatient] = useState(null)
     const [editingPatient, setEditingPatient] = useState(null)
     const [editModalPreloaded, setEditModalPreloaded] = useState(false)
@@ -164,7 +168,7 @@ function DoctorPatientRecords() {
 
             if (response.status === 'success') {
                 // Backend returns formatted data from facility_patients junction
-                const formattedPatients = response.data.map(item => {
+                const formattedPatients = response.data.map((item) => {
                     // Extract patient data from nested structure
                     const patient = item.patients || item
                     return formatPatient(patient)
@@ -261,6 +265,16 @@ function DoctorPatientRecords() {
 
     const handleOpenReports = () => {
         showToast('info', 'Opening reports...')
+    }
+
+    const handleInviteParent = () => {
+        setShowInviteParentModal(true)
+    }
+
+    const handleInviteParentSuccess = () => {
+        // Refresh patient list to show updated parent access
+        fetchPatients()
+        setShowInviteParentModal(false)
     }
 
     const navigate = useNavigate()
@@ -427,18 +441,10 @@ function DoctorPatientRecords() {
                     onNewRecord={handleAddPatient}
                     onExportCSV={handleExportCSV}
                     onOpenReports={handleOpenReports}
+                    onInviteParent={handleInviteParent}
                     onRefresh={fetchPatients}
                 />
-                <Suspense
-                    fallback={
-                        <div className="flex items-center justify-center p-8">
-                            <div className="flex items-center gap-2">
-                                <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent"></div>
-                                <span className="text-sm text-gray-600">Loading modal...</span>
-                            </div>
-                        </div>
-                    }
-                >
+                <Suspense fallback={null}>
                     <StepperAddPatientModal
                         open={showAddModal}
                         onClose={() => setShowAddModal(false)}
@@ -493,16 +499,7 @@ function DoctorPatientRecords() {
                     if (!open) setEditingPatient(null)
                 }}
             >
-                <Suspense
-                    fallback={
-                        <div className="flex items-center justify-center p-8">
-                            <div className="flex items-center gap-2">
-                                <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent"></div>
-                                <span className="text-sm text-gray-600">Loading modal...</span>
-                            </div>
-                        </div>
-                    }
-                >
+                <Suspense fallback={null}>
                     <EditPatientModal
                         patient={editingPatient}
                         onClose={() => {
@@ -513,6 +510,16 @@ function DoctorPatientRecords() {
                     />
                 </Suspense>
             </Dialog>
+
+            {/* Invite Parent with Patient Selection Modal */}
+            <Suspense fallback={null}>
+                <InviteParentWithPatientSelectionModal
+                    open={showInviteParentModal}
+                    onClose={() => setShowInviteParentModal(false)}
+                    patients={filteredRecords}
+                    onSuccess={handleInviteParentSuccess}
+                />
+            </Suspense>
         </div>
     )
 }
