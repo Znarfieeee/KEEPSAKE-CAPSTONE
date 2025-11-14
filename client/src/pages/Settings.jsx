@@ -1,20 +1,31 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useAuth } from '@/context/auth'
+import { useSearchParams } from 'react-router-dom'
 
 // UI Components
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { User, Lock, Mail, Phone, Shield, AlertTriangle } from 'lucide-react'
+import { User, Lock, Mail, Phone, Shield, AlertTriangle, Bell } from 'lucide-react'
 import ProfileSettings from '@/components/settings/ProfileSettings'
 import PasswordSettings from '@/components/settings/PasswordSettings'
 import EmailSettings from '@/components/settings/EmailSettings'
 import PhoneSettings from '@/components/settings/PhoneSettings'
 import TwoFactorSettings from '@/components/settings/TwoFactorSettings'
 import AccountDeactivation from '@/components/settings/AccountDeactivation'
+import NotificationSettings from '@/components/notifications/NotificationSettings'
 
 const Settings = () => {
     const { user } = useAuth()
-    const [activeTab, setActiveTab] = useState('profile')
+    const [searchParams] = useSearchParams()
+    const [activeTab, setActiveTab] = useState(searchParams.get('tab') || 'profile')
+
+    // Sync activeTab with URL query parameter
+    useEffect(() => {
+        const tabFromUrl = searchParams.get('tab')
+        if (tabFromUrl && tabFromUrl !== activeTab) {
+            setActiveTab(tabFromUrl)
+        }
+    }, [searchParams, activeTab])
 
     return (
         <div className="min-h-screen bg-gray-50 p-6">
@@ -74,9 +85,18 @@ const Settings = () => {
                                         <Shield className="h-5 w-5" />
                                         <span className="font-medium">Two-Factor Auth</span>
                                     </TabsTrigger>
-                                    <div className="border-t my-2" />
                                 </>
                             )}
+
+                            <TabsTrigger
+                                value="notifications"
+                                className="w-full justify-start gap-3 px-4 py-3 rounded-md data-[state=active]:bg-primary data-[state=active]:text-white hover:bg-gray-50 transition-colors"
+                            >
+                                <Bell className="h-5 w-5" />
+                                <span className="font-medium">Notifications</span>
+                            </TabsTrigger>
+
+                            <div className="border-t my-2" />
 
                             <TabsTrigger
                                 value="account"
@@ -167,6 +187,24 @@ const Settings = () => {
                                     </CardHeader>
                                     <CardContent className="p-6">
                                         <TwoFactorSettings />
+                                    </CardContent>
+                                </Card>
+                            </TabsContent>
+
+                            {/* Notifications Tab */}
+                            <TabsContent value="notifications" className="mt-0 w-full h-full">
+                                <Card className="shadow-sm h-full">
+                                    <CardHeader className="border-b bg-gray-50/50">
+                                        <CardTitle className="text-xl flex items-center gap-2">
+                                            <Bell className="h-5 w-5 text-blue-600" />
+                                            Notification Preferences
+                                        </CardTitle>
+                                        <CardDescription>
+                                            Customize when and how you receive notifications
+                                        </CardDescription>
+                                    </CardHeader>
+                                    <CardContent className="p-0">
+                                        <NotificationSettings />
                                     </CardContent>
                                 </Card>
                             </TabsContent>

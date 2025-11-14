@@ -3,7 +3,7 @@ import axios from 'axios'
 import { axiosConfig } from './axiosConfig'
 
 export const getNotifications = async (params = {}) => {
-    const response = await axios.get(`${backendConnection()}/notification`, {
+    const response = await axios.get(`${backendConnection()}/notifications`, {
         ...axiosConfig,
         params: {
             limit: 50,

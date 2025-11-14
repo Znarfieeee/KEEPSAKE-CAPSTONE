@@ -19,6 +19,7 @@ import { Button } from '../ui/Button'
 import { ScrollArea } from '../ui/scroll-area'
 import { Skeleton } from '../ui/skeleton'
 import { useNavigate } from 'react-router-dom'
+import { useAuth } from '@/context/auth'
 import NotificationMenu from './NotificationMenu'
 
 /**
@@ -38,7 +39,27 @@ const NotificationDropdown = ({
     onRefresh,
 }) => {
     const navigate = useNavigate()
+    const { user } = useAuth()
     const [activeTab, setActiveTab] = useState('all')
+
+    // Get settings path based on user role
+    const getSettingsPath = () => {
+        const role = user?.role
+        switch (role) {
+            case 'system_admin':
+            case 'admin':
+                return '/admin/settings?tab=notifications'
+            case 'parent':
+                return '/parent/settings?tab=notifications'
+            case 'doctor':
+            case 'pediapro':
+                return '/pediapro/settings?tab=notifications'
+            case 'facility_admin':
+                return '/facility_admin/settings?tab=notifications'
+            default:
+                return '/settings?tab=notifications'
+        }
+    }
 
     const getNotificationIcon = (type) => {
         switch (type) {
@@ -133,7 +154,10 @@ const NotificationDropdown = ({
                             />
                         </button>
                         <button
-                            onClick={() => navigate('/settings/notifications')}
+                            onClick={() => {
+                                onClose()
+                                navigate(getSettingsPath())
+                            }}
                             className="p-1.5 hover:bg-white rounded-md transition-all duration-200 hover:shadow-sm"
                             title="Notification settings"
                         >
