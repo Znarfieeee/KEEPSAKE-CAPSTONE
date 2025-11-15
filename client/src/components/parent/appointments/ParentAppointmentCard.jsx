@@ -52,7 +52,7 @@ const ParentAppointmentCard = ({ appointment, childName, childColor = 'bg-blue-5
             return {
                 name: appointment.healthcare_facilities.facility_name || 'Unknown Facility',
                 address: appointment.healthcare_facilities.address || '',
-                contact: appointment.healthcare_facilities.contact_number || ''
+                contact: appointment.healthcare_facilities.contact_number || '',
             }
         }
         return { name: 'Unknown Facility', address: '', contact: '' }
@@ -71,11 +71,17 @@ const ParentAppointmentCard = ({ appointment, childName, childColor = 'bg-blue-5
                         {/* Header: Child Name & Status */}
                         <div className="flex items-center justify-between">
                             <div className="flex items-center gap-2">
-                                <div className={cn('w-3 h-3 rounded-full', childColor)} />
+                                {/* <div className={cn('w-3 h-3 rounded-full', childColor)} /> */}
                                 <h4 className="font-semibold text-gray-900">{childName}</h4>
                             </div>
-                            <Badge className={cn('text-xs font-medium', getStatusBadgeColor(appointment.status))}>
-                                {appointment.status?.charAt(0).toUpperCase() + appointment.status?.slice(1) || 'Scheduled'}
+                            <Badge
+                                className={cn(
+                                    'text-xs font-medium',
+                                    getStatusBadgeColor(appointment.status)
+                                )}
+                            >
+                                {appointment.status?.charAt(0).toUpperCase() +
+                                    appointment.status?.slice(1) || 'Scheduled'}
                             </Badge>
                         </div>
 
@@ -101,15 +107,16 @@ const ParentAppointmentCard = ({ appointment, childName, childColor = 'bg-blue-5
                             {appointment.appointment_type && (
                                 <Badge
                                     variant="outline"
-                                    className={cn('text-xs capitalize', getAppointmentTypeBadge(appointment.appointment_type))}
+                                    className={cn(
+                                        'text-xs capitalize',
+                                        getAppointmentTypeBadge(appointment.appointment_type)
+                                    )}
                                 >
                                     {appointment.appointment_type}
                                 </Badge>
                             )}
                             {appointment.reason && (
-                                <span className="text-sm text-gray-600">
-                                    {appointment.reason}
-                                </span>
+                                <span className="text-sm text-gray-600">{appointment.reason}</span>
                             )}
                         </div>
 
@@ -119,7 +126,9 @@ const ParentAppointmentCard = ({ appointment, childName, childColor = 'bg-blue-5
                                 <Stethoscope className="h-4 w-4 text-gray-400" />
                                 <span>{getDoctorName()}</span>
                                 {appointment.users?.specialty && (
-                                    <span className="text-gray-400">({appointment.users.specialty})</span>
+                                    <span className="text-gray-400">
+                                        ({appointment.users.specialty})
+                                    </span>
                                 )}
                             </div>
                             <div className="flex items-center gap-1.5 text-gray-600">

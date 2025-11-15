@@ -6,19 +6,15 @@ import { showToast } from '@/util/alertHelper'
 
 // UI Components
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
-import { Search, RefreshCw, Calendar, Clock, AlertCircle, History } from 'lucide-react'
-import { cn, getStatusBadgeColor } from '@/util/utils'
+import { Card, CardContent } from '@/components/ui/card'
+import { AlertCircle } from 'lucide-react'
 
 // Parent Appointment Components
-import ChildFilterTabs from '@/components/parent/appointments/ChildFilterTabs'
+import ChildSelector from '@/components/parent/appointments/ChildSelector'
 import ParentTodaySchedule from '@/components/parent/appointments/ParentTodaySchedule'
 import ParentCalendarGrid from '@/components/parent/appointments/ParentCalendarGrid'
-import ParentAppointmentCard from '@/components/parent/appointments/ParentAppointmentCard'
+import ParentAllAppointments from '@/components/parent/appointments/ParentAllAppointments'
 
 // Child color palette for visual distinction
 const CHILD_COLORS = [
@@ -40,11 +36,8 @@ const ParentAppointments = () => {
     const [refreshing, setRefreshing] = useState(false)
     const [error, setError] = useState(null)
 
-    // Filter states
+    // Filter states (only for child selection - other filters are in AllAppointments component)
     const [selectedChildId, setSelectedChildId] = useState('all')
-    const [searchQuery, setSearchQuery] = useState('')
-    const [statusFilter, setStatusFilter] = useState('all')
-    const [timeFilter, setTimeFilter] = useState('upcoming') // 'upcoming', 'past', 'all'
 
     // Hooks
     const { user } = useAuth()
@@ -193,61 +186,14 @@ const ParentAppointments = () => {
     }, [fetchData, user?.id])
 
     /**
-     * Filter appointments based on selected criteria
+     * Get appointments filtered by selected child (for Today's Schedule and Calendar)
      */
-    const filteredAppointments = useMemo(() => {
-        let filtered = [...appointments]
-
-        // Filter by child
-        if (selectedChildId !== 'all') {
-            filtered = filtered.filter((apt) => apt.patient_id === selectedChildId)
+    const childFilteredAppointments = useMemo(() => {
+        if (selectedChildId === 'all') {
+            return appointments
         }
-
-        // Filter by status
-        if (statusFilter !== 'all') {
-            filtered = filtered.filter(
-                (apt) => apt.status?.toLowerCase() === statusFilter.toLowerCase()
-            )
-        }
-
-        // Filter by time (upcoming/past)
-        const now = new Date()
-        if (timeFilter === 'upcoming') {
-            filtered = filtered.filter((apt) => {
-                const aptDate = new Date(
-                    `${apt.appointment_date} ${apt.appointment_time || '00:00'}`
-                )
-                return aptDate >= now
-            })
-        } else if (timeFilter === 'past') {
-            filtered = filtered.filter((apt) => {
-                const aptDate = new Date(
-                    `${apt.appointment_date} ${apt.appointment_time || '00:00'}`
-                )
-                return aptDate < now
-            })
-        }
-
-        // Filter by search query
-        if (searchQuery.trim()) {
-            const query = searchQuery.toLowerCase()
-            filtered = filtered.filter((apt) => {
-                const childName = getChildName(apt.patient_id).toLowerCase()
-                const doctorName = (apt.doctor_name || '').toLowerCase()
-                const reason = (apt.reason || '').toLowerCase()
-                const facilityName = (apt.healthcare_facilities?.facility_name || '').toLowerCase()
-
-                return (
-                    childName.includes(query) ||
-                    doctorName.includes(query) ||
-                    reason.includes(query) ||
-                    facilityName.includes(query)
-                )
-            })
-        }
-
-        return filtered
-    }, [appointments, selectedChildId, statusFilter, timeFilter, searchQuery, getChildName])
+        return appointments.filter((apt) => apt.patient_id === selectedChildId)
+    }, [appointments, selectedChildId])
 
     /**
      * Get today's appointments
@@ -325,9 +271,9 @@ const ParentAppointments = () => {
                         <h1 className="text-2xl font-bold text-gray-900">
                             My Children's Appointments
                         </h1>
-                        <p className="text-gray-600">
+                        {/* <p className="text-gray-600">
                             View and track appointments for your children
-                        </p>
+                        </p> */}
                     </div>
                 </div>
                 <Card>
@@ -347,27 +293,18 @@ const ParentAppointments = () => {
     }
 
     return (
-        <div className="space-y-6 min-h-screen p-6">
+        <div className="space-y-4 sm:space-y-6 min-h-screen p-4 sm:p-6">
             {/* Header */}
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                 <div>
-                    <h1 className="text-2xl font-bold text-gray-900">My Children's Appointments</h1>
-                    <p className="text-gray-600">View and track appointments for your children</p>
+                    <h1 className="text-xl sm:text-2xl font-bold text-gray-900">
+                        My Children's Appointments
+                    </h1>
                 </div>
-                {/* 
-                <Button
-                    onClick={handleRefresh}
-                    disabled={refreshing}
-                    variant="outline"
-                    className="flex items-center gap-2"
-                >
-                    <RefreshCw className={cn('h-4 w-4', refreshing && 'animate-spin')} />
-                    {refreshing ? 'Refreshing...' : 'Refresh'}
-                </Button> */}
             </div>
 
-            {/* Child Filter Tabs */}
-            <ChildFilterTabs
+            {/* Child Selector */}
+            <ChildSelector
                 children={children}
                 selectedChildId={selectedChildId}
                 onSelectChild={handleSelectChild}
@@ -376,17 +313,13 @@ const ParentAppointments = () => {
             />
 
             {/* Main Content Grid */}
-            <div className="grid grid-cols-1 lg:grid-cols-6 gap-6">
+            <div className="grid grid-cols-1 lg:grid-cols-6 gap-4 sm:gap-6">
                 {/* Today's Schedule */}
                 <div className="lg:col-span-4">
                     <ParentTodaySchedule
-                        appointments={
-                            selectedChildId === 'all'
-                                ? todayAppointments
-                                : todayAppointments.filter(
-                                      (apt) => apt.patient_id === selectedChildId
-                                  )
-                        }
+                        appointments={todayAppointments.filter((apt) =>
+                            selectedChildId === 'all' ? true : apt.patient_id === selectedChildId
+                        )}
                         children={children}
                         childColors={childColors}
                         loading={refreshing}
@@ -395,16 +328,14 @@ const ParentAppointments = () => {
 
                 {/* Calendar View */}
                 <div className="lg:col-span-2">
-                    <div className="mb-4">
-                        <h3 className="text-lg font-semibold text-gray-900 mb-2">Calendar View</h3>
-                        <p className="text-sm text-gray-500">Monthly appointment overview</p>
+                    <div className="mb-3 sm:mb-4">
+                        <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-1 sm:mb-2">
+                            Calendar View
+                        </h3>
+                        <p className="text-xs sm:text-sm text-gray-500">Monthly appointment overview</p>
                     </div>
                     <ParentCalendarGrid
-                        appointments={
-                            selectedChildId === 'all'
-                                ? appointments
-                                : appointments.filter((apt) => apt.patient_id === selectedChildId)
-                        }
+                        appointments={childFilteredAppointments}
                         children={children}
                         childColors={childColors}
                     />
@@ -412,135 +343,14 @@ const ParentAppointments = () => {
             </div>
 
             {/* All Appointments Section */}
-            <Card>
-                <CardHeader>
-                    <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                        <div>
-                            <CardTitle className="text-xl font-bold">All Appointments</CardTitle>
-                            <p className="text-sm text-gray-500 mt-1">
-                                {filteredAppointments.length} appointment
-                                {filteredAppointments.length !== 1 ? 's' : ''} found
-                            </p>
-                        </div>
-
-                        {/* Search and Filters */}
-                        <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
-                            <div className="relative">
-                                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                                <Input
-                                    type="text"
-                                    placeholder="Search appointments..."
-                                    value={searchQuery}
-                                    onChange={(e) => setSearchQuery(e.target.value)}
-                                    className="pl-10 w-full sm:w-64"
-                                />
-                            </div>
-
-                            {/* Time Filter Tabs */}
-                            <Tabs
-                                value={timeFilter}
-                                onValueChange={setTimeFilter}
-                                className="w-auto"
-                            >
-                                <TabsList className="grid grid-cols-3 w-full sm:w-auto">
-                                    <TabsTrigger value="upcoming" className="text-xs">
-                                        <Clock className="h-3 w-3 mr-1" />
-                                        Upcoming
-                                    </TabsTrigger>
-                                    <TabsTrigger value="past" className="text-xs">
-                                        <History className="h-3 w-3 mr-1" />
-                                        Past
-                                    </TabsTrigger>
-                                    <TabsTrigger value="all" className="text-xs">
-                                        <Calendar className="h-3 w-3 mr-1" />
-                                        All
-                                    </TabsTrigger>
-                                </TabsList>
-                            </Tabs>
-                        </div>
-                    </div>
-
-                    {/* Status Filter */}
-                    <div className="flex flex-wrap gap-2 mt-4">
-                        <Badge
-                            variant={statusFilter === 'all' ? 'default' : 'outline'}
-                            className="cursor-pointer"
-                            onClick={() => setStatusFilter('all')}
-                        >
-                            All Status
-                        </Badge>
-                        <Badge
-                            variant={statusFilter === 'scheduled' ? 'default' : 'outline'}
-                            className={cn(
-                                'cursor-pointer',
-                                statusFilter === 'scheduled' && 'bg-blue-500'
-                            )}
-                            onClick={() => setStatusFilter('scheduled')}
-                        >
-                            Scheduled
-                        </Badge>
-                        <Badge
-                            variant={statusFilter === 'confirmed' ? 'default' : 'outline'}
-                            className={cn(
-                                'cursor-pointer',
-                                statusFilter === 'confirmed' && 'bg-green-500'
-                            )}
-                            onClick={() => setStatusFilter('confirmed')}
-                        >
-                            Confirmed
-                        </Badge>
-                        <Badge
-                            variant={statusFilter === 'completed' ? 'default' : 'outline'}
-                            className={cn(
-                                'cursor-pointer',
-                                statusFilter === 'completed' && 'bg-gray-500'
-                            )}
-                            onClick={() => setStatusFilter('completed')}
-                        >
-                            Completed
-                        </Badge>
-                        <Badge
-                            variant={statusFilter === 'cancelled' ? 'default' : 'outline'}
-                            className={cn(
-                                'cursor-pointer',
-                                statusFilter === 'cancelled' && 'bg-red-500'
-                            )}
-                            onClick={() => setStatusFilter('cancelled')}
-                        >
-                            Cancelled
-                        </Badge>
-                    </div>
-                </CardHeader>
-
-                <CardContent>
-                    {filteredAppointments.length > 0 ? (
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            {filteredAppointments.map((appointment) => (
-                                <ParentAppointmentCard
-                                    key={appointment.appointment_id || appointment.id}
-                                    appointment={appointment}
-                                    childName={getChildName(appointment.patient_id)}
-                                    childColor={
-                                        childColors[appointment.patient_id] || 'bg-blue-500'
-                                    }
-                                />
-                            ))}
-                        </div>
-                    ) : (
-                        <div className="text-center py-12">
-                            <Calendar className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-                            <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                                No appointments found
-                            </h3>
-                            <p className="text-gray-500">
-                                {searchQuery || statusFilter !== 'all' || timeFilter !== 'all'
-                                    ? 'Try adjusting your filters or search query.'
-                                    : 'No appointments have been scheduled yet.'}
-                            </p>
-                        </div>
-                    )}
-                </CardContent>
-            </Card>
+            <ParentAllAppointments
+                appointments={childFilteredAppointments}
+                children={children}
+                childColors={childColors}
+                onRefresh={handleRefresh}
+                refreshing={refreshing}
+                getChildName={getChildName}
+            />
 
             {/* Error Display */}
             {error && user?.id && (
