@@ -45,6 +45,7 @@ import DoctorPatientInfo from './pages/pediapro/DoctorPatientInfo'
 import ParentDashboard from '@/pages/parent/ParentDashboard'
 import ParentChildrenList from '@/pages/parent/ParentChildrenList'
 import ChildProfile from '@/pages/parent/ChildProfile'
+import ParentAppointments from '@/pages/parent/ParentAppointments'
 
 import AdminLayout from '@/layout/AdminLayout'
 import FacilityAdminLayout from '@/layout/FacilityAdminLayout'
@@ -288,7 +289,7 @@ function App() {
                         },
                         {
                             path: 'appointments',
-                            element: <div>Parent Appointments Page - Coming Soon</div>,
+                            element: <ParentAppointments />,
                         },
                         {
                             path: 'settings',

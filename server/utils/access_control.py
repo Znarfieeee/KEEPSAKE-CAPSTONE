@@ -25,7 +25,8 @@ VALID_ROLES = {
     "nurse",
     "staff",
     "parent",
-    "guardian"
+    "guardian",
+    "keepsaker"  # Parent portal user (alias for parent role)
 }
 
 def _normalize_roles(roles: Iterable[str]):

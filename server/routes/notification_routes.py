@@ -15,7 +15,7 @@ def count_unread_notifications(notifications):
     """Count unread notifications from a list of notifications"""
     return sum(1 for notification in notifications if not notification.get('is_read', False))
 
-@notification_bp.route('/notification', methods=['GET'])
+@notification_bp.route('/notifications', methods=['GET'])
 @require_auth
 def get_notifications():
     try:
@@ -257,15 +257,35 @@ def get_notification_preferences():
             # Create default preferences if they don't exist
             default_prefs = {
                 'user_id': user_id,
+                # Primary notification types
                 'appointment_reminder_enabled': True,
                 'upcoming_appointment_enabled': True,
                 'vaccination_due_enabled': True,
                 'qr_access_alert_enabled': True,
                 'system_announcement_enabled': True,
+                # Additional notification types
+                'record_update_enabled': True,
+                'new_prescription_enabled': True,
+                'appointment_status_change_enabled': True,
+                'document_upload_enabled': True,
+                'allergy_alert_enabled': True,
+                # Sound settings
                 'sound_enabled': True,
                 'sound_type': 'default',
+                # Timing settings
                 'appointment_reminder_time': 60,
                 'vaccination_reminder_days': 7,
+                # Quiet hours settings
+                'quiet_hours_enabled': False,
+                'quiet_hours_start': '22:00:00',
+                'quiet_hours_end': '07:00:00',
+                # Priority filtering
+                'priority_filter_enabled': False,
+                'minimum_priority': 'normal',
+                # Notification grouping
+                'notification_grouping_enabled': True,
+                'grouping_interval_minutes': 15,
+                # Delivery methods
                 'desktop_notifications': True,
                 'email_notifications': False
             }
@@ -301,20 +321,40 @@ def update_notification_preferences():
             return jsonify({'status': 'error', 'message': 'User not authenticated'}), 401
 
         raw_data = request.json
-        data = sanitize_request_data(raw_data)
+        data = sanitize_request_data(raw_data, data_type='general')
 
         # Allowed fields to update
         allowed_fields = [
+            # Primary notification types
             'appointment_reminder_enabled',
             'upcoming_appointment_enabled',
             'vaccination_due_enabled',
             'qr_access_alert_enabled',
             'system_announcement_enabled',
+            # Additional notification types
+            'record_update_enabled',
+            'new_prescription_enabled',
+            'appointment_status_change_enabled',
+            'document_upload_enabled',
+            'allergy_alert_enabled',
+            # Sound settings
             'sound_enabled',
             'sound_type',
             'custom_sound_url',
+            # Timing settings
             'appointment_reminder_time',
             'vaccination_reminder_days',
+            # Quiet hours settings
+            'quiet_hours_enabled',
+            'quiet_hours_start',
+            'quiet_hours_end',
+            # Priority filtering
+            'priority_filter_enabled',
+            'minimum_priority',
+            # Notification grouping
+            'notification_grouping_enabled',
+            'grouping_interval_minutes',
+            # Delivery methods
             'desktop_notifications',
             'email_notifications'
         ]
@@ -392,7 +432,7 @@ def create_system_announcement():
     try:
         user_id = request.current_user.get('id')
         raw_data = request.json
-        data = sanitize_request_data(raw_data)
+        data = sanitize_request_data(raw_data, data_type='general')
 
         # Validate required fields
         required_fields = ['title', 'message']

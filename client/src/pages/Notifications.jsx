@@ -15,6 +15,7 @@ import {
 } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
 import { useNavigate } from 'react-router-dom'
+import { useAuth } from '../context/auth'
 import { Button } from '../components/ui/Button'
 import { ScrollArea } from '../components/ui/scroll-area'
 import { Skeleton } from '../components/ui/skeleton'
@@ -34,6 +35,7 @@ import NotificationMenu from '../components/notifications/NotificationMenu'
  */
 const NotificationsPage = () => {
     const navigate = useNavigate()
+    const { user } = useAuth()
     const [activeTab, setActiveTab] = useState('all') // all, unread, archived
     const [filterType, setFilterType] = useState('all')
 
@@ -48,6 +50,25 @@ const NotificationsPage = () => {
         deleteNotification,
         refreshNotifications,
     } = useNotifications()
+
+    // Get settings path based on user role
+    const getSettingsPath = () => {
+        const role = user?.role
+        switch (role) {
+            case 'system_admin':
+            case 'admin':
+                return '/admin/settings?tab=notifications'
+            case 'parent':
+                return '/parent/settings?tab=notifications'
+            case 'doctor':
+            case 'pediapro':
+                return '/pediapro/settings?tab=notifications'
+            case 'facility_admin':
+                return '/facility_admin/settings?tab=notifications'
+            default:
+                return '/settings?tab=notifications'
+        }
+    }
 
     const getNotificationIcon = (type) => {
         switch (type) {
@@ -154,7 +175,7 @@ const NotificationsPage = () => {
                 <div className="flex items-center justify-between mb-6">
                     <div>
                         <h1 className="text-3xl font-bold text-gray-900 mb-2 flex items-center gap-2">
-                            <Bell className="h-8 w-8 text-blue-600" />
+                            <Bell className="h-8 w-8 text-primary" />
                             Notifications
                         </h1>
                         <p className="text-gray-600">
@@ -170,10 +191,7 @@ const NotificationsPage = () => {
                             Refresh
                         </Button>
 
-                        <Button
-                            variant="outline"
-                            onClick={() => navigate('/settings/notifications')}
-                        >
+                        <Button variant="outline" onClick={() => navigate(getSettingsPath())}>
                             <Settings className="h-4 w-4 mr-2" />
                             Settings
                         </Button>
@@ -194,7 +212,7 @@ const NotificationsPage = () => {
                             onClick={() => setActiveTab('all')}
                             className={`flex-1 px-6 py-4 text-sm font-medium transition-colors ${
                                 activeTab === 'all'
-                                    ? 'text-blue-600 border-b-2 border-blue-600 bg-blue-50'
+                                    ? 'text-primary border-b-2 border-primary bg-blue-50'
                                     : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
                             }`}
                         >
@@ -207,7 +225,7 @@ const NotificationsPage = () => {
                             onClick={() => setActiveTab('unread')}
                             className={`flex-1 px-6 py-4 text-sm font-medium transition-colors ${
                                 activeTab === 'unread'
-                                    ? 'text-blue-600 border-b-2 border-blue-600 bg-blue-50'
+                                    ? 'text-primary border-b-2 border-primary bg-blue-50'
                                     : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
                             }`}
                         >
@@ -222,7 +240,7 @@ const NotificationsPage = () => {
                             onClick={() => setActiveTab('archived')}
                             className={`flex-1 px-6 py-4 text-sm font-medium transition-colors ${
                                 activeTab === 'archived'
-                                    ? 'text-blue-600 border-b-2 border-blue-600 bg-blue-50'
+                                    ? 'text-primary border-b-2 border-primary bg-blue-50'
                                     : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
                             }`}
                         >
@@ -271,120 +289,129 @@ const NotificationsPage = () => {
 
                 {/* Notifications List */}
                 {loading ? (
-                    <div className="space-y-3">
-                        {[1, 2, 3, 4, 5].map((i) => (
-                            <div
-                                key={i}
-                                className="bg-white rounded-lg shadow p-5"
-                            >
-                                <div className="flex gap-4">
-                                    <Skeleton className="h-6 w-6 rounded" />
-                                    <div className="flex-1 space-y-3">
-                                        <div className="flex items-start justify-between">
-                                            <Skeleton className="h-6 w-2/3" />
-                                            <Skeleton className="h-5 w-16 rounded" />
-                                        </div>
-                                        <Skeleton className="h-4 w-full" />
-                                        <Skeleton className="h-4 w-3/4" />
-                                        <div className="flex items-center justify-between">
-                                            <Skeleton className="h-4 w-32" />
-                                            <div className="flex gap-2">
-                                                <Skeleton className="h-8 w-24" />
-                                                <Skeleton className="h-8 w-20" />
-                                                <Skeleton className="h-8 w-20" />
+                    <ScrollArea>
+                        <div className="space-y-3">
+                            {[1, 2, 3, 4, 5].map((i) => (
+                                <div key={i} className="bg-white rounded-lg shadow p-5">
+                                    <div className="flex gap-4">
+                                        <Skeleton className="h-6 w-6 rounded" />
+                                        <div className="flex-1 space-y-3">
+                                            <div className="flex items-start justify-between">
+                                                <Skeleton className="h-6 w-2/3" />
+                                                <Skeleton className="h-5 w-16 rounded" />
+                                            </div>
+                                            <Skeleton className="h-4 w-full" />
+                                            <Skeleton className="h-4 w-3/4" />
+                                            <div className="flex items-center justify-between">
+                                                <Skeleton className="h-4 w-32" />
+                                                <div className="flex gap-2">
+                                                    <Skeleton className="h-8 w-24" />
+                                                    <Skeleton className="h-8 w-20" />
+                                                    <Skeleton className="h-8 w-20" />
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
                                 </div>
-                            </div>
-                        ))}
-                    </div>
+                            ))}
+                        </div>
+                    </ScrollArea>
                 ) : filteredNotifications.length === 0 ? (
                     <div className="flex flex-col items-center justify-center h-64 bg-white rounded-lg shadow">
                         <Bell className="h-16 w-16 text-gray-300 mb-4" />
                         <p className="text-lg text-gray-600">
-                            {activeTab === 'archived' ? 'No archived notifications' :
-                             activeTab === 'unread' ? 'No unread notifications' :
-                             'No notifications found'}
+                            {activeTab === 'archived'
+                                ? 'No archived notifications'
+                                : activeTab === 'unread'
+                                ? 'No unread notifications'
+                                : 'No notifications found'}
                         </p>
                         <p className="text-sm text-gray-500 mt-2">
                             {filterType !== 'all'
                                 ? 'Try adjusting your filters'
                                 : activeTab === 'unread'
-                                    ? "You're all caught up!"
-                                    : activeTab === 'archived'
-                                        ? 'Archived notifications will appear here'
-                                        : "You're all caught up!"}
+                                ? "You're all caught up!"
+                                : activeTab === 'archived'
+                                ? 'Archived notifications will appear here'
+                                : "You're all caught up!"}
                         </p>
                     </div>
                 ) : (
-                    <div className="space-y-3">
-                        {filteredNotifications.map((notification) => (
-                            <div
-                                key={notification.notification_id}
-                                className={`bg-white rounded-lg shadow hover:shadow-lg transition-shadow cursor-pointer overflow-hidden ${getPriorityColor(
-                                    notification.priority
-                                )}`}
-                                onClick={() => handleNotificationClick(notification)}
-                            >
-                                <div className="p-5">
-                                    <div className="flex gap-4">
-                                        <div className="flex-shrink-0 mt-1">
-                                            {getNotificationIcon(notification.notification_type)}
-                                        </div>
-
-                                        <div className="flex-1 min-w-0">
-                                            <div className="flex items-start justify-between gap-4 mb-2">
-                                                <div className="flex items-center gap-3">
-                                                    <h3
-                                                        className={`text-lg font-semibold ${
-                                                            !notification.is_read
-                                                                ? 'text-gray-900'
-                                                                : 'text-gray-700'
-                                                        }`}
-                                                    >
-                                                        {notification.title}
-                                                    </h3>
-                                                    {getPriorityBadge(notification.priority)}
-                                                </div>
-
-                                                {!notification.is_read && (
-                                                    <div className={getPriorityIndicator(notification.priority)}></div>
+                    <ScrollArea>
+                        <div className="space-y-3">
+                            {filteredNotifications.map((notification) => (
+                                <div
+                                    key={notification.notification_id}
+                                    className={`bg-white rounded-lg shadow hover:shadow-lg transition-shadow cursor-pointer overflow-hidden ${getPriorityColor(
+                                        notification.priority
+                                    )}`}
+                                    onClick={() => handleNotificationClick(notification)}
+                                >
+                                    <div className="p-5">
+                                        <div className="flex gap-4">
+                                            <div className="flex-shrink-0 mt-1">
+                                                {getNotificationIcon(
+                                                    notification.notification_type
                                                 )}
                                             </div>
 
-                                            <p className="text-gray-700 mb-3 whitespace-pre-wrap">
-                                                {notification.message}
-                                            </p>
+                                            <div className="flex-1 min-w-0">
+                                                <div className="flex items-start justify-between gap-4 mb-2">
+                                                    <div className="flex items-center gap-3">
+                                                        <h3
+                                                            className={`text-lg font-semibold ${
+                                                                !notification.is_read
+                                                                    ? 'text-gray-900'
+                                                                    : 'text-gray-700'
+                                                            }`}
+                                                        >
+                                                            {notification.title}
+                                                        </h3>
+                                                        {getPriorityBadge(notification.priority)}
+                                                    </div>
 
-                                            <div className="flex items-center justify-between">
-                                                <span className="text-sm text-gray-500 flex items-center gap-1">
-                                                    <Clock className="h-3.5 w-3.5" />
-                                                    {formatDistanceToNow(
-                                                        new Date(notification.created_at),
-                                                        { addSuffix: true }
+                                                    {!notification.is_read && (
+                                                        <div
+                                                            className={getPriorityIndicator(
+                                                                notification.priority
+                                                            )}
+                                                        ></div>
                                                     )}
-                                                </span>
+                                                </div>
 
-                                                <div
-                                                    className="flex items-center gap-2"
-                                                    onClick={(e) => e.stopPropagation()}
-                                                >
-                                                    <NotificationMenu
-                                                        notification={notification}
-                                                        onMarkAsRead={markAsRead}
-                                                        onMarkAsUnread={markAsUnread}
-                                                        onArchive={archiveNotification}
-                                                        onDelete={deleteNotification}
-                                                    />
+                                                <p className="text-gray-700 mb-3 whitespace-pre-wrap">
+                                                    {notification.message}
+                                                </p>
+
+                                                <div className="flex items-center justify-between">
+                                                    <span className="text-sm text-gray-500 flex items-center gap-1">
+                                                        <Clock className="h-3.5 w-3.5" />
+                                                        {formatDistanceToNow(
+                                                            new Date(notification.created_at),
+                                                            { addSuffix: true }
+                                                        )}
+                                                    </span>
+
+                                                    <div
+                                                        className="flex items-center gap-2"
+                                                        onClick={(e) => e.stopPropagation()}
+                                                    >
+                                                        <NotificationMenu
+                                                            notification={notification}
+                                                            onMarkAsRead={markAsRead}
+                                                            onMarkAsUnread={markAsUnread}
+                                                            onArchive={archiveNotification}
+                                                            onDelete={deleteNotification}
+                                                        />
+                                                    </div>
                                                 </div>
                                             </div>
                                         </div>
                                     </div>
                                 </div>
-                            </div>
-                        ))}
-                    </div>
+                            ))}
+                        </div>
+                    </ScrollArea>
                 )}
             </div>
         </div>
