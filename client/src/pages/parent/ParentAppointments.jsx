@@ -99,7 +99,6 @@ const ParentAppointments = () => {
                 setError(null)
 
                 // Fetch children first
-                console.log('Fetching children for parent:', user.id)
                 const childrenResponse = await getParentChildren()
 
                 if (childrenResponse.status !== 'success' || !childrenResponse.data) {
@@ -118,7 +117,6 @@ const ParentAppointments = () => {
                     patient_id: accessRecord.patient?.patient_id || accessRecord.patient_id,
                 }))
 
-                console.log(`Found ${childrenData.length} children`)
                 setChildren(childrenData)
 
                 // Fetch appointments for all children in parallel
@@ -138,11 +136,8 @@ const ParentAppointments = () => {
                                 }
                                 return []
                             })
-                            .catch((err) => {
-                                console.error(
-                                    `Error fetching appointments for child ${childId}:`,
-                                    err
-                                )
+                            .catch(() => {
+                                // Silently fail for individual child - continue with others
                                 return []
                             })
                     })
@@ -160,10 +155,8 @@ const ParentAppointments = () => {
                     return dateA - dateB
                 })
 
-                console.log(`Loaded ${sortedAppointments.length} total appointments`)
                 setAppointments(sortedAppointments)
             } catch (err) {
-                console.error('Error fetching data:', err)
                 const errorMessage =
                     err.response?.data?.message ||
                     err.message ||
