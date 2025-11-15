@@ -151,6 +151,28 @@ const DoctorAppointments = () => {
         }
     }, [fetchAppointments, user?.id])
 
+    // Listen for custom appointment-created events from ScheduleAppointmentModal
+    useEffect(() => {
+        const handleAppointmentCreated = (event) => {
+            const newAppointment = event.detail
+            if (newAppointment) {
+                console.log('Received appointment-created event:', newAppointment)
+                handleAppointmentChange({
+                    type: 'INSERT',
+                    appointment: newAppointment,
+                    raw: newAppointment,
+                    source: 'custom-event'
+                })
+            }
+        }
+
+        window.addEventListener('appointment-created', handleAppointmentCreated)
+
+        return () => {
+            window.removeEventListener('appointment-created', handleAppointmentCreated)
+        }
+    }, [handleAppointmentChange])
+
     /**
      * Filter appointments for today
      * Returns appointments scheduled for the current date

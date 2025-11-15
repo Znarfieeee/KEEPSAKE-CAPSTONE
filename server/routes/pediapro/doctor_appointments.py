@@ -328,15 +328,16 @@ def get_appointments_by_facility_id(facility_id):
 @require_auth
 @require_role('facility_admin', 'doctor', 'nurse')
 def get_appointments_by_doctor_id(doctor_id):
-    """Get appointments for a specific doctor"""
+    """Get appointments for a specific doctor with facility isolation"""
     try:
         current_user = request.current_user
         current_app.logger.info(f"AUDIT: User {current_user.get('email')} fetching appointments for doctor: {doctor_id}")
-        
+
         bust_cache = request.args.get('bust_cache', 'false').lower() == 'true'
-        cache_key = f"{APPOINTMENT_CACHE_PREFIX}doctor:{doctor_id}"
-        
-        # Check cache first
+        user_id = current_user.get('id')
+        cache_key = f"{APPOINTMENT_CACHE_PREFIX}doctor:{doctor_id}:user:{user_id}"
+
+        # Check cache first (include user_id in cache key for facility isolation)
         if not bust_cache:
             cached = redis_client.get(cache_key)
             if cached:
@@ -349,8 +350,57 @@ def get_appointments_by_doctor_id(doctor_id):
                     'cached': True,
                     'timestamp': datetime.datetime.utcnow().isoformat()
                 }), 200
-        
-        # Get appointments for the doctor with related data - doctor is now optional
+
+        # SECURITY FIX: Enforce facility isolation
+        # Step 1: Get facilities where the current user works
+        user_facilities_resp = supabase.table('facility_users')\
+            .select('facility_id')\
+            .eq('user_id', user_id)\
+            .is_('end_date', 'null')\
+            .execute()
+
+        if getattr(user_facilities_resp, 'error', None):
+            current_app.logger.error(f"AUDIT: Failed to fetch user facilities: {user_facilities_resp.error.message}")
+            return jsonify({
+                "status": "error",
+                "message": "Failed to fetch user facilities"
+            }), 400
+
+        if not user_facilities_resp.data:
+            current_app.logger.warning(f"AUDIT: User {current_user.get('email')} has no facility assignments")
+            return jsonify({
+                "status": "success",
+                "data": [],
+                "message": "No facilities found for current user"
+            }), 200
+
+        facility_ids = [f['facility_id'] for f in user_facilities_resp.data]
+
+        # Step 2: Get patients that belong to these facilities
+        facility_patients_resp = supabase.table('facility_patients')\
+            .select('patient_id')\
+            .in_('facility_id', facility_ids)\
+            .eq('is_active', True)\
+            .execute()
+
+        if getattr(facility_patients_resp, 'error', None):
+            current_app.logger.error(f"AUDIT: Failed to fetch facility patients: {facility_patients_resp.error.message}")
+            return jsonify({
+                "status": "error",
+                "message": "Failed to fetch facility patients"
+            }), 400
+
+        accessible_patient_ids = [p['patient_id'] for p in facility_patients_resp.data]
+
+        if not accessible_patient_ids:
+            current_app.logger.info(f"AUDIT: No patients found in user's facilities")
+            return jsonify({
+                "status": "success",
+                "data": [],
+                "message": "No patients found in your facilities"
+            }), 200
+
+        # Step 3: Get appointments for the doctor, filtered by accessible patients
         resp = supabase.table('appointments')\
             .select('''
                 *,
@@ -360,9 +410,10 @@ def get_appointments_by_doctor_id(doctor_id):
                 scheduled_user:users!appointments_scheduled_by_fkey(user_id, firstname, lastname)
             ''')\
             .eq('doctor_id', doctor_id)\
+            .in_('patient_id', accessible_patient_ids)\
             .order('appointment_date', desc=True)\
             .execute()
-        
+
         if getattr(resp, 'error', None):
             current_app.logger.error(f"AUDIT: Failed to fetch appointments for doctor {doctor_id}: {resp.error.message}")
             return jsonify({
@@ -370,20 +421,22 @@ def get_appointments_by_doctor_id(doctor_id):
                 "message": "Failed to fetch appointments",
                 "details": resp.error.message
             }), 400
-        
+
         # Process data to populate missing names
         processed_data = process_appointment_data(resp.data)
-        
+
         # Cache the processed results for 5 minutes
         redis_client.setex(cache_key, 300, json.dumps(processed_data))
-        
+
+        current_app.logger.info(f"AUDIT: User {current_user.get('email')} fetched {len(processed_data)} appointments for doctor {doctor_id} (facility-isolated)")
+
         return jsonify({
             "status": "success",
             "data": processed_data,
             "cached": False,
             "timestamp": datetime.datetime.utcnow().isoformat()
         }), 200
-    
+
     except Exception as e:
         current_app.logger.error(f"AUDIT: Error fetching appointments for doctor {doctor_id}: {str(e)}")
         return jsonify({
@@ -396,7 +449,7 @@ def get_appointments_by_doctor_id(doctor_id):
 @require_auth
 @require_role('facility_admin', 'doctor', 'nurse', 'staff')
 def search_patients():
-    """Search for patients by name"""
+    """Search for patients by name with facility isolation"""
     try:
         search_term = request.args.get('name', '').strip()
         if not search_term:
@@ -406,21 +459,72 @@ def search_patients():
             }), 400
 
         current_user = request.current_user
+        user_id = current_user.get('id')
         current_app.logger.info(f"AUDIT: User {current_user.get('email')} searching for patient: {search_term}")
+
+        # SECURITY FIX: Enforce facility isolation
+        # Step 1: Get facilities where the current user works
+        user_facilities_resp = supabase.table('facility_users')\
+            .select('facility_id')\
+            .eq('user_id', user_id)\
+            .is_('end_date', 'null')\
+            .execute()
+
+        if getattr(user_facilities_resp, 'error', None):
+            current_app.logger.error(f"AUDIT: Failed to fetch user facilities: {user_facilities_resp.error.message}")
+            return jsonify({
+                "status": "error",
+                "message": "Failed to fetch user facilities"
+            }), 400
+
+        if not user_facilities_resp.data:
+            current_app.logger.warning(f"AUDIT: User {current_user.get('email')} has no facility assignments")
+            return jsonify({
+                "status": "success",
+                "data": [],
+                "message": "No facilities found for current user"
+            }), 200
+
+        facility_ids = [f['facility_id'] for f in user_facilities_resp.data]
+
+        # Step 2: Get patients that belong to these facilities
+        facility_patients_resp = supabase.table('facility_patients')\
+            .select('patient_id')\
+            .in_('facility_id', facility_ids)\
+            .eq('is_active', True)\
+            .execute()
+
+        if getattr(facility_patients_resp, 'error', None):
+            current_app.logger.error(f"AUDIT: Failed to fetch facility patients: {facility_patients_resp.error.message}")
+            return jsonify({
+                "status": "error",
+                "message": "Failed to fetch facility patients"
+            }), 400
+
+        accessible_patient_ids = [p['patient_id'] for p in facility_patients_resp.data]
+
+        if not accessible_patient_ids:
+            current_app.logger.info(f"AUDIT: No patients found in user's facilities")
+            return jsonify({
+                "status": "success",
+                "data": [],
+                "message": "No patients found in your facilities"
+            }), 200
 
         # Split the search term into parts for better matching
         name_parts = search_term.lower().split()
-        
+
         # Build search query for first and last names
         search_conditions = []
         for part in name_parts:
             search_conditions.append(f'firstname.ilike.%{part}%')
             search_conditions.append(f'lastname.ilike.%{part}%')
-        
-        # Search for patients with matching names (active patients only)
+
+        # Step 3: Search for patients with matching names (filtered by accessible patients)
         resp = supabase.table('patients')\
             .select('patient_id, firstname, lastname, middlename, date_of_birth, sex')\
             .or_(','.join(search_conditions))\
+            .in_('patient_id', accessible_patient_ids)\
             .eq('is_active', True)\
             .limit(10)\
             .execute()
@@ -441,15 +545,17 @@ def search_patients():
             if patient.get('middlename'):
                 full_name_parts.append(patient['middlename'])
             full_name_parts.append(patient['lastname'])
-            
+
             full_name = ' '.join(full_name_parts)
-            
+
             matches.append({
                 'patient_id': patient['patient_id'],
                 'full_name': full_name,
                 'date_of_birth': patient['date_of_birth'],
                 'sex': patient['sex']
             })
+
+        current_app.logger.info(f"AUDIT: User {current_user.get('email')} found {len(matches)} patients matching '{search_term}' (facility-isolated)")
 
         return jsonify({
             "status": "success",
