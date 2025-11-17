@@ -44,7 +44,7 @@ import DoctorPatientInfo from './pages/pediapro/DoctorPatientInfo'
 // Parent (Keepsaker)
 import ParentDashboard from '@/pages/parent/ParentDashboard'
 import ParentChildrenList from '@/pages/parent/ParentChildrenList'
-import ChildProfile from '@/pages/parent/ChildProfile'
+import ParentChildInfo from '@/pages/parent/ParentChildInfo'
 import ParentAppointments from '@/pages/parent/ParentAppointments'
 
 import AdminLayout from '@/layout/AdminLayout'
@@ -285,7 +285,7 @@ function App() {
                         },
                         {
                             path: 'child/:patientId',
-                            element: <ChildProfile />,
+                            element: <ParentChildInfo />,
                         },
                         {
                             path: 'appointments',

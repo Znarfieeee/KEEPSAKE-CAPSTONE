@@ -1672,15 +1672,35 @@ def update_patient_record(patient_id):
 # Get patient record by ID with optional related data
 @patrecord_bp.route('/patient_record/<patient_id>', methods=['GET'])
 @require_auth
-@require_role('doctor', 'facility_admin', 'nurse')
+@require_role('doctor', 'facility_admin', 'nurse', 'parent', 'keepsaker')
 def get_patient_record_by_id(patient_id):
     """
     Get patient with optional related data.
     Like a React component that can optionally load child components.
     """
     try:
+        current_user = request.current_user
+        user_role = current_user.get('role')
+        user_id = current_user.get('id')
+
+        # If user is a parent or keepsaker, verify they have access to this child
+        if user_role in ['parent', 'keepsaker']:
+            access_check = supabase.table('parent_access')\
+                .select('access_id, relationship')\
+                .eq('user_id', user_id)\
+                .eq('patient_id', patient_id)\
+                .eq('is_active', True)\
+                .execute()
+
+            if not access_check.data or len(access_check.data) == 0:
+                current_app.logger.warning(f"AUDIT: Unauthorized parent access attempt - User {current_user.get('email')} tried to access patient {patient_id}")
+                return jsonify({
+                    "status": "error",
+                    "message": "You do not have access to this child's records"
+                }), 403
+
         include_related = request.args.get('include_related', 'false').lower() == 'true'
-        
+
         # Get main patient record
         resp = supabase.table('patients')\
             .select('*')\

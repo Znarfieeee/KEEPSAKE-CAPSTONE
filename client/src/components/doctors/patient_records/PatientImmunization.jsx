@@ -7,7 +7,7 @@ import ConfirmationDialog from '@/components/ui/ConfirmationDialog'
 import { deleteVaccination } from '@/api/doctor/vaccinations'
 import { showToast } from '@/util/alertHelper'
 
-const PatientImmunization = ({ patient, onUpdate }) => {
+const PatientImmunization = ({ patient, onUpdate, readOnly = false }) => {
     const [vaccinations, setVaccinations] = useState(patient?.related_records?.vaccinations || [])
     const [showAddDialog, setShowAddDialog] = useState(false)
     const [showEditDialog, setShowEditDialog] = useState(false)
@@ -142,13 +142,15 @@ const PatientImmunization = ({ patient, onUpdate }) => {
                         <Syringe className="w-5 h-5 text-blue-600" />
                         <h2 className="text-lg font-semibold">IMMUNIZATION RECORDS</h2>
                     </div>
-                    <Button
-                        onClick={() => setShowAddDialog(true)}
-                        className="flex items-center gap-2"
-                    >
-                        <Plus className="w-4 h-4 mr-2" />
-                        Add Immunization
-                    </Button>
+                    {!readOnly && (
+                        <Button
+                            onClick={() => setShowAddDialog(true)}
+                            className="flex items-center gap-2"
+                        >
+                            <Plus className="w-4 h-4 mr-2" />
+                            Add Immunization
+                        </Button>
+                    )}
                 </div>
 
                 {vaccinations.length > 0 ? (
@@ -178,9 +180,11 @@ const PatientImmunization = ({ patient, onUpdate }) => {
                                         <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">
                                             STATUS
                                         </th>
-                                        <th className="px-4 py-3 text-center text-sm font-semibold text-gray-700">
-                                            ACTIONS
-                                        </th>
+                                        {!readOnly && (
+                                            <th className="px-4 py-3 text-center text-sm font-semibold text-gray-700">
+                                                ACTIONS
+                                            </th>
+                                        )}
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-gray-200">
@@ -228,30 +232,32 @@ const PatientImmunization = ({ patient, onUpdate }) => {
                                                     </span>
                                                 </div>
                                             </td>
-                                            <td className="px-4 py-3">
-                                                <div className="flex items-center justify-center gap-2">
-                                                    <Button
-                                                        size="sm"
-                                                        variant="ghost"
-                                                        onClick={() => handleEdit(vaccination)}
-                                                        className="h-8 w-8 p-0"
-                                                        title="Edit vaccination"
-                                                    >
-                                                        <Edit className="w-4 h-4 text-blue-600" />
-                                                    </Button>
-                                                    <Button
-                                                        size="sm"
-                                                        variant="ghost"
-                                                        onClick={() =>
-                                                            handleDeleteClick(vaccination)
-                                                        }
-                                                        className="h-8 w-8 p-0"
-                                                        title="Delete vaccination"
-                                                    >
-                                                        <Trash2 className="w-4 h-4 text-red-600" />
-                                                    </Button>
-                                                </div>
-                                            </td>
+                                            {!readOnly && (
+                                                <td className="px-4 py-3">
+                                                    <div className="flex items-center justify-center gap-2">
+                                                        <Button
+                                                            size="sm"
+                                                            variant="ghost"
+                                                            onClick={() => handleEdit(vaccination)}
+                                                            className="h-8 w-8 p-0"
+                                                            title="Edit vaccination"
+                                                        >
+                                                            <Edit className="w-4 h-4 text-blue-600" />
+                                                        </Button>
+                                                        <Button
+                                                            size="sm"
+                                                            variant="ghost"
+                                                            onClick={() =>
+                                                                handleDeleteClick(vaccination)
+                                                            }
+                                                            className="h-8 w-8 p-0"
+                                                            title="Delete vaccination"
+                                                        >
+                                                            <Trash2 className="w-4 h-4 text-red-600" />
+                                                        </Button>
+                                                    </div>
+                                                </td>
+                                            )}
                                         </tr>
                                     ))}
                                 </tbody>
@@ -290,15 +296,17 @@ const PatientImmunization = ({ patient, onUpdate }) => {
                         <p className="text-sm text-gray-400 mb-4">
                             No vaccination records found for this patient.
                         </p>
-                        <Button
-                            onClick={() => setShowAddDialog(true)}
-                            variant="outline"
-                            size="sm"
-                            className="flex items-center gap-2 mx-auto"
-                        >
-                            <Plus className="w-4 h-4" />
-                            Add First Immunization
-                        </Button>
+                        {!readOnly && (
+                            <Button
+                                onClick={() => setShowAddDialog(true)}
+                                variant="outline"
+                                size="sm"
+                                className="flex items-center gap-2 mx-auto"
+                            >
+                                <Plus className="w-4 h-4" />
+                                Add First Immunization
+                            </Button>
+                        )}
                     </div>
                 )}
 

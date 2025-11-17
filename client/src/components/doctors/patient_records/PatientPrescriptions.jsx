@@ -18,6 +18,7 @@ const PatientPrescription = ({
     prescription = [],
     patient,
     onPrescriptionAdded,
+    readOnly = false,
 }) => {
     const [isOpen, setIsOpen] = useState(false)
     const [selectedPrescription, setSelectedPrescription] = useState(null)
@@ -93,24 +94,26 @@ const PatientPrescription = ({
                             className="h-10 w-full rounded-md border border-gray-200 bg-white pl-9 pr-4 text-sm placeholder:text-gray-500 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
                         />
                     </div>
-                    <div className="relative flex-1 lg:flex-none">
-                        <Dialog open={isOpen} onOpenChange={setIsOpen}>
-                            <DialogTrigger asChild>
-                                <Button>
-                                    <PlusCircle className="h-4 w-4 mr-2" />
-                                    Add Prescription
-                                </Button>
-                            </DialogTrigger>
-                            <Suspense fallback={null}>
-                                <AddPatientPrescriptionModal
-                                    prescription={{ patient_id: patient?.patient_id }}
-                                    isLoading={isLoading}
-                                    setIsOpen={setIsOpen}
-                                    onSuccess={handlePrescriptionAdded}
-                                />
-                            </Suspense>
-                        </Dialog>
-                    </div>
+                    {!readOnly && (
+                        <div className="relative flex-1 lg:flex-none">
+                            <Dialog open={isOpen} onOpenChange={setIsOpen}>
+                                <DialogTrigger asChild>
+                                    <Button>
+                                        <PlusCircle className="h-4 w-4 mr-2" />
+                                        Add Prescription
+                                    </Button>
+                                </DialogTrigger>
+                                <Suspense fallback={null}>
+                                    <AddPatientPrescriptionModal
+                                        prescription={{ patient_id: patient?.patient_id }}
+                                        isLoading={isLoading}
+                                        setIsOpen={setIsOpen}
+                                        onSuccess={handlePrescriptionAdded}
+                                    />
+                                </Suspense>
+                            </Dialog>
+                        </div>
+                    )}
                 </div>
                 <table className="w-full text-sm">
                     <thead className="border-b border-b-gray-300 text-xs uppercase text-muted-foreground">
@@ -190,6 +193,8 @@ const PatientPrescription = ({
                                 suggestion={
                                     search
                                         ? 'Try adjusting your search criteria'
+                                        : readOnly
+                                        ? 'No prescription records available'
                                         : 'Add a prescription using the button above'
                                 }
                             />

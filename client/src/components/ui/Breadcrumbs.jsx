@@ -56,6 +56,7 @@ const SEGMENT_LABELS = {
 
     // Parent
     parent: 'Dashboard',
+    child: 'Child Records',
 
     // Nurse || Staff
     vital_custodian: 'Dashboard',

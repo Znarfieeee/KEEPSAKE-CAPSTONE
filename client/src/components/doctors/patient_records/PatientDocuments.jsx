@@ -33,7 +33,25 @@ const DOCUMENT_TYPE_COLORS = {
     other: 'bg-gray-100 text-gray-800',
 }
 
-export function PatientDocuments({ patientId, canDelete = false }) {
+const UPLOADER_ROLE_LABELS = {
+    doctor: 'Medical Professional',
+    nurse: 'Medical Professional',
+    facility_admin: 'Facility Admin',
+    parent: 'Parent/Guardian',
+    guardian: 'Parent/Guardian',
+    staff: 'Staff',
+}
+
+const UPLOADER_ROLE_COLORS = {
+    doctor: 'bg-emerald-100 text-emerald-800',
+    nurse: 'bg-emerald-100 text-emerald-800',
+    facility_admin: 'bg-indigo-100 text-indigo-800',
+    parent: 'bg-amber-100 text-amber-800',
+    guardian: 'bg-amber-100 text-amber-800',
+    staff: 'bg-gray-100 text-gray-800',
+}
+
+export function PatientDocuments({ patientId, canDelete = false, readOnly = false }) {
     const [documents, setDocuments] = useState([])
     const [loading, setLoading] = useState(true)
     const [filterType, setFilterType] = useState('all')
@@ -171,10 +189,12 @@ export function PatientDocuments({ patientId, canDelete = false }) {
                 {/* Header with Upload Button */}
                 <div className="flex items-center justify-between my-4">
                     <h2 className="text-lg font-semibold">MEDICAL DOCUMENTS</h2>
-                    <Button onClick={() => setShowUploadModal(true)}>
-                        <Upload className="w-4 h-4 mr-2" />
-                        Upload Document
-                    </Button>
+                    {!readOnly && (
+                        <Button onClick={() => setShowUploadModal(true)}>
+                            <Upload className="w-4 h-4 mr-2" />
+                            Upload Document
+                        </Button>
+                    )}
                 </div>
 
                 {/* Filter Bar */}
@@ -263,6 +283,15 @@ export function PatientDocuments({ patientId, canDelete = false }) {
                                                                 {doc.uploader.lastname}
                                                             </span>
                                                         </>
+                                                    )}
+                                                    {doc.uploaded_by_role && (
+                                                        <span
+                                                            className={`px-2 py-0.5 text-xs font-semibold rounded-full ${
+                                                                UPLOADER_ROLE_COLORS[doc.uploaded_by_role] || 'bg-gray-100 text-gray-800'
+                                                            }`}
+                                                        >
+                                                            {UPLOADER_ROLE_LABELS[doc.uploaded_by_role] || doc.uploaded_by_role}
+                                                        </span>
                                                     )}
                                                 </div>
                                                 <div className="flex items-center gap-3 text-sm text-gray-500">

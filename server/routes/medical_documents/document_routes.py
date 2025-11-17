@@ -1,6 +1,6 @@
 from flask import Blueprint, jsonify, request, current_app
 from utils.access_control import require_auth, require_role
-from config.settings import supabase, supabase_service_role_client
+from config.settings import supabase, sr_client
 from utils.audit_logger import log_action
 from werkzeug.utils import secure_filename
 import uuid
@@ -127,9 +127,9 @@ def upload_document():
                 "message": f"Invalid document type. Allowed types: {', '.join(DOCUMENT_TYPES)}"
             }), 400
 
-        # For parents, get facility_id from patient record
+        # For parents, get facility_id from patient record using service role client to bypass RLS
         if user_role == 'parent':
-            patient_facility = supabase.table('facility_patients')\
+            patient_facility = sr_client.table('facility_patients')\
                 .select('facility_id')\
                 .eq('patient_id', patient_id)\
                 .eq('is_active', True)\
@@ -215,7 +215,8 @@ def upload_document():
             'mime_type': file.content_type or 'application/octet-stream',
             'version': 1,
             'is_current_version': True,
-            'uploaded_by': user_id
+            'uploaded_by': user_id,
+            'uploaded_by_role': user_role
         }
 
         # Add optional related record IDs
@@ -481,7 +482,7 @@ def delete_document(document_id):
 
         # Get document metadata using service role to bypass RLS
         # User authentication already verified by @require_auth decorator
-        doc_response = supabase_service_role_client.table('medical_documents')\
+        doc_response = sr_client.table('medical_documents')\
             .select('*')\
             .eq('document_id', document_id)\
             .eq('is_deleted', False)\
@@ -513,7 +514,7 @@ def delete_document(document_id):
 
         # Soft delete: update is_deleted flag
         # Use service role client since we've already verified permissions
-        update_response = supabase_service_role_client.table('medical_documents').update({
+        update_response = sr_client.table('medical_documents').update({
             'is_deleted': True,
             'deleted_at': datetime.utcnow().isoformat(),
             'deleted_by': user_id

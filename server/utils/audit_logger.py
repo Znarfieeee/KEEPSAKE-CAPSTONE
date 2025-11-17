@@ -2,7 +2,7 @@ import logging, os, json
 from typing import Optional
 from functools import wraps
 from flask import request, current_app, session
-from config.settings import supabase
+from config.settings import supabase, sr_client
 import uuid
 
 
@@ -161,8 +161,8 @@ def log_action(user_id, action_type, table_name, record_id=None, patient_id=None
             # Convert to JSON-serializable format
             audit_data['new_values'] = json.loads(json.dumps(new_values, default=str))
 
-        # Insert into audit_logs table
-        response = supabase.table('audit_logs').insert(audit_data).execute()
+        # Insert into audit_logs table using service role client to bypass RLS
+        response = sr_client.table('audit_logs').insert(audit_data).execute()
 
         if getattr(response, 'error', None):
             current_app.logger.error(f"Failed to create audit log: {response.error}")
