@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useState } from 'react'
 
 // UI Components (keep imports consistent with your project)
 import { Button } from '@/components/ui/button'
@@ -28,8 +28,11 @@ import {
     Mail,
     Building2,
     Shield,
+    X,
+    Share2,
 } from 'lucide-react'
 import { TooltipHelper } from '@/util/TooltipHelper'
+import SecureQRGenerator from '@/components/qr/SecureQRGenerator'
 
 // Helper to return Tailwind color for status dot
 const getStatusColor = (status) => {
@@ -320,6 +323,8 @@ const formatDateTime = (dateString) => {
 }
 
 const PatientPrescriptionDetailModal = ({ open, prescription, onClose }) => {
+    const [showQRGenerator, setShowQRGenerator] = useState(false)
+
     if (!prescription) return null
 
     // Ensure meds is always an array
@@ -414,22 +419,19 @@ const PatientPrescriptionDetailModal = ({ open, prescription, onClose }) => {
         }
     }
 
-    // QR generator functionality
-    const handleGenerateQR = () => {
-        try {
-            const payload = {
-                patient: prescription.patient_name || '',
-                doctor: prescription.doctor_name || '',
-                date: prescription.prescription_date || '',
-                medications: medications.length,
-                findings: prescription.findings || '',
-            }
-            const data = encodeURIComponent(JSON.stringify(payload))
-            const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${data}`
-            window.open(qrUrl, '_blank', 'noopener,noreferrer')
-        } catch (err) {
-            console.error('QR generation failed', err)
-        }
+    // Toggle QR generator panel
+    const handleToggleQRGenerator = () => {
+        setShowQRGenerator(!showQRGenerator)
+    }
+
+    // Build reference data for QR metadata
+    const prescriptionReferenceData = {
+        prescription_id: prescription.rx_id,
+        prescription_date: prescription.prescription_date,
+        doctor_name: prescription.doctor_name,
+        findings: prescription.findings,
+        medications_count: medications.length,
+        consultation_type: prescription.consultation_type
     }
 
     return (
@@ -474,19 +476,40 @@ const PatientPrescriptionDetailModal = ({ open, prescription, onClose }) => {
                             </Button>
                         </TooltipHelper>
 
-                        <TooltipHelper content="Generate QR code">
+                        <TooltipHelper content={showQRGenerator ? "Close QR generator" : "Share via QR code"}>
                             <Button
                                 size="icon"
                                 variant="ghost"
-                                aria-label="Show prescription QR"
-                                onClick={handleGenerateQR}
-                                className="hover:bg-green-50 hover:text-green-600"
+                                aria-label="Share prescription via QR"
+                                onClick={handleToggleQRGenerator}
+                                className={`${showQRGenerator ? "bg-green-100 text-green-600" : "hover:bg-green-50 hover:text-green-600"}`}
                             >
-                                <QrCode className="w-4 h-4" />
+                                {showQRGenerator ? <X className="w-4 h-4" /> : <Share2 className="w-4 h-4" />}
                             </Button>
                         </TooltipHelper>
                     </div>
                 </div>
+
+                {/* Secure QR Code Generator Panel */}
+                {showQRGenerator && (
+                    <div className="border-b bg-gradient-to-r from-green-50 to-blue-50 p-4">
+                        <div className="max-w-2xl mx-auto">
+                            <SecureQRGenerator
+                                patientId={prescription.patient_id}
+                                shareType="prescription"
+                                defaultScope={["prescriptions", "allergies"]}
+                                referenceData={prescriptionReferenceData}
+                                compact={true}
+                                onGenerate={(response) => {
+                                    console.log("QR Code generated:", response)
+                                }}
+                                onError={(error) => {
+                                    console.error("QR generation error:", error)
+                                }}
+                            />
+                        </div>
+                    </div>
+                )}
 
                 {/* Printable prescription content */}
                 <div className="prescription-printable bg-gray-100 h-[calc(95vh-80px)] overflow-y-auto">

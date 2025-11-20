@@ -6,10 +6,12 @@ import { IoMdArrowBack } from 'react-icons/io'
 import { Badge } from '@/components/ui/badge'
 import { AlertCircle, RefreshCw } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { MdQrCode2 } from 'react-icons/md'
 
 import PatientRecordsTabs from '@/components/doctors/patient_records/PatientRecordsTabs'
 import { getChildDetails } from '@/api/parent/children'
 import LoadingSkeleton from '@/components/doctors/patient_records/LoadingSkeleton'
+import BeautifulQRDialog from '@/components/qr/BeautifulQRDialog'
 
 // Helper
 import { showToast } from '@/util/alertHelper'
@@ -21,6 +23,7 @@ const ParentChildInfo = () => {
     const [patient, setPatient] = useState(null)
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState(null)
+    const [showQRDialog, setShowQRDialog] = useState(false)
 
     const fetchChildData = useCallback(
         async (showRefreshToast = false) => {
@@ -161,19 +164,18 @@ const ParentChildInfo = () => {
                         </div>
                     </div>
 
-                    {/* Refresh Button */}
-                    {/* <div className="flex justify-end sm:justify-start">
+                    {/* Share QR Code Button */}
+                    <div className="flex justify-end sm:justify-start">
                         <Button
-                            variant="outline"
+                            variant="default"
                             size="sm"
-                            onClick={handleRefresh}
-                            disabled={refreshing}
-                            className="w-full sm:w-auto"
+                            onClick={() => setShowQRDialog(true)}
+                            className="w-full sm:w-auto bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white"
                         >
-                            <RefreshCw className={`w-4 h-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
-                            {refreshing ? 'Refreshing...' : 'Refresh Data'}
+                            <MdQrCode2 className="w-5 h-5 mr-2" />
+                            Share QR Code
                         </Button>
-                    </div> */}
+                    </div>
                 </div>
 
                 {/* Patient Records Tabs */}
@@ -184,6 +186,18 @@ const ParentChildInfo = () => {
                 {/* Bottom Spacing for Mobile */}
                 <div className="h-16 sm:h-8" />
             </div>
+
+            {/* QR Share Dialog */}
+            <BeautifulQRDialog
+                isOpen={showQRDialog}
+                onClose={() => setShowQRDialog(false)}
+                patientId={patient.patient_id}
+                patientName={`${patient.firstname || ''} ${patient.middlename || ''} ${patient.lastname || ''}`.trim()}
+                onGenerate={(response) => {
+                    console.log('QR Code generated:', response)
+                    showToast('success', 'QR code generated successfully')
+                }}
+            />
         </div>
     )
 }

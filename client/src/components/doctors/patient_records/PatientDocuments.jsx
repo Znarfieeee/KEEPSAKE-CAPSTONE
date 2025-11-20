@@ -189,12 +189,12 @@ export function PatientDocuments({ patientId, canDelete = false, readOnly = fals
                 {/* Header with Upload Button */}
                 <div className="flex items-center justify-between my-4">
                     <h2 className="text-lg font-semibold">MEDICAL DOCUMENTS</h2>
-                    {!readOnly && (
-                        <Button onClick={() => setShowUploadModal(true)}>
-                            <Upload className="w-4 h-4 mr-2" />
-                            Upload Document
-                        </Button>
-                    )}
+                    {/* {!readOnly && ( */}
+                    <Button onClick={() => setShowUploadModal(true)}>
+                        <Upload className="w-4 h-4 mr-2" />
+                        Upload Document
+                    </Button>
+                    {/*} )} */}
                 </div>
 
                 {/* Filter Bar */}
@@ -287,10 +287,14 @@ export function PatientDocuments({ patientId, canDelete = false, readOnly = fals
                                                     {doc.uploaded_by_role && (
                                                         <span
                                                             className={`px-2 py-0.5 text-xs font-semibold rounded-full ${
-                                                                UPLOADER_ROLE_COLORS[doc.uploaded_by_role] || 'bg-gray-100 text-gray-800'
+                                                                UPLOADER_ROLE_COLORS[
+                                                                    doc.uploaded_by_role
+                                                                ] || 'bg-gray-100 text-gray-800'
                                                             }`}
                                                         >
-                                                            {UPLOADER_ROLE_LABELS[doc.uploaded_by_role] || doc.uploaded_by_role}
+                                                            {UPLOADER_ROLE_LABELS[
+                                                                doc.uploaded_by_role
+                                                            ] || doc.uploaded_by_role}
                                                         </span>
                                                     )}
                                                 </div>

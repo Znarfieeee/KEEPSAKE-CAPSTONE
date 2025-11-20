@@ -5,14 +5,19 @@ import { useNavigate } from "react-router-dom"
 import { useAuth } from "../context/auth"
 import { useQrScanner } from "../context/QrScannerContext"
 
+// API
+import { accessQRCode } from "../api/qrCode"
+
 // UI Components
 import { IoMdArrowBack } from "react-icons/io"
-import { FiCheckCircle, FiAlertCircle } from "react-icons/fi"
-import { BiUser, BiCalendar, BiIdCard } from "react-icons/bi"
+import { FiCheckCircle, FiAlertCircle, FiLock, FiClock, FiHash, FiShield } from "react-icons/fi"
+import { BiUser, BiCalendar, BiIdCard, BiClinic } from "react-icons/bi"
+import { MdMedicalServices, MdVaccines } from "react-icons/md"
 import { AiOutlineLoading3Quarters } from "react-icons/ai"
 import QrCodeScanner from "../components/ui/QrCodeScanner"
 import { Card } from "../components/ui/Card"
 import { Button } from "../components/ui/Button"
+import QRPinInputModal from "../components/qr/QRPinInputModal"
 
 const QrScanner = () => {
     const navigate = useNavigate()
@@ -21,9 +26,16 @@ const QrScanner = () => {
 
     const [scannedData, setScannedData] = useState(null)
     const [patientInfo, setPatientInfo] = useState(null)
+    const [qrMetadata, setQrMetadata] = useState(null)
     const [loading, setLoading] = useState(false)
     const [error, setError] = useState(null)
     const [scanSuccess, setScanSuccess] = useState(false)
+
+    // PIN Modal state
+    const [showPinModal, setShowPinModal] = useState(false)
+    const [pendingToken, setPendingToken] = useState(null)
+    const [pinError, setPinError] = useState(null)
+    const [pinLoading, setPinLoading] = useState(false)
 
     // Get user role display name
     const getRoleDisplayName = (role) => {
@@ -49,6 +61,82 @@ const QrScanner = () => {
         return actionNames[action] || "View"
     }
 
+    // Extract token from QR code data (could be URL or direct token)
+    const extractToken = (data) => {
+        // Check if it's a URL with token parameter
+        try {
+            const url = new URL(data)
+            const token = url.searchParams.get("token")
+            if (token) return { type: "token", value: token }
+        } catch {
+            // Not a URL, continue checking
+        }
+
+        // Check if it's JSON with token field
+        try {
+            const jsonData = JSON.parse(data)
+            if (jsonData.token) return { type: "token", value: jsonData.token }
+            if (jsonData.access_url) {
+                const url = new URL(jsonData.access_url)
+                const token = url.searchParams.get("token")
+                if (token) return { type: "token", value: token }
+            }
+            // Legacy direct patient data
+            if (jsonData.patientId || jsonData.patient_id) {
+                return { type: "legacy", value: jsonData }
+            }
+        } catch {
+            // Not valid JSON
+        }
+
+        // Check if it looks like a token string (base64url format)
+        if (/^[A-Za-z0-9_-]{30,}$/.test(data)) {
+            return { type: "token", value: data }
+        }
+
+        // Default: treat as legacy data
+        return { type: "legacy", value: data }
+    }
+
+    // Validate token with backend API
+    const validateToken = async (token, pin = null) => {
+        try {
+            const response = await accessQRCode(token, pin)
+
+            // Set patient info from response
+            const patientData = response.patient_data || {}
+            setPatientInfo({
+                id: patientData.patient_id || patientData.id,
+                name: `${patientData.firstname || ""} ${patientData.middlename || ""} ${patientData.lastname || ""}`.trim() || "Unknown Patient",
+                dateOfBirth: patientData.date_of_birth || patientData.dateOfBirth,
+                sex: patientData.sex,
+                bloodType: patientData.bloodtype,
+                allergies: patientData.allergies || [],
+                prescriptions: patientData.prescriptions || [],
+                vaccinations: patientData.vaccinations || [],
+                appointments: patientData.appointments || [],
+                vitals: patientData.vitals || [],
+                facilityId: patientData.facility_id || user?.facility_id
+            })
+
+            // Set QR metadata
+            setQrMetadata({
+                accessType: response.access_type,
+                scope: response.qr_metadata?.scope || [],
+                expiresAt: response.qr_metadata?.expires_at,
+                usesRemaining: response.qr_metadata?.max_uses
+                    ? response.qr_metadata.max_uses - (response.qr_metadata.use_count || 0)
+                    : null,
+                shareType: response.qr_metadata?.share_type,
+                generatedBy: response.qr_metadata?.generated_by_name
+            })
+
+            return true
+        } catch (err) {
+            throw err
+        }
+    }
+
     // Handle successful QR code scan
     const handleScanSuccess = useCallback(async (decodedText, decodedResult) => {
         try {
@@ -60,22 +148,66 @@ const QrScanner = () => {
             const result = processQrData(decodedText)
             setScannedData(result)
 
-            // Simulate patient lookup (replace with actual API call)
-            await fetchPatientInfo(result)
+            // Extract token or legacy data
+            const extracted = extractToken(decodedText)
 
-            setLoading(false)
+            if (extracted.type === "token") {
+                // Token-based QR code - validate with backend
+                try {
+                    await validateToken(extracted.value)
+                    setLoading(false)
+                } catch (err) {
+                    // Check if PIN is required
+                    if (err.message.includes("PIN") || err.message.includes("pin")) {
+                        setPendingToken(extracted.value)
+                        setShowPinModal(true)
+                        setLoading(false)
+                    } else {
+                        throw err
+                    }
+                }
+            } else {
+                // Legacy direct data - use old flow
+                await fetchPatientInfoLegacy(result)
+                setLoading(false)
+            }
         } catch (err) {
             console.error("Error handling scan:", err)
-            setError("Failed to process scanned QR code")
+            setError(err.message || "Failed to process scanned QR code")
             setLoading(false)
             setScanSuccess(false)
         }
     }, [processQrData])
 
-    // Fetch patient information based on scanned data
-    const fetchPatientInfo = async (scanResult) => {
-        // This is a placeholder - implement actual API call
-        // For now, extract patient ID and simulate response
+    // Handle PIN submission
+    const handlePinSubmit = async (pin) => {
+        if (!pendingToken) return
+
+        setPinLoading(true)
+        setPinError(null)
+
+        try {
+            await validateToken(pendingToken, pin)
+            setShowPinModal(false)
+            setPendingToken(null)
+            setPinLoading(false)
+        } catch (err) {
+            setPinError(err.message || "Invalid PIN")
+            setPinLoading(false)
+        }
+    }
+
+    // Handle PIN modal close
+    const handlePinModalClose = () => {
+        setShowPinModal(false)
+        setPendingToken(null)
+        setPinError(null)
+        setScanSuccess(false)
+        setScannedData(null)
+    }
+
+    // Fetch patient information (legacy flow for non-token QR codes)
+    const fetchPatientInfoLegacy = async (scanResult) => {
         const qrData = scanResult.parsedData
         let patientId = null
 
@@ -91,14 +223,16 @@ const QrScanner = () => {
             // Simulate API delay
             await new Promise(resolve => setTimeout(resolve, 500))
 
-            // Mock patient data - replace with actual API call
+            // Mock patient data for legacy QR codes
             setPatientInfo({
                 id: patientId,
-                name: "Patient Name",
-                dateOfBirth: "2020-01-15",
-                guardianName: "Guardian Name",
-                facilityId: user?.facility_id
+                name: qrData.patientName || "Unknown Patient",
+                dateOfBirth: qrData.dateOfBirth || "N/A",
+                facilityId: qrData.facilityId || user?.facility_id
             })
+
+            // No metadata for legacy codes
+            setQrMetadata(null)
         }
     }
 
@@ -118,9 +252,57 @@ const QrScanner = () => {
     const handleScanAnother = () => {
         setScannedData(null)
         setPatientInfo(null)
+        setQrMetadata(null)
         setError(null)
         setScanSuccess(false)
+        setPendingToken(null)
+        setPinError(null)
         clearScanResult()
+    }
+
+    // Format scope for display
+    const formatScope = (scope) => {
+        const scopeLabels = {
+            view_only: "Basic Info",
+            allergies: "Allergies",
+            prescriptions: "Prescriptions",
+            vaccinations: "Vaccinations",
+            appointments: "Appointments",
+            vitals: "Vital Signs",
+            full_access: "Full Access"
+        }
+        if (!Array.isArray(scope)) return "View Only"
+        return scope.map(s => scopeLabels[s] || s).join(", ")
+    }
+
+    // Format date for display
+    const formatDate = (dateString) => {
+        if (!dateString) return "N/A"
+        try {
+            return new Date(dateString).toLocaleDateString("en-US", {
+                year: "numeric",
+                month: "long",
+                day: "numeric"
+            })
+        } catch {
+            return dateString
+        }
+    }
+
+    // Format datetime for display
+    const formatDateTime = (dateString) => {
+        if (!dateString) return "N/A"
+        try {
+            return new Date(dateString).toLocaleString("en-US", {
+                year: "numeric",
+                month: "short",
+                day: "numeric",
+                hour: "2-digit",
+                minute: "2-digit"
+            })
+        } catch {
+            return dateString
+        }
     }
 
     // Auto-redirect if not authenticated
@@ -176,12 +358,56 @@ const QrScanner = () => {
                                 </div>
                             </div>
 
+                            {/* QR Code Metadata (if token-based) */}
+                            {qrMetadata && (
+                                <Card className="p-4 bg-blue-50 border border-blue-200">
+                                    <div className="flex items-center gap-2 mb-3">
+                                        <FiShield className="text-blue-600" />
+                                        <h4 className="font-semibold text-blue-900">Secure Access Information</h4>
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-3 text-sm">
+                                        <div className="flex items-center gap-2">
+                                            <FiHash className="text-blue-500" />
+                                            <div>
+                                                <p className="text-xs text-blue-600">Access Type</p>
+                                                <p className="font-medium text-blue-900 capitalize">{qrMetadata.accessType?.replace("_", " ")}</p>
+                                            </div>
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                            <FiLock className="text-blue-500" />
+                                            <div>
+                                                <p className="text-xs text-blue-600">Data Scope</p>
+                                                <p className="font-medium text-blue-900">{formatScope(qrMetadata.scope)}</p>
+                                            </div>
+                                        </div>
+                                        {qrMetadata.expiresAt && (
+                                            <div className="flex items-center gap-2">
+                                                <FiClock className="text-blue-500" />
+                                                <div>
+                                                    <p className="text-xs text-blue-600">Expires</p>
+                                                    <p className="font-medium text-blue-900">{formatDateTime(qrMetadata.expiresAt)}</p>
+                                                </div>
+                                            </div>
+                                        )}
+                                        {qrMetadata.usesRemaining !== null && (
+                                            <div className="flex items-center gap-2">
+                                                <FiHash className="text-blue-500" />
+                                                <div>
+                                                    <p className="text-xs text-blue-600">Uses Remaining</p>
+                                                    <p className="font-medium text-blue-900">{qrMetadata.usesRemaining}</p>
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+                                </Card>
+                            )}
+
                             {/* Patient Information */}
                             {loading ? (
                                 <Card className="p-8 flex items-center justify-center">
                                     <div className="flex flex-col items-center gap-3">
                                         <AiOutlineLoading3Quarters className="text-4xl text-primary animate-spin" />
-                                        <span className="text-gray-600">Loading patient information...</span>
+                                        <span className="text-gray-600">Validating QR code and loading patient information...</span>
                                     </div>
                                 </Card>
                             ) : patientInfo ? (
@@ -192,7 +418,7 @@ const QrScanner = () => {
                                             <BiIdCard className="text-2xl text-gray-500" />
                                             <div>
                                                 <p className="text-xs text-gray-500">Patient ID</p>
-                                                <p className="font-medium text-gray-800">{patientInfo.id}</p>
+                                                <p className="font-medium text-gray-800 font-mono text-sm">{patientInfo.id}</p>
                                             </div>
                                         </div>
                                         <div className="flex items-center gap-3">
@@ -206,16 +432,91 @@ const QrScanner = () => {
                                             <BiCalendar className="text-2xl text-gray-500" />
                                             <div>
                                                 <p className="text-xs text-gray-500">Date of Birth</p>
-                                                <p className="font-medium text-gray-800">{patientInfo.dateOfBirth}</p>
+                                                <p className="font-medium text-gray-800">{formatDate(patientInfo.dateOfBirth)}</p>
                                             </div>
                                         </div>
-                                        <div className="flex items-center gap-3">
-                                            <BiUser className="text-2xl text-gray-500" />
-                                            <div>
-                                                <p className="text-xs text-gray-500">Guardian Name</p>
-                                                <p className="font-medium text-gray-800">{patientInfo.guardianName}</p>
+                                        {patientInfo.sex && (
+                                            <div className="flex items-center gap-3">
+                                                <BiUser className="text-2xl text-gray-500" />
+                                                <div>
+                                                    <p className="text-xs text-gray-500">Sex</p>
+                                                    <p className="font-medium text-gray-800 capitalize">{patientInfo.sex}</p>
+                                                </div>
                                             </div>
-                                        </div>
+                                        )}
+                                        {patientInfo.bloodType && (
+                                            <div className="flex items-center gap-3">
+                                                <MdMedicalServices className="text-2xl text-gray-500" />
+                                                <div>
+                                                    <p className="text-xs text-gray-500">Blood Type</p>
+                                                    <p className="font-medium text-gray-800">{patientInfo.bloodType}</p>
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        {/* Scoped Data Sections */}
+                                        {patientInfo.allergies?.length > 0 && (
+                                            <div className="mt-4 pt-4 border-t border-gray-200">
+                                                <div className="flex items-center gap-2 mb-2">
+                                                    <FiAlertCircle className="text-red-500" />
+                                                    <p className="text-sm font-semibold text-red-700">Allergies ({patientInfo.allergies.length})</p>
+                                                </div>
+                                                <div className="space-y-1">
+                                                    {patientInfo.allergies.slice(0, 3).map((allergy, idx) => (
+                                                        <p key={idx} className="text-sm text-gray-700 pl-6">
+                                                            • {allergy.allergen} - <span className="capitalize">{allergy.severity}</span>
+                                                        </p>
+                                                    ))}
+                                                    {patientInfo.allergies.length > 3 && (
+                                                        <p className="text-xs text-gray-500 pl-6">
+                                                            +{patientInfo.allergies.length - 3} more
+                                                        </p>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        {patientInfo.prescriptions?.length > 0 && (
+                                            <div className="mt-4 pt-4 border-t border-gray-200">
+                                                <div className="flex items-center gap-2 mb-2">
+                                                    <MdMedicalServices className="text-blue-500" />
+                                                    <p className="text-sm font-semibold text-blue-700">Recent Prescriptions ({patientInfo.prescriptions.length})</p>
+                                                </div>
+                                                <div className="space-y-1">
+                                                    {patientInfo.prescriptions.slice(0, 2).map((rx, idx) => (
+                                                        <p key={idx} className="text-sm text-gray-700 pl-6">
+                                                            • {rx.findings || "Prescription"} - {formatDate(rx.prescription_date)}
+                                                        </p>
+                                                    ))}
+                                                    {patientInfo.prescriptions.length > 2 && (
+                                                        <p className="text-xs text-gray-500 pl-6">
+                                                            +{patientInfo.prescriptions.length - 2} more
+                                                        </p>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        {patientInfo.vaccinations?.length > 0 && (
+                                            <div className="mt-4 pt-4 border-t border-gray-200">
+                                                <div className="flex items-center gap-2 mb-2">
+                                                    <MdVaccines className="text-green-500" />
+                                                    <p className="text-sm font-semibold text-green-700">Vaccinations ({patientInfo.vaccinations.length})</p>
+                                                </div>
+                                                <div className="space-y-1">
+                                                    {patientInfo.vaccinations.slice(0, 3).map((vax, idx) => (
+                                                        <p key={idx} className="text-sm text-gray-700 pl-6">
+                                                            • {vax.vaccine_name} - Dose {vax.dose_number}
+                                                        </p>
+                                                    ))}
+                                                    {patientInfo.vaccinations.length > 3 && (
+                                                        <p className="text-xs text-gray-500 pl-6">
+                                                            +{patientInfo.vaccinations.length - 3} more
+                                                        </p>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        )}
                                     </div>
                                 </Card>
                             ) : null}
@@ -256,6 +557,16 @@ const QrScanner = () => {
                                         <pre className="text-xs text-gray-600 overflow-auto">
                                             {JSON.stringify(scannedData, null, 2)}
                                         </pre>
+                                        {qrMetadata && (
+                                            <>
+                                                <summary className="cursor-pointer text-sm font-medium text-gray-700 mb-2 mt-4">
+                                                    QR Metadata
+                                                </summary>
+                                                <pre className="text-xs text-gray-600 overflow-auto">
+                                                    {JSON.stringify(qrMetadata, null, 2)}
+                                                </pre>
+                                            </>
+                                        )}
                                     </details>
                                 </Card>
                             )}
@@ -263,6 +574,15 @@ const QrScanner = () => {
                     )}
                 </div>
             </div>
+
+            {/* PIN Input Modal */}
+            <QRPinInputModal
+                isOpen={showPinModal}
+                onClose={handlePinModalClose}
+                onSubmit={handlePinSubmit}
+                error={pinError}
+                loading={pinLoading}
+            />
         </div>
     )
 }

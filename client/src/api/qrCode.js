@@ -22,11 +22,18 @@ export const generateQRCode = async (qrData) => {
             qrData,
             axiosConfig
         )
+
+        // Backend returns status: "success" instead of status: 200
+        if (response.data && response.data.status === "success") {
+            return response.data
+        }
+
         return response.data
     } catch (error) {
         if (error.response) {
-            const errorMessage =
-                error.response.data?.error || "Failed to generate QR code"
+            const errorData = error.response.data
+            const errorMessage = errorData?.error || "Failed to generate QR code"
+            const details = errorData?.details || ""
 
             if (error.response.status === 400) {
                 throw new Error(errorMessage)
@@ -37,8 +44,10 @@ export const generateQRCode = async (qrData) => {
                     "You don't have permission to generate QR codes for this patient"
                 )
             } else if (error.response.status === 500) {
+                // Show more detailed error for debugging
+                const detailMsg = details ? `\n\nDetails: ${details}` : ""
                 throw new Error(
-                    "Server error while generating QR code. Please try again."
+                    `Server error while generating QR code. Please try again.${detailMsg}`
                 )
             }
 
