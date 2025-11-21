@@ -1672,20 +1672,27 @@ def update_patient_record(patient_id):
 # Get patient record by ID with optional related data
 @patrecord_bp.route('/patient_record/<patient_id>', methods=['GET'])
 @require_auth
-@require_role('doctor', 'facility_admin', 'nurse', 'parent', 'keepsaker')
+@require_role('doctor', 'pediapro', 'facility_admin', 'nurse', 'vital_custodian', 'parent', 'keepsaker')
 def get_patient_record_by_id(patient_id):
     """
     Get patient with optional related data.
     Like a React component that can optionally load child components.
+
+    Uses service role client to bypass RLS for facility staff accessing QR-scanned patients.
+    Access is verified through facility_patients or parent_access tables.
     """
     try:
         current_user = request.current_user
         user_role = current_user.get('role')
         user_id = current_user.get('id')
+        user_facility_id = current_user.get('facility_id')
+
+        # Use service role client to bypass RLS for lookups
+        sr_client = supabase_service_role_client()
 
         # If user is a parent or keepsaker, verify they have access to this child
         if user_role in ['parent', 'keepsaker']:
-            access_check = supabase.table('parent_access')\
+            access_check = sr_client.table('parent_access')\
                 .select('access_id, relationship')\
                 .eq('user_id', user_id)\
                 .eq('patient_id', patient_id)\
@@ -1699,10 +1706,27 @@ def get_patient_record_by_id(patient_id):
                     "message": "You do not have access to this child's records"
                 }), 403
 
+        # For facility staff, verify patient is registered to their facility
+        elif user_role in ['doctor', 'facility_admin', 'nurse', 'pediapro', 'vital_custodian']:
+            if user_facility_id:
+                facility_check = sr_client.table('facility_patients')\
+                    .select('facility_patient_id')\
+                    .eq('patient_id', patient_id)\
+                    .eq('facility_id', user_facility_id)\
+                    .eq('is_active', True)\
+                    .execute()
+
+                if not facility_check.data or len(facility_check.data) == 0:
+                    current_app.logger.warning(f"AUDIT: Patient {patient_id} not registered to facility {user_facility_id} for user {current_user.get('email')}")
+                    return jsonify({
+                        "status": "error",
+                        "message": "Patient is not registered to your facility. Please scan their QR code first."
+                    }), 403
+
         include_related = request.args.get('include_related', 'false').lower() == 'true'
 
-        # Get main patient record
-        resp = supabase.table('patients')\
+        # Get main patient record using service role client to bypass RLS
+        resp = sr_client.table('patients')\
             .select('*')\
             .eq('patient_id', patient_id)\
             .single()\
@@ -1716,9 +1740,9 @@ def get_patient_record_by_id(patient_id):
             }), 404
         
         patient_data = resp.data
-        
+
         try:
-            age_resp = supabase.rpc('calculate_age', {'date_of_birth': patient_data['date_of_birth']}).execute()
+            age_resp = sr_client.rpc('calculate_age', {'date_of_birth': patient_data['date_of_birth']}).execute()
             
             if age_resp.data is not None: 
                 age_data = age_resp.data
@@ -1748,8 +1772,8 @@ def get_patient_record_by_id(patient_id):
             related_data = {}
 
             try:
-                # Get delivery record
-                delivery_resp = supabase.table('delivery_record').select('*').eq('patient_id', patient_id).execute()
+                # Get delivery record (using sr_client to bypass RLS)
+                delivery_resp = sr_client.table('delivery_record').select('*').eq('patient_id', patient_id).execute()
                 if getattr(delivery_resp, 'error', None):
                     current_app.logger.error(f"Error fetching delivery record for patient {patient_id}: {delivery_resp.error.message}")
                     related_data['delivery'] = None
@@ -1757,7 +1781,7 @@ def get_patient_record_by_id(patient_id):
                     related_data['delivery'] = delivery_resp.data[0] if delivery_resp.data else None
 
                 # Get anthropometric measurements
-                anthro_resp = supabase.table('anthropometric_measurements').select('*').eq('patient_id', patient_id).execute()
+                anthro_resp = sr_client.table('anthropometric_measurements').select('*').eq('patient_id', patient_id).execute()
                 if getattr(anthro_resp, 'error', None):
                     current_app.logger.error(f"Error fetching anthropometric data for patient {patient_id}: {anthro_resp.error.message}")
                     related_data['anthropometric_measurements'] = []
@@ -1765,7 +1789,7 @@ def get_patient_record_by_id(patient_id):
                     related_data['anthropometric_measurements'] = anthro_resp.data or []
 
                 # Get screening tests
-                screening_resp = supabase.table('screening_tests').select('*').eq('patient_id', patient_id).execute()
+                screening_resp = sr_client.table('screening_tests').select('*').eq('patient_id', patient_id).execute()
                 if getattr(screening_resp, 'error', None):
                     current_app.logger.error(f"Error fetching screening data for patient {patient_id}: {screening_resp.error.message}")
                     related_data['screening'] = None
@@ -1773,17 +1797,15 @@ def get_patient_record_by_id(patient_id):
                     related_data['screening'] = screening_resp.data[0] if screening_resp.data else None
 
                 # Get allergies
-                allergy_resp = supabase.table('allergies').select('*').eq('patient_id', patient_id).order('date_identified', desc=True).execute()
+                allergy_resp = sr_client.table('allergies').select('*').eq('patient_id', patient_id).order('date_identified', desc=True).execute()
                 if getattr(allergy_resp, 'error', None):
                     current_app.logger.error(f"Error fetching allergies for patient {patient_id}: {allergy_resp.error.message}")
                     related_data['allergies'] = []
                 else:
-                    allergies_data = allergy_resp.data or []
-                    related_data['allergies'] = allergies_data
-                    current_app.logger.info(f"DEBUG: Found {len(allergies_data)} allergies for patient {patient_id}: {allergies_data}")
+                    related_data['allergies'] = allergy_resp.data or []
 
                 # Get prescriptions
-                rx_resp = supabase.table('prescriptions').select('*').eq('patient_id', patient_id).execute()
+                rx_resp = sr_client.table('prescriptions').select('*').eq('patient_id', patient_id).execute()
                 if getattr(rx_resp, 'error', None):
                     current_app.logger.error(f"Error fetching prescriptions for patient {patient_id}: {rx_resp.error.message}")
                     related_data['prescriptions'] = []
@@ -1791,7 +1813,7 @@ def get_patient_record_by_id(patient_id):
                     related_data['prescriptions'] = rx_resp.data or []
 
                 # Get vaccinations (exclude soft-deleted records)
-                vaccination_resp = supabase.table('vaccinations')\
+                vaccination_resp = sr_client.table('vaccinations')\
                     .select('*')\
                     .eq('patient_id', patient_id)\
                     .eq('is_deleted', False)\
@@ -1803,7 +1825,7 @@ def get_patient_record_by_id(patient_id):
                     related_data['vaccinations'] = vaccination_resp.data or []
 
                 # Get parent access data with user information
-                parent_access_resp = supabase.table('parent_access').select('''
+                parent_access_resp = sr_client.table('parent_access').select('''
                     access_id,
                     relationship,
                     granted_at,
@@ -1822,9 +1844,7 @@ def get_patient_record_by_id(patient_id):
                     current_app.logger.error(f"Error fetching parent access for patient {patient_id}: {parent_access_resp.error.message}")
                     related_data['parent_access'] = []
                 else:
-                    parent_access_data = parent_access_resp.data or []
-                    related_data['parent_access'] = parent_access_data
-                    current_app.logger.info(f"DEBUG: Found {len(parent_access_data)} parent access records for patient {patient_id}")
+                    related_data['parent_access'] = parent_access_resp.data or []
 
             except Exception as related_error:
                 current_app.logger.error(f"Exception while fetching related records for patient {patient_id}: {str(related_error)}")

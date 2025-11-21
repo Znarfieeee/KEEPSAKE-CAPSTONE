@@ -14,7 +14,7 @@ import { FiCheckCircle, FiAlertCircle, FiLock, FiClock, FiHash, FiShield } from 
 import { BiUser, BiCalendar, BiIdCard, BiClinic } from "react-icons/bi"
 import { MdMedicalServices, MdVaccines } from "react-icons/md"
 import { AiOutlineLoading3Quarters } from "react-icons/ai"
-import QrCodeScanner from "../components/ui/QrCodeScanner"
+import EnhancedQrScanner from "../components/ui/EnhancedQrScanner"
 import { Card } from "../components/ui/Card"
 import { Button } from "../components/ui/Button"
 import QRPinInputModal from "../components/qr/QRPinInputModal"
@@ -41,12 +41,16 @@ const QrScanner = () => {
     const getRoleDisplayName = (role) => {
         const roleNames = {
             pediapro: "Doctor",
+            doctor: "Doctor",
             vital_custodian: "Nurse/Staff",
+            nurse: "Nurse/Staff",
             keepsaker: "Parent",
+            parent: "Parent",
+            guardian: "Parent/Guardian",
             facility_admin: "Facility Admin",
             system_admin: "System Admin"
         }
-        return roleNames[role] || "User"
+        return roleNames[role] || role || "User"
     }
 
     // Get action display name
@@ -157,8 +161,8 @@ const QrScanner = () => {
                     await validateToken(extracted.value)
                     setLoading(false)
                 } catch (err) {
-                    // Check if PIN is required
-                    if (err.message.includes("PIN") || err.message.includes("pin")) {
+                    // Check if PIN is required (using explicit flag or message)
+                    if (err.requiresPin || err.message.includes("PIN required") || err.message.includes("pin required")) {
                         setPendingToken(extracted.value)
                         setShowPinModal(true)
                         setLoading(false)
@@ -238,6 +242,39 @@ const QrScanner = () => {
 
     // Handle navigation to patient details
     const handleViewDetails = () => {
+        // For token-based QR codes, use patientInfo.id (from backend response)
+        // For legacy QR codes, use getNavigationPath(scannedData)
+        if (patientInfo?.id) {
+            // Determine path based on user role
+            const role = user?.role
+            let path = null
+
+            switch (role) {
+                case "pediapro": // Doctor
+                case "doctor":
+                    path = `/pediapro/patient_records/${patientInfo.id}`
+                    break
+                case "vital_custodian": // Nurse/Staff
+                    path = `/vital_custodian/patient/${patientInfo.id}/vitals`
+                    break
+                case "keepsaker": // Parent
+                case "parent":
+                    path = `/parent/child/${patientInfo.id}`
+                    break
+                case "facility_admin":
+                    path = `/facility_admin/patients/${patientInfo.id}`
+                    break
+                default:
+                    path = `/pediapro/patient_records/${patientInfo.id}`
+            }
+
+            if (path) {
+                navigate(path)
+                return
+            }
+        }
+
+        // Fallback to legacy navigation
         if (scannedData) {
             const path = getNavigationPath(scannedData)
             if (path) {
@@ -338,13 +375,11 @@ const QrScanner = () => {
 
                     {/* Main Content */}
                     {!scannedData ? (
-                        <Card className="p-8 shadow-xl">
-                            <QrCodeScanner
+                        <Card className="p-6 shadow-xl">
+                            <EnhancedQrScanner
                                 onScanSuccess={handleScanSuccess}
                                 width="100%"
-                                height="450px"
-                                fps={10}
-                                qrbox={280}
+                                height="500px"
                             />
                         </Card>
                     ) : (
@@ -547,29 +582,6 @@ const QrScanner = () => {
                                 </Button>
                             </div>
 
-                            {/* Raw Data Display (for debugging) */}
-                            {process.env.NODE_ENV === "development" && scannedData && (
-                                <Card className="p-4 bg-gray-50">
-                                    <details>
-                                        <summary className="cursor-pointer text-sm font-medium text-gray-700 mb-2">
-                                            Debug: Scan Data
-                                        </summary>
-                                        <pre className="text-xs text-gray-600 overflow-auto">
-                                            {JSON.stringify(scannedData, null, 2)}
-                                        </pre>
-                                        {qrMetadata && (
-                                            <>
-                                                <summary className="cursor-pointer text-sm font-medium text-gray-700 mb-2 mt-4">
-                                                    QR Metadata
-                                                </summary>
-                                                <pre className="text-xs text-gray-600 overflow-auto">
-                                                    {JSON.stringify(qrMetadata, null, 2)}
-                                                </pre>
-                                            </>
-                                        )}
-                                    </details>
-                                </Card>
-                            )}
                         </div>
                     )}
                 </div>

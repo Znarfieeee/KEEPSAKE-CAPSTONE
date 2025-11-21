@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from "react"
-import { Html5Qrcode } from "html5-qrcode"
-import { FiCamera, FiX } from "react-icons/fi"
+import { Html5Qrcode, Html5QrcodeSupportedFormats } from "html5-qrcode"
+import { FiCamera } from "react-icons/fi"
 import { BiErrorCircle } from "react-icons/bi"
 import { AiOutlineLoading3Quarters } from "react-icons/ai"
 
@@ -9,7 +9,7 @@ const QrCodeScanner = ({
     onScanError,
     width = "100%",
     height = "400px",
-    fps = 10,
+    fps = 15, // Balanced FPS for reliability
     qrbox = 250,
     aspectRatio = 1.0,
     disableFlip = false
@@ -61,12 +61,16 @@ const QrCodeScanner = ({
             setIsScanning(true)
 
             if (!html5QrCodeRef.current) {
-                html5QrCodeRef.current = new Html5Qrcode(qrCodeRegionId.current)
+                html5QrCodeRef.current = new Html5Qrcode(qrCodeRegionId.current, {
+                    verbose: false,
+                    formatsToSupport: [Html5QrcodeSupportedFormats.QR_CODE]
+                })
             }
 
+            // Configuration optimized for reliable scanning
             const config = {
-                fps,
-                qrbox,
+                fps: fps,
+                qrbox: typeof qrbox === 'number' ? { width: qrbox, height: qrbox } : qrbox,
                 aspectRatio,
                 disableFlip
             }
@@ -75,17 +79,16 @@ const QrCodeScanner = ({
                 selectedCamera,
                 config,
                 (decodedText, decodedResult) => {
-                    // Successfully scanned
+                    // Successfully scanned - stop scanning to prevent multiple reads
+                    console.log("QR Code scanned:", decodedText)
+                    stopScanning()
                     if (onScanSuccess) {
                         onScanSuccess(decodedText, decodedResult)
                     }
                 },
                 (errorMessage) => {
                     // Scanning error (this fires frequently, so we don't show it)
-                    // Only handle if provided
-                    if (onScanError) {
-                        onScanError(errorMessage)
-                    }
+                    // Only pass to handler if provided
                 }
             )
         } catch (err) {
@@ -96,9 +99,12 @@ const QrCodeScanner = ({
     }
 
     const stopScanning = async () => {
-        if (html5QrCodeRef.current && isScanning) {
+        if (html5QrCodeRef.current) {
             try {
-                await html5QrCodeRef.current.stop()
+                const state = html5QrCodeRef.current.getState()
+                if (state === 2) { // SCANNING state
+                    await html5QrCodeRef.current.stop()
+                }
                 setIsScanning(false)
             } catch (err) {
                 console.error("Error stopping scanner:", err)
@@ -145,18 +151,57 @@ const QrCodeScanner = ({
 
             {/* Scanner Container */}
             <div
-                className="relative rounded-lg overflow-hidden border-2 border-gray-300 bg-black"
+                className="relative rounded-xl overflow-hidden border-2 border-gray-300 bg-gray-900"
                 style={{ width, height }}
             >
+                {/* Actual Scanner Element */}
                 <div
                     id={qrCodeRegionId.current}
                     ref={scannerRef}
-                    className="w-full h-full"
+                    className="w-full h-full [&>video]:object-cover"
                 />
+
+                {/* Simple corner markers - no overlay to interfere with scanning */}
+                {isScanning && (
+                    <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
+                        <div
+                            className="relative"
+                            style={{
+                                width: typeof qrbox === 'number' ? qrbox + 20 : 270,
+                                height: typeof qrbox === 'number' ? qrbox + 20 : 270,
+                            }}
+                        >
+                            {/* Corner markers */}
+                            {/* Top Left */}
+                            <div className="absolute top-0 left-0 w-10 h-10">
+                                <div className="absolute top-0 left-0 w-full h-1 bg-green-500 rounded-full shadow-lg" />
+                                <div className="absolute top-0 left-0 w-1 h-full bg-green-500 rounded-full shadow-lg" />
+                            </div>
+                            {/* Top Right */}
+                            <div className="absolute top-0 right-0 w-10 h-10">
+                                <div className="absolute top-0 right-0 w-full h-1 bg-green-500 rounded-full shadow-lg" />
+                                <div className="absolute top-0 right-0 w-1 h-full bg-green-500 rounded-full shadow-lg" />
+                            </div>
+                            {/* Bottom Left */}
+                            <div className="absolute bottom-0 left-0 w-10 h-10">
+                                <div className="absolute bottom-0 left-0 w-full h-1 bg-green-500 rounded-full shadow-lg" />
+                                <div className="absolute bottom-0 left-0 w-1 h-full bg-green-500 rounded-full shadow-lg" />
+                            </div>
+                            {/* Bottom Right */}
+                            <div className="absolute bottom-0 right-0 w-10 h-10">
+                                <div className="absolute bottom-0 right-0 w-full h-1 bg-green-500 rounded-full shadow-lg" />
+                                <div className="absolute bottom-0 right-0 w-1 h-full bg-green-500 rounded-full shadow-lg" />
+                            </div>
+
+                            {/* Animated scanning line */}
+                            <div className="absolute inset-x-2 h-0.5 bg-gradient-to-r from-transparent via-green-400 to-transparent animate-scan-line shadow-lg" />
+                        </div>
+                    </div>
+                )}
 
                 {/* Loading Overlay */}
                 {!isScanning && !error && (
-                    <div className="absolute inset-0 flex items-center justify-center bg-gray-900 bg-opacity-75">
+                    <div className="absolute inset-0 flex items-center justify-center bg-gray-900">
                         <div className="flex flex-col items-center gap-3 text-white">
                             <AiOutlineLoading3Quarters className="text-4xl animate-spin" />
                             <span className="text-sm">Initializing camera...</span>
@@ -164,18 +209,18 @@ const QrCodeScanner = ({
                     </div>
                 )}
 
-                {/* Scanning Indicator */}
+                {/* Scanning Status Badge */}
                 {isScanning && (
-                    <div className="absolute top-4 right-4 flex items-center gap-2 bg-green-500 text-white px-3 py-1.5 rounded-full text-xs font-medium shadow-lg">
+                    <div className="absolute top-4 right-4 flex items-center gap-2 bg-green-500 text-white px-3 py-1.5 rounded-full text-xs font-medium shadow-lg z-10">
                         <div className="w-2 h-2 bg-white rounded-full animate-pulse" />
-                        Scanning...
+                        Ready to scan
                     </div>
                 )}
             </div>
 
             {/* Instructions */}
-            <div className="text-sm text-gray-600 text-center">
-                <p>Position the QR code within the frame to scan</p>
+            <div className="text-sm text-gray-500 text-center">
+                <p>Hold your device steady for best results</p>
             </div>
         </div>
     )

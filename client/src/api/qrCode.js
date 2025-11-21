@@ -82,15 +82,25 @@ export const accessQRCode = async (token, pin = null) => {
         return response.data
     } catch (error) {
         if (error.response) {
-            const errorMessage =
-                error.response.data?.error || "Failed to access QR code"
+            const errorData = error.response.data
+            const errorMessage = errorData?.error || "Failed to access QR code"
 
             if (error.response.status === 400) {
                 throw new Error("Invalid QR code token")
             } else if (error.response.status === 403) {
+                // Check if PIN is required (new explicit flag from backend)
+                if (errorData?.requires_pin) {
+                    const pinError = new Error("PIN required")
+                    pinError.requiresPin = true
+                    throw pinError
+                }
                 // Specific error messages for different denial reasons
-                if (errorMessage.includes("PIN")) {
-                    throw new Error("Invalid or missing PIN code")
+                if (errorMessage.includes("PIN required")) {
+                    const pinError = new Error("PIN required")
+                    pinError.requiresPin = true
+                    throw pinError
+                } else if (errorMessage.includes("Invalid PIN")) {
+                    throw new Error("Invalid PIN code")
                 } else if (errorMessage.includes("expired")) {
                     throw new Error("This QR code has expired")
                 } else if (errorMessage.includes("usage limit")) {

@@ -20,9 +20,12 @@ from utils.redis_client import redis_client
 # Valid roles in the system – keep this in sync with your database / Supabase metadata
 VALID_ROLES = {
     "admin",
+    "system_admin",
     "facility_admin",
     "doctor",
+    "pediapro",  # Doctor role alias used in frontend
     "nurse",
+    "vital_custodian",  # Nurse/staff role alias
     "staff",
     "parent",
     "guardian",
