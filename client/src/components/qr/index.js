@@ -15,6 +15,7 @@ export { default as QRRevokeModal } from './QRRevokeModal'
 export { default as PatientQRShareButton } from './PatientQRShareButton'
 export { default as ParentQRShareDialog } from './ParentQRShareDialog'
 export { default as BeautifulQRDialog } from './BeautifulQRDialog'
+export { default as PrescriptionQRDialog } from './PrescriptionQRDialog'
 
 /**
  * QR Code System Overview

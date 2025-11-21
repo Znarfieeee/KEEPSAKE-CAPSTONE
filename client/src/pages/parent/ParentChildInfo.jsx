@@ -3,10 +3,8 @@ import { useParams, useNavigate, useLocation, Link } from 'react-router-dom'
 
 // UI Components
 import { IoMdArrowBack } from 'react-icons/io'
-import { Badge } from '@/components/ui/badge'
-import { AlertCircle, RefreshCw } from 'lucide-react'
+import { AlertCircle, RefreshCw, QrCode } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { MdQrCode2 } from 'react-icons/md'
 
 import PatientRecordsTabs from '@/components/doctors/patient_records/PatientRecordsTabs'
 import { getChildDetails } from '@/api/parent/children'
@@ -167,12 +165,11 @@ const ParentChildInfo = () => {
                     {/* Share QR Code Button */}
                     <div className="flex justify-end sm:justify-start">
                         <Button
-                            variant="default"
                             size="sm"
                             onClick={() => setShowQRDialog(true)}
-                            className="w-full sm:w-auto bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white"
+                            className="w-full sm:w-auto text-white"
                         >
-                            <MdQrCode2 className="w-5 h-5 mr-2" />
+                            <QrCode className="size-5" />
                             Share QR Code
                         </Button>
                     </div>
@@ -192,7 +189,9 @@ const ParentChildInfo = () => {
                 isOpen={showQRDialog}
                 onClose={() => setShowQRDialog(false)}
                 patientId={patient.patient_id}
-                patientName={`${patient.firstname || ''} ${patient.middlename || ''} ${patient.lastname || ''}`.trim()}
+                patientName={`${patient.firstname || ''} ${patient.middlename || ''} ${
+                    patient.lastname || ''
+                }`.trim()}
                 onGenerate={(response) => {
                     console.log('QR Code generated:', response)
                     showToast('success', 'QR code generated successfully')

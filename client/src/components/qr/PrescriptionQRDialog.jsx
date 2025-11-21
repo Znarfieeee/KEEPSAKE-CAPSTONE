@@ -8,23 +8,23 @@ import {
     FiX,
     FiCheckCircle,
     FiAlertCircle,
-    FiShare2,
     FiLock,
     FiUnlock,
     FiClock,
-    FiEye,
+    FiFileText,
+    FiPill,
     FiChevronDown,
     FiRefreshCw,
-    FiShuffle
+    FiShuffle,
+    FiEye
 } from "react-icons/fi"
 import { AiOutlineLoading3Quarters } from "react-icons/ai"
 import { MdQrCode2 } from "react-icons/md"
 
-const BeautifulQRDialog = ({
+const PrescriptionQRDialog = ({
     isOpen,
     onClose,
-    patientId,
-    patientName,
+    prescription,
     onGenerate = null
 }) => {
     const qrRef = useRef(null)
@@ -37,7 +37,7 @@ const BeautifulQRDialog = ({
     const [usePinProtection, setUsePinProtection] = useState(false)
     const [pinCode, setPinCode] = useState("")
     const [expiresInDays, setExpiresInDays] = useState(30)
-    const [maxUses, setMaxUses] = useState(100)
+    const [maxUses, setMaxUses] = useState(50)  // Lower default for prescriptions
 
     // Reset state when dialog closes
     useEffect(() => {
@@ -47,7 +47,7 @@ const BeautifulQRDialog = ({
             setUsePinProtection(false)
             setPinCode("")
             setExpiresInDays(30)
-            setMaxUses(100)
+            setMaxUses(50)
             setCopied(false)
         }
     }, [isOpen])
@@ -72,15 +72,19 @@ const BeautifulQRDialog = ({
             }
 
             const qrData = {
-                patient_id: patientId,
-                share_type: "parent_access",
+                patient_id: prescription.patient_id,
+                share_type: "prescription",
                 expires_in_days: expiresInDays,
-                scope: ["view_only", "allergies", "vaccinations", "appointments"],
+                scope: ["prescriptions", "allergies", "view_only"],
                 max_uses: maxUses,
                 allow_emergency_access: false,
                 metadata: {
-                    shared_by: "parent",
-                    patient_name: patientName
+                    shared_by: "doctor",
+                    prescription_id: prescription.rx_id,
+                    prescription_date: prescription.prescription_date,
+                    doctor_name: prescription.doctor_name,
+                    patient_name: prescription.patient_name,
+                    medications_count: prescription.medications?.length || 0
                 }
             }
 
@@ -109,18 +113,16 @@ const BeautifulQRDialog = ({
                 onGenerate(response)
             }
         } catch (err) {
-            console.error("QR Generation Error:", err)
-            let errorMessage = "Failed to generate QR code. Please try again."
+            console.error("Prescription QR Generation Error:", err)
+            let errorMessage = "Failed to generate prescription QR code. Please try again."
 
             if (err.message) {
                 if (err.message.includes("Patient not found")) {
-                    errorMessage = "Patient record not found. Please contact support."
+                    errorMessage = "Prescription record not found. Please contact support."
                 } else if (err.message.includes("permission")) {
-                    errorMessage = "You don't have permission to generate QR codes for this patient."
+                    errorMessage = "You don't have permission to generate QR codes for this prescription."
                 } else if (err.message.includes("network") || err.message.includes("internet")) {
                     errorMessage = "Network error. Please check your connection and try again."
-                } else if (err.message.includes("Server error")) {
-                    errorMessage = err.message // Show full server error for debugging
                 } else {
                     errorMessage = err.message
                 }
@@ -143,7 +145,7 @@ const BeautifulQRDialog = ({
             canvas.width = size
             canvas.height = size + 200
 
-            // Gradient background - using KEEPSAKE primary colors
+            // Gradient background - KEEPSAKE medical blue
             const gradient = ctx.createLinearGradient(0, 0, size, size + 200)
             gradient.addColorStop(0, "rgb(59, 130, 246)") // Primary blue
             gradient.addColorStop(0.5, "rgb(96, 165, 250)") // Accent light blue
@@ -155,16 +157,20 @@ const BeautifulQRDialog = ({
             ctx.fillStyle = "rgba(255, 255, 255, 0.95)"
             ctx.fillRect(20, 20, size - 40, size + 160)
 
-            // Patient name
+            // Prescription header
             ctx.fillStyle = "#1f2937"
-            ctx.font = "bold 32px Arial"
+            ctx.font = "bold 28px Arial"
             ctx.textAlign = "center"
-            ctx.fillText(patientName || "Patient QR Code", size / 2, 80)
+            ctx.fillText("PRESCRIPTION", size / 2, 70)
+
+            // Patient name
+            ctx.font = "bold 24px Arial"
+            ctx.fillText(prescription.patient_name || "Patient", size / 2, 105)
 
             // KEEPSAKE branding
-            ctx.font = "20px Arial"
+            ctx.font = "18px Arial"
             ctx.fillStyle = "#6b7280"
-            ctx.fillText("KEEPSAKE Healthcare", size / 2, 115)
+            ctx.fillText("KEEPSAKE Healthcare", size / 2, 135)
 
             // Capture QR code
             const svgElements = qrRef.current.querySelectorAll("svg")
@@ -183,7 +189,7 @@ const BeautifulQRDialog = ({
                         // Draw QR code with white background
                         const qrSize = 380
                         const x = (size - qrSize) / 2
-                        const y = 150
+                        const y = 160
 
                         // White background for QR
                         ctx.fillStyle = "#ffffff"
@@ -224,7 +230,8 @@ const BeautifulQRDialog = ({
 
                         ctx.font = "14px Arial"
                         ctx.fillStyle = "#9ca3af"
-                        ctx.fillText("Scan to access medical records securely", size / 2, y + qrSize + 90)
+                        ctx.fillText("Scan to access prescription securely", size / 2, y + qrSize + 90)
+                        ctx.fillText(`RX #${prescription.rx_id || 'N/A'}`, size / 2, y + qrSize + 110)
 
                         URL.revokeObjectURL(url)
                         resolve()
@@ -235,13 +242,13 @@ const BeautifulQRDialog = ({
 
                 const pngFile = canvas.toDataURL("image/png", 1.0)
                 const downloadLink = document.createElement("a")
-                downloadLink.download = `${patientName?.replace(/\s+/g, "_")}_KEEPSAKE_QR.png`
+                downloadLink.download = `Prescription_${prescription.rx_id}_${prescription.patient_name?.replace(/\s+/g, "_")}_QR.png`
                 downloadLink.href = pngFile
                 downloadLink.click()
             }
         } catch (err) {
             console.error("Download failed:", err)
-            alert("Failed to download QR code. Please try again.")
+            alert("Failed to download prescription QR code. Please try again.")
         }
     }
 
@@ -264,20 +271,9 @@ const BeautifulQRDialog = ({
         }
     }
 
-    const formatExpiryDate = (dateString) => {
-        if (!dateString) return "N/A"
-        try {
-            return new Date(dateString).toLocaleDateString("en-US", {
-                year: "numeric",
-                month: "long",
-                day: "numeric"
-            })
-        } catch {
-            return dateString
-        }
-    }
-
     if (!isOpen) return null
+
+    const medicationCount = prescription?.medications?.length || 0
 
     return (
         <div
@@ -285,7 +281,7 @@ const BeautifulQRDialog = ({
             onClick={onClose}
         >
             <div
-                className="relative max-w-[550px] w-full max-h-[95vh] overflow-y-auto rounded-[28px] bg-gradient-to-br from-primary to-accent p-[3px] shadow-[0_25px_50px_-12px_rgba(0,0,0,0.5)] animate-in slide-in-from-bottom-10 zoom-in-95 duration-400"
+                className="relative max-w-[550px] w-full max-h-[95vh] overflow-y-auto rounded-[28px] bg-gradient-to-br from-blue-600 to-blue-400 p-[3px] shadow-[0_25px_50px_-12px_rgba(0,0,0,0.5)] animate-in slide-in-from-bottom-10 zoom-in-95 duration-400"
                 onClick={(e) => e.stopPropagation()}
             >
                 {/* Gradient Border Effect */}
@@ -303,16 +299,16 @@ const BeautifulQRDialog = ({
                 {/* Header */}
                 <div className="relative bg-white/98 pt-10 pb-6 px-8 text-center rounded-t-[26px] overflow-hidden">
                     {/* Animated shimmer bar */}
-                    <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-primary via-accent via-secondary to-primary bg-[length:300%_100%] animate-[shimmer_3s_linear_infinite]" />
+                    <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-blue-600 via-blue-400 via-blue-300 to-blue-600 bg-[length:300%_100%] animate-[shimmer_3s_linear_infinite]" />
 
-                    <div className="w-[72px] h-[72px] mx-auto mb-4 bg-gradient-to-br from-primary to-accent rounded-[20px] flex items-center justify-center text-white text-4xl shadow-[0_10px_25px_hsl(var(--primary)/0.4)] animate-[float_3s_ease-in-out_infinite]">
-                        <MdQrCode2 />
+                    <div className="w-[72px] h-[72px] mx-auto mb-4 bg-gradient-to-br from-blue-600 to-blue-400 rounded-[20px] flex items-center justify-center text-white text-4xl shadow-[0_10px_25px_rgba(37,99,235,0.4)] animate-[float_3s_ease-in-out_infinite]">
+                        <FiPill />
                     </div>
-                    <h2 className="text-[28px] font-bold text-gray-900 mb-2 bg-gradient-to-br from-primary to-accent bg-clip-text text-transparent">
-                        Share Medical Records
+                    <h2 className="text-[28px] font-bold text-gray-900 mb-2 bg-gradient-to-br from-blue-600 to-blue-400 bg-clip-text text-transparent">
+                        Prescription QR Code
                     </h2>
                     <p className="text-[15px] text-gray-500">
-                        Secure QR code for {patientName}
+                        Rx #{prescription?.rx_id || 'N/A'} - {prescription?.patient_name}
                     </p>
                 </div>
 
@@ -331,15 +327,15 @@ const BeautifulQRDialog = ({
                                     <div className="flex items-center gap-2">
                                         <input
                                             type="checkbox"
-                                            id="pin-toggle"
+                                            id="pin-toggle-rx"
                                             checked={usePinProtection}
                                             onChange={(e) => {
                                                 setUsePinProtection(e.target.checked)
                                                 if (!e.target.checked) setPinCode("")
                                             }}
-                                            className="w-4 h-4 text-primary border-gray-300 rounded focus:ring-primary"
+                                            className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-600"
                                         />
-                                        <label htmlFor="pin-toggle" className="text-sm text-gray-600">
+                                        <label htmlFor="pin-toggle-rx" className="text-sm text-gray-600">
                                             {usePinProtection ? 'Enabled' : 'Disabled'}
                                         </label>
                                     </div>
@@ -356,14 +352,14 @@ const BeautifulQRDialog = ({
                                             <button
                                                 onClick={generateRandomPIN}
                                                 type="button"
-                                                className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-primary hover:text-primary/80 hover:bg-primary/5 rounded-lg transition-colors"
+                                                className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-lg transition-colors"
                                             >
                                                 <FiShuffle className="text-base" />
                                                 Generate Random PIN
                                             </button>
                                         </div>
                                         <p className="text-xs text-center text-gray-500">
-                                            Healthcare providers will need this PIN to access the data
+                                            Pharmacists will need this PIN to access prescription details
                                         </p>
                                     </div>
                                 )}
@@ -376,7 +372,7 @@ const BeautifulQRDialog = ({
                                             <div className="flex-1">
                                                 <p className="text-sm font-medium text-amber-900">Consider adding PIN protection</p>
                                                 <p className="text-xs text-amber-700 mt-0.5">
-                                                    Recommended when sharing outside trusted healthcare providers
+                                                    Recommended for sharing prescription information outside trusted pharmacies
                                                 </p>
                                             </div>
                                         </div>
@@ -399,8 +395,8 @@ const BeautifulQRDialog = ({
                                             disabled={loading}
                                             className={`px-3 py-2 text-sm rounded-md border transition-colors ${
                                                 expiresInDays === days
-                                                    ? "bg-primary text-white border-primary"
-                                                    : "bg-white text-gray-700 border-gray-300 hover:border-primary"
+                                                    ? "bg-blue-600 text-white border-blue-600"
+                                                    : "bg-white text-gray-700 border-gray-300 hover:border-blue-600"
                                             } ${loading ? 'opacity-50 cursor-not-allowed' : ''}`}
                                         >
                                             {days} day{days !== 1 ? 's' : ''}
@@ -423,7 +419,7 @@ const BeautifulQRDialog = ({
                                         value={maxUses}
                                         onChange={(e) => setMaxUses(Math.min(100, Math.max(1, parseInt(e.target.value) || 1)))}
                                         disabled={loading}
-                                        className="w-24 px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary focus:border-primary disabled:opacity-50"
+                                        className="w-24 px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-600 focus:border-blue-600 disabled:opacity-50"
                                     />
                                     <span className="text-sm text-gray-500">
                                         times this QR code can be scanned
@@ -444,25 +440,19 @@ const BeautifulQRDialog = ({
                             {/* Generate Button */}
                             <button
                                 onClick={handleGenerate}
-                                disabled={loading || !patientId || (usePinProtection && pinCode.length !== 4)}
-                                className="w-full bg-gradient-to-br from-primary to-accent text-white font-semibold py-4 rounded-xl hover:-translate-y-0.5 hover:shadow-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0 flex items-center justify-center gap-2 text-base"
+                                disabled={loading || !prescription?.patient_id || (usePinProtection && pinCode.length !== 4)}
+                                className="w-full bg-gradient-to-br from-blue-600 to-blue-400 text-white font-semibold py-4 rounded-xl hover:-translate-y-0.5 hover:shadow-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0 flex items-center justify-center gap-2 text-base"
                             >
-                                <MdQrCode2 className="text-xl" />
+                                <FiPill className="text-xl" />
                                 {usePinProtection && pinCode.length !== 4
                                     ? 'Enter 4-Digit PIN to Generate'
-                                    : 'Generate QR Code'}
+                                    : 'Generate Prescription QR Code'}
                             </button>
-
-                            {!patientId && (
-                                <p className="text-xs text-red-600 text-center">
-                                    Patient ID is required to generate QR code
-                                </p>
-                            )}
                         </div>
                     ) : loading ? (
                         <div className="flex flex-col items-center justify-center py-12 gap-4">
-                            <AiOutlineLoading3Quarters className="text-5xl text-primary animate-spin" />
-                            <span className="text-gray-500 text-[15px]">Generating secure QR code...</span>
+                            <AiOutlineLoading3Quarters className="text-5xl text-blue-600 animate-spin" />
+                            <span className="text-gray-500 text-[15px]">Generating prescription QR code...</span>
                         </div>
                     ) : error && !generatedQR ? (
                         <div className="text-center py-8">
@@ -470,7 +460,7 @@ const BeautifulQRDialog = ({
                             <h3 className="text-xl text-gray-900 mb-2">Oops! Something went wrong</h3>
                             <p className="text-gray-500 text-sm leading-relaxed mb-6">{error}</p>
                             <button
-                                className="bg-gradient-to-br from-primary to-accent text-white border-none px-8 py-3 rounded-xl text-[15px] font-semibold cursor-pointer transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_10px_20px_hsl(var(--primary)/0.3)]"
+                                className="bg-gradient-to-br from-blue-600 to-blue-400 text-white border-none px-8 py-3 rounded-xl text-[15px] font-semibold cursor-pointer transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_10px_20px_rgba(37,99,235,0.3)]"
                                 onClick={handleGenerate}
                             >
                                 Try Again
@@ -484,7 +474,7 @@ const BeautifulQRDialog = ({
                                     ref={qrRef}
                                     className="relative bg-white p-6 rounded-[20px] shadow-[0_20px_40px_rgba(0,0,0,0.1)] mb-4 border-[3px] border-gray-100 overflow-hidden group"
                                 >
-                                    <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-accent/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                                    <div className="absolute inset-0 bg-gradient-to-br from-blue-600/5 to-blue-400/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
                                     <BrandedQRCode
                                         value={generatedQR.accessUrl}
                                         size={280}
@@ -500,15 +490,15 @@ const BeautifulQRDialog = ({
 
                             {/* Info Cards */}
                             <div className="grid grid-cols-3 gap-3 mb-6">
-                                <div className="bg-gradient-to-br from-gray-50 to-gray-100 p-4 rounded-xl flex items-center gap-3 border border-gray-200 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_4px_12px_rgba(0,0,0,0.1)] hover:border-primary">
-                                    <FiLock className="text-xl text-primary flex-shrink-0" />
+                                <div className="bg-gradient-to-br from-gray-50 to-gray-100 p-4 rounded-xl flex items-center gap-3 border border-gray-200 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_4px_12px_rgba(0,0,0,0.1)] hover:border-blue-600">
+                                    <FiLock className="text-xl text-blue-600 flex-shrink-0" />
                                     <div>
                                         <div className="text-[11px] text-gray-400 uppercase font-semibold tracking-wider mb-0.5">Security</div>
                                         <div className="text-[13px] text-gray-900 font-semibold">Encrypted</div>
                                     </div>
                                 </div>
-                                <div className="bg-gradient-to-br from-gray-50 to-gray-100 p-4 rounded-xl flex items-center gap-3 border border-gray-200 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_4px_12px_rgba(0,0,0,0.1)] hover:border-primary">
-                                    <FiClock className="text-xl text-primary flex-shrink-0" />
+                                <div className="bg-gradient-to-br from-gray-50 to-gray-100 p-4 rounded-xl flex items-center gap-3 border border-gray-200 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_4px_12px_rgba(0,0,0,0.1)] hover:border-blue-600">
+                                    <FiClock className="text-xl text-blue-600 flex-shrink-0" />
                                     <div>
                                         <div className="text-[11px] text-gray-400 uppercase font-semibold tracking-wider mb-0.5">Valid Until</div>
                                         <div className="text-[13px] text-gray-900 font-semibold">
@@ -519,11 +509,11 @@ const BeautifulQRDialog = ({
                                         </div>
                                     </div>
                                 </div>
-                                <div className="bg-gradient-to-br from-gray-50 to-gray-100 p-4 rounded-xl flex items-center gap-3 border border-gray-200 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_4px_12px_rgba(0,0,0,0.1)] hover:border-primary">
-                                    <FiEye className="text-xl text-primary flex-shrink-0" />
+                                <div className="bg-gradient-to-br from-gray-50 to-gray-100 p-4 rounded-xl flex items-center gap-3 border border-gray-200 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_4px_12px_rgba(0,0,0,0.1)] hover:border-blue-600">
+                                    <FiPill className="text-xl text-blue-600 flex-shrink-0" />
                                     <div>
-                                        <div className="text-[11px] text-gray-400 uppercase font-semibold tracking-wider mb-0.5">Access</div>
-                                        <div className="text-[13px] text-gray-900 font-semibold">View Only</div>
+                                        <div className="text-[11px] text-gray-400 uppercase font-semibold tracking-wider mb-0.5">Medications</div>
+                                        <div className="text-[13px] text-gray-900 font-semibold">{medicationCount}</div>
                                     </div>
                                 </div>
                             </div>
@@ -541,6 +531,21 @@ const BeautifulQRDialog = ({
                                 </div>
                             )}
 
+                            {/* PIN Recommendation Banner */}
+                            {!generatedQR.hasPinProtection && (
+                                <div className="bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-lg p-3 mb-4">
+                                    <div className="flex items-start gap-2">
+                                        <FiAlertCircle className="text-amber-600 mt-0.5 flex-shrink-0" />
+                                        <div className="flex-1">
+                                            <p className="text-sm font-medium text-amber-900 mb-1">Consider adding PIN protection</p>
+                                            <p className="text-xs text-amber-700">
+                                                Recommended for sharing prescription information outside trusted pharmacies
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
                             {/* Generate New QR Button */}
                             <button
                                 onClick={() => setGeneratedQR(null)}
@@ -551,25 +556,24 @@ const BeautifulQRDialog = ({
                             </button>
 
                             {/* Instructions */}
-                            <div className="bg-gradient-to-br from-yellow-100 to-yellow-200 p-4 rounded-xl mb-6 border border-yellow-400">
-                                <p className="m-0 text-[13px] text-yellow-900 leading-relaxed">
-                                    <strong className="text-yellow-950">How to use:</strong> Healthcare providers can scan this QR code
-                                    to securely access {patientName}'s medical information including allergies,
-                                    vaccinations, and appointments.
+                            <div className="bg-gradient-to-br from-blue-50 to-blue-100 p-4 rounded-xl mb-6 border border-blue-200">
+                                <p className="m-0 text-[13px] text-blue-900 leading-relaxed">
+                                    <strong className="text-blue-950">How to use:</strong> Pharmacists and healthcare providers can scan this QR code
+                                    to securely access the prescription details for {prescription?.patient_name}. This includes medications, dosages, and special instructions.
                                 </p>
                             </div>
 
                             {/* Action Buttons */}
                             <div className="grid grid-cols-2 gap-3">
                                 <button
-                                    className="flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl text-[15px] font-semibold border-none cursor-pointer transition-all duration-200 bg-gradient-to-br from-primary to-accent text-white shadow-[0_4px_12px_hsl(var(--primary)/0.3)] hover:-translate-y-0.5 hover:shadow-[0_8px_20px_hsl(var(--primary)/0.4)]"
+                                    className="flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl text-[15px] font-semibold border-none cursor-pointer transition-all duration-200 bg-gradient-to-br from-blue-600 to-blue-400 text-white shadow-[0_4px_12px_rgba(37,99,235,0.3)] hover:-translate-y-0.5 hover:shadow-[0_8px_20px_rgba(37,99,235,0.4)]"
                                     onClick={handleDownload}
                                 >
                                     <FiDownload className="text-lg" />
-                                    <span>Download QR Code</span>
+                                    <span>Download QR</span>
                                 </button>
                                 <button
-                                    className="flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl text-[15px] font-semibold border-2 border-primary cursor-pointer transition-all duration-200 bg-white text-primary hover:bg-blue-50 hover:-translate-y-0.5"
+                                    className="flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl text-[15px] font-semibold border-2 border-blue-600 cursor-pointer transition-all duration-200 bg-white text-blue-600 hover:bg-blue-50 hover:-translate-y-0.5"
                                     onClick={handleCopyUrl}
                                 >
                                     {copied ? (
@@ -593,4 +597,4 @@ const BeautifulQRDialog = ({
     )
 }
 
-export default BeautifulQRDialog
+export default PrescriptionQRDialog
