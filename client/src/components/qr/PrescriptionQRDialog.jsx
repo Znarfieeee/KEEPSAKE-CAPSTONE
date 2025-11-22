@@ -470,16 +470,12 @@ const PrescriptionQRDialog = ({
                         <>
                             {/* QR Code Display */}
                             <div className="flex flex-col items-center mb-6">
-                                <div
-                                    ref={qrRef}
-                                    className="relative bg-white p-6 rounded-[20px] shadow-[0_20px_40px_rgba(0,0,0,0.1)] mb-4 border-[3px] border-gray-100 overflow-hidden group"
-                                >
-                                    <div className="absolute inset-0 bg-gradient-to-br from-blue-600/5 to-blue-400/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                                <div ref={qrRef} className="mb-3">
                                     <BrandedQRCode
                                         value={generatedQR.accessUrl}
-                                        size={280}
+                                        size={220}
                                         level="H"
-                                        logoSize={65}
+                                        logoSize={50}
                                     />
                                 </div>
                                 <div className="flex items-center gap-2 text-green-600 text-sm font-semibold">

@@ -295,15 +295,12 @@ const ParentQRShareDialog = ({
                         <div className="space-y-4">
                             {/* QR Code Display */}
                             <div className="flex flex-col items-center">
-                                <div
-                                    ref={qrRef}
-                                    className="bg-white p-4 rounded-xl shadow-lg border-2 border-gray-100"
-                                >
+                                <div ref={qrRef}>
                                     <BrandedQRCode
                                         value={generatedQR.accessUrl}
-                                        size={240}
+                                        size={200}
                                         level="H"
-                                        logoSize={55}
+                                        logoSize={45}
                                     />
                                 </div>
 

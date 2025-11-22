@@ -36,13 +36,14 @@ const PatientPrescription = ({
     }
 
     const handlePrescriptionAdded = (newPrescription) => {
-        // Add new prescription to local state immediately
-        setLocalPrescriptions((prev) => [newPrescription, ...prev])
+        // Add new prescription to local state immediately for instant UI update
+        if (newPrescription) {
+            setLocalPrescriptions((prev) => [newPrescription, ...prev])
+        }
         // Close modal
         setIsOpen(false)
-        // Call parent callback if provided
+        // Call parent callback if provided to refresh data from server
         onPrescriptionAdded?.(newPrescription)
-        showToast('success', 'Prescription added successfully!')
     }
 
     // Enhanced date formatter with error handling
@@ -209,6 +210,7 @@ const PatientPrescription = ({
                     open={isDetailModalOpen}
                     onClose={() => setIsDetailModalOpen(false)}
                     prescription={selectedPrescription}
+                    patient={patient}
                 />
             </Suspense>
         </div>

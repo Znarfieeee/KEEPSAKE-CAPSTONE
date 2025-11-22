@@ -1,6 +1,6 @@
 import React, { useState, useRef } from "react"
-import { QRCodeSVG } from "qrcode.react"
 import { generateQRCode } from "../../api/qrCode"
+import BrandedQRCode from "./BrandedQRCode"
 import QRScopeSelector from "./QRScopeSelector"
 import { Button } from "../ui/Button"
 import { Card } from "../ui/Card"
@@ -204,11 +204,11 @@ const SecureQRGenerator = ({
                         ref={qrRef}
                         className="bg-white p-4 rounded-lg shadow-md border-2 border-gray-200"
                     >
-                        <QRCodeSVG
+                        <BrandedQRCode
                             value={generatedQR.accessUrl}
-                            size={compact ? 200 : 256}
+                            size={compact ? 180 : 220}
                             level="H"
-                            includeMargin={true}
+                            logoSize={compact ? 40 : 50}
                         />
                     </div>
 
