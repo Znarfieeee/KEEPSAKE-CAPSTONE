@@ -22,8 +22,10 @@ def cache_key_for_medication(rx_id):
 
 
 def prepare_prescription_payload( data, patient_id, created_by, pat_age):
-    
-    required_fields = ['consultation_type', 'findings', 'doctor_instructions']
+
+    # Only consultation_type and findings are strictly required
+    # doctor_instructions is optional
+    required_fields = ['consultation_type', 'findings']
     for field in required_fields:
         if not data.get(field):
             raise ValueError(f"Missing required field: {field}")
@@ -84,7 +86,7 @@ def upsert_related_record(table_name, payload, patient_id, rx_id=None):
 # Get all prescription from patient_id
 @patrx_bp.route('/patient_record/<patient_id>/prescriptions', methods=['GET'])
 @require_auth
-@require_role('facility_admin', 'doctor', 'nurse', 'parent', 'guardian')
+@require_role('facility_admin', 'doctor', 'pediapro', 'nurse', 'vital_custodian', 'parent', 'guardian', 'keepsaker')
 def get_all_patient_rx(patient_id):
     try:
         bust_cache = request.args.get('bust_cache', 'false').lower() == 'true'
@@ -107,7 +109,7 @@ def get_all_patient_rx(patient_id):
                 current_app.logger.warning(f"Cache retrieval failed for {cache_key}: {str(cache_error)}")
                 
         rx_resp = supabase.table('prescriptions')\
-            .select('*')\
+            .select('*, doctor:users!prescriptions_doctor_id_fkey(user_id, firstname, middlename, lastname, specialty, license_number, prc_number, phone_number), facility:healthcare_facilities!prescriptions_facility_id_fkey(facility_id, facility_name, address, city, zip_code, contact_number, email, website, logo_url)')\
             .eq('patient_id', patient_id)\
             .order('prescription_date', desc=True)\
             .execute()
@@ -187,7 +189,7 @@ def get_all_patient_rx(patient_id):
         
 @patrx_bp.route('/patient_record/<patient_id>/prescriptions', methods=['POST', 'PUT'])
 @require_auth
-@require_role('facility_admin', 'doctor')
+@require_role('facility_admin', 'doctor', 'pediapro')
 def create_patient_prescription(patient_id):
     try:
         raw_data = request.json
