@@ -2,9 +2,55 @@ from flask import Blueprint, jsonify, request, current_app
 from config.settings import supabase, supabase_service_role_client
 from utils.access_control import require_auth
 from utils.sanitize import sanitize_request_data
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
+import re
 
 parent_consent_bp = Blueprint('parent_consent', __name__)
+
+# =============================================================================
+# CONSTANTS & VALIDATION
+# =============================================================================
+
+VALID_SCOPES = ['view_only', 'allergies', 'prescriptions', 'vaccinations', 'appointments', 'vitals', 'full_access']
+VALID_ACTIONS = [
+    'consent_granted', 'consent_revoked', 'consent_modified', 'consent_expired',
+    'qr_generated', 'qr_accessed', 'qr_revoked', 'qr_expired',
+    'preferences_updated', 'emergency_revoke_all',
+    'access_attempt_blocked', 'suspicious_activity_detected'
+]
+PARENT_ROLES = ['parent', 'guardian', 'keepsaker']
+UUID_PATTERN = re.compile(r'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$', re.I)
+
+
+def is_valid_uuid(value):
+    """Validate UUID format"""
+    if not value or not isinstance(value, str):
+        return False
+    return bool(UUID_PATTERN.match(value))
+
+
+def log_consent_action(sr_client, action, user_id, patient_id=None, qr_id=None, details=None, success=True):
+    """
+    Centralized audit logging for consent actions.
+    Fails silently to not break main operations.
+    """
+    try:
+        log_entry = {
+            'action': action,
+            'performed_by': user_id,
+            'parent_id': user_id,
+            'ip_address': request.remote_addr,
+            'success': success,
+            'details': details or {}
+        }
+        if patient_id:
+            log_entry['patient_id'] = patient_id
+        if qr_id:
+            log_entry['qr_id'] = qr_id
+
+        sr_client.table('consent_audit_logs').insert(log_entry).execute()
+    except Exception as e:
+        current_app.logger.warning(f"Failed to log consent action '{action}': {e}")
 
 
 def get_parent_children(parent_id):
@@ -53,7 +99,7 @@ def get_active_shares():
         user_role = user.get('role')
 
         # Only parents can access this endpoint
-        if user_role not in ['parent', 'guardian', 'keepsaker']:
+        if user_role not in PARENT_ROLES:
             return jsonify({"error": "Only parents can access consent management", "status": 403}), 403
 
         # Get optional patient filter
@@ -166,13 +212,19 @@ def get_access_history():
         user_id = user.get('id')
         user_role = user.get('role')
 
-        if user_role not in ['parent', 'guardian', 'keepsaker']:
+        if user_role not in PARENT_ROLES:
             return jsonify({"error": "Only parents can access consent management", "status": 403}), 403
 
-        # Get filters
+        # Get filters with validation
         patient_id = request.args.get('patient_id')
-        limit = int(request.args.get('limit', 50))
-        offset = int(request.args.get('offset', 0))
+        if patient_id and not is_valid_uuid(patient_id):
+            return jsonify({"error": "Invalid patient_id format", "status": 400}), 400
+
+        try:
+            limit = min(int(request.args.get('limit', 50)), 100)  # Max 100
+            offset = max(int(request.args.get('offset', 0)), 0)
+        except ValueError:
+            return jsonify({"error": "Invalid limit or offset", "status": 400}), 400
 
         sr_client = supabase_service_role_client()
 
@@ -294,12 +346,19 @@ def get_qr_access_logs():
         user_id = user.get('id')
         user_role = user.get('role')
 
-        if user_role not in ['parent', 'guardian', 'keepsaker']:
+        if user_role not in PARENT_ROLES:
             return jsonify({"error": "Only parents can access consent management", "status": 403}), 403
 
+        # Validate inputs
         patient_id = request.args.get('patient_id')
-        limit = int(request.args.get('limit', 50))
-        offset = int(request.args.get('offset', 0))
+        if patient_id and not is_valid_uuid(patient_id):
+            return jsonify({"error": "Invalid patient_id format", "status": 400}), 400
+
+        try:
+            limit = min(int(request.args.get('limit', 50)), 100)  # Max 100
+            offset = max(int(request.args.get('offset', 0)), 0)
+        except ValueError:
+            return jsonify({"error": "Invalid limit or offset", "status": 400}), 400
 
         sr_client = supabase_service_role_client()
 
@@ -389,27 +448,37 @@ def revoke_share(qr_id):
         user_id = user.get('id')
         user_role = user.get('role')
 
-        if user_role not in ['parent', 'guardian', 'keepsaker']:
+        if user_role not in PARENT_ROLES:
             return jsonify({"error": "Only parents can revoke shares", "status": 403}), 403
+
+        # Validate QR ID format
+        if not is_valid_uuid(qr_id):
+            return jsonify({"error": "Invalid QR code ID format", "status": 400}), 400
 
         raw_data = request.json or {}
         data = sanitize_request_data(raw_data)
-        reason = data.get('reason', 'Revoked by parent')
+        reason = str(data.get('reason', 'Revoked by parent'))[:500]  # Limit reason length
 
         sr_client = supabase_service_role_client()
 
         # Get QR code details
         qr = sr_client.table('qr_codes')\
-            .select('qr_id, patient_id, is_active')\
+            .select('qr_id, patient_id, is_active, share_type')\
             .eq('qr_id', qr_id)\
             .single()\
             .execute()
 
         if not qr.data:
+            log_consent_action(sr_client, 'qr_revoked', user_id, qr_id=qr_id,
+                             details={'error': 'QR code not found'}, success=False)
             return jsonify({"error": "QR code not found", "status": 404}), 404
 
+        patient_id = qr.data['patient_id']
+
         # Verify parent has access to this patient
-        if not verify_parent_access(user_id, qr.data['patient_id']):
+        if not verify_parent_access(user_id, patient_id):
+            log_consent_action(sr_client, 'qr_revoked', user_id, patient_id=patient_id, qr_id=qr_id,
+                             details={'error': 'Unauthorized access attempt'}, success=False)
             return jsonify({"error": "Unauthorized to revoke this share", "status": 403}), 403
 
         if not qr.data['is_active']:
@@ -420,22 +489,14 @@ def revoke_share(qr_id):
             'is_active': False
         }).eq('qr_id', qr_id).execute()
 
-        # Log the revocation
-        try:
-            sr_client.table('consent_audit_logs').insert({
-                'qr_id': qr_id,
-                'patient_id': qr.data['patient_id'],
-                'parent_id': user_id,
-                'action': 'qr_revoked',
-                'performed_by': user_id,
-                'details': {
-                    'reason': reason,
-                    'revoked_at': datetime.now(timezone.utc).isoformat()
-                },
-                'success': True
-            }).execute()
-        except Exception:
-            pass  # Don't fail if logging fails
+        # Log the successful revocation
+        log_consent_action(sr_client, 'qr_revoked', user_id,
+                         patient_id=patient_id, qr_id=qr_id,
+                         details={
+                             'reason': reason,
+                             'share_type': qr.data.get('share_type'),
+                             'revoked_at': datetime.now(timezone.utc).isoformat()
+                         }, success=True)
 
         return jsonify({
             "status": 200,
@@ -457,22 +518,28 @@ def revoke_all_shares(patient_id):
         user_id = user.get('id')
         user_role = user.get('role')
 
-        if user_role not in ['parent', 'guardian', 'keepsaker']:
+        if user_role not in PARENT_ROLES:
             return jsonify({"error": "Only parents can revoke shares", "status": 403}), 403
+
+        # Validate patient_id format
+        if not is_valid_uuid(patient_id):
+            return jsonify({"error": "Invalid patient ID format", "status": 400}), 400
+
+        sr_client = supabase_service_role_client()
 
         # Verify parent has access
         if not verify_parent_access(user_id, patient_id):
+            log_consent_action(sr_client, 'emergency_revoke_all', user_id, patient_id=patient_id,
+                             details={'error': 'Unauthorized access attempt'}, success=False)
             return jsonify({"error": "Unauthorized to revoke shares for this patient", "status": 403}), 403
 
         raw_data = request.json or {}
         data = sanitize_request_data(raw_data)
-        reason = data.get('reason', 'Emergency revoke all by parent')
-
-        sr_client = supabase_service_role_client()
+        reason = str(data.get('reason', 'Emergency revoke all by parent'))[:500]
 
         # Get all active QR codes for this patient
         active_qrs = sr_client.table('qr_codes')\
-            .select('qr_id')\
+            .select('qr_id, share_type')\
             .eq('patient_id', patient_id)\
             .eq('is_active', True)\
             .execute()
@@ -485,6 +552,7 @@ def revoke_all_shares(patient_id):
             }), 200
 
         qr_ids = [qr['qr_id'] for qr in active_qrs.data]
+        share_types = list(set(qr.get('share_type', 'unknown') for qr in active_qrs.data))
 
         # Revoke all
         sr_client.table('qr_codes').update({
@@ -492,22 +560,15 @@ def revoke_all_shares(patient_id):
         }).in_('qr_id', qr_ids).execute()
 
         # Log the emergency revocation
-        try:
-            sr_client.table('consent_audit_logs').insert({
-                'patient_id': patient_id,
-                'parent_id': user_id,
-                'action': 'emergency_revoke_all',
-                'performed_by': user_id,
-                'details': {
-                    'reason': reason,
-                    'revoked_count': len(qr_ids),
-                    'qr_ids': qr_ids,
-                    'revoked_at': datetime.now(timezone.utc).isoformat()
-                },
-                'success': True
-            }).execute()
-        except Exception:
-            pass
+        log_consent_action(sr_client, 'emergency_revoke_all', user_id,
+                         patient_id=patient_id,
+                         details={
+                             'reason': reason,
+                             'revoked_count': len(qr_ids),
+                             'qr_ids': qr_ids,
+                             'share_types': share_types,
+                             'revoked_at': datetime.now(timezone.utc).isoformat()
+                         }, success=True)
 
         return jsonify({
             "status": 200,
@@ -534,7 +595,7 @@ def get_consent_preferences():
         user_id = user.get('id')
         user_role = user.get('role')
 
-        if user_role not in ['parent', 'guardian', 'keepsaker']:
+        if user_role not in PARENT_ROLES:
             return jsonify({"error": "Only parents can access consent preferences", "status": 403}), 403
 
         sr_client = supabase_service_role_client()
@@ -582,32 +643,42 @@ def update_consent_preferences():
         user_id = user.get('id')
         user_role = user.get('role')
 
-        if user_role not in ['parent', 'guardian', 'keepsaker']:
+        if user_role not in PARENT_ROLES:
             return jsonify({"error": "Only parents can update consent preferences", "status": 403}), 403
 
         raw_data = request.json
+        if not raw_data:
+            return jsonify({"error": "No data provided", "status": 400}), 400
+
         data = sanitize_request_data(raw_data)
 
         # Validate and prepare update data
         update_data = {}
 
         if 'default_expiry_days' in data:
-            days = int(data['default_expiry_days'])
-            if days < 1 or days > 365:
-                return jsonify({"error": "Expiry days must be between 1 and 365", "status": 400}), 400
-            update_data['default_expiry_days'] = days
+            try:
+                days = int(data['default_expiry_days'])
+                if days < 1 or days > 365:
+                    return jsonify({"error": "Expiry days must be between 1 and 365", "status": 400}), 400
+                update_data['default_expiry_days'] = days
+            except (ValueError, TypeError):
+                return jsonify({"error": "Invalid expiry days value", "status": 400}), 400
 
         if 'default_max_uses' in data:
-            uses = int(data['default_max_uses'])
-            if uses < 1 or uses > 100:
-                return jsonify({"error": "Max uses must be between 1 and 100", "status": 400}), 400
-            update_data['default_max_uses'] = uses
+            try:
+                uses = int(data['default_max_uses'])
+                if uses < 1 or uses > 100:
+                    return jsonify({"error": "Max uses must be between 1 and 100", "status": 400}), 400
+                update_data['default_max_uses'] = uses
+            except (ValueError, TypeError):
+                return jsonify({"error": "Invalid max uses value", "status": 400}), 400
 
         if 'default_scope' in data:
-            valid_scopes = ['view_only', 'allergies', 'prescriptions', 'vaccinations', 'appointments', 'vitals', 'full_access']
             scope = data['default_scope']
-            if not isinstance(scope, list) or not all(s in valid_scopes for s in scope):
-                return jsonify({"error": "Invalid scope values", "status": 400}), 400
+            if not isinstance(scope, list) or not all(s in VALID_SCOPES for s in scope):
+                return jsonify({"error": f"Invalid scope values. Valid scopes: {VALID_SCOPES}", "status": 400}), 400
+            if len(scope) > 10:
+                return jsonify({"error": "Too many scope values", "status": 400}), 400
             update_data['default_scope'] = scope
 
         if 'always_require_pin' in data:
@@ -620,10 +691,13 @@ def update_consent_preferences():
             update_data['notify_on_expiry'] = bool(data['notify_on_expiry'])
 
         if 'notify_before_expiry_days' in data:
-            days = int(data['notify_before_expiry_days'])
-            if days < 1 or days > 30:
-                return jsonify({"error": "Notify before expiry must be between 1 and 30 days", "status": 400}), 400
-            update_data['notify_before_expiry_days'] = days
+            try:
+                days = int(data['notify_before_expiry_days'])
+                if days < 1 or days > 30:
+                    return jsonify({"error": "Notify before expiry must be between 1 and 30 days", "status": 400}), 400
+                update_data['notify_before_expiry_days'] = days
+            except (ValueError, TypeError):
+                return jsonify({"error": "Invalid notify before expiry value", "status": 400}), 400
 
         if 'allow_emergency_override' in data:
             update_data['allow_emergency_override'] = bool(data['allow_emergency_override'])
@@ -644,7 +718,9 @@ def update_consent_preferences():
             .eq('parent_id', user_id)\
             .execute()
 
-        if existing.data and len(existing.data) > 0:
+        is_new = not existing.data or len(existing.data) == 0
+
+        if not is_new:
             # Update existing
             result = sr_client.table('consent_preferences')\
                 .update(update_data)\
@@ -657,20 +733,13 @@ def update_consent_preferences():
                 .insert(update_data)\
                 .execute()
 
-        # Log the update
-        try:
-            sr_client.table('consent_audit_logs').insert({
-                'parent_id': user_id,
-                'action': 'preferences_updated',
-                'performed_by': user_id,
-                'details': {
-                    'updated_fields': list(update_data.keys()),
-                    'new_values': update_data
-                },
-                'success': True
-            }).execute()
-        except Exception:
-            pass
+        # Log the update using centralized logging
+        log_consent_action(sr_client, 'preferences_updated', user_id,
+                         details={
+                             'action_type': 'created' if is_new else 'updated',
+                             'updated_fields': list(update_data.keys()),
+                             'field_count': len(update_data)
+                         }, success=True)
 
         return jsonify({
             "status": 200,
@@ -678,6 +747,9 @@ def update_consent_preferences():
             "preferences": result.data[0] if result.data else update_data
         }), 200
 
+    except ValueError as e:
+        current_app.logger.warning(f"Invalid preference value: {e}")
+        return jsonify({"error": "Invalid preference value", "status": 400}), 400
     except Exception as e:
         current_app.logger.error(f"Failed to update consent preferences: {e}")
         return jsonify({"error": "Failed to update consent preferences", "status": 500}), 500
@@ -696,7 +768,7 @@ def get_consent_stats():
         user_id = user.get('id')
         user_role = user.get('role')
 
-        if user_role not in ['parent', 'guardian', 'keepsaker']:
+        if user_role not in PARENT_ROLES:
             return jsonify({"error": "Only parents can access consent stats", "status": 403}), 403
 
         sr_client = supabase_service_role_client()
@@ -778,7 +850,3 @@ def get_consent_stats():
     except Exception as e:
         current_app.logger.error(f"Failed to fetch consent stats: {e}")
         return jsonify({"error": "Failed to fetch consent stats", "status": 500}), 500
-
-
-# Import timedelta for stats
-from datetime import timedelta

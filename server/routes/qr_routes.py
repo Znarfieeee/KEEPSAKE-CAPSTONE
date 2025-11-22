@@ -376,19 +376,62 @@ def validate_qr_access():
             except Exception as reg_error:
                 current_app.logger.warning(f"Failed to register patient to facility: {reg_error}")
 
-        # 7. Update QR code usage
+        # 7. Update QR code usage count
         try:
             sr_client_update = supabase_service_role_client()
+            current_use_count = qr_data.get('use_count') or 0  # Handle None case
             sr_client_update.table('qr_codes').update({
-                'use_count': qr_data['use_count'] + 1,
+                'use_count': current_use_count + 1,
                 'last_accessed_at': datetime.now(timezone.utc).isoformat(),
                 'last_accessed_by': scanning_user_id
             }).eq('qr_id', qr_data['qr_id']).execute()
-        except Exception:
-            # Don't fail the request for usage tracking errors
-            pass
+            current_app.logger.info(f"Updated QR code {qr_data['qr_id']} use_count to {current_use_count + 1}")
+        except Exception as update_error:
+            # Log but don't fail the request for usage tracking errors
+            current_app.logger.error(f"Failed to update QR code use_count: {update_error}")
 
-        # 8. Create QR access alert notification
+        # 8. Log to qr_access_logs for audit trail
+        try:
+            sr_client_log = supabase_service_role_client()
+            sr_client_log.table('qr_access_logs').insert({
+                'qr_id': qr_data['qr_id'],
+                'patient_id': patient_id,
+                'accessed_by': scanning_user_id,
+                'facility_id': scanning_facility_id,
+                'access_method': 'qr_scan',
+                'ip_address': request.remote_addr,
+                'user_agent': request.headers.get('User-Agent', '')[:500],  # Truncate to 500 chars
+                'metadata': {
+                    'access_type': access_type,
+                    'share_type': qr_data['share_type'],
+                    'scope': scope
+                }
+            }).execute()
+        except Exception as log_error:
+            current_app.logger.warning(f"Failed to log QR access: {log_error}")
+
+        # 8b. Log to consent_audit_logs for parent consent management
+        try:
+            sr_client_consent = supabase_service_role_client()
+            sr_client_consent.table('consent_audit_logs').insert({
+                'qr_id': qr_data['qr_id'],
+                'patient_id': patient_id,
+                'parent_id': qr_data.get('generated_by'),  # The parent who generated the QR
+                'action': 'qr_accessed',
+                'performed_by': scanning_user_id,
+                'details': {
+                    'access_type': access_type,
+                    'share_type': qr_data['share_type'],
+                    'scope': scope,
+                    'facility_id': scanning_facility_id
+                },
+                'ip_address': request.remote_addr,
+                'success': True
+            }).execute()
+        except Exception as consent_log_error:
+            current_app.logger.warning(f"Failed to log consent audit: {consent_log_error}")
+
+        # 9. Create QR access alert notification (deprecated but kept for backwards compatibility)
         try:
             create_qr_access_alert(
                 qr_id=qr_data['qr_id'],
