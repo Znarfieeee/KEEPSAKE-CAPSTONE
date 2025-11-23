@@ -497,6 +497,21 @@ def login():
         if session_id:
             existing_session = get_session_data(session_id)
             if existing_session:
+                # Verify user account is still active before reusing session
+                user_status = supabase.table('users')\
+                    .select('is_active')\
+                    .eq('user_id', existing_session.get('user_id'))\
+                    .execute()
+
+                if user_status.data and not user_status.data[0].get('is_active', True):
+                    # Clear the invalid session
+                    redis_client.delete(f"{SESSION_PREFIX}{session_id}")
+                    current_app.logger.warning(f"AUDIT: Session reuse attempted for deactivated account {existing_session.get('email')} from IP {request.remote_addr}")
+                    return jsonify({
+                        "status": "error",
+                        "message": "Your account has been deactivated. Please contact your administrator for assistance."
+                    }), 401
+
                 update_session_activity(session_id)
                 user_data = {
                     'id': existing_session.get('user_id'),
@@ -510,9 +525,9 @@ def login():
                     'phone_number': existing_session.get('phone_number'),
                     'last_sign_in_at': existing_session.get('last_sign_in_at')
                 }
-                
+
                 current_app.logger.info(f"AUDIT: User {existing_session.get('email')} reused existing session from IP {request.remote_addr}")
-                
+
                 return jsonify({
                     "status": "success",
                     "message": "Already logged in with existing session",
@@ -562,7 +577,20 @@ def login():
                 .execute()
 
             facility_id = get_facility_id.data[0]['facility_id'] if get_facility_id.data else None
-                
+
+            # Check if user account is active in users table
+            user_status = supabase.table('users')\
+                .select('is_active')\
+                .eq('user_id', auth_response.user.id)\
+                .execute()
+
+            if user_status.data and not user_status.data[0].get('is_active', True):
+                current_app.logger.warning(f"AUDIT: Login attempted for deactivated account {email} from IP {request.remote_addr}")
+                return jsonify({
+                    "status": "error",
+                    "message": "Your account has been deactivated. Please contact your administrator for assistance."
+                }), 401
+
             # Get user's last sign in time from Supabase auth
             last_sign_in = auth_response.user.last_sign_in_at.isoformat()
             
@@ -742,15 +770,29 @@ def get_session():
                 "status": "error",
                 "message": "No session found"
             }), 401
-        
+
         session_data = get_session_data(session_id)
 
         if not session_data:
             return jsonify({
-                "status": "error", 
+                "status": "error",
                 "message": "Session expired"
             }), 401
-            
+
+        # Verify user account is still active
+        user_status = supabase.table('users')\
+            .select('is_active')\
+            .eq('user_id', session_data.get('user_id'))\
+            .execute()
+
+        if user_status.data and not user_status.data[0].get('is_active', True):
+            # Clear the invalid session
+            redis_client.delete(f"{SESSION_PREFIX}{session_id}")
+            return jsonify({
+                "status": "error",
+                "message": "Your account has been deactivated. Please contact your administrator for assistance."
+            }), 401
+
         update_session_activity(session_id)
         
         # Return user data from session

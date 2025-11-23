@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { Label } from '@/components/ui/Label'
 import { Shield, CheckCircle, XCircle, AlertCircle, Mail } from 'lucide-react'
-import Loader from '@/components/ui/Loader'
+import TwoFactorSettingsSkeleton from '@/components/settings/TwoFactorSettingsSkeleton'
 
 // Helper
 import { showToast } from '@/util/alertHelper'
@@ -125,15 +125,7 @@ const TwoFactorSettings = () => {
     }
 
     if (fetchingStatus) {
-        return (
-            <div className="max-w-2xl space-y-6">
-                <div className=" rounded-lg p-6 bg-white relative min-h-[200px] flex items-center justify-center">
-                    <div className="absolute inset-0 bg-white/80">
-                        <Loader />
-                    </div>
-                </div>
-            </div>
-        )
+        return <TwoFactorSettingsSkeleton />
     }
 
     return (
