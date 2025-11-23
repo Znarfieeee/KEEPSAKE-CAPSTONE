@@ -1,5 +1,5 @@
 import React, { useRef, useState, useEffect } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/auth'
 import { sanitizeInput } from '../util/sanitize'
 
@@ -16,7 +16,8 @@ import { TooltipProvider, Tooltip, TooltipTrigger, TooltipContent } from '../com
 const Login = () => {
     const emailRef = useRef()
     const passwordRef = useRef()
-    const { signIn } = useAuth()
+    const { signIn, checkExistingSession, isAuthenticated, user } = useAuth()
+    const navigate = useNavigate()
     const [isLoading, setIsLoading] = useState(false)
     const [formError, setFormError] = useState(null)
     const [showPassword, setShowPassword] = useState(false)
@@ -37,6 +38,42 @@ const Login = () => {
         }
     }, [])
 
+    // Auto-check for existing session on mount and redirect to proper dashboard
+    useEffect(() => {
+        let mounted = true
+        const checkSessionAndRedirect = async () => {
+            try {
+                const hasSession = await checkExistingSession()
+                if (!mounted) return
+                if (hasSession || isAuthenticated) {
+                    const role = user?.role
+                    switch (role) {
+                        case 'admin':
+                            return navigate('/admin')
+                        case 'doctor':
+                            return navigate('/pediapro')
+                        case 'parent':
+                            return navigate('/parent')
+                        case 'vital_custodian':
+                            return navigate('/vital_custodian')
+                        case 'facility_admin':
+                            return navigate('/facility_admin')
+                        default:
+                            return navigate('/')
+                    }
+                }
+            } catch {
+                // silent fail - don't block the login screen
+            }
+        }
+
+        checkSessionAndRedirect()
+
+        return () => {
+            mounted = false
+        }
+    }, [checkExistingSession, isAuthenticated, navigate, user])
+
     async function handleSubmit(e) {
         e.preventDefault()
         setFormError('')
@@ -44,12 +81,11 @@ const Login = () => {
 
         const email = sanitizeInput(emailRef.current.value)
         const password = sanitizeInput(passwordRef.current.value)
+
         try {
             await signIn(email, password)
-            setIsLoading(false)
         } catch (err) {
-            // Handle specific error cases with improved messaging
-            const errorMessage = err.message?.toLowerCase() || ''
+            const errorMessage = (err?.message || '').toLowerCase()
 
             if (
                 errorMessage.includes('invalid email') ||
@@ -73,35 +109,19 @@ const Login = () => {
                 )
             } else if (
                 errorMessage.includes('account is inactive') ||
-                errorMessage.includes('user is inactive')
+                errorMessage.includes('user is inactive') ||
+                errorMessage.includes('deactivated') ||
+                errorMessage.includes('disabled') ||
+                errorMessage.includes('banned') ||
+                errorMessage.includes('suspended')
             ) {
                 setFormError(
                     'Your account has been deactivated. Please contact your administrator for assistance.'
                 )
             } else if (errorMessage.includes('network') || errorMessage.includes('connection')) {
-                setFormError(
-                    'Unable to connect to the server. Please check your internet connection and try again.'
-                )
-            } else if (
-                errorMessage.includes('unavailable') ||
-                errorMessage.includes('temporarily')
-            ) {
-                setFormError(
-                    'The authentication service is temporarily unavailable. Please try again in a few minutes.'
-                )
-            } else if (errorMessage.includes('authentication failed')) {
-                setFormError('Authentication failed. Please verify your email and password.')
-            } else if (errorMessage.includes('email and password are required')) {
-                setFormError('Please enter both your email and password.')
+                setFormError('Network error. Please check your connection and try again.')
             } else {
-                // Use the original error message if it's user-friendly, otherwise use a generic message
-                const originalMessage =
-                    err.message || 'An unexpected error occurred. Please try again.'
-                setFormError(
-                    originalMessage.length > 100
-                        ? 'An unexpected error occurred. Please try again.'
-                        : originalMessage
-                )
+                setFormError(err?.message || 'Authentication failed. Please try again.')
             }
         } finally {
             setIsLoading(false)

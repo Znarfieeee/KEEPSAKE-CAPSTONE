@@ -5,6 +5,7 @@ export { default as SecureQRGenerator } from './SecureQRGenerator'
 export { default as QRScopeSelector } from './QRScopeSelector'
 export { default as QRPinInputModal } from './QRPinInputModal'
 export { default as BrandedQRCode } from './BrandedQRCode'
+export { default as QrScannerBase } from './QrScannerBase'
 
 // Management Components
 export { default as QRCodeList } from './QRCodeList'

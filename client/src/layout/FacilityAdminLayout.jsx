@@ -40,7 +40,7 @@ const mainSideNavLinks = [
     {
         icon: <MdQrCodeScanner className="text-xl" />,
         title: 'QR Code Scanner',
-        to: '/qr_scanner',
+        to: '/facility_admin/qr_scanner',
     },
 ]
 

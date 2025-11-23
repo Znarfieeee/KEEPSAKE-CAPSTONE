@@ -1,51 +1,51 @@
-import React, { useState, useEffect, useRef } from "react"
-import Breadcrumbs from "../components/ui/Breadcrumbs"
-import { Outlet, Link } from "react-router-dom"
+import React, { useState, useEffect, useRef } from 'react'
+import Breadcrumbs from '../components/ui/Breadcrumbs'
+import { Outlet, Link } from 'react-router-dom'
 
 // UI Components
-import { RiDashboardLine } from "react-icons/ri"
-import { TbHeartbeat } from "react-icons/tb"
-import { BiCalendar } from "react-icons/bi"
-import { BiHelpCircle } from "react-icons/bi"
-import { BiCog } from "react-icons/bi"
-import { MdQrCodeScanner } from "react-icons/md"
-import Hamburger from "../components/ui/Hamburger"
-import AccountPlaceholder from "../components/AccountPlaceholder"
-import NotificationBell from "../components/notifications/NotificationBell"
+import { RiDashboardLine } from 'react-icons/ri'
+import { TbHeartbeat } from 'react-icons/tb'
+import { BiCalendar } from 'react-icons/bi'
+import { BiHelpCircle } from 'react-icons/bi'
+import { BiCog } from 'react-icons/bi'
+import { MdQrCodeScanner } from 'react-icons/md'
+import Hamburger from '../components/ui/Hamburger'
+import AccountPlaceholder from '../components/AccountPlaceholder'
+import NotificationBell from '../components/notifications/NotificationBell'
 
 const mainSideNavLinks = [
     {
         icon: <RiDashboardLine className="text-xl" />,
-        title: "Dashboard",
-        to: "/parent",
+        title: 'Dashboard',
+        to: '/parent',
     },
     {
         icon: <TbHeartbeat className="text-xl" />,
-        title: "My Children",
-        to: "/parent/children",
+        title: 'My Children',
+        to: '/parent/children',
     },
     {
         icon: <BiCalendar className="text-xl" />,
-        title: "Appointments",
-        to: "/parent/appointments",
+        title: 'Appointments',
+        to: '/parent/appointments',
     },
     {
         icon: <MdQrCodeScanner className="text-xl" />,
-        title: "QR Code Scanner",
-        to: "/qr_scanner",
+        title: 'QR Code Scanner',
+        to: '/parent/qr_scanner',
     },
 ]
 
 const systemSideNavLinks = [
     {
         icon: <BiCog className="text-xl" />,
-        title: "Settings",
-        to: "/parent/settings",
+        title: 'Settings',
+        to: '/parent/settings',
     },
     {
         icon: <BiHelpCircle className="text-xl" />,
-        title: "Help & Support",
-        to: "/parent/help_support",
+        title: 'Help & Support',
+        to: '/parent/help_support',
     },
 ]
 
@@ -54,7 +54,7 @@ const ParentLayout = () => {
     const sidebarRef = useRef(null)
     const hamburgerRef = useRef(null)
 
-    const toggleDrawer = () => setDrawerOpen(open => !open)
+    const toggleDrawer = () => setDrawerOpen((open) => !open)
 
     useEffect(() => {
         function handleClickOutside(event) {
@@ -72,9 +72,9 @@ const ParentLayout = () => {
             }
         }
 
-        document.addEventListener("mousedown", handleClickOutside)
+        document.addEventListener('mousedown', handleClickOutside)
         return () => {
-            document.removeEventListener("mousedown", handleClickOutside)
+            document.removeEventListener('mousedown', handleClickOutside)
         }
     }, [drawerOpen])
 
@@ -109,8 +109,9 @@ const ParentLayout = () => {
             <aside
                 ref={sidebarRef}
                 className={`fixed top-16 left-0 h-[calc(100vh-4rem)] w-64 text-black bg-secondary/80 backdrop-blur-sm z-50 shadow-lg transition-transform duration-400 ease-in-out transform ${
-                    drawerOpen ? "translate-x-0" : "-translate-x-full"
-                }`}>
+                    drawerOpen ? 'translate-x-0' : '-translate-x-full'
+                }`}
+            >
                 <nav className="h-full py-6">
                     <div className="mt-10">
                         <span className="text-sm font-semibold text-tertiary px-8">Main</span>
@@ -118,7 +119,8 @@ const ParentLayout = () => {
                             <Link
                                 key={index}
                                 to={link.to}
-                                className="flex items-center gap-4 px-8 py-3 text-black hover:bg-gray-100 duration-300 delay-30 transition-colors">
+                                className="flex items-center gap-4 px-8 py-3 text-black hover:bg-gray-100 duration-300 delay-30 transition-colors"
+                            >
                                 {link.icon}
                                 <span className="text-sm">{link.title}</span>
                             </Link>
@@ -130,7 +132,8 @@ const ParentLayout = () => {
                             <Link
                                 key={index}
                                 to={link.to}
-                                className="flex items-center gap-4 px-8 py-3 text-black hover:bg-gray-100 duration-300 delay-30 transition-colors">
+                                className="flex items-center gap-4 px-8 py-3 text-black hover:bg-gray-100 duration-300 delay-30 transition-colors"
+                            >
                                 {link.icon}
                                 <span className="text-sm">{link.title}</span>
                             </Link>

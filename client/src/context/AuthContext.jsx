@@ -231,9 +231,7 @@ export const AuthProvider = ({ children }) => {
 
     const _startSessionManagement = useCallback(() => {
         if (!isAuthenticated) return
-
         clearAllTimers()
-        console.log('Session Management')
         refreshTimerRef.current = setInterval(async () => {
             const now = Date.now()
             const timeSinceLastRefresh = now - lastRefreshRef.current
@@ -257,9 +255,7 @@ export const AuthProvider = ({ children }) => {
         REFRESH_INTERVAL,
     ])
 
-    const btnClicked = () => {
-        alert('Button clicked')
-    }
+    // Removed debug helpers (btnClicked/alerts) for production readiness
 
     useEffect(() => {
         const initializeAuth = async () => {
@@ -341,8 +337,7 @@ export const AuthProvider = ({ children }) => {
         refreshSession: runRefreshSession,
         updateUser,
 
-        // Legacy/debug
-        btnClicked,
+        // Legacy/debug: removed in production
 
         // Utility functions for components that need session info
         isSessionActive: () => sessionStatus === 'active',

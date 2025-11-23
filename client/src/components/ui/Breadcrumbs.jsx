@@ -95,7 +95,9 @@ function Breadcrumbs() {
         // Check if segment is a UUID and we have patient data in location state
         if (isUUID(seg) && location.state?.patient) {
             const patient = location.state.patient
-            const fullName = `${patient.firstname} ${patient.middlename || ''} ${patient.lastname}`.replace(/\s+/g, ' ').trim()
+            const fullName = `${patient.firstname} ${patient.middlename || ''} ${patient.lastname}`
+                .replace(/\s+/g, ' ')
+                .trim()
             return fullName
         }
 

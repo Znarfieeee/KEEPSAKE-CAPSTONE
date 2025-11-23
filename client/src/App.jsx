@@ -41,17 +41,26 @@ import DoctorReports from '@/pages/pediapro/DoctorReports'
 import DoctorSettings from '@/pages/pediapro/DoctorSettings'
 import DoctorSupport from '@/pages/pediapro/DoctorSupport'
 import DoctorPatientInfo from './pages/pediapro/DoctorPatientInfo'
+import DoctorQrScanner from '@/pages/pediapro/DoctorQrScanner'
+
+// Nurse/Staff (Vital Custodian)
+import NurseQrScanner from '@/pages/vital_custodian/NurseQrScanner'
 
 // Parent (Keepsaker)
 import ParentDashboard from '@/pages/parent/ParentDashboard'
 import ParentChildrenList from '@/pages/parent/ParentChildrenList'
 import ParentChildInfo from '@/pages/parent/ParentChildInfo'
 import ParentAppointments from '@/pages/parent/ParentAppointments'
+import ParentQrScanner from '@/pages/parent/ParentQrScanner'
+
+// Facility Admin QR Scanner
+import FacilityAdminQrScanner from '@/pages/facility_admin/FacilityAdminQrScanner'
 
 import AdminLayout from '@/layout/AdminLayout'
 import FacilityAdminLayout from '@/layout/FacilityAdminLayout'
 import PediaproLayout from '@/layout/PediaproLayout'
 import ParentLayout from '@/layout/ParentLayout'
+import NurseLayout from '@/layout/NurseLayout'
 
 const AuthWrapper = () => (
     <AuthProvider>
@@ -232,6 +241,10 @@ function App() {
                             path: 'settings',
                             element: <Settings />,
                         },
+                        {
+                            path: 'qr_scanner',
+                            element: <FacilityAdminQrScanner />,
+                        },
                     ],
                 },
                 {
@@ -270,6 +283,10 @@ function App() {
                             path: 'help_support',
                             element: <DoctorSupport />,
                         },
+                        {
+                            path: 'qr_scanner',
+                            element: <DoctorQrScanner />,
+                        },
                     ],
                 },
                 {
@@ -303,6 +320,36 @@ function App() {
                         {
                             path: 'help_support',
                             element: <div>Parent Help & Support Page - Coming Soon</div>,
+                        },
+                        {
+                            path: 'qr_scanner',
+                            element: <ParentQrScanner />,
+                        },
+                    ],
+                },
+                {
+                    path: '/vital_custodian',
+                    element: (
+                        <ProtectedRoute requiredRole="vital_custodian">
+                            <NurseLayout />
+                        </ProtectedRoute>
+                    ),
+                    children: [
+                        {
+                            index: true,
+                            element: <div>Nurse Dashboard - Coming Soon</div>,
+                        },
+                        {
+                            path: 'qr_scanner',
+                            element: <NurseQrScanner />,
+                        },
+                        {
+                            path: 'patient/:patientId/vitals',
+                            element: <div>Patient Vitals - Coming Soon</div>,
+                        },
+                        {
+                            path: 'settings',
+                            element: <Settings />,
                         },
                     ],
                 },

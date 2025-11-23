@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from "react"
+import React, { useState, useRef, useEffect } from 'react'
 import {
     Dialog,
     DialogContent,
@@ -6,27 +6,20 @@ import {
     DialogTitle,
     DialogDescription,
     DialogFooter,
-} from "../ui/dialog"
-import { Button } from "../ui/Button"
-import { FiLock, FiAlertCircle } from "react-icons/fi"
-import { AiOutlineLoading3Quarters } from "react-icons/ai"
+} from '../ui/dialog'
+import { Button } from '../ui/Button'
+import { FiLock, FiAlertCircle } from 'react-icons/fi'
+import { AiOutlineLoading3Quarters } from 'react-icons/ai'
 
-const QRPinInputModal = ({
-    isOpen,
-    onClose,
-    onSubmit,
-    error,
-    loading = false,
-    maxLength = 4
-}) => {
-    const [pin, setPin] = useState(Array(maxLength).fill(""))
+const QRPinInputModal = ({ isOpen, onClose, onSubmit, error, loading = false, maxLength = 4 }) => {
+    const [pin, setPin] = useState(Array(maxLength).fill(''))
     const inputRefs = useRef([])
 
     // Focus first input when modal opens
     useEffect(() => {
         if (isOpen && inputRefs.current[0]) {
             inputRefs.current[0].focus()
-            setPin(Array(maxLength).fill(""))
+            setPin(Array(maxLength).fill(''))
         }
     }, [isOpen, maxLength])
 
@@ -44,29 +37,29 @@ const QRPinInputModal = ({
         }
 
         // Auto-submit when all digits are entered
-        if (value && index === maxLength - 1 && newPin.every(digit => digit !== "")) {
-            onSubmit(newPin.join(""))
+        if (value && index === maxLength - 1 && newPin.every((digit) => digit !== '')) {
+            onSubmit(newPin.join(''))
         }
     }
 
     const handleKeyDown = (index, e) => {
-        if (e.key === "Backspace" && !pin[index] && index > 0) {
+        if (e.key === 'Backspace' && !pin[index] && index > 0) {
             // Focus previous input on backspace if current is empty
             inputRefs.current[index - 1]?.focus()
-        } else if (e.key === "Enter" && pin.every(digit => digit !== "")) {
+        } else if (e.key === 'Enter' && pin.every((digit) => digit !== '')) {
             // Submit on Enter if all digits filled
-            onSubmit(pin.join(""))
-        } else if (e.key === "Escape") {
+            onSubmit(pin.join(''))
+        } else if (e.key === 'Escape') {
             onClose()
         }
     }
 
     const handlePaste = (e) => {
         e.preventDefault()
-        const pastedData = e.clipboardData.getData("text").slice(0, maxLength)
+        const pastedData = e.clipboardData.getData('text').slice(0, maxLength)
         if (/^\d+$/.test(pastedData)) {
-            const newPin = Array(maxLength).fill("")
-            pastedData.split("").forEach((digit, i) => {
+            const newPin = Array(maxLength).fill('')
+            pastedData.split('').forEach((digit, i) => {
                 if (i < maxLength) newPin[i] = digit
             })
             setPin(newPin)
@@ -80,13 +73,13 @@ const QRPinInputModal = ({
     }
 
     const handleSubmit = () => {
-        if (pin.every(digit => digit !== "")) {
-            onSubmit(pin.join(""))
+        if (pin.every((digit) => digit !== '')) {
+            onSubmit(pin.join(''))
         }
     }
 
     const handleClear = () => {
-        setPin(Array(maxLength).fill(""))
+        setPin(Array(maxLength).fill(''))
         inputRefs.current[0]?.focus()
     }
 
@@ -101,7 +94,8 @@ const QRPinInputModal = ({
                         <DialogTitle>Enter PIN Code</DialogTitle>
                     </div>
                     <DialogDescription>
-                        This QR code is PIN protected. Please enter the {maxLength}-digit PIN to access patient information.
+                        This QR code is PIN protected. Please enter the {maxLength}-digit PIN to
+                        access patient information.
                     </DialogDescription>
                 </DialogHeader>
 
@@ -111,7 +105,7 @@ const QRPinInputModal = ({
                         {pin.map((digit, index) => (
                             <input
                                 key={index}
-                                ref={el => inputRefs.current[index] = el}
+                                ref={(el) => (inputRefs.current[index] = el)}
                                 type="text"
                                 inputMode="numeric"
                                 maxLength={1}
@@ -124,8 +118,12 @@ const QRPinInputModal = ({
                                     w-14 h-16 text-center text-2xl font-bold
                                     border-2 rounded-lg transition-all duration-200
                                     focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500
-                                    ${error ? "border-red-400 bg-red-50" : "border-gray-300 bg-white"}
-                                    ${loading ? "opacity-50 cursor-not-allowed" : ""}
+                                    ${
+                                        error
+                                            ? 'border-red-400 bg-red-50'
+                                            : 'border-gray-300 bg-white'
+                                    }
+                                    ${loading ? 'opacity-50 cursor-not-allowed' : ''}
                                 `}
                             />
                         ))}
@@ -155,7 +153,7 @@ const QRPinInputModal = ({
                         Clear
                     </Button>
                     <Button
-                        variant="outline"
+                        variant="destructive"
                         onClick={onClose}
                         disabled={loading}
                         className="flex-1"
@@ -164,7 +162,7 @@ const QRPinInputModal = ({
                     </Button>
                     <Button
                         onClick={handleSubmit}
-                        disabled={loading || pin.some(digit => digit === "")}
+                        disabled={loading || pin.some((digit) => digit === '')}
                         className="flex-1 bg-primary hover:bg-primary/90"
                     >
                         {loading ? (
@@ -173,7 +171,7 @@ const QRPinInputModal = ({
                                 Verifying...
                             </span>
                         ) : (
-                            "Verify PIN"
+                            'Verify PIN'
                         )}
                     </Button>
                 </DialogFooter>
