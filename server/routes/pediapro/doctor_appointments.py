@@ -324,6 +324,111 @@ def get_appointments_by_facility_id(facility_id):
             "message": f"Error fetching appointments: {str(e)}",
         }), 500
 
+@appointment_bp.route('/appointments/my-facility', methods=['GET'])
+@require_auth
+@require_role('facility_admin', 'doctor', 'nurse', 'staff')
+def get_appointments_for_user_facility():
+    """Get appointments for the current user's facility (auto-detects facility)"""
+    try:
+        current_user = request.current_user
+        user_id = current_user.get('id')
+
+        current_app.logger.info(f"AUDIT: User {current_user.get('email')} fetching appointments for their facility")
+
+        # Get the user's facility
+        facility_response = supabase.table('facility_users')\
+            .select('facility_id, healthcare_facilities!facility_users_facility_id_fkey(facility_id, facility_name)')\
+            .eq('user_id', user_id)\
+            .is_('end_date', 'null')\
+            .single()\
+            .execute()
+
+        if getattr(facility_response, 'error', None):
+            current_app.logger.error(f"AUDIT: Failed to get facility for user {user_id}: {facility_response.error.message}")
+            return jsonify({
+                "status": "error",
+                "message": "Failed to get user's facility information"
+            }), 400
+
+        if not facility_response.data:
+            return jsonify({
+                "status": "error",
+                "message": "User is not assigned to any facility"
+            }), 404
+
+        facility_id = facility_response.data.get('facility_id')
+        facility_info = facility_response.data.get('healthcare_facilities', {})
+
+        if not facility_id:
+            return jsonify({
+                "status": "error",
+                "message": "No facility found for current user"
+            }), 404
+
+        bust_cache = request.args.get('bust_cache', 'false').lower() == 'true'
+        cache_key = f"{APPOINTMENT_CACHE_PREFIX}facility:{facility_id}"
+
+        # Check cache first
+        if not bust_cache:
+            cached = redis_client.get(cache_key)
+            if cached:
+                cached_data = json.loads(cached)
+                # Process cached data to populate missing names
+                processed_data = process_appointment_data(cached_data)
+                return jsonify({
+                    'status': 'success',
+                    'data': processed_data,
+                    'facility_id': facility_id,
+                    'facility_name': facility_info.get('facility_name', 'Unknown'),
+                    'cached': True,
+                    'timestamp': datetime.datetime.utcnow().isoformat()
+                }), 200
+
+        # Get appointments for the facility with related data
+        resp = supabase.table('appointments')\
+            .select('''
+                *,
+                patients!appointments_patient_id_fkey(patient_id, firstname, lastname, middlename, date_of_birth),
+                doctor:users!appointments_doctor_id_fkey(user_id, firstname, lastname, specialty),
+                scheduled_by:users!appointments_scheduled_by_fkey(user_id, firstname, lastname),
+                updated_by:users!appointments_updated_by_fkey(user_id, firstname, lastname)
+            ''')\
+            .eq('facility_id', facility_id)\
+            .order('appointment_date', desc=True)\
+            .execute()
+
+        if getattr(resp, 'error', None):
+            current_app.logger.error(f"AUDIT: Failed to fetch appointments for facility {facility_id}: {resp.error.message}")
+            return jsonify({
+                "status": "error",
+                "message": "Failed to fetch appointments",
+                "details": resp.error.message
+            }), 400
+
+        # Process data to populate missing names
+        processed_data = process_appointment_data(resp.data)
+
+        # Cache the processed results for 5 minutes
+        redis_client.setex(cache_key, 300, json.dumps(processed_data))
+
+        current_app.logger.info(f"AUDIT: User {current_user.get('email')} fetched {len(processed_data)} appointments for facility {facility_id}")
+
+        return jsonify({
+            "status": "success",
+            "data": processed_data,
+            "facility_id": facility_id,
+            "facility_name": facility_info.get('facility_name', 'Unknown'),
+            "cached": False,
+            "timestamp": datetime.datetime.utcnow().isoformat()
+        }), 200
+
+    except Exception as e:
+        current_app.logger.error(f"AUDIT: Error fetching appointments for user's facility: {str(e)}")
+        return jsonify({
+            "status": "error",
+            "message": f"Error fetching appointments: {str(e)}",
+        }), 500
+
 @appointment_bp.route('/appointments/doctor/<doctor_id>', methods=['GET'])
 @require_auth
 @require_role('facility_admin', 'doctor', 'nurse')

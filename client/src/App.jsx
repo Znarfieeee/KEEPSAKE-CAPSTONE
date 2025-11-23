@@ -45,6 +45,7 @@ import DoctorQrScanner from '@/pages/pediapro/DoctorQrScanner'
 
 // Nurse/Staff (Vital Custodian)
 import NurseQrScanner from '@/pages/vital_custodian/NurseQrScanner'
+import NurseAppointments from '@/pages/vital_custodian/NurseAppointments'
 
 // Parent (Keepsaker)
 import ParentDashboard from '@/pages/parent/ParentDashboard'
@@ -380,7 +381,7 @@ function App() {
                         },
                         {
                             path: 'appointments',
-                            element: <DoctorAppointments />,
+                            element: <NurseAppointments />,
                         },
                         {
                             path: 'patient_records',
