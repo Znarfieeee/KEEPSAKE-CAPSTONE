@@ -429,7 +429,7 @@ function DoctorPatientRecords() {
     }, [patients, search, statusFilter, sexFilter, ageFilter, dateRange])
 
     // Check if user is authorized
-    if (user?.role !== 'doctor') {
+    if (user?.role !== 'doctor' && user?.role !== 'nurse') {
         return <Unauthorized />
     }
 

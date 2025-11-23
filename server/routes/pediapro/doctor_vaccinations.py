@@ -22,7 +22,7 @@ def create_vaccination(patient_id):
                 "message": "Vaccine name is required"
             }), 400
 
-        # Prepare vaccination data
+        # Prepare vaccination data with HIPAA-compliant fields
         vaccination_data = {
             'patient_id': patient_id,
             'vaccine_name': data.get('vaccine_name'),
@@ -34,7 +34,15 @@ def create_vaccination(patient_id):
             'administration_site': data.get('administration_site'),
             'next_dose_due': data.get('next_dose_due'),
             'notes': data.get('notes'),
-            'visit_id': data.get('visit_id')
+            'visit_id': data.get('visit_id'),
+            # HIPAA-compliant fields
+            'route_of_administration': data.get('route_of_administration'),
+            'body_site': data.get('body_site'),
+            'vaccine_expiration_date': data.get('vaccine_expiration_date'),
+            'vis_publication_date': data.get('vis_publication_date'),
+            'vis_given_date': data.get('vis_given_date'),
+            'adverse_reaction': data.get('adverse_reaction', False),
+            'adverse_reaction_details': data.get('adverse_reaction_details')
         }
 
         # Remove None values
@@ -109,10 +117,15 @@ def update_vaccination(patient_id, vax_id):
 
         old_vaccination = existing_response.data[0]
 
-        # Prepare update data
+        # Prepare update data with HIPAA-compliant fields
         update_data = {}
-        allowed_fields = ['vaccine_name', 'dose_number', 'administered_date', 'manufacturer',
-                         'lot_number', 'administration_site', 'next_dose_due', 'notes']
+        allowed_fields = [
+            'vaccine_name', 'dose_number', 'administered_date', 'manufacturer',
+            'lot_number', 'administration_site', 'next_dose_due', 'notes',
+            # HIPAA-compliant fields
+            'route_of_administration', 'body_site', 'vaccine_expiration_date',
+            'vis_publication_date', 'vis_given_date', 'adverse_reaction', 'adverse_reaction_details'
+        ]
 
         for field in allowed_fields:
             if field in data:

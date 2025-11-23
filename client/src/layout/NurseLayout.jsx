@@ -16,17 +16,22 @@ const mainSideNavLinks = [
     {
         icon: <RiDashboardLine className="text-xl" />,
         title: 'Dashboard',
-        to: '/vital_custodian',
+        to: '/nurse',
     },
     {
         icon: <TbHeartbeat className="text-xl" />,
         title: 'Patient Vitals',
-        to: '/vital_custodian/patients',
+        to: '/nurse/patients',
+    },
+    {
+        icon: <TbHeartbeat className="text-xl" />,
+        title: 'Patient Records',
+        to: '/nurse/patient_records',
     },
     {
         icon: <MdQrCodeScanner className="text-xl" />,
         title: 'QR Code Scanner',
-        to: '/vital_custodian/qr_scanner',
+        to: '/nurse/qr_scanner',
     },
 ]
 
@@ -34,12 +39,12 @@ const systemSideNavLinks = [
     {
         icon: <BiCog className="text-xl" />,
         title: 'Settings',
-        to: '/vital_custodian/settings',
+        to: '/nurse/settings',
     },
     {
         icon: <BiHelpCircle className="text-xl" />,
         title: 'Help & Support',
-        to: '/vital_custodian/help_support',
+        to: '/nurse/help_support',
     },
 ]
 
@@ -101,18 +106,18 @@ function NurseLayout() {
             {/* Sidebar */}
             <aside
                 ref={sidebarRef}
-                className={`fixed top-16 left-0 h-[calc(100vh-4rem)] w-64 text-black bg-teal-50/80 backdrop-blur-sm z-50 shadow-lg transition-transform duration-400 ease-in-out transform ${
+                className={`fixed top-16 left-0 h-[calc(100vh-4rem)] w-64 text-black bg-secondary/80 backdrop-blur-sm z-50 shadow-lg transition-transform duration-400 ease-in-out transform ${
                     drawerOpen ? 'translate-x-0' : '-translate-x-full'
                 }`}
             >
                 <nav className="h-full py-6">
                     <div className="mt-10">
-                        <span className="text-sm font-semibold text-teal-700 px-8">Main</span>
+                        <span className="text-sm font-semibold text-tertiary px-8">Main</span>
                         {mainSideNavLinks.map((link, index) => (
                             <Link
                                 key={index}
                                 to={link.to}
-                                className="flex items-center gap-4 px-8 py-3 text-black hover:bg-teal-100 duration-300 delay-30 transition-colors"
+                                className="flex items-center gap-4 px-8 py-3 text-black hover:bg-gray-100 duration-300 delay-30 transition-colors"
                             >
                                 {link.icon}
                                 <span className="text-sm">{link.title}</span>
@@ -120,12 +125,12 @@ function NurseLayout() {
                         ))}
                     </div>
                     <div className="mt-5">
-                        <span className="text-sm font-semibold text-teal-700 px-8">System</span>
+                        <span className="text-sm font-semibold text-tertiary px-8">System</span>
                         {systemSideNavLinks.map((link, index) => (
                             <Link
                                 key={index}
                                 to={link.to}
-                                className="flex items-center gap-4 px-8 py-3 text-black hover:bg-teal-100 duration-300 delay-30 transition-colors"
+                                className="flex items-center gap-4 px-8 py-3 text-black hover:bg-gray-100 duration-300 delay-30 transition-colors"
                             >
                                 {link.icon}
                                 <span className="text-sm">{link.title}</span>

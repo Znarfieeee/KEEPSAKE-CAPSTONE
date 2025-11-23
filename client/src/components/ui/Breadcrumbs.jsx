@@ -59,7 +59,7 @@ const SEGMENT_LABELS = {
     child: 'Child Records',
 
     // Nurse || Staff
-    vital_custodian: 'Dashboard',
+    nurse: 'Dashboard',
 }
 
 const DASHBOARD_SEGMENTS = ['admin', 'facility_admin', 'pediapro', 'parent', 'vital_custodian']

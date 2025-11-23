@@ -47,8 +47,8 @@ export const AuthProvider = ({ children }) => {
                 case 'parent':
                     navigate('/parent')
                     break
-                case 'vital_custodian':
-                    navigate('/vital_custodian')
+                case 'nurse':
+                    navigate('/nurse')
                     break
                 case 'facility_admin':
                     navigate('/facility_admin')

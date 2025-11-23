@@ -328,9 +328,9 @@ function App() {
                     ],
                 },
                 {
-                    path: '/vital_custodian',
+                    path: '/nurse',
                     element: (
-                        <ProtectedRoute requiredRole="vital_custodian">
+                        <ProtectedRoute requiredRole="nurse">
                             <NurseLayout />
                         </ProtectedRoute>
                     ),
@@ -346,6 +346,14 @@ function App() {
                         {
                             path: 'patient/:patientId/vitals',
                             element: <div>Patient Vitals - Coming Soon</div>,
+                        },
+                        {
+                            path: 'patient_records',
+                            element: <DoctorPatientRecords />,
+                        },
+                        {
+                            path: 'patient_records/:patientId',
+                            element: <DoctorPatientInfo />,
                         },
                         {
                             path: 'settings',
