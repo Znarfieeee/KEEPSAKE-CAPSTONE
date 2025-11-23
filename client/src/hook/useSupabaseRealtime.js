@@ -598,22 +598,18 @@ export const useAppointmentsRealtime = ({ onAppointmentChange, doctorId, facilit
             console.log('Custom appointment-created event received:', event.detail)
             const appointment = event.detail
             if (appointment) {
-                // Check if this appointment matches our filter (if any)
-                const matchesFilter =
-                    !doctorId ||
-                    appointment.doctor_id === doctorId ||
-                    (!facilityId || appointment.facility_id === facilityId)
-
-                if (matchesFilter) {
-                    const formattedAppointment = formatAppointment(appointment)
-                    if (formattedAppointment) {
-                        onAppointmentChange({
-                            type: 'INSERT',
-                            appointment: formattedAppointment,
-                            raw: appointment,
-                            source: 'custom-event',
-                        })
-                    }
+                // Custom events are explicitly dispatched by our code when the current user
+                // creates an appointment, so we should always accept them regardless of filters.
+                // The Supabase realtime subscription handles the doctor/facility filtering
+                // for appointments created by other users.
+                const formattedAppointment = formatAppointment(appointment)
+                if (formattedAppointment) {
+                    onAppointmentChange({
+                        type: 'INSERT',
+                        appointment: formattedAppointment,
+                        raw: appointment,
+                        source: 'custom-event',
+                    })
                 }
             }
         }
@@ -664,7 +660,7 @@ export const useAppointmentsRealtime = ({ onAppointmentChange, doctorId, facilit
             window.removeEventListener('appointment-updated', handleCustomAppointmentUpdated)
             window.removeEventListener('appointment-deleted', handleCustomAppointmentDeleted)
         }
-    }, [formatAppointment, onAppointmentChange, doctorId, facilityId])
+    }, [formatAppointment, onAppointmentChange])
 
     // Create filter based on available parameters
     let filter = null

@@ -25,12 +25,12 @@ export const getAppointmentsByPatient = async (patientId) => {
     }
 }
 
-export const getAppointmentsByDoctor = async (doctorId) => {
+export const getAppointmentsByDoctor = async (doctorId, bustCache = false) => {
     try {
-        const response = await axios.get(
-            `${backendConnection()}/appointments/doctor/${doctorId}`,
-            axiosConfig
-        )
+        const url = bustCache
+            ? `${backendConnection()}/appointments/doctor/${doctorId}?bust_cache=true`
+            : `${backendConnection()}/appointments/doctor/${doctorId}`
+        const response = await axios.get(url, axiosConfig)
         return response.data
     } catch (error) {
         console.error('Get doctor appointments error:', error)

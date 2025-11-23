@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, lazy, Suspense } from 'react'
+import React, { useState, useEffect, useCallback, useRef, lazy, Suspense } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '@/context/auth'
 import { getAppointmentsByDoctor } from '@/api/doctors/appointment'
@@ -26,6 +26,11 @@ const DoctorAppointments = () => {
     const [error, setError] = useState(null)
     const [isModalOpen, setIsModalOpen] = useState(false)
 
+    // Ref to track recently added appointments (to prevent stale API data from overwriting)
+    const recentlyAddedRef = useRef(new Map())
+    // Ref to track if initial fetch has completed
+    const initialFetchDoneRef = useRef(false)
+
     // Hooks
     const { user } = useAuth()
     const navigate = useNavigate()
@@ -35,9 +40,10 @@ const DoctorAppointments = () => {
      * Updates the appointments state based on the change type
      */
     const handleAppointmentChange = useCallback(({ type, appointment, raw, source }) => {
+        const appointmentId = appointment.appointment_id || appointment.id
+
         setAppointments((prevAppointments) => {
             let updatedAppointments = [...prevAppointments]
-            const appointmentId = appointment.appointment_id || appointment.id
 
             switch (type) {
                 case 'INSERT':
@@ -48,6 +54,15 @@ const DoctorAppointments = () => {
                     })
                     if (!exists) {
                         updatedAppointments = [appointment, ...prevAppointments]
+                        // Track this appointment as recently added (expires after 10 seconds)
+                        recentlyAddedRef.current.set(appointmentId, {
+                            appointment,
+                            timestamp: Date.now(),
+                        })
+                        // Clean up old entries after 10 seconds
+                        setTimeout(() => {
+                            recentlyAddedRef.current.delete(appointmentId)
+                        }, 10000)
                         console.log(
                             `New appointment added (${source || 'realtime'}):`,
                             appointment.patient_name || 'Unknown Patient'
@@ -72,12 +87,16 @@ const DoctorAppointments = () => {
                         }
                         return app
                     })
+                    // Also remove from recently added since it's now updated
+                    recentlyAddedRef.current.delete(appointmentId)
                     break
                 case 'DELETE':
                     updatedAppointments = prevAppointments.filter((app) => {
                         const currentId = app.appointment_id || app.id
                         return currentId !== appointmentId
                     })
+                    // Also remove from recently added
+                    recentlyAddedRef.current.delete(appointmentId)
                     console.log('Appointment deleted:', appointment.patient_name || 'Unknown Patient')
                     break
                 default:
@@ -103,8 +122,9 @@ const DoctorAppointments = () => {
     /**
      * Fetch appointments from the API
      * Handles loading states and error management
+     * Merges recently added appointments to prevent stale data from overwriting them
      */
-    const fetchAppointments = useCallback(async () => {
+    const fetchAppointments = useCallback(async (bustCache = false) => {
         if (!user?.id) {
             setError('User not authenticated')
             setLoading(false)
@@ -112,22 +132,45 @@ const DoctorAppointments = () => {
         }
 
         try {
-            setLoading(true)
+            // Only show loading on initial fetch
+            if (!initialFetchDoneRef.current) {
+                setLoading(true)
+            }
             setError(null)
 
             console.log('Fetching appointments for doctor:', user.id)
-            const response = await getAppointmentsByDoctor(user.id)
+            const response = await getAppointmentsByDoctor(user.id, bustCache)
 
             if (response.status === 'success' && response.data) {
+                // Get recently added appointments that might not be in the API response yet
+                const recentlyAdded = Array.from(recentlyAddedRef.current.values())
+                    .filter((entry) => Date.now() - entry.timestamp < 10000) // Only keep entries less than 10 seconds old
+                    .map((entry) => entry.appointment)
+
+                // Create a set of IDs from the API response for quick lookup
+                const apiAppointmentIds = new Set(
+                    response.data.map((app) => app.appointment_id || app.id)
+                )
+
+                // Find recently added appointments that are NOT in the API response
+                const missingAppointments = recentlyAdded.filter((app) => {
+                    const id = app.appointment_id || app.id
+                    return !apiAppointmentIds.has(id)
+                })
+
+                // Merge API data with missing recently added appointments
+                const mergedAppointments = [...response.data, ...missingAppointments]
+
                 // Sort appointments by date and time
-                const sortedAppointments = response.data.sort(
+                const sortedAppointments = mergedAppointments.sort(
                     (a, b) =>
                         new Date(`${a.appointment_date} ${a.appointment_time || '00:00'}`) -
                         new Date(`${b.appointment_date} ${b.appointment_time || '00:00'}`)
                 )
 
-                console.log(`Loaded ${sortedAppointments.length} appointments`)
+                console.log(`Loaded ${response.data.length} appointments from API, merged with ${missingAppointments.length} recently added`)
                 setAppointments(sortedAppointments)
+                initialFetchDoneRef.current = true
             } else {
                 throw new Error(response.message || 'Failed to fetch appointments')
             }
@@ -151,27 +194,9 @@ const DoctorAppointments = () => {
         }
     }, [fetchAppointments, user?.id])
 
-    // Listen for custom appointment-created events from ScheduleAppointmentModal
-    useEffect(() => {
-        const handleAppointmentCreated = (event) => {
-            const newAppointment = event.detail
-            if (newAppointment) {
-                console.log('Received appointment-created event:', newAppointment)
-                handleAppointmentChange({
-                    type: 'INSERT',
-                    appointment: newAppointment,
-                    raw: newAppointment,
-                    source: 'custom-event'
-                })
-            }
-        }
-
-        window.addEventListener('appointment-created', handleAppointmentCreated)
-
-        return () => {
-            window.removeEventListener('appointment-created', handleAppointmentCreated)
-        }
-    }, [handleAppointmentChange])
+    // Note: Custom event listeners for appointment-created, appointment-updated, and appointment-deleted
+    // are handled by the useAppointmentsRealtime hook in useSupabaseRealtime.js
+    // This ensures a single point of handling to prevent race conditions and duplicate entries
 
     /**
      * Filter appointments for today
