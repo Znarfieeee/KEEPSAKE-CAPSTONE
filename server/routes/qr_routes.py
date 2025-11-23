@@ -1,5 +1,5 @@
-from flask import Blueprint, jsonify, request
-from config.settings import supabase
+from flask import Blueprint, jsonify, request, current_app
+from config.settings import supabase, supabase_service_role_client
 from utils.access_control import require_auth
 from utils.sanitize import sanitize_request_data
 from utils.notification_utils import create_qr_access_alert
@@ -16,10 +16,14 @@ def get_patient_data_by_scope(patient_id, scope):
     """
     Get patient data based on access scope
     Scope options: view_only, allergies, prescriptions, vaccinations, appointments, vitals, full_access
+
+    Uses service role client to bypass RLS - QR code token is the authorization mechanism
     """
     try:
+        sr_client = supabase_service_role_client()
+
         # Always include basic patient information
-        patient_data = supabase.table('patients')\
+        patient_data = sr_client.table('patients')\
             .select('patient_id, firstname, lastname, middlename, date_of_birth, sex, bloodtype')\
             .eq('patient_id', patient_id)\
             .single()\
@@ -30,77 +34,110 @@ def get_patient_data_by_scope(patient_id, scope):
 
         result = patient_data.data
 
-        # If view_only, return just basic info
-        if scope == ['view_only'] or 'view_only' in scope:
-            return result
-
         # Add allergies if in scope
         if 'allergies' in scope or 'full_access' in scope:
-            allergies = supabase.table('allergies')\
-                .select('*')\
-                .eq('patient_id', patient_id)\
-                .execute()
-            result['allergies'] = allergies.data or []
+            try:
+                allergies = sr_client.table('allergies')\
+                    .select('allergy_id, patient_id, allergy_name, severity, diagnosed_date, notes, created_at')\
+                    .eq('patient_id', patient_id)\
+                    .execute()
+                result['allergies'] = allergies.data or []
+            except Exception:
+                result['allergies'] = []
 
         # Add prescriptions if in scope
         if 'prescriptions' in scope or 'full_access' in scope:
-            prescriptions = supabase.table('prescriptions')\
-                .select('*')\
-                .eq('patient_id', patient_id)\
-                .order('created_at', desc=True)\
-                .execute()
-            result['prescriptions'] = prescriptions.data or []
+            try:
+                prescriptions = sr_client.table('prescriptions')\
+                    .select('prescription_id, patient_id, doctor_id, medication_name, dosage, frequency, duration, notes, status, created_at, updated_at')\
+                    .eq('patient_id', patient_id)\
+                    .order('created_at', desc=True)\
+                    .execute()
+                result['prescriptions'] = prescriptions.data or []
+            except Exception:
+                result['prescriptions'] = []
 
         # Add vaccinations if in scope
         if 'vaccinations' in scope or 'full_access' in scope:
-            vaccinations = supabase.table('vaccinations')\
-                .select('*')\
-                .eq('patient_id', patient_id)\
-                .order('administered_at', desc=True)\
-                .execute()
-            result['vaccinations'] = vaccinations.data or []
+            try:
+                vaccinations = sr_client.table('vaccinations')\
+                    .select('vaccination_id, patient_id, vaccine_name, dose_number, administered_at, administered_by, next_dose_date, notes, created_at')\
+                    .eq('patient_id', patient_id)\
+                    .order('administered_at', desc=True)\
+                    .execute()
+                result['vaccinations'] = vaccinations.data or []
+            except Exception:
+                result['vaccinations'] = []
 
         # Add appointments if in scope
         if 'appointments' in scope or 'full_access' in scope:
-            appointments = supabase.table('appointments')\
-                .select('*')\
-                .eq('patient_id', patient_id)\
-                .order('appointment_date', desc=True)\
-                .limit(10)\
-                .execute()
-            result['appointments'] = appointments.data or []
+            try:
+                appointments = sr_client.table('appointments')\
+                    .select('appointment_id, patient_id, doctor_id, facility_id, appointment_date, appointment_time, status, reason, notes, created_at, updated_at')\
+                    .eq('patient_id', patient_id)\
+                    .order('appointment_date', desc=True)\
+                    .limit(10)\
+                    .execute()
+                result['appointments'] = appointments.data or []
+            except Exception:
+                result['appointments'] = []
 
         # Add vitals/anthropometric measurements if in scope
         if 'vitals' in scope or 'full_access' in scope:
-            vitals = supabase.table('anthropometric_measurements')\
-                .select('*')\
-                .eq('patient_id', patient_id)\
-                .order('measurement_date', desc=True)\
-                .limit(10)\
-                .execute()
-            result['vitals'] = vitals.data or []
+            try:
+                vitals = sr_client.table('anthropometric_measurements')\
+                    .select('measurement_id, patient_id, measurement_date, height_cm, weight_kg, head_circumference_cm, bmi, notes, measured_by, created_at')\
+                    .eq('patient_id', patient_id)\
+                    .order('measurement_date', desc=True)\
+                    .limit(10)\
+                    .execute()
+                result['vitals'] = vitals.data or []
+            except Exception:
+                result['vitals'] = []
 
         return result
 
     except Exception as e:
-        print(f"Error fetching patient data by scope: {e}")
+        current_app.logger.error(f"Error fetching patient data by scope: {e}")
         return None
 
 def ensure_patient_facility_registration(patient_id, facility_id, registered_by, registration_method):
     """Ensure patient is registered at the facility"""
-    existing = supabase.table('facility_patients')\
-        .select('*')\
-        .eq('patient_id', patient_id)\
-        .eq('facility_id', facility_id)\
-        .execute()
-    
-    if not existing.data:
-        supabase.table('facility_patients').insert({
-            'patient_id': patient_id,
-            'facility_id': facility_id,
-            'registered_by': registered_by,
-            'registration_method': registration_method
-        }).execute()
+    sr_client = supabase_service_role_client()
+
+    try:
+        # Check if patient is already registered to this specific facility
+        existing = sr_client.table('facility_patients')\
+            .select('facility_patient_id, patient_id, facility_id, is_active')\
+            .eq('patient_id', patient_id)\
+            .eq('facility_id', facility_id)\
+            .execute()
+
+        if not existing.data or len(existing.data) == 0:
+            # Patient not registered at this facility - create new registration
+            result = sr_client.table('facility_patients').insert({
+                'patient_id': patient_id,
+                'facility_id': facility_id,
+                'registered_by': registered_by,
+                'registration_method': registration_method,
+                'is_active': True
+            }).execute()
+
+            return bool(result.data)
+        else:
+            # Patient already has a record at this facility
+            existing_record = existing.data[0]
+            if not existing_record.get('is_active'):
+                # Reactivate the existing record
+                sr_client.table('facility_patients')\
+                    .update({'is_active': True, 'deactivated_at': None, 'deactivated_by': None})\
+                    .eq('facility_patient_id', existing_record['facility_patient_id'])\
+                    .execute()
+                return True
+            return False
+    except Exception as e:
+        current_app.logger.error(f"Failed to ensure patient facility registration: {e}")
+        raise
 
 
 @qr_bp.route('/qr/generate', methods=['POST'])
@@ -108,7 +145,7 @@ def ensure_patient_facility_registration(patient_id, facility_id, registered_by,
 def generate_token():
     """Generate a new QR code for patient access"""
     try:
-        raw_data = request.get_json()
+        raw_data = request.json
         data = sanitize_request_data(raw_data)
         required_fields = ['patient_id', 'share_type', 'expires_in_days']
 
@@ -129,41 +166,114 @@ def generate_token():
         # Generate token and create QR code record
         token = generate_secure_token()
 
+        # Get facility_id - for parents, use the patient's facility
+        facility_id = request.current_user.get('facility_id')
+        user_role = request.current_user.get('role')
+        user_id = request.current_user.get('id')
+
+        # Convert string "None" to actual None
+        if facility_id == 'None' or facility_id == 'null' or facility_id == '':
+            facility_id = None
+
+        # Validate user_id
+        if not user_id:
+            return jsonify({"error": "Invalid user session - no user ID", "status": 401}), 401
+
+        # If user is a parent/guardian without a facility_id, get patient's facility
+        if not facility_id and user_role in ['parent', 'guardian', 'keepsaker']:
+            sr_client = supabase_service_role_client()
+
+            # Get patient's facility from facility_patients table
+            patient_facility = sr_client.table('facility_patients')\
+                .select('facility_id')\
+                .eq('patient_id', data['patient_id'])\
+                .eq('is_active', True)\
+                .order('registered_at', desc=True)\
+                .limit(1)\
+                .execute()
+
+            if patient_facility.data and len(patient_facility.data) > 0:
+                facility_id = patient_facility.data[0]['facility_id']
+            else:
+                return jsonify({"error": "Patient not registered at any facility", "status": 400}), 400
+
+        if not facility_id:
+            return jsonify({"error": "Unable to determine facility context", "status": 400}), 400
+
+        # Build metadata properly
+        metadata = {}
+        if data.get('metadata') and isinstance(data.get('metadata'), dict):
+            metadata = data.get('metadata').copy()
+
+        # Add system metadata
+        metadata['allow_emergency_access'] = data.get('allow_emergency_access', False)
+        metadata['requires_pin'] = bool(data.get('pin_code'))
+
+        # Build qr_data
         qr_data = {
             'token_hash': token,
-            'patient_id': data['patient_id'],
-            'facility_id': request.current_user.get('facility_id'),
-            'generated_by': request.current_user.get('id'),
+            'patient_id': str(data['patient_id']),
+            'facility_id': str(facility_id),
+            'generated_by': str(user_id),
             'share_type': data['share_type'],
             'scope': data.get('scope', ['view_only']),
             'expires_at': (datetime.now(timezone.utc) + timedelta(days=data['expires_in_days'])).isoformat(),
             'is_active': True,
             'use_count': 0,
-            'max_uses': data.get('max_uses'),
-            'target_facilities': data.get('target_facilities'),
-            'pin_code': data.get('pin_code'),
-            'metadata': {
-                'allow_emergency_access': data.get('allow_emergency_access', False),
-                'requires_pin': bool(data.get('pin_code'))
-            }
+            'metadata': metadata
         }
 
-        # Create QR code record (audit logging handled by database trigger)
-        result = supabase.table('qr_codes').insert(qr_data).execute()
+        # Only add optional fields if they have actual values
+        if data.get('max_uses') is not None:
+            qr_data['max_uses'] = int(data.get('max_uses'))
 
-        # Get base URL from environment or use default
-        base_url = os.environ.get('FRONTEND_URL', 'http://localhost:5173')
+        if data.get('target_facilities') and len(data.get('target_facilities', [])) > 0:
+            qr_data['target_facilities'] = [str(f) for f in data.get('target_facilities')]
 
-        return jsonify({
-            "status": 200,
-            "qr_id": result.data[0]['qr_id'],
-            "token": token,
-            "access_url": f"{base_url}/qr/access?token={token}",
-            "expires_at": qr_data['expires_at']
-        }), 200
+        if data.get('pin_code'):
+            qr_data['pin_code'] = str(data.get('pin_code'))
+
+        # Create QR code record
+        try:
+            result = supabase.table('qr_codes').insert(qr_data).execute()
+
+            if not result.data or len(result.data) == 0:
+                return jsonify({
+                    "error": "Failed to create QR code",
+                    "status": 500
+                }), 500
+
+            # Get base URL from environment or use default
+            base_url = os.environ.get('FRONTEND_URL', 'http://localhost:5173')
+
+            # Use dedicated view page for specific share types
+            share_type = data['share_type']
+            if share_type == 'prescription':
+                access_url = f"{base_url}/prescription/view?token={token}"
+            else:
+                access_url = f"{base_url}/qr_scanner?token={token}"
+
+            return jsonify({
+                "status": "success",
+                "qr_id": result.data[0]['qr_id'],
+                "token": token,
+                "access_url": access_url,
+                "expires_at": qr_data['expires_at']
+            }), 200
+
+        except Exception as insert_error:
+            current_app.logger.error(f"Database insert failed: {insert_error}")
+            return jsonify({
+                "error": "Database insert failed",
+                "status": 500
+            }), 500
 
     except Exception as e:
-        return jsonify({"error": "Failed to create QR code", "details": str(e), "status": 500}), 500
+        current_app.logger.error(f"Failed to create QR code: {e}")
+        return jsonify({
+            "error": "Failed to create QR code",
+            "status": 500
+        }), 500
 
 @qr_bp.route('/qr/access', methods=['GET'])
 @require_auth
@@ -174,37 +284,53 @@ def validate_qr_access():
     """
     token = request.args.get('token')
     if not token:
-        return jsonify({"error": "Token is required", "status": 400}), 400
+        return jsonify({"error": "Token is required", "status": 'error'}), 400
+
+    # Handle malformed URLs where PIN was appended with ? instead of &
+    pin_from_token = None
+    if '?pin=' in token:
+        parts = token.split('?pin=')
+        token = parts[0]
+        if len(parts) > 1:
+            pin_from_token = parts[1]
 
     scanning_user = request.current_user
-    if not scanning_user or 'facility_id' not in scanning_user:
-        return jsonify({"error": "Invalid user or facility context", "status": 401}), 401
+    if not scanning_user:
+        return jsonify({"error": "Invalid user context", "status": 'error'}), 401
+
+    # Get and sanitize user info
+    scanning_user_id = str(scanning_user['id'])
+    scanning_facility_id = scanning_user.get('facility_id')
+
+    # Convert string "None" to actual None
+    if scanning_facility_id == 'None' or scanning_facility_id == 'null' or scanning_facility_id == '':
+        scanning_facility_id = None
 
     try:
         # 1. Get QR code record with comprehensive validation
-        qr = supabase.table('qr_codes')\
-            .select('*')\
+        sr_client = supabase_service_role_client()
+        qr = sr_client.table('qr_codes')\
+            .select('qr_id, token_hash, patient_id, facility_id, generated_by, share_type, scope, expires_at, is_active, use_count, max_uses, last_accessed_at, last_accessed_by, target_facilities, pin_code, metadata, created_at')\
             .eq('token_hash', token)\
             .eq('is_active', True)\
             .execute()
 
         if not qr.data or len(qr.data) == 0:
-            return jsonify({"error": "Invalid or inactive QR code", "status": 404}), 404
+            return jsonify({"error": "Invalid or inactive QR code", "status": 'error'}), 404
 
         qr_data = qr.data[0]
 
         # 2. Check expiration
         expires_at = datetime.fromisoformat(qr_data['expires_at'].replace('Z', '+00:00'))
         if datetime.now(timezone.utc) > expires_at:
-            return jsonify({"error": "QR code has expired", "status": 403}), 403
+            return jsonify({"error": "QR code has expired", "status": 'error'}), 403
 
         # 3. Check usage limits
         if qr_data['max_uses'] and qr_data['use_count'] >= qr_data['max_uses']:
-            return jsonify({"error": "QR code usage limit reached", "status": 403}), 403
+            return jsonify({"error": "QR code usage limit reached", "status": 'error'}), 403
 
         # 4. FLEXIBLE FACILITY ACCESS CONTROL
         target_facilities = qr_data.get('target_facilities')
-        scanning_facility_id = scanning_user.get('facility_id')
         access_type = None
 
         # Mode 1: Open Access (NULL or empty target_facilities)
@@ -213,24 +339,27 @@ def validate_qr_access():
 
             # If PIN is set, require verification
             if qr_data.get('pin_code'):
-                provided_pin = request.args.get('pin')
+                provided_pin = request.args.get('pin') or pin_from_token
+                if not provided_pin:
+                    return jsonify({"error": "PIN required", "status": 403, "requires_pin": True}), 403
                 if provided_pin != qr_data['pin_code']:
                     return jsonify({"error": "Invalid PIN", "status": 403}), 403
 
         # Mode 2: Restricted Access (specific facilities whitelisted)
         else:
-            if scanning_facility_id in target_facilities:
+            # Check if user has a facility and it's in the whitelist
+            if scanning_facility_id and scanning_facility_id in target_facilities:
                 access_type = "whitelisted_facility"
             else:
                 # Check for emergency access override
                 metadata = qr_data.get('metadata', {})
                 if metadata.get('allow_emergency_access'):
                     # Require PIN for emergency access
-                    provided_pin = request.args.get('pin')
+                    provided_pin = request.args.get('pin') or pin_from_token
                     if provided_pin and provided_pin == qr_data.get('pin_code'):
                         access_type = "emergency_access"
                     else:
-                        return jsonify({"error": "PIN required for emergency access", "status": 403}), 403
+                        return jsonify({"error": "PIN required for emergency access", "status": 403, "requires_pin": True}), 403
                 else:
                     return jsonify({"error": "Facility not authorized to access this patient", "status": 403}), 403
 
@@ -243,30 +372,81 @@ def validate_qr_access():
             return jsonify({"error": "Patient data not found", "status": 404}), 404
 
         # 6. Auto-register patient to this facility (if not already)
-        ensure_patient_facility_registration(
-            patient_id=patient_id,
-            facility_id=scanning_facility_id,
-            registered_by=scanning_user['id'],
-            registration_method='qr_code_scan'
-        )
+        if scanning_facility_id:
+            try:
+                ensure_patient_facility_registration(
+                    patient_id=patient_id,
+                    facility_id=scanning_facility_id,
+                    registered_by=scanning_user_id,
+                    registration_method='qr_code_scan'
+                )
+            except Exception as reg_error:
+                current_app.logger.warning(f"Failed to register patient to facility: {reg_error}")
 
-        # 7. Update QR code usage (audit logging handled by database trigger)
-        supabase.table('qr_codes').update({
-            'use_count': qr_data['use_count'] + 1,
-            'last_accessed_at': datetime.now(timezone.utc).isoformat(),
-            'last_accessed_by': scanning_user['id']
-        }).eq('qr_id', qr_data['qr_id']).execute()
+        # 7. Update QR code usage count
+        try:
+            sr_client_update = supabase_service_role_client()
+            current_use_count = qr_data.get('use_count') or 0  # Handle None case
+            sr_client_update.table('qr_codes').update({
+                'use_count': current_use_count + 1,
+                'last_accessed_at': datetime.now(timezone.utc).isoformat(),
+                'last_accessed_by': scanning_user_id
+            }).eq('qr_id', qr_data['qr_id']).execute()
+            current_app.logger.info(f"Updated QR code {qr_data['qr_id']} use_count to {current_use_count + 1}")
+        except Exception as update_error:
+            # Log but don't fail the request for usage tracking errors
+            current_app.logger.error(f"Failed to update QR code use_count: {update_error}")
 
-        # 8. Create QR access alert notification
+        # 8. Log to qr_access_logs for audit trail
+        try:
+            sr_client_log = supabase_service_role_client()
+            sr_client_log.table('qr_access_logs').insert({
+                'qr_id': qr_data['qr_id'],
+                'patient_id': patient_id,
+                'accessed_by': scanning_user_id,
+                'facility_id': scanning_facility_id,
+                'access_method': 'qr_scan',
+                'ip_address': request.remote_addr,
+                'user_agent': request.headers.get('User-Agent', '')[:500],  # Truncate to 500 chars
+                'metadata': {
+                    'access_type': access_type,
+                    'share_type': qr_data['share_type'],
+                    'scope': scope
+                }
+            }).execute()
+        except Exception as log_error:
+            current_app.logger.warning(f"Failed to log QR access: {log_error}")
+
+        # 8b. Log to consent_audit_logs for parent consent management
+        try:
+            sr_client_consent = supabase_service_role_client()
+            sr_client_consent.table('consent_audit_logs').insert({
+                'qr_id': qr_data['qr_id'],
+                'patient_id': patient_id,
+                'parent_id': qr_data.get('generated_by'),  # The parent who generated the QR
+                'action': 'qr_accessed',
+                'performed_by': scanning_user_id,
+                'details': {
+                    'access_type': access_type,
+                    'share_type': qr_data['share_type'],
+                    'scope': scope,
+                    'facility_id': scanning_facility_id
+                },
+                'ip_address': request.remote_addr,
+                'success': True
+            }).execute()
+        except Exception as consent_log_error:
+            current_app.logger.warning(f"Failed to log consent audit: {consent_log_error}")
+
+        # 9. Create QR access alert notification (deprecated but kept for backwards compatibility)
         try:
             create_qr_access_alert(
                 qr_id=qr_data['qr_id'],
-                accessed_by_user_id=scanning_user['id'],
+                accessed_by_user_id=scanning_user_id,
                 patient_id=patient_id
             )
-        except Exception as notif_error:
-            # Log notification error but don't fail the request
-            print(f"Failed to create QR access notification: {notif_error}")
+        except Exception:
+            pass
 
         return jsonify({
             "status": 200,
@@ -281,29 +461,174 @@ def validate_qr_access():
         }), 200
 
     except Exception as e:
-        return jsonify({"error": "Failed to validate QR code", "details": str(e), "status": 500}), 500
+        current_app.logger.error(f"Failed to validate QR code: {e}")
+        return jsonify({"error": "Failed to validate QR code", "status": 500}), 500
+
+
+# =============================================================================
+# PUBLIC QR ACCESS ENDPOINT (No Authentication Required)
+# =============================================================================
+
+@qr_bp.route('/qr/prescription/public', methods=['GET'])
+def access_prescription_public():
+    """
+    Public endpoint for accessing prescription QR codes.
+    No authentication required - the token itself is the authorization.
+    Works with any QR scanner (iPhone, Android, web browsers, etc.)
+    """
+    token = request.args.get('token')
+    if not token:
+        return jsonify({"error": "Token is required", "status": "error"}), 400
+
+    # Handle malformed URLs where PIN was appended with ? instead of &
+    pin_from_token = None
+    if '?pin=' in token:
+        parts = token.split('?pin=')
+        token = parts[0]
+        if len(parts) > 1:
+            pin_from_token = parts[1]
+
+    try:
+        sr_client = supabase_service_role_client()
+
+        # 1. Get QR code record
+        qr = sr_client.table('qr_codes')\
+            .select('''
+                qr_id, token_hash, patient_id, facility_id, generated_by, share_type,
+                scope, expires_at, is_active, use_count, max_uses, pin_code, metadata, created_at,
+                users!qr_codes_generated_by_fkey(firstname, lastname)
+            ''')\
+            .eq('token_hash', token)\
+            .eq('is_active', True)\
+            .execute()
+
+        if not qr.data or len(qr.data) == 0:
+            return jsonify({"error": "Invalid or expired QR code", "status": "error"}), 404
+
+        qr_data = qr.data[0]
+
+        # 2. Verify this is a prescription QR code
+        if qr_data['share_type'] != 'prescription':
+            return jsonify({
+                "error": "This endpoint only supports prescription QR codes",
+                "status": "error"
+            }), 400
+
+        # 3. Check expiration
+        expires_at = datetime.fromisoformat(qr_data['expires_at'].replace('Z', '+00:00'))
+        if datetime.now(timezone.utc) > expires_at:
+            return jsonify({"error": "This prescription QR code has expired", "status": "expired"}), 403
+
+        # 4. Check usage limits
+        if qr_data['max_uses'] and qr_data['use_count'] >= qr_data['max_uses']:
+            return jsonify({"error": "This QR code has reached its usage limit", "status": "limit_reached"}), 403
+
+        # 5. Check PIN if required
+        if qr_data.get('pin_code'):
+            provided_pin = request.args.get('pin') or pin_from_token
+            if not provided_pin:
+                return jsonify({
+                    "error": "PIN required",
+                    "status": "pin_required",
+                    "requires_pin": True
+                }), 403
+            if provided_pin != qr_data['pin_code']:
+                return jsonify({"error": "Invalid PIN", "status": "invalid_pin"}), 403
+
+        # 6. Get patient data (prescription scope only)
+        patient_id = qr_data['patient_id']
+        scope = qr_data.get('scope', ['prescriptions'])
+
+        patient_data = get_patient_data_by_scope(patient_id, scope)
+        if not patient_data:
+            return jsonify({"error": "Patient data not found", "status": "error"}), 404
+
+        # 7. Update QR code usage count
+        try:
+            current_use_count = qr_data.get('use_count') or 0
+            sr_client.table('qr_codes').update({
+                'use_count': current_use_count + 1,
+                'last_accessed_at': datetime.now(timezone.utc).isoformat()
+            }).eq('qr_id', qr_data['qr_id']).execute()
+            current_app.logger.info(f"Public access: Updated QR code {qr_data['qr_id']} use_count to {current_use_count + 1}")
+        except Exception as update_error:
+            current_app.logger.warning(f"Failed to update QR code use_count: {update_error}")
+
+        # 8. Log to qr_access_logs for audit trail
+        try:
+            sr_client.table('qr_access_logs').insert({
+                'qr_id': qr_data['qr_id'],
+                'patient_id': patient_id,
+                'accessed_by': None,  # Public access - no user
+                'facility_id': None,
+                'access_method': 'public_qr_scan',
+                'ip_address': request.remote_addr,
+                'user_agent': request.headers.get('User-Agent', '')[:500],
+                'metadata': {
+                    'access_type': 'public_prescription_access',
+                    'share_type': qr_data['share_type'],
+                    'scope': scope
+                }
+            }).execute()
+        except Exception as log_error:
+            current_app.logger.warning(f"Failed to log public QR access: {log_error}")
+
+        # 9. Log to consent_audit_logs
+        try:
+            sr_client.table('consent_audit_logs').insert({
+                'qr_id': qr_data['qr_id'],
+                'patient_id': patient_id,
+                'parent_id': qr_data.get('generated_by'),
+                'action': 'qr_accessed',
+                'performed_by': None,  # Public access
+                'details': {
+                    'access_type': 'public_prescription_access',
+                    'share_type': qr_data['share_type'],
+                    'scope': scope,
+                    'user_agent': request.headers.get('User-Agent', '')[:200]
+                },
+                'ip_address': request.remote_addr,
+                'success': True
+            }).execute()
+        except Exception as consent_log_error:
+            current_app.logger.warning(f"Failed to log consent audit: {consent_log_error}")
+
+        # 10. Get generator info
+        generator_info = qr_data.get('users') or {}
+        generated_by_name = f"{generator_info.get('firstname', '')} {generator_info.get('lastname', '')}".strip() or "Healthcare Provider"
+
+        return jsonify({
+            "status": "success",
+            "patient_data": patient_data,
+            "qr_metadata": {
+                "qr_id": qr_data['qr_id'],
+                "share_type": qr_data['share_type'],
+                "scope": scope,
+                "expires_at": qr_data['expires_at'],
+                "use_count": (qr_data.get('use_count') or 0) + 1,
+                "max_uses": qr_data.get('max_uses'),
+                "generated_by_name": generated_by_name,
+                "metadata": qr_data.get('metadata', {})
+            }
+        }), 200
+
+    except Exception as e:
+        current_app.logger.error(f"Failed to access prescription QR code: {e}")
+        return jsonify({"error": "Failed to access prescription data", "status": "error"}), 500
+
 
 @qr_bp.route('/qr/list', methods=['GET'])
 @require_auth
 def list_qr_codes():
-    """
-    List QR codes for the current facility
-    Optional query params: patient_id (to filter by patient)
-    """
+    """List QR codes for the current facility"""
     try:
         patient_id = request.args.get('patient_id')
-        # facility_id = request.current_user.get('facility_id')
 
-        # Build query
-        query = supabase.table('qr_codes')\
-            .select('*')\
-            # .eq('facility_id', facility_id) 
+        query = supabase.table('qr_codes').select('*')
 
-        # Filter by patient if provided
         if patient_id:
             query = query.eq('patient_id', patient_id)
 
-        # Execute query and order by creation date
         result = query.order('created_at', desc=True).execute()
 
         return jsonify({
@@ -313,17 +638,14 @@ def list_qr_codes():
         }), 200
 
     except Exception as e:
-        return jsonify({"error": "Failed to fetch QR codes", "details": str(e), "status": 500}), 500
+        current_app.logger.error(f"Failed to fetch QR codes: {e}")
+        return jsonify({"error": "Failed to fetch QR codes", "status": 500}), 500
 
 @qr_bp.route('/qr/revoke/<qr_id>', methods=['POST'])
 @require_auth
 def revoke_qr_code(qr_id):
-    """
-    Revoke a QR code by setting is_active to False
-    Only the generating facility or system admin can revoke
-    """
+    """Revoke a QR code by setting is_active to False"""
     try:
-        # Get the QR code to verify ownership
         qr = supabase.table('qr_codes')\
             .select('*')\
             .eq('qr_id', qr_id)\
@@ -333,15 +655,12 @@ def revoke_qr_code(qr_id):
         if not qr.data:
             return jsonify({"error": "QR code not found", "status": 404}), 404
 
-        # Check if user has permission to revoke
         user_facility_id = request.current_user.get('facility_id')
         user_role = request.current_user.get('role')
 
-        # Allow revocation if user is from the same facility or is system admin
         if qr.data['facility_id'] != user_facility_id and user_role != 'system_admin':
             return jsonify({"error": "Unauthorized to revoke this QR code", "status": 403}), 403
 
-        # Revoke the QR code (audit logging handled by database trigger)
         supabase.table('qr_codes').update({
             'is_active': False
         }).eq('qr_id', qr_id).execute()
@@ -353,17 +672,14 @@ def revoke_qr_code(qr_id):
         }), 200
 
     except Exception as e:
-        return jsonify({"error": "Failed to revoke QR code", "details": str(e), "status": 500}), 500
+        current_app.logger.error(f"Failed to revoke QR code: {e}")
+        return jsonify({"error": "Failed to revoke QR code", "status": 500}), 500
 
 @qr_bp.route('/qr/audit/<qr_id>', methods=['GET'])
 @require_auth
 def get_qr_audit_history(qr_id):
-    """
-    Get audit history for a specific QR code
-    Shows all access attempts (successful and denied)
-    """
+    """Get audit history for a specific QR code"""
     try:
-        # Verify QR code exists and user has access
         qr = supabase.table('qr_codes')\
             .select('*')\
             .eq('qr_id', qr_id)\
@@ -373,14 +689,12 @@ def get_qr_audit_history(qr_id):
         if not qr.data:
             return jsonify({"error": "QR code not found", "status": 404}), 404
 
-        # Check permission
         user_facility_id = request.current_user.get('facility_id')
         user_role = request.current_user.get('role')
 
         if qr.data['facility_id'] != user_facility_id and user_role != 'system_admin':
             return jsonify({"error": "Unauthorized to view audit history", "status": 403}), 403
 
-        # Get audit logs for this QR code
         audit_logs = supabase.table('audit_logs')\
             .select('*')\
             .eq('qr_id', qr_id)\
@@ -395,16 +709,14 @@ def get_qr_audit_history(qr_id):
         }), 200
 
     except Exception as e:
-        return jsonify({"error": "Failed to fetch audit history", "details": str(e), "status": 500}), 500
+        current_app.logger.error(f"Failed to fetch audit history: {e}")
+        return jsonify({"error": "Failed to fetch audit history", "status": 500}), 500
 
 @qr_bp.route('/qr/details/<qr_id>', methods=['GET'])
 @require_auth
 def get_qr_details(qr_id):
-    """
-    Get details of a specific QR code
-    """
+    """Get details of a specific QR code"""
     try:
-        # Get QR code details
         qr = supabase.table('qr_codes')\
             .select('*')\
             .eq('qr_id', qr_id)\
@@ -414,14 +726,12 @@ def get_qr_details(qr_id):
         if not qr.data:
             return jsonify({"error": "QR code not found", "status": 404}), 404
 
-        # Check permission
         user_facility_id = request.current_user.get('facility_id')
         user_role = request.current_user.get('role')
 
         if qr.data['facility_id'] != user_facility_id and user_role != 'system_admin':
             return jsonify({"error": "Unauthorized to view QR code details", "status": 403}), 403
 
-        # Get patient basic info
         patient = supabase.table('patients')\
             .select('patient_id, firstname, lastname, date_of_birth')\
             .eq('patient_id', qr.data['patient_id'])\
@@ -435,4 +745,249 @@ def get_qr_details(qr_id):
         }), 200
 
     except Exception as e:
-        return jsonify({"error": "Failed to fetch QR code details", "details": str(e), "status": 500}), 500
+        current_app.logger.error(f"Failed to fetch QR code details: {e}")
+        return jsonify({"error": "Failed to fetch QR code details", "status": 500}), 500
+
+
+# =============================================================================
+# QR CODE TYPE CHECK ENDPOINT
+# =============================================================================
+
+@qr_bp.route('/qr/check-type', methods=['GET'])
+@require_auth
+def check_qr_type():
+    """
+    Check the type of a QR code without consuming it.
+    Used to determine how to handle the QR code (e.g., parent_access_grant vs regular access)
+    """
+    token = request.args.get('token')
+    if not token:
+        return jsonify({"error": "Token is required", "status": "error"}), 400
+
+    try:
+        sr_client = supabase_service_role_client()
+
+        qr = sr_client.table('qr_codes')\
+            .select('qr_id, share_type, scope, expires_at, is_active, metadata')\
+            .eq('token_hash', token)\
+            .execute()
+
+        if not qr.data or len(qr.data) == 0:
+            return jsonify({
+                "error": "QR code not found",
+                "status": "error"
+            }), 404
+
+        qr_data = qr.data[0]
+
+        # Check if expired
+        is_expired = False
+        if qr_data.get('expires_at'):
+            expires_at = datetime.fromisoformat(qr_data['expires_at'].replace('Z', '+00:00'))
+            is_expired = datetime.now(timezone.utc) > expires_at
+
+        return jsonify({
+            "status": "success",
+            "qr_id": qr_data['qr_id'],
+            "share_type": qr_data['share_type'],
+            "scope": qr_data.get('scope', []),
+            "is_active": qr_data['is_active'],
+            "is_expired": is_expired,
+            "metadata": qr_data.get('metadata', {})
+        }), 200
+
+    except Exception as e:
+        current_app.logger.error(f"Failed to check QR type: {e}")
+        return jsonify({
+            "error": "Failed to check QR code type",
+            "status": "error"
+        }), 500
+
+
+# =============================================================================
+# PARENT ACCESS GRANT ENDPOINT
+# =============================================================================
+
+@qr_bp.route('/qr/grant-parent-access', methods=['POST'])
+@require_auth
+def grant_parent_access():
+    """
+    Grant parent access to a patient via QR code token.
+    This endpoint is called when a parent scans a QR code generated by a doctor.
+
+    The parent must:
+    1. Be authenticated with role 'parent' or 'keepsaker'
+    2. Scan a valid, unexpired QR code with share_type 'parent_access_grant'
+
+    On success, creates a parent_access record linking the parent to the patient.
+    """
+    try:
+        raw_data = request.json
+        token = raw_data.get('token')
+
+        if not token:
+            return jsonify({"error": "Token is required", "status": "error"}), 400
+
+        # Get current user info
+        current_user = request.current_user
+        user_id = current_user.get('id')
+        user_role = current_user.get('role')
+
+        # Verify user is a parent/keepsaker
+        if user_role not in ['parent', 'keepsaker', 'guardian']:
+            return jsonify({
+                "error": "Only parents can claim parent access",
+                "status": "error",
+                "code": "invalid_role"
+            }), 403
+
+        sr_client = supabase_service_role_client()
+
+        # 1. Get and validate QR code
+        qr = sr_client.table('qr_codes')\
+            .select('qr_id, token_hash, patient_id, facility_id, generated_by, share_type, scope, expires_at, is_active, use_count, max_uses, metadata')\
+            .eq('token_hash', token)\
+            .eq('is_active', True)\
+            .execute()
+
+        if not qr.data or len(qr.data) == 0:
+            return jsonify({
+                "error": "Invalid or expired QR code",
+                "status": "error",
+                "code": "invalid_token"
+            }), 404
+
+        qr_data = qr.data[0]
+
+        # 2. Verify share type is for parent access grant
+        if qr_data['share_type'] != 'parent_access_grant':
+            return jsonify({
+                "error": "This QR code is not for parent access",
+                "status": "error",
+                "code": "invalid_share_type"
+            }), 400
+
+        # 3. Check expiration
+        expires_at = datetime.fromisoformat(qr_data['expires_at'].replace('Z', '+00:00'))
+        if datetime.now(timezone.utc) > expires_at:
+            return jsonify({
+                "error": "This QR code has expired",
+                "status": "error",
+                "code": "expired"
+            }), 403
+
+        # 4. Check usage limits
+        if qr_data['max_uses'] and qr_data['use_count'] >= qr_data['max_uses']:
+            return jsonify({
+                "error": "This QR code has already been used",
+                "status": "error",
+                "code": "limit_reached"
+            }), 403
+
+        patient_id = qr_data['patient_id']
+        granted_by = qr_data['generated_by']
+
+        # 5. Check if parent already has access to this patient
+        existing_access = sr_client.table('parent_access')\
+            .select('access_id, is_active')\
+            .eq('patient_id', patient_id)\
+            .eq('user_id', user_id)\
+            .execute()
+
+        if existing_access.data and len(existing_access.data) > 0:
+            existing_record = existing_access.data[0]
+            if existing_record.get('is_active'):
+                return jsonify({
+                    "error": "You already have access to this patient",
+                    "status": "error",
+                    "code": "already_exists"
+                }), 400
+            else:
+                # Reactivate existing access
+                # Note: assigned_by is required for audit_trigger_function to get user_id
+                sr_client.table('parent_access')\
+                    .update({
+                        'is_active': True,
+                        'revoked_at': None,
+                        'granted_by': granted_by,
+                        'assigned_by': granted_by,  # Required for audit trigger
+                        'granted_at': datetime.now(timezone.utc).isoformat()
+                    })\
+                    .eq('access_id', existing_record['access_id'])\
+                    .execute()
+
+                access_id = existing_record['access_id']
+        else:
+            # 6. Create new parent_access record
+            # Note: assigned_by is required for audit_trigger_function to get user_id
+            access_record = sr_client.table('parent_access').insert({
+                'patient_id': patient_id,
+                'user_id': user_id,
+                'relationship': 'parent',  # Default relationship
+                'granted_by': granted_by,
+                'assigned_by': granted_by,  # Required for audit trigger
+                'is_active': True
+            }).execute()
+
+            if not access_record.data or len(access_record.data) == 0:
+                return jsonify({
+                    "error": "Failed to grant parent access",
+                    "status": "error"
+                }), 500
+
+            access_id = access_record.data[0]['access_id']
+
+        # 7. Update QR code usage count and deactivate (one-time use)
+        sr_client.table('qr_codes').update({
+            'use_count': (qr_data.get('use_count') or 0) + 1,
+            'last_accessed_at': datetime.now(timezone.utc).isoformat(),
+            'last_accessed_by': user_id,
+            'is_active': False  # Deactivate after use
+        }).eq('qr_id', qr_data['qr_id']).execute()
+
+        # 8. Log to consent_audit_logs
+        try:
+            sr_client.table('consent_audit_logs').insert({
+                'qr_id': qr_data['qr_id'],
+                'patient_id': patient_id,
+                'parent_id': user_id,
+                'action': 'parent_access_granted',
+                'performed_by': user_id,
+                'details': {
+                    'granted_by_doctor': granted_by,
+                    'access_id': access_id,
+                    'method': 'qr_code_scan'
+                },
+                'ip_address': request.remote_addr,
+                'success': True
+            }).execute()
+        except Exception as log_error:
+            current_app.logger.warning(f"Failed to log consent audit: {log_error}")
+
+        # 9. Get patient info for response
+        patient = sr_client.table('patients')\
+            .select('patient_id, firstname, lastname, middlename, date_of_birth')\
+            .eq('patient_id', patient_id)\
+            .single()\
+            .execute()
+
+        patient_name = "Unknown"
+        if patient.data:
+            patient_name = f"{patient.data.get('firstname', '')} {patient.data.get('lastname', '')}".strip()
+
+        return jsonify({
+            "status": "success",
+            "message": f"You now have access to {patient_name}'s records",
+            "access_id": access_id,
+            "patient_id": patient_id,
+            "patient_name": patient_name,
+            "patient_data": patient.data
+        }), 200
+
+    except Exception as e:
+        current_app.logger.error(f"Failed to grant parent access: {e}")
+        return jsonify({
+            "error": "Failed to grant parent access",
+            "status": "error",
+            "details": str(e)
+        }), 500

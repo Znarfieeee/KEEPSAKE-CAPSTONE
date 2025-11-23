@@ -1,11 +1,24 @@
 from flask import Blueprint, jsonify, request, current_app
 from utils.access_control import require_auth, require_role
-from config.settings import supabase, supabase_service_role_client
+from config.settings import supabase, supabase_service_role_client, get_authenticated_client
 from postgrest.exceptions import APIError as AuthApiError
-from utils.redis_client import get_redis_client
+from utils.redis_client import get_redis_client, clear_patient_cache
 from utils.invalidate_cache import invalidate_caches
 from utils.gen_password import generate_password
 import json, datetime
+
+# Use service role client for write operations (INSERT/UPDATE/DELETE)
+# Backend already validates user permissions via @require_auth and @require_role decorators
+# Service role bypasses RLS which avoids auth.uid() issues with JWT token handling
+def get_write_client():
+    """Returns service role client for write operations that bypass RLS.
+
+    Security Note: This is safe because:
+    1. All routes using this are protected by @require_auth (validates session)
+    2. All routes using this are protected by @require_role (validates permissions)
+    3. The created_by/recorded_by fields are set from the validated user ID
+    """
+    return supabase_service_role_client()
 
 # Create blueprint for patient routes
 patrecord_bp = Blueprint('patrecord', __name__)
@@ -13,6 +26,77 @@ redis_client = get_redis_client()
 
 PATIENT_CACHE_KEY = "patient_records:all"
 PATIENT_CACHE_PREFIX = "patient_records:"
+
+
+# Debug endpoint to verify RLS authentication is working
+@patrecord_bp.route('/debug/auth-test', methods=['GET'])
+@require_auth
+@require_role('doctor', 'facility_admin', 'nurse')
+def debug_auth_test():
+    """
+    Debug endpoint to verify auth.uid() is being set correctly for RLS policies.
+    This calls a test function that returns the current auth context.
+    """
+    try:
+        import jwt
+        current_user = request.current_user
+        session_data = request.session_data
+        db = get_authenticated_client()
+
+        # Decode JWT to see the sub claim (without verification, just to inspect)
+        access_token = session_data.get('access_token')
+        jwt_claims = None
+        jwt_sub = None
+        if access_token:
+            try:
+                # Decode without verification just to inspect claims
+                jwt_claims = jwt.decode(access_token, options={"verify_signature": False})
+                jwt_sub = jwt_claims.get('sub')
+            except Exception as jwt_err:
+                jwt_claims = f"Error decoding: {str(jwt_err)}"
+
+        # Call the test function to check auth.uid()
+        auth_test = db.rpc('test_auth_uid').execute()
+
+        # Also check if we can query the users table for the current user
+        user_check = db.table('users').select('user_id, email, role, is_active').eq('user_id', current_user.get('id')).execute()
+
+        # Check facility_users for the current user
+        facility_check = db.table('facility_users').select('facility_id, user_id').eq('user_id', current_user.get('id')).execute()
+
+        # Check if JWT sub matches session user_id
+        id_match = str(jwt_sub) == str(current_user.get('id')) if jwt_sub else False
+
+        return jsonify({
+            "status": "success",
+            "debug_info": {
+                "current_user_from_session": {
+                    "id": current_user.get('id'),
+                    "email": current_user.get('email'),
+                    "role": current_user.get('role'),
+                    "facility_id": current_user.get('facility_id')
+                },
+                "jwt_info": {
+                    "sub_claim": jwt_sub,
+                    "role_claim": jwt_claims.get('role') if isinstance(jwt_claims, dict) else None,
+                    "exp_claim": jwt_claims.get('exp') if isinstance(jwt_claims, dict) else None,
+                    "session_user_id_matches_jwt_sub": id_match
+                },
+                "auth_uid_test": auth_test.data if auth_test.data else "No data returned",
+                "user_in_db": user_check.data if user_check.data else "No user found in DB",
+                "facility_assignment": facility_check.data if facility_check.data else "No facility assignment"
+            }
+        }), 200
+
+    except Exception as e:
+        current_app.logger.error(f"Debug auth test error: {str(e)}")
+        import traceback
+        return jsonify({
+            "status": "error",
+            "message": str(e),
+            "traceback": traceback.format_exc()
+        }), 500
+
 
 def prepare_patient_payload(data, created_by):
     # Create payload with required fields
@@ -34,7 +118,7 @@ def prepare_patient_payload(data, created_by):
             
     return payload
 
-def prepare_delivery_payload(data, patient_id):
+def prepare_delivery_payload(data, patient_id, recorded_by):
     return {
         "patient_id": patient_id,
         "type_of_delivery": data.get("type_of_delivery"),
@@ -46,7 +130,7 @@ def prepare_delivery_payload(data, patient_id):
         "vitamin_k_date": data.get('vitamin_k_date'),
         "vitamin_k_location": data.get('vitamin_k_location'),
         "hepatitis_b_date": data.get('hepatitis_b_date'),
-        "hepatitis_b_location": data.get('hepatitis_b_location'), 
+        "hepatitis_b_location": data.get('hepatitis_b_location'),
         "bcg_vaccination_date": data.get('bcg_vaccination_date'),
         "bcg_vaccination_location": data.get('bcg_vaccination_location'),
         "other_medications": data.get('other_medications'),
@@ -54,7 +138,8 @@ def prepare_delivery_payload(data, patient_id):
         "follow_up_visit_site": data.get('follow_up_visit_site'),
         "discharge_diagnosis": data.get('discharge_diagnosis'),
         "obstetrician": data.get('obstetrician'),
-        "pediatrician": data.get('pediatrician'),           
+        "pediatrician": data.get('pediatrician'),
+        "recorded_by": recorded_by,
     }
 
 def prepare_anthropometric_payload(data, patient_id, recorded_by):
@@ -69,7 +154,7 @@ def prepare_anthropometric_payload(data, patient_id, recorded_by):
         "recorded_by": recorded_by
     }
 
-def prepare_screening_payload(data, patient_id):
+def prepare_screening_payload(data, patient_id, recorded_by):
     return {
         "patient_id": patient_id,
         "ens_date": data.get('ens_date'),
@@ -82,6 +167,7 @@ def prepare_screening_payload(data, patient_id):
         "pos_for_cchd_left": data.get('pos_for_cchd_left'),
         "ror_date": data.get('ror_date'),
         "ror_remarks": data.get('ror_remarks'),
+        "recorded_by": recorded_by,
     }
 
 def prepare_allergy_payload(data, patient_id, recorded_by):
@@ -90,7 +176,7 @@ def prepare_allergy_payload(data, patient_id, recorded_by):
         "allergen": data.get('allergen'),
         "reaction_type": data.get('reaction_type'),
         "severity": data.get('severity'),
-        "date_identified": data.get('date_identified'),
+        "date_identified": data.get('date_identified') or datetime.datetime.utcnow().date().isoformat(),
         "notes": data.get('notes'),
         "recorded_by": recorded_by,
     }
@@ -115,17 +201,27 @@ def has_related_data(data, fields):
     """Check if any of the specified fields have non-empty values"""
     return any(data.get(field) for field in fields if data.get(field) not in [None, '', []])
 
-def upsert_related_record(table_name, payload, patient_id):
+def upsert_related_record(table_name, payload, patient_id, db=None):
     """
     Upsert pattern: Try to update first, insert if no records exist
     Think of this like React's useEffect with dependency array -
     we only create/update when there's actual data to process
+
+    Args:
+        table_name: Name of the table to upsert
+        payload: Data payload to insert/update
+        patient_id: Patient ID for the record
+        db: Optional database client (defaults to authenticated client for RLS)
     """
     try:
+        # Use provided db client or default to authenticated client for RLS
+        if db is None:
+            db = get_authenticated_client()
+
         current_app.logger.info(f"Attempting to upsert {table_name} for patient {patient_id} with payload: {payload}")
 
         # First check if record exists
-        existing = supabase.table(table_name).select('*').eq('patient_id', patient_id).execute()
+        existing = db.table(table_name).select('*').eq('patient_id', patient_id).execute()
 
         if getattr(existing, 'error', None):
             current_app.logger.error(f"Error checking existing {table_name} record: {existing.error.message}")
@@ -133,11 +229,11 @@ def upsert_related_record(table_name, payload, patient_id):
 
         if existing.data and len(existing.data) > 0:
             # Update existing record
-            resp = supabase.table(table_name).update(payload).eq('patient_id', patient_id).execute()
+            resp = db.table(table_name).update(payload).eq('patient_id', patient_id).execute()
             current_app.logger.info(f"Updated existing {table_name} record for patient {patient_id}")
         else:
             # Insert new record
-            resp = supabase.table(table_name).insert(payload).execute()
+            resp = db.table(table_name).insert(payload).execute()
             current_app.logger.info(f"Created new {table_name} record for patient {patient_id}")
 
         if getattr(resp, 'error', None):
@@ -188,7 +284,7 @@ def get_patient_records():
                 }), 200
 
         # Fetch only patients registered at the user's facility through facility_patients junction table
-        resp = supabase.table('facility_patients')\
+        resp = get_authenticated_client().table('facility_patients')\
             .select('''
                 facility_patient_id,
                 registered_at,
@@ -323,7 +419,10 @@ def add_patient_record():
         current_app.logger.debug(f"Prepared patient payload: {json.dumps(patients_payload, default=str)}")
 
         try:
-            patient_resp = supabase.table('patients').insert(patients_payload).execute()
+            # Use service role client for INSERT operations
+            # Backend already validates user via @require_auth and @require_role decorators
+            db = get_write_client()
+            patient_resp = db.table('patients').insert(patients_payload).execute()
 
             if getattr(patient_resp, 'error', None):
                 error_msg = patient_resp.error.message if patient_resp.error else 'Unknown database error'
@@ -363,7 +462,8 @@ def add_patient_record():
                         'is_active': True
                     }
 
-                    facility_patient_resp = supabase.table('facility_patients').insert(facility_patient_payload).execute()
+                    # Use service role client for facility_patients insertion
+                    facility_patient_resp = get_write_client().table('facility_patients').insert(facility_patient_payload).execute()
 
                     if getattr(facility_patient_resp, 'error', None):
                         current_app.logger.error(f"AUDIT: Failed to register patient {patient_id} to facility {user_facility_id}: {facility_patient_resp.error.message}")
@@ -439,37 +539,115 @@ def manage_delivery_record(patient_id):
     try:
         data = request.json or {}
         current_user = request.current_user
-        
+        db = get_write_client()  # Use service role for write operations
+
         # Verify patient exists
-        patient_check = supabase.table('patients').select('patient_id').eq('patient_id', patient_id).single().execute()
+        patient_check = db.table('patients').select('patient_id').eq('patient_id', patient_id).single().execute()
         if not patient_check.data:
             return jsonify({
                 "status": "error",
                 "message": "Patient not found"
             }), 404
-        
-        delivery_payload = prepare_delivery_payload(data, patient_id)
-        resp = upsert_related_record('delivery_record', delivery_payload, patient_id)
-        
+
+        recorded_by = current_user.get('id')
+        delivery_payload = prepare_delivery_payload(data, patient_id, recorded_by)
+        resp = upsert_related_record('delivery_record', delivery_payload, patient_id, db)
+
         if getattr(resp, 'error', None):
             return jsonify({
                 "status": "error",
                 "message": "Failed to save delivery record",
                 "details": resp.error.message if resp.error else "Unknown"
             }), 400
-            
+
         invalidate_caches('patient', patient_id)
-        
+
         return jsonify({
             "status": "success",
             "message": "Delivery record saved successfully",
             "data": resp.data
         }), 200
-        
+
     except Exception as e:
         return jsonify({
             "status": "error",
             "message": f"Error managing delivery record: {str(e)}"
+        }), 500
+
+@patrecord_bp.route('/patient_record/<patient_id>/anthropometric', methods=['POST', 'PUT'])
+@require_auth
+@require_role('doctor', 'facility_admin', 'nurse')
+def manage_anthropometric_record(patient_id):
+    """
+    Manage anthropometric measurements - upsert pattern for the most recent measurement.
+    POST: Add new measurement or update if recent one exists
+    PUT: Update the most recent measurement
+    """
+    try:
+        data = request.json or {}
+        current_user = request.current_user
+        db = get_write_client()  # Use service role for write operations
+
+        current_app.logger.info(f"AUDIT: Managing anthropometric record for patient {patient_id} by user {current_user.get('email')}")
+
+        # Verify patient exists
+        patient_check = db.table('patients').select('patient_id, firstname, lastname').eq('patient_id', patient_id).single().execute()
+        if not patient_check.data:
+            return jsonify({
+                "status": "error",
+                "message": "Patient not found"
+            }), 404
+
+        recorded_by = current_user.get('id')
+        anthro_payload = prepare_anthropometric_payload(data, patient_id, recorded_by)
+
+        # Check if we're updating an existing record (has am_id) or creating new
+        am_id = data.get('am_id')
+
+        if am_id and request.method == 'PUT':
+            # Update specific measurement by ID
+            resp = db.table('anthropometric_measurements').update(anthro_payload).eq('am_id', am_id).eq('patient_id', patient_id).execute()
+            action = "updated"
+        else:
+            # Check for recent measurement (within last 24 hours) to update
+            existing = db.table('anthropometric_measurements').select('am_id, measurement_date').eq('patient_id', patient_id).order('measurement_date', desc=True).limit(1).execute()
+
+            if existing.data and len(existing.data) > 0:
+                # Update the most recent measurement
+                recent_am_id = existing.data[0]['am_id']
+                resp = db.table('anthropometric_measurements').update(anthro_payload).eq('am_id', recent_am_id).execute()
+                action = "updated"
+            else:
+                # Insert new measurement
+                resp = db.table('anthropometric_measurements').insert(anthro_payload).execute()
+                action = "created"
+
+        if getattr(resp, 'error', None):
+            current_app.logger.error(f"AUDIT: Error managing anthropometric record: {resp.error.message if resp.error else 'Unknown'}")
+            return jsonify({
+                "status": "error",
+                "message": "Failed to save anthropometric record",
+                "details": resp.error.message if resp.error else "Unknown"
+            }), 400
+
+        patient_name = f"{patient_check.data['firstname']} {patient_check.data['lastname']}"
+        current_app.logger.info(f"AUDIT: Successfully {action} anthropometric record for patient {patient_name} (ID: {patient_id})")
+
+        invalidate_caches('patient', patient_id)
+
+        return jsonify({
+            "status": "success",
+            "message": f"Anthropometric record {action} successfully",
+            "data": resp.data
+        }), 200 if action == "updated" else 201
+
+    except Exception as e:
+        current_app.logger.error(f"AUDIT: Exception managing anthropometric record: {str(e)}")
+        import traceback
+        current_app.logger.error(f"Traceback: {traceback.format_exc()}")
+        return jsonify({
+            "status": "error",
+            "message": f"Error managing anthropometric record: {str(e)}"
         }), 500
 
 @patrecord_bp.route('/patient_record/<patient_id>/growth-milestone', methods=['POST'])
@@ -486,11 +664,12 @@ def add_growth_milestone(patient_id):
     try:
         data = request.json or {}
         current_user = request.current_user
+        db = get_write_client()  # Use service role for write operations
 
         current_app.logger.info(f"AUDIT: Adding growth milestone for patient {patient_id} by user {current_user.get('email')}")
 
         # Verify patient exists
-        patient_check = supabase.table('patients').select('patient_id, firstname, lastname').eq('patient_id', patient_id).single().execute()
+        patient_check = db.table('patients').select('patient_id, firstname, lastname').eq('patient_id', patient_id).single().execute()
         if not patient_check.data:
             current_app.logger.warning(f"AUDIT: Patient {patient_id} not found")
             return jsonify({
@@ -504,7 +683,7 @@ def add_growth_milestone(patient_id):
         current_app.logger.debug(f"Growth milestone payload: {milestone_payload}")
 
         # Insert new milestone record
-        resp = supabase.table('anthropometric_measurements').insert(milestone_payload).execute()
+        resp = db.table('anthropometric_measurements').insert(milestone_payload).execute()
 
         if getattr(resp, 'error', None):
             current_app.logger.error(f"AUDIT: Error inserting growth milestone: {resp.error.message if resp.error else 'Unknown'}")
@@ -542,11 +721,12 @@ def update_growth_milestone(patient_id, measurement_id):
     try:
         data = request.json or {}
         current_user = request.current_user
+        db = get_write_client()  # Use service role for write operations
 
         current_app.logger.info(f"AUDIT: Updating growth milestone {measurement_id} for patient {patient_id}")
 
         # Verify patient exists
-        patient_check = supabase.table('patients').select('patient_id').eq('patient_id', patient_id).single().execute()
+        patient_check = db.table('patients').select('patient_id').eq('patient_id', patient_id).single().execute()
         if not patient_check.data:
             return jsonify({
                 "status": "error",
@@ -557,7 +737,7 @@ def update_growth_milestone(patient_id, measurement_id):
         milestone_payload = prepare_anthropometric_payload(data, patient_id, recorded_by)
 
         # Update specific milestone record
-        resp = supabase.table('anthropometric_measurements').update(milestone_payload).eq('measurement_id', measurement_id).eq('patient_id', patient_id).execute()
+        resp = db.table('anthropometric_measurements').update(milestone_payload).eq('am_id', measurement_id).eq('patient_id', patient_id).execute()
 
         if getattr(resp, 'error', None):
             return jsonify({
@@ -589,11 +769,12 @@ def delete_growth_milestone(patient_id, measurement_id):
     """Delete a growth milestone measurement"""
     try:
         current_user = request.current_user
+        db = get_write_client()  # Use service role for write operations
 
         current_app.logger.info(f"AUDIT: Deleting growth milestone {measurement_id} for patient {patient_id}")
 
         # Verify patient exists
-        patient_check = supabase.table('patients').select('patient_id').eq('patient_id', patient_id).single().execute()
+        patient_check = db.table('patients').select('patient_id').eq('patient_id', patient_id).single().execute()
         if not patient_check.data:
             return jsonify({
                 "status": "error",
@@ -601,7 +782,7 @@ def delete_growth_milestone(patient_id, measurement_id):
             }), 404
 
         # Delete specific milestone record
-        resp = supabase.table('anthropometric_measurements').delete().eq('measurement_id', measurement_id).eq('patient_id', patient_id).execute()
+        resp = db.table('anthropometric_measurements').delete().eq('am_id', measurement_id).eq('patient_id', patient_id).execute()
 
         if getattr(resp, 'error', None):
             return jsonify({
@@ -633,33 +814,35 @@ def manage_screening_record(patient_id):
     try:
         data = request.json or {}
         current_user = request.current_user
-        
+        db = get_write_client()  # Use service role for write operations
+
         # Verify patient exists
-        patient_check = supabase.table('patients').select('patient_id').eq('patient_id', patient_id).single().execute()
+        patient_check = db.table('patients').select('patient_id').eq('patient_id', patient_id).single().execute()
         if not patient_check.data:
             return jsonify({
                 "status": "error",
                 "message": "Patient not found"
             }), 404
-        
-        screening_payload = prepare_screening_payload(data, patient_id)
-        resp = upsert_related_record('screening_tests', screening_payload, patient_id)
-        
+
+        recorded_by = current_user.get('id')
+        screening_payload = prepare_screening_payload(data, patient_id, recorded_by)
+        resp = upsert_related_record('screening_tests', screening_payload, patient_id, db)
+
         if getattr(resp, 'error', None):
             return jsonify({
                 "status": "error",
                 "message": "Failed to save screening record",
                 "details": resp.error.message if resp.error else "Unknown"
             }), 400
-            
+
         invalidate_caches('patient', patient_id)
-        
+
         return jsonify({
             "status": "success",
             "message": "Screening record saved successfully",
             "data": resp.data
         }), 200
-        
+
     except Exception as e:
         return jsonify({
             "status": "error",
@@ -674,11 +857,12 @@ def add_allergy_record(patient_id):
     try:
         data = request.json or {}
         current_user = request.current_user
+        db = get_write_client()  # Use service role for write operations
 
         current_app.logger.info(f"DEBUG: Adding allergy for patient {patient_id} with data: {data}")
 
         # Verify patient exists
-        patient_check = supabase.table('patients').select('patient_id').eq('patient_id', patient_id).single().execute()
+        patient_check = db.table('patients').select('patient_id').eq('patient_id', patient_id).single().execute()
         if not patient_check.data:
             return jsonify({
                 "status": "error",
@@ -691,7 +875,7 @@ def add_allergy_record(patient_id):
         current_app.logger.info(f"DEBUG: Allergy payload: {allergy_payload}")
 
         # Always INSERT new allergy records (don't use upsert since patients can have multiple allergies)
-        resp = supabase.table('allergies').insert(allergy_payload).execute()
+        resp = db.table('allergies').insert(allergy_payload).execute()
 
         if getattr(resp, 'error', None):
             current_app.logger.error(f"DEBUG: Error inserting allergy: {resp.error.message if resp.error else 'Unknown'}")
@@ -725,9 +909,10 @@ def update_allergy_record(patient_id, allergy_id):
     try:
         data = request.json or {}
         current_user = request.current_user
+        db = get_write_client()  # Use service role for write operations
 
         # Verify patient exists
-        patient_check = supabase.table('patients').select('patient_id').eq('patient_id', patient_id).single().execute()
+        patient_check = db.table('patients').select('patient_id').eq('patient_id', patient_id).single().execute()
         if not patient_check.data:
             return jsonify({
                 "status": "error",
@@ -738,7 +923,7 @@ def update_allergy_record(patient_id, allergy_id):
         allergy_payload = prepare_allergy_payload(data, patient_id, recorded_by)
 
         # Update specific allergy record
-        resp = supabase.table('allergies').update(allergy_payload).eq('allergy_id', allergy_id).eq('patient_id', patient_id).execute()
+        resp = db.table('allergies').update(allergy_payload).eq('allergy_id', allergy_id).eq('patient_id', patient_id).execute()
 
         if getattr(resp, 'error', None):
             return jsonify({
@@ -768,9 +953,10 @@ def delete_allergy_record(patient_id, allergy_id):
     """Delete an allergy record"""
     try:
         current_user = request.current_user
+        db = get_write_client()  # Use service role for write operations
 
         # Verify patient exists
-        patient_check = supabase.table('patients').select('patient_id').eq('patient_id', patient_id).single().execute()
+        patient_check = db.table('patients').select('patient_id').eq('patient_id', patient_id).single().execute()
         if not patient_check.data:
             return jsonify({
                 "status": "error",
@@ -778,7 +964,7 @@ def delete_allergy_record(patient_id, allergy_id):
             }), 404
 
         # Delete specific allergy record
-        resp = supabase.table('allergies').delete().eq('allergy_id', allergy_id).eq('patient_id', patient_id).execute()
+        resp = db.table('allergies').delete().eq('allergy_id', allergy_id).eq('patient_id', patient_id).execute()
 
         if getattr(resp, 'error', None):
             return jsonify({
@@ -815,7 +1001,7 @@ def update_parent_relationship(patient_id, access_id):
         current_user = request.current_user
 
         # Verify patient exists
-        patient_check = supabase.table('patients').select('patient_id, firstname, lastname').eq('patient_id', patient_id).single().execute()
+        patient_check = get_authenticated_client().table('patients').select('patient_id, firstname, lastname').eq('patient_id', patient_id).single().execute()
         if not patient_check.data:
             return jsonify({
                 "status": "error",
@@ -839,7 +1025,7 @@ def update_parent_relationship(patient_id, access_id):
             }), 400
 
         # Verify access record exists and is active
-        access_check = supabase.table('parent_access').select('''
+        access_check = get_authenticated_client().table('parent_access').select('''
             access_id,
             relationship,
             is_active,
@@ -868,7 +1054,7 @@ def update_parent_relationship(patient_id, access_id):
             'relationship': relationship
         }
 
-        resp = supabase.table('parent_access').update(update_payload).eq('access_id', access_id).eq('patient_id', patient_id).execute()
+        resp = get_authenticated_client().table('parent_access').update(update_payload).eq('access_id', access_id).eq('patient_id', patient_id).execute()
 
         if getattr(resp, 'error', None):
             return jsonify({
@@ -917,7 +1103,7 @@ def get_patient_parents(patient_id):
         current_app.logger.info(f"AUDIT: User {current_user.get('email')} fetching parents for patient {patient_id}")
 
         # Verify patient exists
-        patient_check = supabase.table('patients').select('patient_id, firstname, lastname').eq('patient_id', patient_id).single().execute()
+        patient_check = get_authenticated_client().table('patients').select('patient_id, firstname, lastname').eq('patient_id', patient_id).single().execute()
         if not patient_check.data:
             return jsonify({
                 "status": "error",
@@ -925,7 +1111,7 @@ def get_patient_parents(patient_id):
             }), 404
 
         # Get all active parent access records with user details
-        parent_access_resp = supabase.table('parent_access').select('''
+        parent_access_resp = get_authenticated_client().table('parent_access').select('''
             access_id,
             relationship,
             granted_at,
@@ -1026,7 +1212,7 @@ def search_parents():
         current_app.logger.info(f"AUDIT: User {current_user.get('email')} searching for parents with email='{email}' phone='{phone}'")
 
         # Build search query
-        query = supabase.table('users').select('user_id, email, firstname, lastname, phone_number, is_active, created_at')
+        query = get_authenticated_client().table('users').select('user_id, email, firstname, lastname, phone_number, is_active, created_at')
 
         # Search by email or phone
         if email:
@@ -1110,7 +1296,7 @@ def assign_existing_parent_to_child(patient_id):
             }), 400
 
         # Verify patient exists
-        patient_check = supabase.table('patients').select('patient_id, firstname, lastname').eq('patient_id', patient_id).single().execute()
+        patient_check = get_authenticated_client().table('patients').select('patient_id, firstname, lastname').eq('patient_id', patient_id).single().execute()
         if not patient_check.data:
             current_app.logger.warning(f"AUDIT: Patient {patient_id} not found")
             return jsonify({
@@ -1119,7 +1305,7 @@ def assign_existing_parent_to_child(patient_id):
             }), 404
 
         # Verify parent user exists and has parent role
-        parent_check = supabase.table('users').select('user_id, email, firstname, lastname, role, is_active').eq('user_id', parent_user_id).single().execute()
+        parent_check = get_authenticated_client().table('users').select('user_id, email, firstname, lastname, role, is_active').eq('user_id', parent_user_id).single().execute()
         if not parent_check.data:
             current_app.logger.warning(f"AUDIT: Parent user {parent_user_id} not found")
             return jsonify({
@@ -1135,7 +1321,7 @@ def assign_existing_parent_to_child(patient_id):
             }), 400
 
         # Check for existing active assignment
-        existing_check = supabase.table('parent_access')\
+        existing_check = get_authenticated_client().table('parent_access')\
             .select('access_id, is_active')\
             .eq('patient_id', patient_id)\
             .eq('user_id', parent_user_id)\
@@ -1160,7 +1346,7 @@ def assign_existing_parent_to_child(patient_id):
             "is_active": True
         }
 
-        resp = supabase.table('parent_access').insert(parent_access_payload).execute()
+        resp = get_authenticated_client().table('parent_access').insert(parent_access_payload).execute()
 
         if getattr(resp, 'error', None):
             current_app.logger.error(f"Error assigning parent: {resp.error.message}")
@@ -1252,7 +1438,7 @@ def create_and_assign_parent(patient_id):
             }), 400
 
         # Verify patient exists
-        patient_check = supabase.table('patients').select('patient_id, firstname, lastname').eq('patient_id', patient_id).single().execute()
+        patient_check = get_authenticated_client().table('patients').select('patient_id, firstname, lastname').eq('patient_id', patient_id).single().execute()
         if not patient_check.data:
             current_app.logger.warning(f"AUDIT: Patient {patient_id} not found")
             return jsonify({
@@ -1261,7 +1447,7 @@ def create_and_assign_parent(patient_id):
             }), 404
 
         # Check if email already exists in users table
-        email_check = supabase.table('users').select('user_id, email, role, is_active').eq('email', email).execute()
+        email_check = get_authenticated_client().table('users').select('user_id, email, role, is_active').eq('email', email).execute()
         if email_check.data and len(email_check.data) > 0:
             existing_user = email_check.data[0]
             current_app.logger.warning(f"AUDIT: Email {email} already exists in users table with role {existing_user['role']}")
@@ -1361,7 +1547,7 @@ def create_and_assign_parent(patient_id):
         # Now create or verify parent record in users table
         try:
             # Double-check if user record already exists with this user_id
-            user_id_check = supabase.table('users').select('user_id, email, role').eq('user_id', auth_user_id).execute()
+            user_id_check = get_authenticated_client().table('users').select('user_id, email, role').eq('user_id', auth_user_id).execute()
 
             if user_id_check.data and len(user_id_check.data) > 0:
                 # User record already exists, use it
@@ -1381,7 +1567,7 @@ def create_and_assign_parent(patient_id):
                     "is_subscribed": False
                 }
 
-                user_resp = supabase.table('users').insert(user_payload).execute()
+                user_resp = get_authenticated_client().table('users').insert(user_payload).execute()
 
                 if getattr(user_resp, 'error', None):
                     error_code = getattr(user_resp.error, 'code', None)
@@ -1392,7 +1578,7 @@ def create_and_assign_parent(patient_id):
                     # If duplicate key error, try to fetch the existing record
                     if error_code == '23505':  # Unique constraint violation
                         current_app.logger.info(f"AUDIT: User record may already exist for {auth_user_id}, attempting to fetch")
-                        existing_check = supabase.table('users').select('*').eq('user_id', auth_user_id).execute()
+                        existing_check = get_authenticated_client().table('users').select('*').eq('user_id', auth_user_id).execute()
                         if existing_check.data and len(existing_check.data) > 0:
                             parent_user = existing_check.data[0]
                             current_app.logger.info(f"AUDIT: Successfully retrieved existing user record for {auth_user_id}")
@@ -1462,7 +1648,7 @@ def create_and_assign_parent(patient_id):
                     "assigned_by": current_user.get('id'),
                     "is_active": True
                 }
-                facility_resp = supabase.table('facility_users').insert(facility_user_payload).execute()
+                facility_resp = get_authenticated_client().table('facility_users').insert(facility_user_payload).execute()
                 if not getattr(facility_resp, 'error', None):
                     current_app.logger.info(f"AUDIT: Assigned parent {parent_user_id} to facility {facility_id}")
             except Exception as fac_error:
@@ -1480,7 +1666,7 @@ def create_and_assign_parent(patient_id):
             "is_active": True
         }
 
-        access_resp = supabase.table('parent_access').insert(parent_access_payload).execute()
+        access_resp = get_authenticated_client().table('parent_access').insert(parent_access_payload).execute()
 
         if getattr(access_resp, 'error', None):
             current_app.logger.error(f"AUDIT: Failed to assign parent {parent_user_id} to patient {patient_id}: {access_resp.error.message}")
@@ -1543,7 +1729,7 @@ def remove_parent_assignment(patient_id, access_id):
         current_app.logger.info(f"AUDIT: User {current_user.get('email')} removing parent access {access_id} from patient {patient_id}")
 
         # Verify patient exists
-        patient_check = supabase.table('patients').select('patient_id, firstname, lastname').eq('patient_id', patient_id).single().execute()
+        patient_check = get_authenticated_client().table('patients').select('patient_id, firstname, lastname').eq('patient_id', patient_id).single().execute()
         if not patient_check.data:
             return jsonify({
                 "status": "error",
@@ -1551,7 +1737,7 @@ def remove_parent_assignment(patient_id, access_id):
             }), 404
 
         # Verify parent access record exists
-        access_check = supabase.table('parent_access').select('''
+        access_check = get_authenticated_client().table('parent_access').select('''
             access_id,
             relationship,
             is_active,
@@ -1577,7 +1763,7 @@ def remove_parent_assignment(patient_id, access_id):
             "revoked_at": datetime.datetime.now().date().isoformat()
         }
 
-        resp = supabase.table('parent_access').update(update_payload).eq('access_id', access_id).execute()
+        resp = get_authenticated_client().table('parent_access').update(update_payload).eq('access_id', access_id).execute()
 
         if getattr(resp, 'error', None):
             current_app.logger.error(f"Error removing parent access: {resp.error.message}")
@@ -1628,7 +1814,7 @@ def update_patient_record(patient_id):
         current_app.logger.info(f"AUDIT: User {current_user.get('email')} attempting to update patient record {patient_id}")
         
         # Check if patient exists
-        patient_check = supabase.table('patients').select('patient_id').eq('patient_id', patient_id).single().execute()
+        patient_check = get_authenticated_client().table('patients').select('patient_id').eq('patient_id', patient_id).single().execute()
         if not patient_check.data:
             current_app.logger.error(f"AUDIT: Patient {patient_id} not found during update attempt")
             return jsonify({
@@ -1643,7 +1829,7 @@ def update_patient_record(patient_id):
         
         if any(k in data for k in patient_fields):
             patient_payload = prepare_patient_payload(data, updated_by)
-            resp = supabase.table('patients').update(patient_payload).eq('patient_id', patient_id).execute()
+            resp = get_authenticated_client().table('patients').update(patient_payload).eq('patient_id', patient_id).execute()
             
             if getattr(resp, 'error', None):
                 current_app.logger.error(f"AUDIT: Failed to update patient {patient_id}: {resp.error.message if resp.error else 'Unknown error'}")
@@ -1672,33 +1858,78 @@ def update_patient_record(patient_id):
 # Get patient record by ID with optional related data
 @patrecord_bp.route('/patient_record/<patient_id>', methods=['GET'])
 @require_auth
-@require_role('doctor', 'facility_admin', 'nurse')
+@require_role('doctor', 'pediapro', 'facility_admin', 'nurse', 'vital_custodian', 'parent', 'keepsaker')
 def get_patient_record_by_id(patient_id):
     """
     Get patient with optional related data.
     Like a React component that can optionally load child components.
+
+    RLS policies enforce access based on authenticated user's JWT token:
+    - Healthcare staff can only access patients registered to their facility
+    - Parents can only access their assigned children
     """
     try:
+        current_user = request.current_user
+        user_role = current_user.get('role')
+        user_id = current_user.get('id')
+        user_facility_id = current_user.get('facility_id')
+
+        # RLS policies will enforce access based on the authenticated user's JWT token
+        # The @require_auth decorator creates a per-request authenticated client via set_authenticated_client()
+
+        # If user is a parent or keepsaker, verify they have access to this child
+        if user_role in ['parent', 'keepsaker']:
+            access_check = get_authenticated_client().table('parent_access')\
+                .select('access_id, relationship')\
+                .eq('user_id', user_id)\
+                .eq('patient_id', patient_id)\
+                .eq('is_active', True)\
+                .execute()
+
+            if not access_check.data or len(access_check.data) == 0:
+                current_app.logger.warning(f"AUDIT: Unauthorized parent access attempt - User {current_user.get('email')} tried to access patient {patient_id}")
+                return jsonify({
+                    "status": "error",
+                    "message": "You do not have access to this child's records"
+                }), 403
+
+        # For facility staff, verify patient is registered to their facility
+        elif user_role in ['doctor', 'facility_admin', 'nurse', 'pediapro', 'vital_custodian']:
+            if user_facility_id:
+                facility_check = get_authenticated_client().table('facility_patients')\
+                    .select('facility_patient_id')\
+                    .eq('patient_id', patient_id)\
+                    .eq('facility_id', user_facility_id)\
+                    .eq('is_active', True)\
+                    .execute()
+
+                if not facility_check.data or len(facility_check.data) == 0:
+                    current_app.logger.warning(f"AUDIT: Patient {patient_id} not registered to facility {user_facility_id} for user {current_user.get('email')}")
+                    return jsonify({
+                        "status": "error",
+                        "message": "Patient is not registered to your facility. Please scan their QR code first."
+                    }), 403
+
         include_related = request.args.get('include_related', 'false').lower() == 'true'
-        
-        # Get main patient record
-        resp = supabase.table('patients')\
+
+        # Get main patient record - RLS policies will enforce access
+        resp = get_authenticated_client().table('patients')\
             .select('*')\
             .eq('patient_id', patient_id)\
             .single()\
             .execute()
-        
+
         if getattr(resp, 'error', None):
             return jsonify({
                 "status": "error",
                 "message": "Patient not found",
                 "details": resp.error.message if resp.error else "Unknown"
             }), 404
-        
+
         patient_data = resp.data
-        
+
         try:
-            age_resp = supabase.rpc('calculate_age', {'date_of_birth': patient_data['date_of_birth']}).execute()
+            age_resp = get_authenticated_client().rpc('calculate_age', {'date_of_birth': patient_data['date_of_birth']}).execute()
             
             if age_resp.data is not None: 
                 age_data = age_resp.data
@@ -1728,8 +1959,8 @@ def get_patient_record_by_id(patient_id):
             related_data = {}
 
             try:
-                # Get delivery record
-                delivery_resp = supabase.table('delivery_record').select('*').eq('patient_id', patient_id).execute()
+                # Get delivery record - RLS policies enforce access
+                delivery_resp = get_authenticated_client().table('delivery_record').select('*').eq('patient_id', patient_id).execute()
                 if getattr(delivery_resp, 'error', None):
                     current_app.logger.error(f"Error fetching delivery record for patient {patient_id}: {delivery_resp.error.message}")
                     related_data['delivery'] = None
@@ -1737,7 +1968,7 @@ def get_patient_record_by_id(patient_id):
                     related_data['delivery'] = delivery_resp.data[0] if delivery_resp.data else None
 
                 # Get anthropometric measurements
-                anthro_resp = supabase.table('anthropometric_measurements').select('*').eq('patient_id', patient_id).execute()
+                anthro_resp = get_authenticated_client().table('anthropometric_measurements').select('*').eq('patient_id', patient_id).execute()
                 if getattr(anthro_resp, 'error', None):
                     current_app.logger.error(f"Error fetching anthropometric data for patient {patient_id}: {anthro_resp.error.message}")
                     related_data['anthropometric_measurements'] = []
@@ -1745,7 +1976,7 @@ def get_patient_record_by_id(patient_id):
                     related_data['anthropometric_measurements'] = anthro_resp.data or []
 
                 # Get screening tests
-                screening_resp = supabase.table('screening_tests').select('*').eq('patient_id', patient_id).execute()
+                screening_resp = get_authenticated_client().table('screening_tests').select('*').eq('patient_id', patient_id).execute()
                 if getattr(screening_resp, 'error', None):
                     current_app.logger.error(f"Error fetching screening data for patient {patient_id}: {screening_resp.error.message}")
                     related_data['screening'] = None
@@ -1753,17 +1984,15 @@ def get_patient_record_by_id(patient_id):
                     related_data['screening'] = screening_resp.data[0] if screening_resp.data else None
 
                 # Get allergies
-                allergy_resp = supabase.table('allergies').select('*').eq('patient_id', patient_id).order('date_identified', desc=True).execute()
+                allergy_resp = get_authenticated_client().table('allergies').select('*').eq('patient_id', patient_id).order('date_identified', desc=True).execute()
                 if getattr(allergy_resp, 'error', None):
                     current_app.logger.error(f"Error fetching allergies for patient {patient_id}: {allergy_resp.error.message}")
                     related_data['allergies'] = []
                 else:
-                    allergies_data = allergy_resp.data or []
-                    related_data['allergies'] = allergies_data
-                    current_app.logger.info(f"DEBUG: Found {len(allergies_data)} allergies for patient {patient_id}: {allergies_data}")
+                    related_data['allergies'] = allergy_resp.data or []
 
                 # Get prescriptions
-                rx_resp = supabase.table('prescriptions').select('*').eq('patient_id', patient_id).execute()
+                rx_resp = get_authenticated_client().table('prescriptions').select('*').eq('patient_id', patient_id).execute()
                 if getattr(rx_resp, 'error', None):
                     current_app.logger.error(f"Error fetching prescriptions for patient {patient_id}: {rx_resp.error.message}")
                     related_data['prescriptions'] = []
@@ -1771,7 +2000,7 @@ def get_patient_record_by_id(patient_id):
                     related_data['prescriptions'] = rx_resp.data or []
 
                 # Get vaccinations (exclude soft-deleted records)
-                vaccination_resp = supabase.table('vaccinations')\
+                vaccination_resp = get_authenticated_client().table('vaccinations')\
                     .select('*')\
                     .eq('patient_id', patient_id)\
                     .eq('is_deleted', False)\
@@ -1783,7 +2012,7 @@ def get_patient_record_by_id(patient_id):
                     related_data['vaccinations'] = vaccination_resp.data or []
 
                 # Get parent access data with user information
-                parent_access_resp = supabase.table('parent_access').select('''
+                parent_access_resp = get_authenticated_client().table('parent_access').select('''
                     access_id,
                     relationship,
                     granted_at,
@@ -1802,9 +2031,7 @@ def get_patient_record_by_id(patient_id):
                     current_app.logger.error(f"Error fetching parent access for patient {patient_id}: {parent_access_resp.error.message}")
                     related_data['parent_access'] = []
                 else:
-                    parent_access_data = parent_access_resp.data or []
-                    related_data['parent_access'] = parent_access_data
-                    current_app.logger.info(f"DEBUG: Found {len(parent_access_data)} parent access records for patient {patient_id}")
+                    related_data['parent_access'] = parent_access_resp.data or []
 
             except Exception as related_error:
                 current_app.logger.error(f"Exception while fetching related records for patient {patient_id}: {str(related_error)}")
@@ -1854,7 +2081,7 @@ def register_patient_to_facility(patient_id):
             }), 403
 
         # Verify patient exists
-        patient_check = supabase.table('patients').select('*').eq('patient_id', patient_id).single().execute()
+        patient_check = get_authenticated_client().table('patients').select('*').eq('patient_id', patient_id).single().execute()
         if not patient_check.data:
             return jsonify({
                 "status": "error",
@@ -1862,7 +2089,7 @@ def register_patient_to_facility(patient_id):
             }), 404
 
         # Check if patient is already registered to this facility
-        existing_check = supabase.table('facility_patients')\
+        existing_check = get_authenticated_client().table('facility_patients')\
             .select('*')\
             .eq('facility_id', user_facility_id)\
             .eq('patient_id', patient_id)\
@@ -1877,7 +2104,7 @@ def register_patient_to_facility(patient_id):
                 }), 409
             else:
                 # Reactivate the existing record
-                update_resp = supabase.table('facility_patients')\
+                update_resp = get_authenticated_client().table('facility_patients')\
                     .update({
                         'is_active': True,
                         'deactivated_at': None,
@@ -1919,7 +2146,7 @@ def register_patient_to_facility(patient_id):
             facility_patient_payload['qr_code_scanned_at'] = datetime.datetime.utcnow().isoformat()
             facility_patient_payload['qr_code_scanned_by'] = current_user.get('id')
 
-        resp = supabase.table('facility_patients').insert(facility_patient_payload).execute()
+        resp = get_authenticated_client().table('facility_patients').insert(facility_patient_payload).execute()
 
         if getattr(resp, 'error', None):
             current_app.logger.error(f"AUDIT: Failed to register patient {patient_id} to facility {user_facility_id}: {resp.error.message}")
@@ -1962,7 +2189,7 @@ def delete_patient_record(patient_id):
         current_app.logger.info(f"AUDIT: User {current_user.get('email', 'Unknown')} attempting to delete patient record {patient_id}")
 
         # Check if patient exists
-        patient_check = supabase.table('patients').select('*').eq('patient_id', patient_id).single().execute()
+        patient_check = get_authenticated_client().table('patients').select('*').eq('patient_id', patient_id).single().execute()
         if not patient_check.data:
             current_app.logger.warning(f"AUDIT: Patient {patient_id} not found during delete attempt")
             return jsonify({
@@ -1977,16 +2204,20 @@ def delete_patient_record(patient_id):
         related_tables = [
             'delivery_record',
             'anthropometric_measurements',
+            'growth_milestones',
             'screening_tests',
-            'allergies',
             'prescriptions',
+            'vaccinations',
+            'facility_patients',
+            'allergies',
+            'parent_access',
             'appointments'
         ]
 
         deleted_related = {}
         for table in related_tables:
             try:
-                delete_resp = supabase.table(table).delete().eq('patient_id', patient_id).execute()
+                delete_resp = get_authenticated_client().table(table).delete().eq('patient_id', patient_id).execute()
                 deleted_count = len(delete_resp.data) if delete_resp.data else 0
                 deleted_related[table] = deleted_count
                 current_app.logger.info(f"AUDIT: Deleted {deleted_count} records from {table} for patient {patient_id}")
@@ -1996,7 +2227,7 @@ def delete_patient_record(patient_id):
                 deleted_related[table] = 0
 
         # Delete the main patient record
-        patient_delete_resp = supabase.table('patients').delete().eq('patient_id', patient_id).execute()
+        patient_delete_resp = get_authenticated_client().table('patients').delete().eq('patient_id', patient_id).execute()
 
         if getattr(patient_delete_resp, 'error', None):
             current_app.logger.error(f"AUDIT: Failed to delete patient {patient_id}: {patient_delete_resp.error.message if patient_delete_resp.error else 'Unknown error'}")
@@ -2015,6 +2246,13 @@ def delete_patient_record(patient_id):
 
         # Invalidate caches
         invalidate_caches('patient', patient_id)
+        
+        try:
+            facility_id = patient_data.get('facility_id') or current_user.get('facility_id')
+            cleared = clear_patient_cache(patient_id=patient_id, facility_id=facility_id)
+            current_app.logger.info(f"AUDIT: Cleared {cleared} Redis cache keys for patient {patient_id}")
+        except Exception as redis_err:
+            current_app.logger.warning(f"AUDIT: Failed to clear Redis cache for patient {patient_id}: {redis_err}")
 
         # Log successful deletion with details
         total_related_deleted = sum(deleted_related.values())

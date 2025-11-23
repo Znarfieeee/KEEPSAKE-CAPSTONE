@@ -65,8 +65,8 @@ const AccountDeactivation = () => {
                     <div className="flex-1">
                         <p className="text-sm font-medium text-red-900">Danger Zone</p>
                         <p className="text-sm text-red-700 mt-1">
-                            Deactivating your account is a serious action. Please read the
-                            following carefully before proceeding:
+                            Deactivating your account is a serious action. Please read the following
+                            carefully before proceeding:
                         </p>
                         <ul className="mt-3 space-y-2 text-sm text-red-700 list-disc list-inside">
                             <li>You will immediately lose access to your account</li>
@@ -97,6 +97,7 @@ const AccountDeactivation = () => {
                             type="button"
                             onClick={() => setShowPassword(!showPassword)}
                             className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                            tabIndex={-1}
                         >
                             {showPassword ? (
                                 <EyeOff className="h-4 w-4" />
@@ -141,26 +142,26 @@ const AccountDeactivation = () => {
 
             {/* Confirmation Dialog */}
             <Dialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
-                <DialogContent>
+                <DialogContent className="w-xl" showCloseButton={false}>
                     <DialogHeader>
-                        <DialogTitle className="flex items-center gap-2 text-red-600">
-                            <XCircle className="h-5 w-5" />
+                        <DialogTitle className="flex items-center gap-2 text-xl text-red-600 justify-center">
                             Final Confirmation
                         </DialogTitle>
-                        <DialogDescription className="space-y-3 pt-4">
-                            <p className="font-semibold text-gray-900">
+                        <DialogDescription className="space-y-2 pt-10 flex flex-col justify-center items-center">
+                            <span className="font-semibold text-gray-900 text-center">
                                 Are you absolutely sure you want to deactivate your account?
-                            </p>
-                            <p className="text-gray-700">
+                            </span>
+                            <span className="text-gray-700">
                                 This action will immediately log you out and prevent you from
-                                accessing the system until an administrator reactivates your account.
-                            </p>
-                            <p className="text-gray-700 font-medium">
+                                accessing the system until an administrator reactivates your
+                                account.
+                            </span>
+                            <span className="text-gray-700 font-medium">
                                 This action is irreversible without administrator intervention.
-                            </p>
+                            </span>
                         </DialogDescription>
                     </DialogHeader>
-                    <DialogFooter className="gap-2">
+                    <DialogFooter className="gap-2 mt-8 flex justify-between items-center">
                         <Button
                             onClick={() => setShowConfirmDialog(false)}
                             variant="outline"
@@ -168,11 +169,7 @@ const AccountDeactivation = () => {
                         >
                             Cancel
                         </Button>
-                        <Button
-                            onClick={handleDeactivate}
-                            disabled={loading}
-                            variant="destructive"
-                        >
+                        <Button onClick={handleDeactivate} disabled={loading} variant="destructive">
                             {loading ? (
                                 <>
                                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />

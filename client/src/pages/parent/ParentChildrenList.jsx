@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { getParentChildren } from '@/api/parent/children'
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -9,11 +9,13 @@ import { TbHeartbeat, TbSearch } from 'react-icons/tb'
 import { BiCalendar } from 'react-icons/bi'
 
 function ParentChildrenList() {
+  const navigate = useNavigate()
   const [children, setChildren] = useState([])
   const [filteredChildren, setFilteredChildren] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [searchQuery, setSearchQuery] = useState('')
+  const [redirecting, setRedirecting] = useState(false)
 
   useEffect(() => {
     fetchChildren()
@@ -38,8 +40,17 @@ function ParentChildrenList() {
       setLoading(true)
       const response = await getParentChildren()
       if (response.status === 'success') {
-        setChildren(response.data)
-        setFilteredChildren(response.data)
+        const childrenData = response.data
+        setChildren(childrenData)
+        setFilteredChildren(childrenData)
+
+        // Auto-redirect if only 1 child
+        if (childrenData.length === 1) {
+          setRedirecting(true)
+          const patientId = childrenData[0].patient.patient_id
+          navigate(`/parent/child/${patientId}`, { replace: true })
+          return
+        }
       }
     } catch (err) {
       console.error('Error fetching children:', err)
@@ -49,69 +60,78 @@ function ParentChildrenList() {
     }
   }
 
-  if (loading) {
+  if (loading || redirecting) {
     return (
       <div className="space-y-6">
-        {/* Header Skeleton */}
-        <div>
-          <Skeleton className="h-9 w-64 mb-2" />
-          <Skeleton className="h-5 w-96" />
-        </div>
+        {redirecting ? (
+          <div className="flex flex-col items-center justify-center py-12">
+            <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent mb-4"></div>
+            <p className="text-gray-600">Loading your child's records...</p>
+          </div>
+        ) : (
+          <>
+            {/* Header Skeleton */}
+            <div>
+              <Skeleton className="h-9 w-64 mb-2" />
+              <Skeleton className="h-5 w-96" />
+            </div>
 
-        {/* Search Bar Skeleton */}
-        <Skeleton className="h-10 w-full" />
+            {/* Search Bar Skeleton */}
+            <Skeleton className="h-10 w-full" />
 
-        {/* Children Cards Skeleton */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {[1, 2, 3].map((i) => (
-            <Card key={i} className="h-full">
-              <CardHeader>
-                <div className="flex items-start justify-between mb-2">
-                  <div className="flex-1">
-                    <Skeleton className="h-6 w-40 mb-2" />
-                    <Skeleton className="h-4 w-24" />
+            {/* Children Cards Skeleton */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {[1, 2, 3].map((i) => (
+                <Card key={i} className="h-full">
+                  <CardHeader>
+                    <div className="flex items-start justify-between mb-2">
+                      <div className="flex-1">
+                        <Skeleton className="h-6 w-40 mb-2" />
+                        <Skeleton className="h-4 w-24" />
+                      </div>
+                      <Skeleton className="h-6 w-16 rounded-full" />
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-3">
+                      <div className="space-y-2">
+                        <div className="flex justify-between items-center">
+                          <Skeleton className="h-4 w-24" />
+                          <Skeleton className="h-6 w-20 rounded-full" />
+                        </div>
+                        <div className="flex justify-between">
+                          <Skeleton className="h-4 w-24" />
+                          <Skeleton className="h-4 w-28" />
+                        </div>
+                        <div className="flex justify-between">
+                          <Skeleton className="h-4 w-24" />
+                          <Skeleton className="h-4 w-16" />
+                        </div>
+                      </div>
+                      <Skeleton className="h-4 w-full" />
+                      <Skeleton className="h-5 w-48" />
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+
+            {/* Info Card Skeleton */}
+            <Card className="border-blue-200 bg-blue-50">
+              <CardContent className="pt-6">
+                <div className="flex items-start space-x-3">
+                  <Skeleton className="w-9 h-9 rounded-full flex-shrink-0" />
+                  <div className="flex-1 space-y-2">
+                    <Skeleton className="h-5 w-48" />
+                    <Skeleton className="h-4 w-full" />
+                    <Skeleton className="h-4 w-full" />
+                    <Skeleton className="h-4 w-3/4" />
                   </div>
-                  <Skeleton className="h-6 w-16 rounded-full" />
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3">
-                  <div className="space-y-2">
-                    <div className="flex justify-between items-center">
-                      <Skeleton className="h-4 w-24" />
-                      <Skeleton className="h-6 w-20 rounded-full" />
-                    </div>
-                    <div className="flex justify-between">
-                      <Skeleton className="h-4 w-24" />
-                      <Skeleton className="h-4 w-28" />
-                    </div>
-                    <div className="flex justify-between">
-                      <Skeleton className="h-4 w-24" />
-                      <Skeleton className="h-4 w-16" />
-                    </div>
-                  </div>
-                  <Skeleton className="h-4 w-full" />
-                  <Skeleton className="h-5 w-48" />
                 </div>
               </CardContent>
             </Card>
-          ))}
-        </div>
-
-        {/* Info Card Skeleton */}
-        <Card className="border-blue-200 bg-blue-50">
-          <CardContent className="pt-6">
-            <div className="flex items-start space-x-3">
-              <Skeleton className="w-9 h-9 rounded-full flex-shrink-0" />
-              <div className="flex-1 space-y-2">
-                <Skeleton className="h-5 w-48" />
-                <Skeleton className="h-4 w-full" />
-                <Skeleton className="h-4 w-full" />
-                <Skeleton className="h-4 w-3/4" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+          </>
+        )}
       </div>
     )
   }
@@ -182,7 +202,7 @@ function ParentChildrenList() {
           {filteredChildren.map((child) => {
             const patient = child.patient
             return (
-              <Link key={patient.patient_id} to={`/keepsaker/child/${patient.patient_id}`}>
+              <Link key={patient.patient_id} to={`/parent/child/${patient.patient_id}`}>
                 <Card className="hover:shadow-lg transition-all duration-200 cursor-pointer h-full">
                   <CardHeader>
                     <div className="flex items-start justify-between mb-2">

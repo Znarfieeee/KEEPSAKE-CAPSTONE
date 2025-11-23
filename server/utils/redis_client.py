@@ -57,4 +57,38 @@ def clear_corrupted_sessions():
         
         return 0
         
+def delete_keys_by_pattern(pattern):
+    try:
+        client = get_redis_client()
+        keys = []
+        for key in client.scan_iter(match=pattern, count=1000):
+            keys.append(key)
+            
+        if not keys:
+            logger.info(f"No keys found for pattern: {pattern}")
+            return 0
+        
+        client.delete(*keys)
+        logger.info(f"Deleted {len(keys)} keys for pattern: {pattern}")    
+            
+    except Exception as e:
+        logger.error(f"Error deleting keys by pattern '{pattern}': {e}")
+        return 0        
+        
+def clear_patient_cache(patient_id=None, facility_id=None):
+    patterns = []
+    if patient_id:
+        patterns.append(f"patient_records:{patient_id}*")
+    if facility_id:
+        patterns.append(f"patient_records:facility:{facility_id}*")
+    if not patterns:
+        patterns.append("patient_records*")
+        
+    total_deleted = 0 
+    for p in patterns:
+        total_deleted += delete_keys_by_pattern(p)
+        
+    logger.info(f"Cleared total {total_deleted} patient cache keys for patterns: {patterns}")
+    return total_deleted
+        
 redis_client = get_redis_client() 

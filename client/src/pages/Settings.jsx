@@ -5,7 +5,7 @@ import { useSearchParams } from 'react-router-dom'
 // UI Components
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { User, Lock, Mail, Phone, Shield, AlertTriangle, Bell } from 'lucide-react'
+import { User, Lock, Mail, Phone, Shield, AlertTriangle, Bell, Share2 } from 'lucide-react'
 import ProfileSettings from '@/components/settings/ProfileSettings'
 import PasswordSettings from '@/components/settings/PasswordSettings'
 import EmailSettings from '@/components/settings/EmailSettings'
@@ -13,6 +13,7 @@ import PhoneSettings from '@/components/settings/PhoneSettings'
 import TwoFactorSettings from '@/components/settings/TwoFactorSettings'
 import AccountDeactivation from '@/components/settings/AccountDeactivation'
 import NotificationSettings from '@/components/notifications/NotificationSettings'
+import ParentConsentManagement from '@/components/settings/ParentConsentManagement'
 
 const Settings = () => {
     const { user } = useAuth()
@@ -95,6 +96,16 @@ const Settings = () => {
                                 <Bell className="h-5 w-5" />
                                 <span className="font-medium">Notifications</span>
                             </TabsTrigger>
+
+                            {user?.role === 'parent' && (
+                                <TabsTrigger
+                                    value="consent"
+                                    className="w-full justify-start gap-3 px-4 py-3 rounded-md data-[state=active]:bg-primary data-[state=active]:text-white hover:bg-gray-50 transition-colors"
+                                >
+                                    <Share2 className="h-5 w-5" />
+                                    <span className="font-medium">Sharing & Consent</span>
+                                </TabsTrigger>
+                            )}
 
                             <div className="border-t my-2" />
 
@@ -208,6 +219,26 @@ const Settings = () => {
                                     </CardContent>
                                 </Card>
                             </TabsContent>
+
+                            {/* Sharing & Consent Tab (Parents Only) */}
+                            {user?.role === 'parent' && (
+                                <TabsContent value="consent" className="mt-0 w-full h-full">
+                                    <Card className="shadow-sm h-full">
+                                        <CardHeader className="border-b bg-gray-50/50">
+                                            <CardTitle className="text-xl flex items-center gap-2">
+                                                <Share2 className="h-5 w-5 text-blue-600" />
+                                                Sharing & Consent Management
+                                            </CardTitle>
+                                            <CardDescription>
+                                                Manage QR code shares, view access history, and understand your rights
+                                            </CardDescription>
+                                        </CardHeader>
+                                        <CardContent className="p-0">
+                                            <ParentConsentManagement />
+                                        </CardContent>
+                                    </Card>
+                                </TabsContent>
+                            )}
 
                             {/* Account Deactivation Tab */}
                             <TabsContent value="account" className="mt-0 w-full h-full">

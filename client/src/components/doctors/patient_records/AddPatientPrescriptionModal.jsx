@@ -443,6 +443,7 @@ const AddPatientPrescriptionModal = ({ prescription, setIsOpen, onSuccess }) => 
                 if (res.status === 'success') {
                     showToast('success', 'Prescription added successfully')
                     reset()
+                    onSuccess?.(res.data)
                     setIsOpen?.(false)
                 } else {
                     showToast('error', res.message || 'Failed to add prescription')
@@ -459,6 +460,7 @@ const AddPatientPrescriptionModal = ({ prescription, setIsOpen, onSuccess }) => 
             prescription?.patient_id,
             validateForm,
             reset,
+            onSuccess,
             setIsOpen,
             user?.facility_id,
             user?.current_facility_id,

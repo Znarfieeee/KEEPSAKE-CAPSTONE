@@ -25,12 +25,12 @@ export const getAppointmentsByPatient = async (patientId) => {
     }
 }
 
-export const getAppointmentsByDoctor = async (doctorId) => {
+export const getAppointmentsByDoctor = async (doctorId, bustCache = false) => {
     try {
-        const response = await axios.get(
-            `${backendConnection()}/appointments/doctor/${doctorId}`,
-            axiosConfig
-        )
+        const url = bustCache
+            ? `${backendConnection()}/appointments/doctor/${doctorId}?bust_cache=true`
+            : `${backendConnection()}/appointments/doctor/${doctorId}`
+        const response = await axios.get(url, axiosConfig)
         return response.data
     } catch (error) {
         console.error('Get doctor appointments error:', error)
@@ -47,6 +47,19 @@ export const getAppointmentsByFacility = async (facilityId) => {
         return response.data
     } catch (error) {
         console.error('Get facility appointments error:', error)
+        throw error
+    }
+}
+
+export const getAppointmentsForMyFacility = async (bustCache = false) => {
+    try {
+        const url = bustCache
+            ? `${backendConnection()}/appointments/my-facility?bust_cache=true`
+            : `${backendConnection()}/appointments/my-facility`
+        const response = await axios.get(url, axiosConfig)
+        return response.data
+    } catch (error) {
+        console.error('Get my facility appointments error:', error)
         throw error
     }
 }
@@ -134,6 +147,7 @@ export default {
     getAppointmentsByPatient,
     getAppointmentsByDoctor,
     getAppointmentsByFacility,
+    getAppointmentsForMyFacility,
     searchPatientByName,
     scheduleAppointment,
     updateAppointment,

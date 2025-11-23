@@ -542,6 +542,29 @@ def deactivate_account():
                 "status": "error",
                 "message": "Failed to deactivate account"
             }), 500
+            
+        # Clear user's session from Redis
+        session_id = request.cookies.get('session_id')
+        if session_id:
+            redis_client.delete(f"keepsake_session:{session_id}")
+
+        # Try to ban user in Supabase auth
+        sr_client = supabase_service_role_client()
+
+        if getattr(getattr(sr_client, 'auth', None), "admin", None):
+            try:
+                if hasattr(sr_client.auth.admin, "update_user"):
+                    sr_client.auth.admin.update_user(user_id, {
+                        "ban_duration": "876600h"  # Ban for ~100 years (effectively permanent)
+                    })
+                elif hasattr(sr_client.auth.admin, "update_user_by_id"):
+                    sr_client.auth.admin.update_user_by_id(user_id, {
+                        "ban_duration": "876600h"  # Ban for ~100 years (effectively permanent)
+                    })
+
+            except Exception as admin_err:
+                current_app.logger.warning(f"Service-role admin update failed: {admin_err}")
+                # Don't raise - the is_active=False in users table is the primary check
 
         current_app.logger.info(f"AUDIT: User {email} deactivated account from IP {request.remote_addr}")
 

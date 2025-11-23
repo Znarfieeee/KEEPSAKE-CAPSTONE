@@ -15,7 +15,7 @@ import PatientRecordsHeader from '@/components/doctors/patient_records/PatientRe
 import PatientRecordFilters from '@/components/doctors/patient_records/PatientRecordFilters'
 import PatientRecordsTable from '@/components/doctors/patient_records/PatientRecordsTable'
 import Unauthorized from '@/components/Unauthorized'
-import { Dialog, DialogTrigger } from '@/components/ui/dialog'
+import { Dialog } from '@/components/ui/dialog'
 
 // Helper
 import { showToast } from '@/util/alertHelper'
@@ -281,9 +281,15 @@ function DoctorPatientRecords() {
 
     const handleView = (record) => {
         // Navigate to the patient information page with the patient ID
-        navigate(`/pediapro/patient_records/${record.id}`, {
-            state: { patient: record },
-        })
+        if (user?.role == 'doctor') {
+            navigate(`/pediapro/patient_records/${record.id}`, {
+                state: { patient: record, user: user },
+            })
+        } else {
+            navigate(`/nurse/patient_records/${record.id}`, {
+                state: { patient: record },
+            })
+        }
     }
 
     const handleEdit = async (record) => {
@@ -429,7 +435,7 @@ function DoctorPatientRecords() {
     }, [patients, search, statusFilter, sexFilter, ageFilter, dateRange])
 
     // Check if user is authorized
-    if (user?.role !== 'doctor') {
+    if (user?.role !== 'doctor' && user?.role !== 'nurse') {
         return <Unauthorized />
     }
 
@@ -485,6 +491,7 @@ function DoctorPatientRecords() {
                 itemsPerPage={itemsPerPage}
                 setItemsPerPage={setItemsPerPage}
                 onView={handleView}
+                user={user}
                 onEdit={handleEdit}
                 onEditHover={handleEditHover}
                 onArchive={handleArchive}

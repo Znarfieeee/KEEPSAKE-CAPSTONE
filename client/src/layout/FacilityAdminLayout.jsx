@@ -11,7 +11,8 @@ import { HiOutlineIdentification, HiOutlineUserGroup } from 'react-icons/hi'
 import { MdQrCodeScanner, MdOutlineVaccines, MdOutlineHealthAndSafety } from 'react-icons/md'
 import { CgFileDocument } from 'react-icons/cg'
 import { RiDashboardLine, RiUserAddLine } from 'react-icons/ri'
-import { BiCog } from 'react-icons/bi'
+import { BiCog, BiHelpCircle } from 'react-icons/bi'
+import { MessageSquarePlus } from 'lucide-react'
 import Hamburger from '../components/ui/Hamburger'
 import AccountPlaceholder from '../components/AccountPlaceholder'
 import NotificationBell from '../components/notifications/NotificationBell'
@@ -40,7 +41,7 @@ const mainSideNavLinks = [
     {
         icon: <MdQrCodeScanner className="text-xl" />,
         title: 'QR Code Scanner',
-        to: '/qr_scanner',
+        to: '/facility_admin/qr_scanner',
     },
 ]
 
@@ -100,6 +101,16 @@ const systemSideNavLinks = [
         icon: <AiOutlineTool className="text-xl" />,
         title: 'Maintenance Mode',
         to: '/facility_admin/maintenance_mode',
+    },
+    {
+        icon: <BiHelpCircle className="text-xl" />,
+        title: 'Help & Support',
+        to: '/facility_admin/help-support',
+    },
+    {
+        icon: <MessageSquarePlus className="text-xl" />,
+        title: 'Send Feedback',
+        to: '/facility_admin/feedback',
     },
 ]
 

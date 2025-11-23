@@ -126,6 +126,8 @@ const ProfileSettings = () => {
                             value={profileData.license_number}
                             onChange={handleChange}
                             placeholder="Enter your license number"
+                            readonly
+                            disabled
                         />
                     </div>
                 )}

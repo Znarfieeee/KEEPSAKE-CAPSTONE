@@ -55,7 +55,7 @@ import { showToast } from '@/util/alertHelper'
 import { useAuth } from '@/context/auth'
 import { useAnthropometricMeasurementsRealtime } from '@/hook/useSupabaseRealtime'
 
-const PatientGrowthCharts = ({ patient, onMeasurementAdded }) => {
+const PatientGrowthCharts = ({ patient, onMeasurementAdded, readOnly = false }) => {
     const [selectedChart, setSelectedChart] = useState('wfa')
     const [showGuideLines, setShowGuideLines] = useState(true) // Always show WHO reference lines by default
     const [isAddModalOpen, setIsAddModalOpen] = useState(false)
@@ -63,10 +63,10 @@ const PatientGrowthCharts = ({ patient, onMeasurementAdded }) => {
 
     const { user } = useAuth()
 
-    // Check if user can add measurements (doctors, nurses, facility_admin)
+    // Check if user can add measurements (doctors, nurses, facility_admin) and not in readOnly mode
     const canAddMeasurements = useMemo(() => {
-        return user && ['doctor', 'nurse', 'facility_admin'].includes(user.role)
-    }, [user])
+        return !readOnly && user && ['doctor', 'nurse', 'facility_admin'].includes(user.role)
+    }, [user, readOnly])
 
     // Real-time subscription for measurement changes
     const handleMeasurementChange = useCallback(
@@ -371,43 +371,26 @@ const PatientGrowthCharts = ({ patient, onMeasurementAdded }) => {
 
     return (
         <>
-            <div className="space-y-6 p-6" id="growth-chart-container">
-                {/* Age Range Warning (if applicable) */}
-                {!isInAgeRange && (
-                    <div className="bg-yellow-50 border border-yellow-200 rounded-md p-4">
-                        <div className="flex">
-                            <AlertCircle className="h-5 w-5 text-yellow-600 mr-3 mt-0.5 flex-shrink-0" />
-                            <div className="text-sm text-yellow-800">
-                                <strong>Note:</strong> WHO growth standards are designed for
-                                children aged 0-5 years (0-60 months).
-                                {currentAge !== null && currentAge > 60 && (
-                                    <span>
-                                        {' '}
-                                        This patient is {Math.floor(currentAge / 12)} years old and
-                                        may require CDC growth charts for ages 2-20 years.
-                                    </span>
-                                )}
-                            </div>
-                        </div>
-                    </div>
-                )}
+            <div className="space-y-4 sm:space-y-6 p-3 sm:p-6" id="growth-chart-container">
                 {/* Header Section */}
-                <div className="flex items-center justify-between flex-wrap gap-3">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                     <div>
-                        <h2 className="text-2xl font-bold text-gray-900">Growth Charts</h2>
-                        <p className="text-sm text-gray-600 mt-1">
+                        <h2 className="text-xl sm:text-2xl font-bold text-gray-900">
+                            Growth Charts
+                        </h2>
+                        <p className="text-xs sm:text-sm text-gray-600 mt-1">
                             WHO Child Growth Standards (Birth to 5 years)
                         </p>
                     </div>
                     <div className="flex items-center gap-2 flex-wrap">
-                        {/* Export/Print Buttons */}
+                        {/* Export/Print Buttons - Hidden on very small screens */}
                         {chartData.length > 0 && (
                             <>
                                 <Button
                                     variant="outline"
                                     size="sm"
                                     onClick={handleExportPDF}
-                                    className="border-gray-300 hover:bg-gray-50"
+                                    className="border-gray-300 hover:bg-gray-50 hidden sm:flex"
                                 >
                                     <FileDown className="h-4 w-4 mr-1" />
                                     PDF
@@ -416,7 +399,7 @@ const PatientGrowthCharts = ({ patient, onMeasurementAdded }) => {
                                     variant="outline"
                                     size="sm"
                                     onClick={handleExportPNG}
-                                    className="border-gray-300 hover:bg-gray-50"
+                                    className="border-gray-300 hover:bg-gray-50 hidden sm:flex"
                                 >
                                     <Image className="h-4 w-4 mr-1" />
                                     PNG
@@ -425,10 +408,20 @@ const PatientGrowthCharts = ({ patient, onMeasurementAdded }) => {
                                     variant="outline"
                                     size="sm"
                                     onClick={handlePrint}
-                                    className="border-gray-300 hover:bg-gray-50"
+                                    className="border-gray-300 hover:bg-gray-50 hidden sm:flex"
                                 >
                                     <Printer className="h-4 w-4 mr-1" />
                                     Print
+                                </Button>
+                                {/* Mobile: Single export button with icon only */}
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={handleExportPDF}
+                                    className="border-gray-300 hover:bg-gray-50 sm:hidden"
+                                    title="Export to PDF"
+                                >
+                                    <FileDown className="h-4 w-4" />
                                 </Button>
                             </>
                         )}
@@ -437,31 +430,19 @@ const PatientGrowthCharts = ({ patient, onMeasurementAdded }) => {
                         {canAddMeasurements && (
                             <Button
                                 onClick={() => setIsAddModalOpen(true)}
-                                // className=" text-white"
+                                size="sm"
+                                className="text-xs sm:text-sm"
                             >
-                                <Plus className="h-4 w-4 mr-2" />
-                                Add Measurement
+                                <Plus className="h-4 w-4 sm:mr-2" />
+                                <span className="hidden sm:inline">Add Measurement</span>
+                                <span className="sm:hidden">Add</span>
                             </Button>
                         )}
-
-                        {/* Patient Info Badges */}
-                        {/* <Badge
-                            variant="outline"
-                            className="bg-blue-50 text-blue-700 border-blue-200"
-                        >
-                            {patient.sex}
-                        </Badge>
-                        <Badge
-                            variant="outline"
-                            className="bg-purple-50 text-purple-700 border-purple-200"
-                        >
-                            {currentAge} months old
-                        </Badge> */}
                     </div>
                 </div>
 
                 {/* Chart Type Selection */}
-                <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2 sm:gap-3">
                     {chartTypes.map((type) => {
                         const Icon = type.icon
                         const isActive = selectedChart === type.id
@@ -469,27 +450,29 @@ const PatientGrowthCharts = ({ patient, onMeasurementAdded }) => {
                             <button
                                 key={type.id}
                                 onClick={() => setSelectedChart(type.id)}
-                                className={`p-4 rounded-lg border-2 transition-all text-left ${
+                                className={`p-3 sm:p-4 rounded-lg border-2 transition-all text-left ${
                                     isActive
                                         ? 'border-blue-500 bg-blue-50 shadow-md'
                                         : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
                                 }`}
                             >
-                                <div className="flex items-center gap-2 mb-1">
+                                <div className="flex items-center gap-1.5 sm:gap-2 mb-1">
                                     <Icon
-                                        className={`h-5 w-5 ${
+                                        className={`h-4 w-4 sm:h-5 sm:w-5 ${
                                             isActive ? 'text-blue-600' : 'text-gray-500'
                                         }`}
                                     />
                                     <span
-                                        className={`font-medium text-sm ${
+                                        className={`font-medium text-xs sm:text-sm ${
                                             isActive ? 'text-blue-900' : 'text-gray-900'
                                         }`}
                                     >
                                         {type.label}
                                     </span>
                                 </div>
-                                <p className="text-xs text-gray-600">{type.description}</p>
+                                <p className="text-[10px] sm:text-xs text-gray-600 hidden sm:block">
+                                    {type.description}
+                                </p>
                             </button>
                         )
                     })}
@@ -498,23 +481,25 @@ const PatientGrowthCharts = ({ patient, onMeasurementAdded }) => {
                 {/* Current Status Card */}
                 {latestMeasurement && (
                     <Card className="border-l-4 border-l-blue-500">
-                        <CardHeader className="pb-3">
-                            <CardTitle className="text-lg">Current Status</CardTitle>
-                            <CardDescription>{chartConfig.title}</CardDescription>
+                        <CardHeader className="pb-2 sm:pb-3">
+                            <CardTitle className="text-base sm:text-lg">Current Status</CardTitle>
+                            <CardDescription className="text-xs sm:text-sm">
+                                {chartConfig.title}
+                            </CardDescription>
                         </CardHeader>
                         <CardContent>
-                            <div className="flex items-center justify-between">
+                            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                                 <div>
-                                    <p className="text-3xl font-bold text-gray-900">
+                                    <p className="text-2xl sm:text-3xl font-bold text-gray-900">
                                         {latestMeasurement.value?.toFixed(2)}
                                     </p>
-                                    <p className="text-sm text-gray-600">
+                                    <p className="text-xs sm:text-sm text-gray-600">
                                         {chartConfig.yAxis} at {latestMeasurement.age} months
                                     </p>
                                 </div>
-                                <div className="text-right">
+                                <div className="sm:text-right">
                                     <Badge
-                                        className={`text-sm px-3 py-1 ${
+                                        className={`text-xs sm:text-sm px-2 sm:px-3 py-1 ${
                                             latestMeasurement.interpretation.color === 'red'
                                                 ? 'bg-red-100 text-red-800 border-red-300'
                                                 : latestMeasurement.interpretation.color ===
@@ -532,10 +517,10 @@ const PatientGrowthCharts = ({ patient, onMeasurementAdded }) => {
                                     >
                                         {latestMeasurement.interpretation.label}
                                     </Badge>
-                                    <p className="text-xs text-gray-600 mt-1">
+                                    <p className="text-[10px] sm:text-xs text-gray-600 mt-1">
                                         Z-Score: {latestMeasurement.zScore?.toFixed(2)}
                                     </p>
-                                    <p className="text-xs text-gray-500">
+                                    <p className="text-[10px] sm:text-xs text-gray-500">
                                         {latestMeasurement.interpretation.description}
                                     </p>
                                 </div>
@@ -546,34 +531,44 @@ const PatientGrowthCharts = ({ patient, onMeasurementAdded }) => {
 
                 {/* Chart Display */}
                 <Card>
-                    <CardHeader>
-                        <div className="flex items-center justify-between">
+                    <CardHeader className="pb-3 sm:pb-4">
+                        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-0">
                             <div>
-                                <CardTitle>{chartConfig.title}</CardTitle>
-                                <CardDescription>{chartConfig.subtitle}</CardDescription>
+                                <CardTitle className="text-base sm:text-lg">
+                                    {chartConfig.title}
+                                </CardTitle>
+                                <CardDescription className="text-xs sm:text-sm">
+                                    {chartConfig.subtitle}
+                                </CardDescription>
                             </div>
                             <div className="flex items-center gap-2">
                                 <Button
                                     variant={showGuideLines ? 'default' : 'outline'}
                                     size="sm"
                                     onClick={() => setShowGuideLines(!showGuideLines)}
+                                    className="text-xs sm:text-sm"
                                 >
-                                    <Info className="h-4 w-4 mr-2" />
-                                    {showGuideLines ? 'Hide' : 'Show'} Guidelines
+                                    <Info className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
+                                    <span className="hidden sm:inline">
+                                        {showGuideLines ? 'Hide' : 'Show'} Guidelines
+                                    </span>
+                                    <span className="sm:hidden">
+                                        {showGuideLines ? 'Hide' : 'Show'}
+                                    </span>
                                 </Button>
                             </div>
                         </div>
                     </CardHeader>
-                    <CardContent>
+                    <CardContent className="px-2 sm:px-6">
                         {/* No data message */}
                         {chartData.length === 0 && (
-                            <div className="mb-3 p-3 bg-blue-50 border border-blue-200 rounded-md">
-                                <p className="text-sm text-blue-800">
+                            <div className="mb-3 p-2 sm:p-3 bg-blue-50 border border-blue-200 rounded-md">
+                                <p className="text-xs sm:text-sm text-blue-800">
                                     <strong>No patient measurements recorded yet.</strong> WHO
                                     reference curves for {patient?.sex || 'male'} children are
                                     displayed below.
                                     {!patient?.sex && (
-                                        <span className="ml-1">
+                                        <span className="ml-1 hidden sm:inline">
                                             (Using default male reference curves - update patient
                                             sex for accurate charts)
                                         </span>
@@ -583,160 +578,162 @@ const PatientGrowthCharts = ({ patient, onMeasurementAdded }) => {
                         )}
 
                         {/* Always display the chart with WHO reference curves */}
-                        <ResponsiveContainer width="100%" height={500}>
-                            <LineChart
-                                data={mergedChartData}
-                                margin={{ top: 20, right: 60, left: 20, bottom: 20 }}
-                            >
-                                {/* Darker grid lines like WHO charts */}
-                                <CartesianGrid
-                                    strokeDasharray="0"
-                                    stroke="#d1d5db"
-                                    strokeWidth={0.5}
-                                    horizontal={true}
-                                    vertical={true}
-                                />
-                                <XAxis
-                                    dataKey="age"
-                                    label={{
-                                        value: chartConfig.xAxis,
-                                        position: 'insideBottom',
-                                        offset: -10,
-                                        style: { fontWeight: 500 },
-                                    }}
-                                    stroke="#374151"
-                                    strokeWidth={1.5}
-                                    tick={{ fontSize: 12, fill: '#374151' }}
-                                    tickLine={{ stroke: '#374151' }}
-                                />
-                                <YAxis
-                                    label={{
-                                        value: chartConfig.yAxis,
-                                        angle: -90,
-                                        position: 'insideLeft',
-                                        style: { fontWeight: 500 },
-                                    }}
-                                    stroke="#374151"
-                                    strokeWidth={1.5}
-                                    tick={{ fontSize: 12, fill: '#374151' }}
-                                    tickLine={{ stroke: '#374151' }}
-                                />
-                                <Tooltip content={<CustomTooltip />} />
-                                <Legend
-                                    wrapperStyle={{ fontSize: '12px', paddingTop: '10px' }}
-                                    iconSize={10}
-                                />
-
-                                {/* WHO Standard Deviation Reference Curves - matching official WHO styling */}
-                                {showGuideLines && (
-                                    <>
-                                        {/* +3 SD - Black line */}
-                                        <Line
-                                            type="monotone"
-                                            dataKey="sd3"
-                                            stroke="#000000"
-                                            strokeWidth={1.2}
-                                            dot={false}
-                                            name="+3 SD"
-                                            isAnimationActive={false}
-                                        />
-                                        {/* +2 SD - Red line */}
-                                        <Line
-                                            type="monotone"
-                                            dataKey="sd2"
-                                            stroke="#dc2626"
-                                            strokeWidth={1.2}
-                                            dot={false}
-                                            name="+2 SD"
-                                            isAnimationActive={false}
-                                        />
-                                        {/* +1 SD - Orange line */}
-                                        <Line
-                                            type="monotone"
-                                            dataKey="sd1"
-                                            stroke="#f97316"
-                                            strokeWidth={1}
-                                            dot={false}
-                                            name="+1 SD"
-                                            isAnimationActive={false}
-                                        />
-                                        {/* Median (0 SD) - Green thick line */}
-                                        <Line
-                                            type="monotone"
-                                            dataKey="sd0"
-                                            stroke="#059669"
-                                            strokeWidth={2}
-                                            dot={false}
-                                            name="Median (0 SD)"
-                                            isAnimationActive={false}
-                                        />
-                                        {/* -1 SD - Orange line */}
-                                        <Line
-                                            type="monotone"
-                                            dataKey="sd-1"
-                                            stroke="#f97316"
-                                            strokeWidth={1}
-                                            dot={false}
-                                            name="-1 SD"
-                                            isAnimationActive={false}
-                                        />
-                                        {/* -2 SD - Red line */}
-                                        <Line
-                                            type="monotone"
-                                            dataKey="sd-2"
-                                            stroke="#dc2626"
-                                            strokeWidth={1.2}
-                                            dot={false}
-                                            name="-2 SD"
-                                            isAnimationActive={false}
-                                        />
-                                        {/* -3 SD - Black line */}
-                                        <Line
-                                            type="monotone"
-                                            dataKey="sd-3"
-                                            stroke="#000000"
-                                            strokeWidth={1.2}
-                                            dot={false}
-                                            name="-3 SD"
-                                            isAnimationActive={false}
-                                        />
-                                    </>
-                                )}
-
-                                {/* Patient's Growth Line - only shows if data exists */}
-                                {chartData.length > 0 && (
-                                    <Line
-                                        type="monotone"
-                                        dataKey="patientValue"
-                                        stroke="#2563eb"
-                                        strokeWidth={2.5}
-                                        dot={{
-                                            fill: '#2563eb',
-                                            r: 6,
-                                            strokeWidth: 2,
-                                            stroke: '#fff',
-                                        }}
-                                        activeDot={{
-                                            r: 8,
-                                            fill: '#2563eb',
-                                            stroke: '#fff',
-                                            strokeWidth: 2,
-                                        }}
-                                        name="Patient Data"
-                                        connectNulls={true}
-                                        isAnimationActive={true}
+                        <div className="h-[300px] sm:h-[400px] md:h-[500px]">
+                            <ResponsiveContainer width="100%" height="100%">
+                                <LineChart
+                                    data={mergedChartData}
+                                    margin={{ top: 10, right: 30, left: 0, bottom: 10 }}
+                                >
+                                    {/* Darker grid lines like WHO charts */}
+                                    <CartesianGrid
+                                        strokeDasharray="0"
+                                        stroke="#d1d5db"
+                                        strokeWidth={0.5}
+                                        horizontal={true}
+                                        vertical={true}
                                     />
-                                )}
-                            </LineChart>
-                        </ResponsiveContainer>
+                                    <XAxis
+                                        dataKey="age"
+                                        label={{
+                                            value: chartConfig.xAxis,
+                                            position: 'insideBottom',
+                                            offset: -10,
+                                            style: { fontWeight: 500 },
+                                        }}
+                                        stroke="#374151"
+                                        strokeWidth={1.5}
+                                        tick={{ fontSize: 12, fill: '#374151' }}
+                                        tickLine={{ stroke: '#374151' }}
+                                    />
+                                    <YAxis
+                                        label={{
+                                            value: chartConfig.yAxis,
+                                            angle: -90,
+                                            position: 'insideLeft',
+                                            style: { fontWeight: 500 },
+                                        }}
+                                        stroke="#374151"
+                                        strokeWidth={1.5}
+                                        tick={{ fontSize: 12, fill: '#374151' }}
+                                        tickLine={{ stroke: '#374151' }}
+                                    />
+                                    <Tooltip content={<CustomTooltip />} />
+                                    <Legend
+                                        wrapperStyle={{ fontSize: '12px', paddingTop: '10px' }}
+                                        iconSize={10}
+                                    />
+
+                                    {/* WHO Standard Deviation Reference Curves - matching official WHO styling */}
+                                    {showGuideLines && (
+                                        <>
+                                            {/* +3 SD - Black line */}
+                                            <Line
+                                                type="monotone"
+                                                dataKey="sd3"
+                                                stroke="#000000"
+                                                strokeWidth={1.2}
+                                                dot={false}
+                                                name="+3 SD"
+                                                isAnimationActive={false}
+                                            />
+                                            {/* +2 SD - Red line */}
+                                            <Line
+                                                type="monotone"
+                                                dataKey="sd2"
+                                                stroke="#dc2626"
+                                                strokeWidth={1.2}
+                                                dot={false}
+                                                name="+2 SD"
+                                                isAnimationActive={false}
+                                            />
+                                            {/* +1 SD - Orange line */}
+                                            <Line
+                                                type="monotone"
+                                                dataKey="sd1"
+                                                stroke="#f97316"
+                                                strokeWidth={1}
+                                                dot={false}
+                                                name="+1 SD"
+                                                isAnimationActive={false}
+                                            />
+                                            {/* Median (0 SD) - Green thick line */}
+                                            <Line
+                                                type="monotone"
+                                                dataKey="sd0"
+                                                stroke="#059669"
+                                                strokeWidth={2}
+                                                dot={false}
+                                                name="Median (0 SD)"
+                                                isAnimationActive={false}
+                                            />
+                                            {/* -1 SD - Orange line */}
+                                            <Line
+                                                type="monotone"
+                                                dataKey="sd-1"
+                                                stroke="#f97316"
+                                                strokeWidth={1}
+                                                dot={false}
+                                                name="-1 SD"
+                                                isAnimationActive={false}
+                                            />
+                                            {/* -2 SD - Red line */}
+                                            <Line
+                                                type="monotone"
+                                                dataKey="sd-2"
+                                                stroke="#dc2626"
+                                                strokeWidth={1.2}
+                                                dot={false}
+                                                name="-2 SD"
+                                                isAnimationActive={false}
+                                            />
+                                            {/* -3 SD - Black line */}
+                                            <Line
+                                                type="monotone"
+                                                dataKey="sd-3"
+                                                stroke="#000000"
+                                                strokeWidth={1.2}
+                                                dot={false}
+                                                name="-3 SD"
+                                                isAnimationActive={false}
+                                            />
+                                        </>
+                                    )}
+
+                                    {/* Patient's Growth Line - only shows if data exists */}
+                                    {chartData.length > 0 && (
+                                        <Line
+                                            type="monotone"
+                                            dataKey="patientValue"
+                                            stroke="#2563eb"
+                                            strokeWidth={2.5}
+                                            dot={{
+                                                fill: '#2563eb',
+                                                r: 6,
+                                                strokeWidth: 2,
+                                                stroke: '#fff',
+                                            }}
+                                            activeDot={{
+                                                r: 8,
+                                                fill: '#2563eb',
+                                                stroke: '#fff',
+                                                strokeWidth: 2,
+                                            }}
+                                            name="Patient Data"
+                                            connectNulls={true}
+                                            isAnimationActive={true}
+                                        />
+                                    )}
+                                </LineChart>
+                            </ResponsiveContainer>
+                        </div>
 
                         {/* Chart Legend */}
                         {showGuideLines && (
-                            <div className="mt-4 p-4 bg-gray-50 rounded-lg">
-                                <p className="text-sm font-medium text-gray-700 mb-3">
+                            <div className="mt-3 sm:mt-4 p-3 sm:p-4 bg-gray-50 rounded-lg">
+                                <p className="text-xs sm:text-sm font-medium text-gray-700 mb-2 sm:mb-3">
                                     WHO Child Growth Standards Reference Lines
                                 </p>
-                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 text-xs">
+                                <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-4 gap-2 sm:gap-3 text-[10px] sm:text-xs">
                                     <div className="flex items-center gap-2">
                                         <div
                                             className="w-8 h-0.5 bg-green-600"
@@ -791,31 +788,33 @@ const PatientGrowthCharts = ({ patient, onMeasurementAdded }) => {
                 {/* Measurement History Table */}
                 {chartData.length > 0 && (
                     <Card>
-                        <CardHeader>
-                            <CardTitle>Measurement History</CardTitle>
-                            <CardDescription>
+                        <CardHeader className="pb-2 sm:pb-3">
+                            <CardTitle className="text-base sm:text-lg">
+                                Measurement History
+                            </CardTitle>
+                            <CardDescription className="text-xs sm:text-sm">
                                 Track all recorded measurements over time
                             </CardDescription>
                         </CardHeader>
-                        <CardContent>
-                            <div className="overflow-x-auto">
-                                <table className="w-full text-sm">
+                        <CardContent className="px-2 sm:px-6">
+                            <div className="overflow-x-auto -mx-2 sm:mx-0">
+                                <table className="w-full text-xs sm:text-sm">
                                     <thead className="bg-gray-50 border-b">
                                         <tr>
-                                            <th className="px-4 py-3 text-left font-medium text-gray-700">
+                                            <th className="px-2 sm:px-4 py-2 sm:py-3 text-left font-medium text-gray-700">
                                                 Date
                                             </th>
-                                            <th className="px-4 py-3 text-left font-medium text-gray-700">
+                                            <th className="px-2 sm:px-4 py-2 sm:py-3 text-left font-medium text-gray-700 hidden sm:table-cell">
                                                 Age (months)
                                             </th>
-                                            <th className="px-4 py-3 text-left font-medium text-gray-700">
+                                            <th className="px-2 sm:px-4 py-2 sm:py-3 text-left font-medium text-gray-700">
                                                 {chartConfig.yAxis}
                                             </th>
-                                            <th className="px-4 py-3 text-left font-medium text-gray-700">
+                                            <th className="px-2 sm:px-4 py-2 sm:py-3 text-left font-medium text-gray-700 hidden md:table-cell">
                                                 Z-Score
                                             </th>
-                                            <th className="px-4 py-3 text-left font-medium text-gray-700">
-                                                Interpretation
+                                            <th className="px-2 sm:px-4 py-2 sm:py-3 text-left font-medium text-gray-700">
+                                                Status
                                             </th>
                                         </tr>
                                     </thead>
@@ -827,20 +826,24 @@ const PatientGrowthCharts = ({ patient, onMeasurementAdded }) => {
                                             )
                                             return (
                                                 <tr key={index} className="hover:bg-gray-50">
-                                                    <td className="px-4 py-3">{data.date}</td>
-                                                    <td className="px-4 py-3">{data.age}</td>
-                                                    <td className="px-4 py-3 font-medium">
+                                                    <td className="px-2 sm:px-4 py-2 sm:py-3 whitespace-nowrap">
+                                                        {data.date}
+                                                    </td>
+                                                    <td className="px-2 sm:px-4 py-2 sm:py-3 hidden sm:table-cell">
+                                                        {data.age}
+                                                    </td>
+                                                    <td className="px-2 sm:px-4 py-2 sm:py-3 font-medium">
                                                         {data.value?.toFixed(2)}
                                                     </td>
-                                                    <td className="px-4 py-3">
+                                                    <td className="px-2 sm:px-4 py-2 sm:py-3 hidden md:table-cell">
                                                         {data.zScore !== null
                                                             ? data.zScore.toFixed(2)
                                                             : 'N/A'}
                                                     </td>
-                                                    <td className="px-4 py-3">
+                                                    <td className="px-2 sm:px-4 py-2 sm:py-3">
                                                         <Badge
                                                             variant="outline"
-                                                            className={`${
+                                                            className={`text-[10px] sm:text-xs ${
                                                                 interpretation.color === 'red'
                                                                     ? 'bg-red-50 text-red-700 border-red-200'
                                                                     : interpretation.color ===
@@ -871,15 +874,39 @@ const PatientGrowthCharts = ({ patient, onMeasurementAdded }) => {
                     </Card>
                 )}
 
+                {/* Age Range Warning (if applicable) */}
+                {!isInAgeRange && (
+                    <div className="bg-yellow-50 border border-yellow-200 rounded-md p-3 sm:p-4">
+                        <div className="flex">
+                            <AlertCircle className="h-4 w-4 sm:h-5 sm:w-5 text-yellow-600 mr-2 sm:mr-3 mt-0.5 flex-shrink-0" />
+                            <div className="text-xs sm:text-sm text-yellow-800">
+                                <strong>Note:</strong> WHO growth standards are designed for
+                                children aged 0-5 years (0-60 months).
+                                {currentAge !== null && currentAge > 60 && (
+                                    <span>
+                                        {' '}
+                                        This patient is {Math.floor(currentAge / 12)} years old and
+                                        may require CDC growth charts for ages 2-20 years.
+                                    </span>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                )}
+
                 {/* Information Note */}
-                <div className="bg-blue-50 border border-blue-200 rounded-md p-4">
+                <div className="bg-blue-50 border border-blue-200 rounded-md p-3 sm:p-4">
                     <div className="flex">
-                        <Info className="h-5 w-5 text-blue-600 mr-3 mt-0.5 flex-shrink-0" />
-                        <div className="text-sm text-blue-800">
+                        <Info className="h-4 w-4 sm:h-5 sm:w-5 text-blue-600 mr-2 sm:mr-3 mt-0.5 flex-shrink-0" />
+                        <div className="text-xs sm:text-sm text-blue-800">
                             <strong>Note:</strong> These charts follow WHO Child Growth Standards
                             (2006) for children aged 0-5 years. Z-scores indicate how many standard
-                            deviations a measurement is from the median for age and sex. For
-                            children over 5 years, CDC growth charts (2-20 years) should be used.
+                            deviations a measurement is from the median for age and sex.
+                            <span className="hidden sm:inline">
+                                {' '}
+                                For children over 5 years, CDC growth charts (2-20 years) should be
+                                used.
+                            </span>
                         </div>
                     </div>
                 </div>

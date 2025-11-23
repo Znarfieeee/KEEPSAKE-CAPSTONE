@@ -11,6 +11,7 @@ import NotFound from '@/pages/NotFound'
 import AuthSuccess from '@/pages/AuthSuccess'
 import AuthError from '@/pages/AuthError'
 import QrScanner from '@/pages/QrScanner'
+import PrescriptionViewPage from '@/pages/PrescriptionViewPage'
 import QrCodeGeneratorTest from '@/pages/QrCodeGeneratorTest'
 import ForgotPassword from '@/pages/ForgotPassword'
 import Settings from '@/pages/Settings'
@@ -29,8 +30,8 @@ import SystemConfigPage from '@/pages/systemAdmin/SystemConfigPage'
 import MaintenancePage from '@/pages/systemAdmin/MaintenancePage'
 
 // Facility_admin
-import FadminDashboard from '@/pages/facilityAdmin/FadminDashboard'
-import FadminFacilityUsersRegistry from './pages/facilityAdmin/FadminFacilityUsersRegistry'
+import FadminDashboard from '@/pages/facility_admin/FadminDashboard'
+import FadminFacilityUsersRegistry from './pages/facility_admin/FadminFacilityUsersRegistry'
 
 // Doctor
 import DoctorDashboard from '@/pages/pediapro/DoctorDashboard'
@@ -40,17 +41,34 @@ import DoctorReports from '@/pages/pediapro/DoctorReports'
 import DoctorSettings from '@/pages/pediapro/DoctorSettings'
 import DoctorSupport from '@/pages/pediapro/DoctorSupport'
 import DoctorPatientInfo from './pages/pediapro/DoctorPatientInfo'
+import DoctorQrScanner from '@/pages/pediapro/DoctorQrScanner'
+
+// Nurse/Staff (Vital Custodian)
+import NurseQrScanner from '@/pages/vital_custodian/NurseQrScanner'
+import NurseAppointments from '@/pages/vital_custodian/NurseAppointments'
 
 // Parent (Keepsaker)
 import ParentDashboard from '@/pages/parent/ParentDashboard'
 import ParentChildrenList from '@/pages/parent/ParentChildrenList'
-import ChildProfile from '@/pages/parent/ChildProfile'
+import ParentChildInfo from '@/pages/parent/ParentChildInfo'
 import ParentAppointments from '@/pages/parent/ParentAppointments'
+import ParentQrScanner from '@/pages/parent/ParentQrScanner'
+
+// Facility Admin QR Scanner
+import FacilityAdminQrScanner from '@/pages/facility_admin/FacilityAdminQrScanner'
+
+// Help & Feedback Pages (Shared)
+import HelpSupport from '@/pages/shared/HelpSupport'
+import Feedback from '@/pages/shared/Feedback'
+
+// Admin Feedback Management
+import FeedbackDashboard from '@/components/systemAdmin/FeedbackDashboard'
 
 import AdminLayout from '@/layout/AdminLayout'
 import FacilityAdminLayout from '@/layout/FacilityAdminLayout'
 import PediaproLayout from '@/layout/PediaproLayout'
 import ParentLayout from '@/layout/ParentLayout'
+import NurseLayout from '@/layout/NurseLayout'
 
 const AuthWrapper = () => (
     <AuthProvider>
@@ -72,6 +90,10 @@ function App() {
                 {
                     path: '/qr_scanner',
                     element: <QrScanner />,
+                },
+                {
+                    path: '/prescription/view',
+                    element: <PrescriptionViewPage />,
                 },
                 {
                     path: '/qr_generator_test',
@@ -153,6 +175,18 @@ function App() {
                             path: 'settings',
                             element: <Settings />,
                         },
+                        {
+                            path: 'help-support',
+                            element: <HelpSupport />,
+                        },
+                        {
+                            path: 'feedback',
+                            element: <Feedback />,
+                        },
+                        {
+                            path: 'feedback-dashboard',
+                            element: <FeedbackDashboard />,
+                        },
                     ],
                 },
                 {
@@ -227,6 +261,18 @@ function App() {
                             path: 'settings',
                             element: <Settings />,
                         },
+                        {
+                            path: 'qr_scanner',
+                            element: <FacilityAdminQrScanner />,
+                        },
+                        {
+                            path: 'help-support',
+                            element: <HelpSupport />,
+                        },
+                        {
+                            path: 'feedback',
+                            element: <Feedback />,
+                        },
                     ],
                 },
                 {
@@ -262,8 +308,16 @@ function App() {
                             element: <Settings />,
                         },
                         {
-                            path: 'help_support',
-                            element: <DoctorSupport />,
+                            path: 'help-support',
+                            element: <HelpSupport />,
+                        },
+                        {
+                            path: 'feedback',
+                            element: <Feedback />,
+                        },
+                        {
+                            path: 'qr_scanner',
+                            element: <DoctorQrScanner />,
                         },
                     ],
                 },
@@ -285,7 +339,7 @@ function App() {
                         },
                         {
                             path: 'child/:patientId',
-                            element: <ChildProfile />,
+                            element: <ParentChildInfo />,
                         },
                         {
                             path: 'appointments',
@@ -296,8 +350,58 @@ function App() {
                             element: <Settings />,
                         },
                         {
-                            path: 'help_support',
-                            element: <div>Parent Help & Support Page - Coming Soon</div>,
+                            path: 'help-support',
+                            element: <HelpSupport />,
+                        },
+                        {
+                            path: 'feedback',
+                            element: <Feedback />,
+                        },
+                        {
+                            path: 'qr_scanner',
+                            element: <ParentQrScanner />,
+                        },
+                    ],
+                },
+                {
+                    path: '/nurse',
+                    element: (
+                        <ProtectedRoute requiredRole="nurse">
+                            <NurseLayout />
+                        </ProtectedRoute>
+                    ),
+                    children: [
+                        {
+                            index: true,
+                            element: <div>Nurse Dashboard - Coming Soon</div>,
+                        },
+                        {
+                            path: 'qr_scanner',
+                            element: <NurseQrScanner />,
+                        },
+                        {
+                            path: 'appointments',
+                            element: <NurseAppointments />,
+                        },
+                        {
+                            path: 'patient_records',
+                            element: <DoctorPatientRecords />,
+                        },
+                        {
+                            path: 'patient_records/:patientId',
+                            element: <DoctorPatientInfo />,
+                        },
+                        {
+                            path: 'settings',
+                            element: <Settings />,
+                        },
+                        {
+                            path: 'help-support',
+                            element: <HelpSupport />,
+                        },
+                        {
+                            path: 'feedback',
+                            element: <Feedback />,
                         },
                     ],
                 },

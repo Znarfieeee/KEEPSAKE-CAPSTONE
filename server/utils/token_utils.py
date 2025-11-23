@@ -60,9 +60,26 @@ def verify_supabase_jwt(token: str) -> Dict[str, Any]:
     SupabaseJWTError
         If the token is invalid, expired, or cannot be verified.
     """
+    rs256_error = None
 
+    # First, try HS256 with JWT secret (most common for Supabase projects)
+    jwt_secret = os.environ.get("SUPABASE_JWT_SECRET") or os.environ.get("JWT_SECRET")
+    if jwt_secret:
+        try:
+            claims = jwt.decode(
+                token,
+                jwt_secret,
+                algorithms=["HS256"],
+                options={"require": ["exp", "sub"], "verify_aud": False},
+            )
+            return claims
+        except jwt.ExpiredSignatureError:
+            raise SupabaseJWTError("Token has expired")
+        except Exception:
+            pass  # Fall through to RS256
+
+    # Try RS256 verification (JWKS) as fallback
     try:
-        # First attempt RS256 verification (JWKS)
         signing_key = _jwks_client().get_signing_key_from_jwt(token).key
 
         claims = jwt.decode(
@@ -74,19 +91,17 @@ def verify_supabase_jwt(token: str) -> Dict[str, Any]:
 
         return claims
 
-    except Exception:
-        # If RS256 fails (e.g., project uses HS256) attempt HS256
-        jwt_secret = os.environ.get("SUPABASE_JWT_SECRET") or os.environ.get("JWT_SECRET")
-        if not jwt_secret:
-            raise SupabaseJWTError("SUPABASE_JWT_SECRET not set and RS256 verification failed.")
+    except jwt.ExpiredSignatureError:
+        raise SupabaseJWTError("Token has expired")
+    except Exception as e:
+        rs256_error = str(e)
 
-        try:
-            claims = jwt.decode(
-                token,
-                jwt_secret,
-                algorithms=["HS256"],
-                options={"require": ["exp", "sub"], "verify_aud": False},
-            )
-            return claims
-        except Exception as exc:
-            raise SupabaseJWTError(f"Failed to verify Supabase JWT: {exc}") from exc 
+    # Both methods failed
+    if jwt_secret:
+        raise SupabaseJWTError(f"Failed to verify JWT with both HS256 and RS256: {rs256_error}")
+    else:
+        raise SupabaseJWTError(
+            "SUPABASE_JWT_SECRET not set in environment. "
+            "Please add SUPABASE_JWT_SECRET to your .env file. "
+            f"RS256 verification also failed: {rs256_error}"
+        ) 

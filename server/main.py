@@ -26,6 +26,8 @@ from routes.qr_routes import qr_bp
 from routes.notification_routes import notification_bp
 from routes.parent.parent_routes import parent_bp
 from routes.medical_documents.document_routes import documents_bp
+from routes.parent_consent_routes import parent_consent_bp
+from routes.feedback_routes import feedback_bp
 
 app = Flask("keepsake")
 
@@ -60,6 +62,8 @@ app.register_blueprint(user_settings_bp)
 app.register_blueprint(qr_bp)
 app.register_blueprint(notification_bp)
 app.register_blueprint(parent_bp)
+app.register_blueprint(parent_consent_bp)
+app.register_blueprint(feedback_bp)
 
 # Redis session configuration with enhanced error handling
 def setup_redis_session():
@@ -332,4 +336,6 @@ def add_security_headers(response):
 
 if __name__ == "__main__":
     handle_startup_errors()
-    app.run(debug=True)
+    app.run(debug=True, 
+            # host='192.168.1.8'
+            )

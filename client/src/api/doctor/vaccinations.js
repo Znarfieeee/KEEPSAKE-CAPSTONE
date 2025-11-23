@@ -34,7 +34,7 @@ export const updateVaccination = async (patientId, vaxId, vaccinationData) => {
 }
 
 /**
- * Delete a vaccination record
+ * Delete a vaccination record (soft delete for HIPAA/GDPR compliance)
  * @param {string} patientId - Patient ID
  * @param {string} vaxId - Vaccination ID
  * @returns {Promise} API response
@@ -42,6 +42,21 @@ export const updateVaccination = async (patientId, vaxId, vaccinationData) => {
 export const deleteVaccination = async (patientId, vaxId) => {
     const response = await axios.delete(
         `${backendConnection()}/pediapro/patients/${patientId}/vaccinations/${vaxId}`,
+        axiosConfig
+    )
+    return response.data
+}
+
+/**
+ * Restore a soft-deleted vaccination record (Admin only)
+ * @param {string} patientId - Patient ID
+ * @param {string} vaxId - Vaccination ID
+ * @returns {Promise} API response
+ */
+export const restoreVaccination = async (patientId, vaxId) => {
+    const response = await axios.post(
+        `${backendConnection()}/pediapro/patients/${patientId}/vaccinations/${vaxId}/restore`,
+        {},
         axiosConfig
     )
     return response.data
