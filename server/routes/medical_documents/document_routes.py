@@ -38,9 +38,9 @@ def verify_patient_access(user_id, user_role, facility_id, patient_id):
         tuple: (has_access: bool, error_message: str or None)
     """
     try:
-        if user_role == 'parent':
-            # Check parent access
-            access_check = supabase.table('parent_access')\
+        if user_role in ['parent', 'keepsaker', 'guardian']:
+            # Check parent access using service role client to bypass RLS
+            access_check = sr_client.table('parent_access')\
                 .select('access_id')\
                 .eq('user_id', user_id)\
                 .eq('patient_id', patient_id)\

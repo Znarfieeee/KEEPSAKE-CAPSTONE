@@ -5,6 +5,7 @@ import { useAuth } from '@/context/auth'
 import { Button } from '@/components/ui/button'
 import ConfirmationDialog from '@/components/ui/ConfirmationDialog'
 import { Eye, Archive, Trash2, UserPen } from 'lucide-react'
+import DoctorParentQRShareButton from '@/components/qr/DoctorParentQRShareButton'
 import {
     Pagination,
     PaginationContent,
@@ -125,6 +126,16 @@ const PatientRecordsTable = ({
                                                 <Eye className="size-4" />
                                             </Button>
                                         </TooltipHelper>
+
+                                        {/* Share with Parent Button */}
+                                        {user?.role === 'doctor' && (
+                                            <TooltipHelper content="Share with Parent">
+                                                <DoctorParentQRShareButton
+                                                    patient={patient}
+                                                    iconOnly={true}
+                                                />
+                                            </TooltipHelper>
+                                        )}
 
                                         <TooltipHelper content="Archive">
                                             <Button

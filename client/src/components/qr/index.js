@@ -18,6 +18,10 @@ export { default as ParentQRShareDialog } from './ParentQRShareDialog'
 export { default as BeautifulQRDialog } from './BeautifulQRDialog'
 export { default as PrescriptionQRDialog } from './PrescriptionQRDialog'
 
+// Doctor-to-Parent QR Sharing Components
+export { default as DoctorParentQRShareDialog } from './DoctorParentQRShareDialog'
+export { default as DoctorParentQRShareButton } from './DoctorParentQRShareButton'
+
 /**
  * QR Code System Overview
  * =======================
@@ -80,9 +84,25 @@ export { default as PrescriptionQRDialog } from './PrescriptionQRDialog'
  * - medical_record: General medical records
  * - referral: Cross-facility referrals
  * - emergency_access: Emergency medical access
- * - parent_access: Parent/guardian sharing
+ * - parent_access: Parent/guardian sharing with healthcare providers
+ * - parent_access_grant: Doctor grants parent access to child's records (new)
  * - vaccination: Immunization records
  * - appointment: Appointment information
+ *
+ * Doctor-to-Parent QR Sharing:
+ * ----------------------------
+ * Doctors can generate QR codes for parents to scan and gain access to their
+ * child's medical records.
+ *
+ * ```jsx
+ * import { DoctorParentQRShareButton } from '@/components/qr'
+ *
+ * // In patient detail view
+ * <DoctorParentQRShareButton patient={patient} />
+ *
+ * // In patient list (icon only)
+ * <DoctorParentQRShareButton patient={patient} iconOnly={true} />
+ * ```
  *
  * Scopes:
  * - view_only: Basic patient info

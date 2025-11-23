@@ -13,6 +13,7 @@ import ConfirmationDialog from '@/components/ui/ConfirmationDialog'
 import PatientRecordsTabs from '@/components/doctors/patient_records/PatientRecordsTabs'
 import { getPatientById, updatePatientRecord, deletePatientRecord } from '@/api/doctors/patient'
 import LoadingSkeleton from '@/components/doctors/patient_records/LoadingSkeleton'
+import DoctorParentQRShareButton from '@/components/qr/DoctorParentQRShareButton'
 
 // Helper
 import { showToast } from '@/util/alertHelper'
@@ -198,6 +199,15 @@ const DoctorPatientInfo = () => {
                 </div>
                 <div className="flex items-center justify-between mb-6">
                     <div className="flex items-center gap-2">
+                        {/* Share with Parent Button */}
+                        {user?.role === 'doctor' && (
+                            <TooltipHelper content="Share QR code with parent">
+                                <DoctorParentQRShareButton
+                                    patient={patient}
+                                    size="sm"
+                                />
+                            </TooltipHelper>
+                        )}
                         <TooltipHelper content="Edit patient">
                             <Button
                                 size="sm"

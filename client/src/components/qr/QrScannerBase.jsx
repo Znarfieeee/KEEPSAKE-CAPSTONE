@@ -7,11 +7,11 @@ import { useAuth } from "../../context/auth"
 import { useQrScanner } from "../../context/QrScannerContext"
 
 // API
-import { accessQRCode } from "../../api/qrCode"
+import { accessQRCode, grantParentAccess, checkQRCodeType } from "../../api/qrCode"
 
 // UI Components
 import { IoMdArrowBack } from "react-icons/io"
-import { FiCheckCircle, FiAlertCircle, FiLock, FiClock, FiHash, FiShield, FiCamera, FiUpload, FiImage, FiX } from "react-icons/fi"
+import { FiCheckCircle, FiAlertCircle, FiLock, FiClock, FiHash, FiShield, FiCamera, FiUpload, FiImage, FiX, FiUsers } from "react-icons/fi"
 import { BiUser, BiCalendar, BiIdCard } from "react-icons/bi"
 import { MdMedicalServices, MdVaccines } from "react-icons/md"
 import { AiOutlineLoading3Quarters } from "react-icons/ai"
@@ -94,6 +94,10 @@ const QrScannerBase = ({
     const [pendingToken, setPendingToken] = useState(null)
     const [pinError, setPinError] = useState(null)
     const [pinLoading, setPinLoading] = useState(false)
+
+    // Parent access grant state
+    const [parentAccessGrant, setParentAccessGrant] = useState(null)
+    const [parentAccessLoading, setParentAccessLoading] = useState(false)
 
     // Get role display name
     const getRoleDisplayName = (role) => {
@@ -225,13 +229,42 @@ const QrScannerBase = ({
             }
 
             if (extracted.type === "token") {
-                // Token-based QR code - validate with backend
+                // First, check QR code type to determine handling
                 try {
+                    const qrTypeInfo = await checkQRCodeType(extracted.value)
+
+                    // Handle parent access grant QR codes
+                    if (qrTypeInfo.share_type === "parent_access_grant") {
+                        // Check if user is a parent
+                        if (!user || !['parent', 'keepsaker', 'guardian'].includes(user.role)) {
+                            setError("Only parents can claim parent access. Please log in with a parent account.")
+                            setLoading(false)
+                            return
+                        }
+
+                        // Process parent access grant
+                        setParentAccessLoading(true)
+                        try {
+                            const grantResult = await grantParentAccess(extracted.value)
+                            setParentAccessGrant(grantResult)
+                            setLoading(false)
+                            setParentAccessLoading(false)
+                            return
+                        } catch (grantErr) {
+                            setError(grantErr.message || "Failed to grant parent access")
+                            setLoading(false)
+                            setParentAccessLoading(false)
+                            setScanSuccess(false)
+                            return
+                        }
+                    }
+
+                    // Regular token-based QR code - validate with backend
                     await validateToken(extracted.value)
                     setLoading(false)
                 } catch (err) {
                     // Check if PIN is required (using explicit flag or message)
-                    if (err.requiresPin || err.message.includes("PIN required") || err.message.includes("pin required")) {
+                    if (err.requiresPin || err.message?.includes("PIN required") || err.message?.includes("pin required")) {
                         setPendingToken(extracted.value)
                         setShowPinModal(true)
                         setLoading(false)
@@ -481,9 +514,25 @@ const QrScannerBase = ({
         setPinError(null)
         setUploadedImage(null)
         setUploadPreview(null)
+        setParentAccessGrant(null)
+        setParentAccessLoading(false)
         clearScanResult()
         if (fileInputRef.current) {
             fileInputRef.current.value = ""
+        }
+    }
+
+    // Handle navigation to parent dashboard after access grant
+    const handleGoToParentDashboard = () => {
+        navigate("/parent")
+    }
+
+    // Handle viewing child details after parent access grant
+    const handleViewChildDetails = () => {
+        if (parentAccessGrant?.patient_id) {
+            navigate(`/parent/child/${parentAccessGrant.patient_id}`)
+        } else {
+            navigate("/parent")
         }
     }
 
@@ -567,7 +616,76 @@ const QrScannerBase = ({
                     </div>
 
                     {/* Main Content */}
-                    {!scannedData ? (
+                    {parentAccessGrant ? (
+                        // Parent Access Grant Success UI
+                        <div className="space-y-6">
+                            {/* Success Banner */}
+                            <div className="flex items-center gap-3 p-4 bg-emerald-50 border border-emerald-200 rounded-lg">
+                                <div className="p-2 bg-emerald-100 rounded-full">
+                                    <FiUsers className="text-3xl text-emerald-600" />
+                                </div>
+                                <div>
+                                    <h3 className="font-semibold text-emerald-900">Access Granted Successfully!</h3>
+                                    <p className="text-sm text-emerald-700">
+                                        You now have access to {parentAccessGrant.patient_name || "your child"}'s medical records
+                                    </p>
+                                </div>
+                            </div>
+
+                            {/* Patient Info Card */}
+                            <Card className="p-6 shadow-lg">
+                                <h3 className="text-xl font-semibold text-gray-800 mb-4">Child Information</h3>
+                                <div className="space-y-3">
+                                    <div className="flex items-center gap-3">
+                                        <BiUser className="text-2xl text-emerald-500" />
+                                        <div>
+                                            <p className="text-xs text-gray-500">Child's Name</p>
+                                            <p className="font-medium text-gray-800">{parentAccessGrant.patient_name}</p>
+                                        </div>
+                                    </div>
+                                    {parentAccessGrant.patient_data?.date_of_birth && (
+                                        <div className="flex items-center gap-3">
+                                            <BiCalendar className="text-2xl text-emerald-500" />
+                                            <div>
+                                                <p className="text-xs text-gray-500">Date of Birth</p>
+                                                <p className="font-medium text-gray-800">
+                                                    {formatDate(parentAccessGrant.patient_data.date_of_birth)}
+                                                </p>
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            </Card>
+
+                            {/* What You Can Do */}
+                            <Card className="p-4 bg-blue-50 border border-blue-200">
+                                <h4 className="font-semibold text-blue-900 mb-2">What you can do now:</h4>
+                                <ul className="text-sm text-blue-700 space-y-1 list-disc list-inside">
+                                    <li>View your child's medical records</li>
+                                    <li>See upcoming appointments</li>
+                                    <li>Check vaccination history</li>
+                                    <li>Review allergies and medical alerts</li>
+                                </ul>
+                            </Card>
+
+                            {/* Action Buttons */}
+                            <div className="flex gap-4">
+                                <Button
+                                    onClick={handleViewChildDetails}
+                                    className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-medium py-3 rounded-lg transition duration-200"
+                                >
+                                    View Child's Records
+                                </Button>
+                                <Button
+                                    onClick={handleGoToParentDashboard}
+                                    variant="outline"
+                                    className="flex-1 border-2 border-gray-300 hover:border-emerald-500 hover:text-emerald-600 font-medium py-3 rounded-lg transition duration-200"
+                                >
+                                    Go to Dashboard
+                                </Button>
+                            </div>
+                        </div>
+                    ) : !scannedData ? (
                         <Card className="p-6 shadow-xl">
                             {/* Scan Mode Toggle */}
                             <div className="flex justify-center mb-6">
