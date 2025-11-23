@@ -191,7 +191,7 @@ const DeliverySection = ({ form, updateForm }) => {
                         <Label className="text-sm font-medium">Vitamin K Location</Label>
                         <Input
                             className="border-input"
-                            placeholder="Enter administration location"
+                            placeholder="Enter body part location"
                             value={form.vitamin_k_location}
                             onChange={(e) => updateForm('vitamin_k_location', e.target.value)}
                         />
@@ -201,7 +201,7 @@ const DeliverySection = ({ form, updateForm }) => {
                         <Label className="text-sm font-medium">Hepatitis B Location</Label>
                         <Input
                             className="border-input"
-                            placeholder="Enter administration location"
+                            placeholder="Enter body part location"
                             value={form.hepatitis_b_location}
                             onChange={(e) => updateForm('hepatitis_b_location', e.target.value)}
                         />
@@ -211,7 +211,7 @@ const DeliverySection = ({ form, updateForm }) => {
                         <Label className="text-sm font-medium">BCG Location</Label>
                         <Input
                             className="border-input"
-                            placeholder="Enter administration location"
+                            placeholder="Enter body part location"
                             value={form.bcg_vaccination_location}
                             onChange={(e) => updateForm('bcg_vaccination_location', e.target.value)}
                         />
@@ -236,7 +236,7 @@ const DeliverySection = ({ form, updateForm }) => {
                         <Label className="text-sm font-medium">Obstetrician</Label>
                         <Input
                             className="border-input"
-                            placeholder="Enter obstetrician user ID"
+                            placeholder="Enter obstetrician"
                             value={form.obstetrician}
                             onChange={(e) => updateForm('obstetrician', e.target.value)}
                         />
@@ -245,7 +245,7 @@ const DeliverySection = ({ form, updateForm }) => {
                         <Label className="text-sm font-medium">Pediatrician</Label>
                         <Input
                             className="border-input"
-                            placeholder="Enter pediatrician user ID"
+                            placeholder="Enter pediatrician"
                             value={form.pediatrician}
                             onChange={(e) => updateForm('pediatrician', e.target.value)}
                         />

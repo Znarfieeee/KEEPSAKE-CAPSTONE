@@ -246,11 +246,18 @@ def generate_token():
             # Get base URL from environment or use default
             base_url = os.environ.get('FRONTEND_URL', 'http://localhost:5173')
 
+            # Use dedicated view page for specific share types
+            share_type = data['share_type']
+            if share_type == 'prescription':
+                access_url = f"{base_url}/prescription/view?token={token}"
+            else:
+                access_url = f"{base_url}/qr_scanner?token={token}"
+
             return jsonify({
                 "status": "success",
                 "qr_id": result.data[0]['qr_id'],
                 "token": token,
-                "access_url": f"{base_url}/qr/access?token={token}",
+                "access_url": access_url,
                 "expires_at": qr_data['expires_at']
             }), 200
 
@@ -456,6 +463,159 @@ def validate_qr_access():
     except Exception as e:
         current_app.logger.error(f"Failed to validate QR code: {e}")
         return jsonify({"error": "Failed to validate QR code", "status": 500}), 500
+
+
+# =============================================================================
+# PUBLIC QR ACCESS ENDPOINT (No Authentication Required)
+# =============================================================================
+
+@qr_bp.route('/qr/prescription/public', methods=['GET'])
+def access_prescription_public():
+    """
+    Public endpoint for accessing prescription QR codes.
+    No authentication required - the token itself is the authorization.
+    Works with any QR scanner (iPhone, Android, web browsers, etc.)
+    """
+    token = request.args.get('token')
+    if not token:
+        return jsonify({"error": "Token is required", "status": "error"}), 400
+
+    # Handle malformed URLs where PIN was appended with ? instead of &
+    pin_from_token = None
+    if '?pin=' in token:
+        parts = token.split('?pin=')
+        token = parts[0]
+        if len(parts) > 1:
+            pin_from_token = parts[1]
+
+    try:
+        sr_client = supabase_service_role_client()
+
+        # 1. Get QR code record
+        qr = sr_client.table('qr_codes')\
+            .select('''
+                qr_id, token_hash, patient_id, facility_id, generated_by, share_type,
+                scope, expires_at, is_active, use_count, max_uses, pin_code, metadata, created_at,
+                users!qr_codes_generated_by_fkey(firstname, lastname)
+            ''')\
+            .eq('token_hash', token)\
+            .eq('is_active', True)\
+            .execute()
+
+        if not qr.data or len(qr.data) == 0:
+            return jsonify({"error": "Invalid or expired QR code", "status": "error"}), 404
+
+        qr_data = qr.data[0]
+
+        # 2. Verify this is a prescription QR code
+        if qr_data['share_type'] != 'prescription':
+            return jsonify({
+                "error": "This endpoint only supports prescription QR codes",
+                "status": "error"
+            }), 400
+
+        # 3. Check expiration
+        expires_at = datetime.fromisoformat(qr_data['expires_at'].replace('Z', '+00:00'))
+        if datetime.now(timezone.utc) > expires_at:
+            return jsonify({"error": "This prescription QR code has expired", "status": "expired"}), 403
+
+        # 4. Check usage limits
+        if qr_data['max_uses'] and qr_data['use_count'] >= qr_data['max_uses']:
+            return jsonify({"error": "This QR code has reached its usage limit", "status": "limit_reached"}), 403
+
+        # 5. Check PIN if required
+        if qr_data.get('pin_code'):
+            provided_pin = request.args.get('pin') or pin_from_token
+            if not provided_pin:
+                return jsonify({
+                    "error": "PIN required",
+                    "status": "pin_required",
+                    "requires_pin": True
+                }), 403
+            if provided_pin != qr_data['pin_code']:
+                return jsonify({"error": "Invalid PIN", "status": "invalid_pin"}), 403
+
+        # 6. Get patient data (prescription scope only)
+        patient_id = qr_data['patient_id']
+        scope = qr_data.get('scope', ['prescriptions'])
+
+        patient_data = get_patient_data_by_scope(patient_id, scope)
+        if not patient_data:
+            return jsonify({"error": "Patient data not found", "status": "error"}), 404
+
+        # 7. Update QR code usage count
+        try:
+            current_use_count = qr_data.get('use_count') or 0
+            sr_client.table('qr_codes').update({
+                'use_count': current_use_count + 1,
+                'last_accessed_at': datetime.now(timezone.utc).isoformat()
+            }).eq('qr_id', qr_data['qr_id']).execute()
+            current_app.logger.info(f"Public access: Updated QR code {qr_data['qr_id']} use_count to {current_use_count + 1}")
+        except Exception as update_error:
+            current_app.logger.warning(f"Failed to update QR code use_count: {update_error}")
+
+        # 8. Log to qr_access_logs for audit trail
+        try:
+            sr_client.table('qr_access_logs').insert({
+                'qr_id': qr_data['qr_id'],
+                'patient_id': patient_id,
+                'accessed_by': None,  # Public access - no user
+                'facility_id': None,
+                'access_method': 'public_qr_scan',
+                'ip_address': request.remote_addr,
+                'user_agent': request.headers.get('User-Agent', '')[:500],
+                'metadata': {
+                    'access_type': 'public_prescription_access',
+                    'share_type': qr_data['share_type'],
+                    'scope': scope
+                }
+            }).execute()
+        except Exception as log_error:
+            current_app.logger.warning(f"Failed to log public QR access: {log_error}")
+
+        # 9. Log to consent_audit_logs
+        try:
+            sr_client.table('consent_audit_logs').insert({
+                'qr_id': qr_data['qr_id'],
+                'patient_id': patient_id,
+                'parent_id': qr_data.get('generated_by'),
+                'action': 'qr_accessed',
+                'performed_by': None,  # Public access
+                'details': {
+                    'access_type': 'public_prescription_access',
+                    'share_type': qr_data['share_type'],
+                    'scope': scope,
+                    'user_agent': request.headers.get('User-Agent', '')[:200]
+                },
+                'ip_address': request.remote_addr,
+                'success': True
+            }).execute()
+        except Exception as consent_log_error:
+            current_app.logger.warning(f"Failed to log consent audit: {consent_log_error}")
+
+        # 10. Get generator info
+        generator_info = qr_data.get('users') or {}
+        generated_by_name = f"{generator_info.get('firstname', '')} {generator_info.get('lastname', '')}".strip() or "Healthcare Provider"
+
+        return jsonify({
+            "status": "success",
+            "patient_data": patient_data,
+            "qr_metadata": {
+                "qr_id": qr_data['qr_id'],
+                "share_type": qr_data['share_type'],
+                "scope": scope,
+                "expires_at": qr_data['expires_at'],
+                "use_count": (qr_data.get('use_count') or 0) + 1,
+                "max_uses": qr_data.get('max_uses'),
+                "generated_by_name": generated_by_name,
+                "metadata": qr_data.get('metadata', {})
+            }
+        }), 200
+
+    except Exception as e:
+        current_app.logger.error(f"Failed to access prescription QR code: {e}")
+        return jsonify({"error": "Failed to access prescription data", "status": "error"}), 500
+
 
 @qr_bp.route('/qr/list', methods=['GET'])
 @require_auth

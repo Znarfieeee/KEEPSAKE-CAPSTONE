@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef, useCallback } from 'react'
 import {
     Dialog,
     DialogContent,
@@ -12,7 +12,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area'
 import { showToast } from '@/util/alertHelper'
 import { cn } from '@/lib/utils'
-import { User, Stethoscope, Activity, AlertCircle, Ruler, Save, X } from 'lucide-react'
+import { User, Stethoscope, Activity, AlertCircle, Ruler, Save } from 'lucide-react'
 
 // Import sections (reuse from creation modal)
 import BasicInfoSection from './sections/BasicInfoSection'
@@ -23,7 +23,6 @@ import AnthropometricSection from './sections/AnthropometricSection'
 
 // Import API functions
 import {
-    updatePatientRecord,
     updateDeliveryRecord,
     updateScreeningRecord,
     updateAnthropometricRecord,
@@ -33,14 +32,16 @@ import {
 // Import utilities
 import { sanitizeObject } from '@/util/sanitize'
 
-// Tab Item Component (similar to PatientRecordsTabs)
-const TabItem = ({ value, icon: Icon, children, hasData = false, className }) => (
+// Tab Item Component
+const TabItem = ({ value, icon: Icon, children, hasData = false, isDirty = false, className }) => (
     <TabsTrigger
         value={value}
         className={cn(
             'bg-muted overflow-hidden rounded-b-none border-x border-t border-gray-200 data-[state=active]:z-10 data-[state=active]:shadow-none relative',
             hasData &&
                 'after:absolute after:top-1 after:right-1 after:w-2 after:h-2 after:bg-blue-500 after:rounded-full',
+            isDirty &&
+                'after:absolute after:top-1 after:right-1 after:w-2 after:h-2 after:bg-orange-500 after:rounded-full',
             className
         )}
     >
@@ -50,34 +51,83 @@ const TabItem = ({ value, icon: Icon, children, hasData = false, className }) =>
 )
 
 const EditPatientModal = ({ onClose, patient, onSuccess }) => {
-    // Form states - initialize with patient data immediately
+    // Form states
     const [patientForm, setPatientForm] = useState({})
     const [deliveryForm, setDeliveryForm] = useState({})
     const [screeningForm, setScreeningForm] = useState({})
     const [allergiesForm, setAllergiesForm] = useState({})
     const [anthroForm, setAnthroForm] = useState({})
 
+    // Track which sections have been modified (dirty tracking)
+    const [dirtyFields, setDirtyFields] = useState({
+        basic: false,
+        delivery: false,
+        screening: false,
+        allergies: false,
+        anthropometric: false,
+    })
+
+    // Store original data for comparison
+    const originalData = useRef({
+        patient: {},
+        delivery: {},
+        screening: {},
+        allergies: {},
+        anthro: {},
+    })
+
     // Modal states
     const [activeTab, setActiveTab] = useState('basic')
     const [loading, setLoading] = useState(false)
-    const [availableTabs, setAvailableTabs] = useState(['basic']) // Track which tabs have data
 
-    // Helper function to update forms
-    const updateForm = (setFormFn, field, value) =>
-        setFormFn((prev) => ({ ...prev, [field]: value }))
-
-    // Helper function to check if form has any data
+    // Helper function to check if form has any meaningful data
     const hasFormData = (formData) => {
-        return Object.values(formData).some((val) => val !== null && val !== '' && val !== false)
+        if (!formData) return false
+        return Object.entries(formData).some(([key, val]) => {
+            // Skip ID fields when checking for data
+            if (key.endsWith('_id')) return false
+            return val !== null && val !== '' && val !== false && val !== undefined
+        })
     }
+
+    // Helper function to deep compare objects
+    const hasFormChanged = (currentForm, originalForm) => {
+        if (!currentForm || !originalForm) return hasFormData(currentForm)
+
+        const currentKeys = Object.keys(currentForm).filter(k => !k.endsWith('_id'))
+
+        for (const key of currentKeys) {
+            const currentVal = currentForm[key]
+            const originalVal = originalForm[key]
+
+            // Normalize values for comparison
+            const normalizedCurrent = currentVal === '' || currentVal === null || currentVal === undefined ? '' : String(currentVal)
+            const normalizedOriginal = originalVal === '' || originalVal === null || originalVal === undefined ? '' : String(originalVal)
+
+            if (normalizedCurrent !== normalizedOriginal) {
+                return true
+            }
+        }
+        return false
+    }
+
+    // Create update functions with dirty tracking
+    const createUpdateForm = useCallback((setFormFn, sectionName) => {
+        return (field, value) => {
+            setFormFn((prev) => ({ ...prev, [field]: value }))
+            setDirtyFields((prev) => ({ ...prev, [sectionName]: true }))
+        }
+    }, [])
 
     // Initialize form data when patient changes
     useEffect(() => {
         if (patient) {
             console.log('Initializing edit modal with patient data:', patient)
 
-            // Basic patient information (always available)
-            setPatientForm({
+            const related = patient.related_records || {}
+
+            // Basic patient information
+            const patientData = {
                 firstname: patient.firstname || '',
                 middlename: patient.middlename || '',
                 lastname: patient.lastname || '',
@@ -89,12 +139,11 @@ const EditPatientModal = ({ onClose, patient, onSuccess }) => {
                 birth_height: patient.birth_height || '',
                 bloodtype: patient.bloodtype || '',
                 gestation_weeks: patient.gestation_weeks || '',
-            })
+            }
+            setPatientForm(patientData)
+            originalData.current.patient = { ...patientData }
 
-            const related = patient.related_records || {}
-            const tabs = ['basic'] // Always include basic
-
-            // Initialize delivery data and check if it should be available
+            // Delivery data
             const deliveryData = {
                 type_of_delivery: related.delivery?.type_of_delivery || '',
                 apgar_score: related.delivery?.apgar_score || '',
@@ -115,9 +164,9 @@ const EditPatientModal = ({ onClose, patient, onSuccess }) => {
                 pediatrician: related.delivery?.pediatrician || '',
             }
             setDeliveryForm(deliveryData)
-            tabs.push('delivery') // Always show delivery tab (user can add data)
+            originalData.current.delivery = { ...deliveryData }
 
-            // Initialize screening data
+            // Screening data
             const screeningData = {
                 ens_date: related.screening?.ens_date || '',
                 ens_remarks: related.screening?.ens_remarks || false,
@@ -131,26 +180,33 @@ const EditPatientModal = ({ onClose, patient, onSuccess }) => {
                 ror_remarks: related.screening?.ror_remarks || '',
             }
             setScreeningForm(screeningData)
-            tabs.push('screening') // Always show screening tab
+            originalData.current.screening = { ...screeningData }
 
-            // Initialize allergy data
+            // Allergy data - handle array properly
+            const allergiesArray = related.allergies || []
+            const firstAllergy = Array.isArray(allergiesArray) && allergiesArray.length > 0
+                ? allergiesArray[0]
+                : {}
+
             const allergyData = {
-                allergen: related.allergies?.allergen || '',
-                reaction_type: related.allergies?.reaction_type || '',
-                severity: related.allergies?.severity || '',
-                date_identified: related.allergies?.date_identified || '',
-                notes: related.allergies?.notes || '',
+                allergy_id: firstAllergy.allergy_id || '',
+                allergen: firstAllergy.allergen || '',
+                reaction_type: firstAllergy.reaction_type || '',
+                severity: firstAllergy.severity || '',
+                date_identified: firstAllergy.date_identified || '',
+                notes: firstAllergy.notes || '',
             }
             setAllergiesForm(allergyData)
-            tabs.push('allergies') // Always show allergies tab
+            originalData.current.allergies = { ...allergyData }
 
-            // Initialize anthropometric data (use latest measurement)
-            const latestMeasurement =
-                Array.isArray(related.anthropometric) && related.anthropometric.length > 0
-                    ? related.anthropometric[related.anthropometric.length - 1]
-                    : related.anthropometric || {}
+            // Anthropometric data - handle both key names and array
+            const anthroArray = related.anthropometric_measurements || related.anthropometric || []
+            const latestMeasurement = Array.isArray(anthroArray) && anthroArray.length > 0
+                ? anthroArray[anthroArray.length - 1]
+                : (typeof anthroArray === 'object' ? anthroArray : {})
 
             const anthroData = {
+                am_id: latestMeasurement.am_id || '',
                 weight: latestMeasurement.weight || '',
                 height: latestMeasurement.height || '',
                 head_circumference: latestMeasurement.head_circumference || '',
@@ -161,14 +217,22 @@ const EditPatientModal = ({ onClose, patient, onSuccess }) => {
                     : '',
             }
             setAnthroForm(anthroData)
-            tabs.push('anthropometric') // Always show measurements tab
+            originalData.current.anthro = { ...anthroData }
 
-            setAvailableTabs(tabs)
-            console.log('Available tabs for editing:', tabs)
+            // Reset dirty flags
+            setDirtyFields({
+                basic: false,
+                delivery: false,
+                screening: false,
+                allergies: false,
+                anthropometric: false,
+            })
+
+            console.log('Form data initialized successfully')
         }
     }, [patient])
 
-    // Validate basic information (required fields)
+    // Validate basic information
     const validateBasicInfo = () => {
         const required = ['firstname', 'lastname', 'date_of_birth', 'sex']
         const missing = required.filter((field) => !patientForm[field])
@@ -176,24 +240,18 @@ const EditPatientModal = ({ onClose, patient, onSuccess }) => {
         if (missing.length > 0) {
             const fieldNames = missing.map((field) => {
                 switch (field) {
-                    case 'firstname':
-                        return 'First Name'
-                    case 'lastname':
-                        return 'Last Name'
-                    case 'date_of_birth':
-                        return 'Date of Birth'
-                    case 'sex':
-                        return 'Sex'
-                    default:
-                        return field
+                    case 'firstname': return 'First Name'
+                    case 'lastname': return 'Last Name'
+                    case 'date_of_birth': return 'Date of Birth'
+                    case 'sex': return 'Sex'
+                    default: return field
                 }
             })
             showToast('error', `Please fill in required fields: ${fieldNames.join(', ')}`)
-            setActiveTab('basic') // Switch to basic tab to show the errors
+            setActiveTab('basic')
             return false
         }
 
-        // Additional validations for basic info
         if (patientForm.date_of_birth) {
             const birthDate = new Date(patientForm.date_of_birth)
             const today = new Date()
@@ -224,149 +282,150 @@ const EditPatientModal = ({ onClose, patient, onSuccess }) => {
             const patientId = patient.patient_id || patient.id
             console.log('Updating patient ID:', patientId)
 
-            // Update main patient record
-            const patientPayload = sanitizeObject({
-                ...patientForm,
-                id: patientId,
-                patient_id: patientId,
-            })
+            // Check which sections actually changed
+            const basicChanged = hasFormChanged(patientForm, originalData.current.patient)
+            const deliveryChanged = dirtyFields.delivery && hasFormChanged(deliveryForm, originalData.current.delivery)
+            const screeningChanged = dirtyFields.screening && hasFormChanged(screeningForm, originalData.current.screening)
+            const allergiesChanged = dirtyFields.allergies && hasFormChanged(allergiesForm, originalData.current.allergies)
+            const anthroChanged = dirtyFields.anthropometric && hasFormChanged(anthroForm, originalData.current.anthro)
 
-            console.log('Updating patient with payload:', patientPayload)
-            await onSuccess(patientPayload)
+            console.log('Changed sections:', { basicChanged, deliveryChanged, screeningChanged, allergiesChanged, anthroChanged })
 
-            // Update related records
+            // Update main patient record if changed
+            if (basicChanged) {
+                const patientPayload = sanitizeObject({
+                    ...patientForm,
+                    id: patientId,
+                    patient_id: patientId,
+                })
+                console.log('Updating patient with payload:', patientPayload)
+                await onSuccess(patientPayload)
+            }
+
+            // Update only the sections that actually changed
             const promises = []
+            const updatedSections = []
             const failedSections = []
 
-            // Update delivery record if has data
-            if (hasFormData(deliveryForm)) {
+            if (deliveryChanged && hasFormData(deliveryForm)) {
                 promises.push(
                     updateDeliveryRecord(patientId, sanitizeObject(deliveryForm))
-                        .then(() => ({ section: 'delivery', success: true }))
-                        .catch((error) => {
-                            console.error('Delivery update failed:', error)
-                            failedSections.push('delivery')
-                            return { section: 'delivery', error }
-                        })
+                        .then(() => { updatedSections.push('delivery'); return { section: 'delivery', success: true } })
+                        .catch((error) => { failedSections.push('delivery'); console.error('Delivery update failed:', error); return { section: 'delivery', error } })
                 )
             }
 
-            // Update screening record if has data
-            if (hasFormData(screeningForm)) {
+            if (screeningChanged && hasFormData(screeningForm)) {
                 promises.push(
                     updateScreeningRecord(patientId, sanitizeObject(screeningForm))
-                        .then(() => ({ section: 'screening', success: true }))
-                        .catch((error) => {
-                            console.error('Screening update failed:', error)
-                            failedSections.push('screening')
-                            return { section: 'screening', error }
-                        })
+                        .then(() => { updatedSections.push('screening'); return { section: 'screening', success: true } })
+                        .catch((error) => { failedSections.push('screening'); console.error('Screening update failed:', error); return { section: 'screening', error } })
                 )
             }
 
-            // Update anthropometric record if has data
-            if (hasFormData(anthroForm)) {
+            if (anthroChanged && hasFormData(anthroForm)) {
                 const sanitizedAnthro = sanitizeObject(anthroForm)
-                console.log('DEBUG: Anthropometric form data:', anthroForm)
-                console.log('DEBUG: Sanitized anthropometric data:', sanitizedAnthro)
+                console.log('Updating anthropometric data:', sanitizedAnthro)
                 promises.push(
                     updateAnthropometricRecord(patientId, sanitizedAnthro)
-                        .then(() => ({ section: 'anthropometric', success: true }))
-                        .catch((error) => {
-                            console.error('Anthropometric update failed:', error)
-                            console.error('Anthropometric error details:', error.response?.data)
-                            failedSections.push('anthropometric')
-                            return { section: 'anthropometric', error }
-                        })
+                        .then(() => { updatedSections.push('anthropometric'); return { section: 'anthropometric', success: true } })
+                        .catch((error) => { failedSections.push('anthropometric'); console.error('Anthropometric update failed:', error); return { section: 'anthropometric', error } })
                 )
             }
 
-            // Update allergy record if has data
-            if (hasFormData(allergiesForm)) {
+            if (allergiesChanged && hasFormData(allergiesForm)) {
+                const sanitizedAllergy = sanitizeObject(allergiesForm)
+                console.log('Updating allergy data:', sanitizedAllergy)
                 promises.push(
-                    updateAllergyRecord(patientId, sanitizeObject(allergiesForm))
-                        .then(() => ({ section: 'allergies', success: true }))
-                        .catch((error) => {
-                            console.error('Allergy update failed:', error)
-                            failedSections.push('allergies')
-                            return { section: 'allergies', error }
-                        })
+                    updateAllergyRecord(patientId, sanitizedAllergy)
+                        .then(() => { updatedSections.push('allergies'); return { section: 'allergies', success: true } })
+                        .catch((error) => { failedSections.push('allergies'); console.error('Allergy update failed:', error); return { section: 'allergies', error } })
                 )
             }
 
-            // Execute all related record updates and collect results
-            let completedSections = []
+            // Execute all updates
             if (promises.length > 0) {
                 console.log(`Processing ${promises.length} related record updates...`)
-                const results = await Promise.allSettled(promises)
-                const failures = results.filter((result) => result.status === 'rejected')
-                completedSections = results
-                    .filter((result) => result.status === 'fulfilled')
-                    .map((result) => result.value)
+                await Promise.allSettled(promises)
 
-                if (failures.length > 0) {
-                    console.warn('Some related records failed to update:', failures)
-                    const failedNames = failedSections.join(', ')
-                    showToast('warning', `Patient updated, but failed to update: ${failedNames}`)
+                if (failedSections.length > 0) {
+                    showToast('warning', `Patient updated, but failed to update: ${failedSections.join(', ')}`)
                 } else {
-                    console.log('All updates completed successfully')
-                    showToast('success', 'Patient and all related data updated successfully')
+                    showToast('success', 'Patient and related data updated successfully')
                 }
-            } else {
-                console.log('Patient updated with no additional sections')
+            } else if (basicChanged) {
                 showToast('success', 'Patient updated successfully')
+            } else {
+                showToast('info', 'No changes detected')
+                onClose()
+                return
             }
 
-            // Dispatch custom event for real-time updates with comprehensive data
+            // Dispatch event for real-time updates - ONLY include sections that changed
             if (typeof window !== 'undefined' && patient) {
+                // Start with a complete copy of existing related_records
+                const updatedRelatedRecords = { ...patient.related_records }
+
+                // Only update sections that actually changed and succeeded
+                if (deliveryChanged && updatedSections.includes('delivery')) {
+                    updatedRelatedRecords.delivery = sanitizeObject(deliveryForm)
+                }
+
+                if (screeningChanged && updatedSections.includes('screening')) {
+                    updatedRelatedRecords.screening = sanitizeObject(screeningForm)
+                }
+
+                if (anthroChanged && updatedSections.includes('anthropometric')) {
+                    const newMeasurement = {
+                        ...sanitizeObject(anthroForm),
+                        am_id: anthroForm.am_id || `temp_${Date.now()}`,
+                    }
+
+                    // Get existing measurements (handle both key names)
+                    const existingMeasurements = patient.related_records?.anthropometric_measurements
+                        || patient.related_records?.anthropometric
+                        || []
+
+                    // Update the measurement array
+                    if (Array.isArray(existingMeasurements) && existingMeasurements.length > 0) {
+                        // Update the last measurement
+                        updatedRelatedRecords.anthropometric_measurements = [
+                            ...existingMeasurements.slice(0, -1),
+                            newMeasurement
+                        ]
+                    } else {
+                        updatedRelatedRecords.anthropometric_measurements = [newMeasurement]
+                    }
+                }
+
+                if (allergiesChanged && updatedSections.includes('allergies')) {
+                    const sanitizedAllergy = sanitizeObject(allergiesForm)
+                    const existingAllergies = patient.related_records?.allergies || []
+
+                    if (allergiesForm.allergy_id && Array.isArray(existingAllergies)) {
+                        // Update existing allergy
+                        updatedRelatedRecords.allergies = existingAllergies.map(allergy =>
+                            allergy.allergy_id === allergiesForm.allergy_id
+                                ? { ...allergy, ...sanitizedAllergy }
+                                : allergy
+                        )
+                    } else if (Array.isArray(existingAllergies)) {
+                        // Add new allergy
+                        updatedRelatedRecords.allergies = [...existingAllergies, sanitizedAllergy]
+                    } else {
+                        updatedRelatedRecords.allergies = [sanitizedAllergy]
+                    }
+                }
+
                 const updatedPatientData = {
                     ...patient,
-                    ...patientPayload,
-                    related_records: {
-                        ...patient.related_records,
-                        // Update related records with new data based on form data (optimistic updates)
-                        ...(hasFormData(deliveryForm) && {
-                            delivery: sanitizeObject(deliveryForm),
-                        }),
-                        ...(hasFormData(screeningForm) && {
-                            screening: sanitizeObject(screeningForm),
-                        }),
-                        ...(hasFormData(anthroForm) && {
-                            anthropometric_measurements: (() => {
-                                const newMeasurement = {
-                                    ...sanitizeObject(anthroForm),
-                                    am_id: Date.now(), // Temporary ID for immediate display
-                                    recorded_by:
-                                        patient.related_records?.anthropometric_measurements?.[0]
-                                            ?.recorded_by || 'current_user',
-                                }
-
-                                // For updates, replace the most recent measurement or add if none exists
-                                const existingMeasurements =
-                                    patient.related_records?.anthropometric_measurements || []
-                                if (existingMeasurements.length > 0) {
-                                    // Replace the most recent measurement
-                                    return [...existingMeasurements.slice(0, -1), newMeasurement]
-                                } else {
-                                    // Add new measurement
-                                    return [newMeasurement]
-                                }
-                            })(),
-                        }),
-                        ...(hasFormData(allergiesForm) && {
-                            allergies: patient.related_records?.allergies
-                                ? [
-                                      ...patient.related_records.allergies,
-                                      sanitizeObject(allergiesForm),
-                                  ]
-                                : [sanitizeObject(allergiesForm)],
-                        }),
-                    },
+                    ...(basicChanged ? sanitizeObject(patientForm) : {}),
+                    related_records: updatedRelatedRecords,
                 }
 
                 const eventDetail = {
                     patient_id: patientId,
-                    updated_sections: completedSections.map((result) => result.section),
+                    updated_sections: updatedSections,
                     failed_sections: failedSections,
                     timestamp: new Date().toISOString(),
                     patient_data: updatedPatientData,
@@ -374,26 +433,17 @@ const EditPatientModal = ({ onClose, patient, onSuccess }) => {
                 }
 
                 console.log('Dispatching patient-updated event:', eventDetail)
-                // Dispatch immediately for optimistic UI updates
                 window.dispatchEvent(new CustomEvent('patient-updated', { detail: eventDetail }))
             }
 
-            console.log('Patient update process completed successfully')
-
-            // Close modal after brief delay to show the success message
+            // Close modal after brief delay
             setTimeout(() => {
                 onClose()
             }, 500)
+
         } catch (error) {
             console.error('Error in patient update process:', error)
-
-            let errorMessage = 'Failed to update patient record'
-            if (error.message) {
-                errorMessage = error.message
-            } else if (error.response?.data?.message) {
-                errorMessage = error.response.data.message
-            }
-
+            const errorMessage = error.message || error.response?.data?.message || 'Failed to update patient record'
             showToast('error', errorMessage)
         } finally {
             setLoading(false)
@@ -411,17 +461,18 @@ const EditPatientModal = ({ onClose, patient, onSuccess }) => {
         return null
     }
 
-    // Define tabs with data indicators
+    // Define tabs with data and dirty indicators
     const tabs = [
         {
             value: 'basic',
             label: 'BASIC INFO',
             icon: User,
-            hasData: true, // Always has data
+            hasData: true,
+            isDirty: dirtyFields.basic,
             content: (
                 <BasicInfoSection
                     form={patientForm}
-                    updateForm={(field, value) => updateForm(setPatientForm, field, value)}
+                    updateForm={createUpdateForm(setPatientForm, 'basic')}
                 />
             ),
         },
@@ -430,10 +481,11 @@ const EditPatientModal = ({ onClose, patient, onSuccess }) => {
             label: 'DELIVERY',
             icon: Stethoscope,
             hasData: hasFormData(deliveryForm),
+            isDirty: dirtyFields.delivery,
             content: (
                 <DeliverySection
                     form={deliveryForm}
-                    updateForm={(field, value) => updateForm(setDeliveryForm, field, value)}
+                    updateForm={createUpdateForm(setDeliveryForm, 'delivery')}
                 />
             ),
         },
@@ -442,10 +494,11 @@ const EditPatientModal = ({ onClose, patient, onSuccess }) => {
             label: 'SCREENING',
             icon: Activity,
             hasData: hasFormData(screeningForm),
+            isDirty: dirtyFields.screening,
             content: (
                 <ScreeningSection
                     form={screeningForm}
-                    updateForm={(field, value) => updateForm(setScreeningForm, field, value)}
+                    updateForm={createUpdateForm(setScreeningForm, 'screening')}
                 />
             ),
         },
@@ -454,10 +507,11 @@ const EditPatientModal = ({ onClose, patient, onSuccess }) => {
             label: 'ALLERGIES',
             icon: AlertCircle,
             hasData: hasFormData(allergiesForm),
+            isDirty: dirtyFields.allergies,
             content: (
                 <AllergySection
                     form={allergiesForm}
-                    updateForm={(field, value) => updateForm(setAllergiesForm, field, value)}
+                    updateForm={createUpdateForm(setAllergiesForm, 'allergies')}
                 />
             ),
         },
@@ -466,10 +520,11 @@ const EditPatientModal = ({ onClose, patient, onSuccess }) => {
             label: 'MEASUREMENTS',
             icon: Ruler,
             hasData: hasFormData(anthroForm),
+            isDirty: dirtyFields.anthropometric,
             content: (
                 <AnthropometricSection
                     form={anthroForm}
-                    updateForm={(field, value) => updateForm(setAnthroForm, field, value)}
+                    updateForm={createUpdateForm(setAnthroForm, 'anthropometric')}
                 />
             ),
         },
@@ -483,8 +538,8 @@ const EditPatientModal = ({ onClose, patient, onSuccess }) => {
                         Edit Patient: {patient.firstname} {patient.lastname}
                     </DialogTitle>
                     <DialogDescription>
-                        Update patient information using the tabs below. Navigate between sections
-                        freely. Blue dots indicate sections with existing data.
+                        Update patient information using the tabs below. Blue dots indicate sections with data.
+                        Orange dots indicate unsaved changes.
                     </DialogDescription>
                 </DialogHeader>
 
@@ -501,7 +556,8 @@ const EditPatientModal = ({ onClose, patient, onSuccess }) => {
                                         key={tab.value}
                                         value={tab.value}
                                         icon={tab.icon}
-                                        hasData={tab.hasData}
+                                        hasData={tab.hasData && !tab.isDirty}
+                                        isDirty={tab.isDirty}
                                     >
                                         {tab.label}
                                     </TabItem>

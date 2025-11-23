@@ -11,6 +11,7 @@ import NotFound from '@/pages/NotFound'
 import AuthSuccess from '@/pages/AuthSuccess'
 import AuthError from '@/pages/AuthError'
 import QrScanner from '@/pages/QrScanner'
+import PrescriptionViewPage from '@/pages/PrescriptionViewPage'
 import QrCodeGeneratorTest from '@/pages/QrCodeGeneratorTest'
 import ForgotPassword from '@/pages/ForgotPassword'
 import Settings from '@/pages/Settings'
@@ -72,6 +73,10 @@ function App() {
                 {
                     path: '/qr_scanner',
                     element: <QrScanner />,
+                },
+                {
+                    path: '/prescription/view',
+                    element: <PrescriptionViewPage />,
                 },
                 {
                     path: '/qr_generator_test',

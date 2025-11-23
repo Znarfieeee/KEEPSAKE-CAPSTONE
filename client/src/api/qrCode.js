@@ -129,6 +129,63 @@ export const accessQRCode = async (token, pin = null) => {
 }
 
 /**
+ * Access prescription data via QR code token (PUBLIC - No authentication required)
+ * This works with any QR scanner (iPhone, Android, web browsers, etc.)
+ * @param {string} token - QR code token
+ * @param {string} pin - Optional: PIN code for secured QR codes
+ * @returns {Promise<Object>} Prescription data and metadata
+ */
+export const accessPrescriptionPublic = async (token, pin = null) => {
+    try {
+        const params = new URLSearchParams({ token })
+        if (pin) {
+            params.append("pin", pin)
+        }
+
+        // Public endpoint - no credentials needed
+        const response = await axios.get(
+            `${backendConnection()}/qr/prescription/public?${params.toString()}`,
+            {
+                headers: {
+                    "Content-Type": "application/json",
+                }
+                // Note: No withCredentials - this is a public endpoint
+            }
+        )
+        return response.data
+    } catch (error) {
+        if (error.response) {
+            const errorData = error.response.data
+            const status = errorData?.status || ""
+            const errorMessage = errorData?.error || "Failed to access prescription"
+
+            // Handle specific status codes
+            if (status === "pin_required" || errorData?.requires_pin) {
+                const pinError = new Error("PIN required")
+                pinError.requiresPin = true
+                throw pinError
+            } else if (status === "invalid_pin") {
+                throw new Error("Invalid PIN code")
+            } else if (status === "expired") {
+                throw new Error("This prescription QR code has expired")
+            } else if (status === "limit_reached") {
+                throw new Error("This QR code has reached its usage limit")
+            } else if (error.response.status === 404) {
+                throw new Error("Invalid or expired QR code")
+            }
+
+            throw new Error(errorMessage)
+        } else if (error.request) {
+            throw new Error(
+                "Unable to connect to the server. Please check your internet connection."
+            )
+        } else {
+            throw new Error("An unexpected error occurred. Please try again.")
+        }
+    }
+}
+
+/**
  * List QR codes for the current facility
  * @param {string} patientId - Optional: Filter by patient ID
  * @returns {Promise<Object>} List of QR codes

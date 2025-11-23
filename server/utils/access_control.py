@@ -7,7 +7,7 @@ import datetime, json
 from flask import request, jsonify, current_app
 
 # Local modules
-from config.settings import supabase
+from config.settings import supabase, set_authenticated_client
 from utils.sessions import (
     get_session_data,
     update_session_activity,
@@ -143,8 +143,9 @@ def require_auth(f):
                     "facility_id": session_data.get("facility_id"),
                 }  # type: ignore[attr-defined]
 
-                # Tell the Supabase client to run queries on behalf of the user
-                supabase.postgrest.auth(access_token)
+                # Create a per-request authenticated Supabase client
+                # This ensures auth.uid() works correctly in RLS policies
+                set_authenticated_client(access_token)
 
                 return f(*args, **kwargs)
 
@@ -171,8 +172,8 @@ def require_auth(f):
                             json.dumps(session_data),
                         )
 
-                        # Update Supabase client context
-                        supabase.postgrest.auth(refreshed.session.access_token)
+                        # Create a per-request authenticated Supabase client with refreshed token
+                        set_authenticated_client(refreshed.session.access_token)
 
                         # Re-populate request helpers
                         request.session_data = session_data  # type: ignore[attr-defined]

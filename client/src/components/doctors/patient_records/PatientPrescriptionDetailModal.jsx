@@ -19,7 +19,7 @@ import {
     Globe,
 } from 'lucide-react'
 import { TooltipHelper } from '@/util/TooltipHelper'
-import SecureQRGenerator from '@/components/qr/SecureQRGenerator'
+import PrescriptionQRDialog from '@/components/qr/PrescriptionQRDialog'
 
 // KEEPSAKE Logo - use imported asset
 import KeepsakeLogo from '@/assets/KEEPSAKE.png'
@@ -617,28 +617,23 @@ const PatientPrescriptionDetailModal = ({ open, prescription, patient, onClose }
                 if (e.target === e.currentTarget) onClose()
             }}
         >
-            {/* QR Generator Panel */}
-            {showQRGenerator && (
-                <div className="flex-shrink-0 bg-white border-b shadow-lg">
-                    <div className="max-w-4xl mx-auto px-4 py-4">
-                        <div className="flex items-center justify-between mb-3">
-                            <h3 className="font-semibold text-gray-800">Share Prescription via QR Code</h3>
-                            <Button variant="ghost" size="sm" onClick={() => setShowQRGenerator(false)}>
-                                <X className="w-4 h-4" />
-                            </Button>
-                        </div>
-                        <SecureQRGenerator
-                            patientId={prescription.patient_id || patient?.patient_id}
-                            shareType="prescription"
-                            defaultScope={["prescriptions", "allergies"]}
-                            referenceData={prescriptionReferenceData}
-                            compact={true}
-                            onGenerate={(response) => console.log("QR generated:", response)}
-                            onError={(error) => console.error("QR error:", error)}
-                        />
-                    </div>
-                </div>
-            )}
+            {/* Prescription QR Dialog */}
+            <PrescriptionQRDialog
+                isOpen={showQRGenerator}
+                onClose={() => setShowQRGenerator(false)}
+                prescription={{
+                    rx_id: prescription.rx_id,
+                    patient_id: prescription.patient_id || patient?.patient_id,
+                    patient_name: patient?.name || `${patient?.firstname || ''} ${patient?.lastname || ''}`.trim() || prescription.patient_name,
+                    prescription_date: prescription.prescription_date,
+                    doctor_name: prescription.doctor_name,
+                    medications: medications
+                }}
+                onGenerate={(response) => {
+                    console.log("Prescription QR generated:", response)
+                    // Don't close dialog - let user see QR code and download/copy options
+                }}
+            />
 
             {/* Prescription Document */}
             <div className="flex-1 overflow-auto py-6">

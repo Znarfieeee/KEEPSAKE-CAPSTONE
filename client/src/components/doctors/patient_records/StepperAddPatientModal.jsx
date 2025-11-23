@@ -616,13 +616,13 @@ const StepperAddPatientModal = ({ open, onClose }) => {
             }
 
             // Validate birth height if provided
-            if (patientForm.birth_height) {
-                const height = parseFloat(patientForm.birth_height)
-                if (isNaN(height) || height < 20 || height > 70) {
-                    showToast('error', 'Birth height must be between 20 and 70 cm')
-                    return false
-                }
-            }
+            // if (patientForm.birth_height) {
+            //     const height = parseFloat(patientForm.birth_height)
+            //     if (isNaN(height) || height < 20 || height > 70) {
+            //         showToast('error', 'Birth height must be between 20 and 70 cm')
+            //         return false
+            //     }
+            // }
 
             // Validate sex field
             if (!['male', 'female'].includes(patientForm.sex)) {
@@ -741,8 +741,14 @@ const StepperAddPatientModal = ({ open, onClose }) => {
                 // Check if there's meaningful data (not just empty/null values)
                 const hasData = Object.entries(deliveryPayload).some(([key, val]) => {
                     // Allow boolean false values and meaningful strings/numbers
-                    return val !== null && val !== '' && val !== undefined &&
-                           (typeof val === 'boolean' || (typeof val === 'string' && val.trim().length > 0) || typeof val === 'number')
+                    return (
+                        val !== null &&
+                        val !== '' &&
+                        val !== undefined &&
+                        (typeof val === 'boolean' ||
+                            (typeof val === 'string' && val.trim().length > 0) ||
+                            typeof val === 'number')
+                    )
                 })
 
                 if (hasData) {
@@ -766,8 +772,14 @@ const StepperAddPatientModal = ({ open, onClose }) => {
 
                 // Check if there's meaningful data (allowing boolean values)
                 const hasData = Object.entries(screeningPayload).some(([key, val]) => {
-                    return val !== null && val !== '' && val !== undefined &&
-                           (typeof val === 'boolean' || (typeof val === 'string' && val.trim().length > 0) || typeof val === 'number')
+                    return (
+                        val !== null &&
+                        val !== '' &&
+                        val !== undefined &&
+                        (typeof val === 'boolean' ||
+                            (typeof val === 'string' && val.trim().length > 0) ||
+                            typeof val === 'number')
+                    )
                 })
 
                 if (hasData) {
@@ -789,8 +801,14 @@ const StepperAddPatientModal = ({ open, onClose }) => {
 
                 // Check if there's meaningful data
                 const hasData = Object.entries(anthroPayload).some(([key, val]) => {
-                    return val !== null && val !== '' && val !== undefined &&
-                           (typeof val === 'boolean' || (typeof val === 'string' && val.trim().length > 0) || typeof val === 'number')
+                    return (
+                        val !== null &&
+                        val !== '' &&
+                        val !== undefined &&
+                        (typeof val === 'boolean' ||
+                            (typeof val === 'string' && val.trim().length > 0) ||
+                            typeof val === 'number')
+                    )
                 })
 
                 if (hasData) {
@@ -799,7 +817,10 @@ const StepperAddPatientModal = ({ open, onClose }) => {
                             .then((result) => ({ section: 'anthropometric', result }))
                             .catch((error) => {
                                 console.error('Anthropometric record failed (add):', error)
-                                console.error('Anthropometric error details (add):', error.response?.data)
+                                console.error(
+                                    'Anthropometric error details (add):',
+                                    error.response?.data
+                                )
                                 failedSections.push('anthropometric')
                                 return Promise.reject({ section: 'anthropometric', error })
                             })
@@ -812,8 +833,14 @@ const StepperAddPatientModal = ({ open, onClose }) => {
 
                 // Check if there's meaningful data
                 const hasData = Object.entries(allergyPayload).some(([key, val]) => {
-                    return val !== null && val !== '' && val !== undefined &&
-                           (typeof val === 'boolean' || (typeof val === 'string' && val.trim().length > 0) || typeof val === 'number')
+                    return (
+                        val !== null &&
+                        val !== '' &&
+                        val !== undefined &&
+                        (typeof val === 'boolean' ||
+                            (typeof val === 'string' && val.trim().length > 0) ||
+                            typeof val === 'number')
+                    )
                 })
 
                 if (hasData) {

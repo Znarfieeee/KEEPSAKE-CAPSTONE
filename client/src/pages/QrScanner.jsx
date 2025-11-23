@@ -71,7 +71,13 @@ const QrScanner = () => {
         try {
             const url = new URL(data)
             const token = url.searchParams.get("token")
-            if (token) return { type: "token", value: token }
+            if (token) {
+                // Check if it's a prescription URL - should redirect to prescription view
+                if (url.pathname.includes("/prescription/view")) {
+                    return { type: "prescription", value: token, fullUrl: data }
+                }
+                return { type: "token", value: token }
+            }
         } catch {
             // Not a URL, continue checking
         }
@@ -83,7 +89,13 @@ const QrScanner = () => {
             if (jsonData.access_url) {
                 const url = new URL(jsonData.access_url)
                 const token = url.searchParams.get("token")
-                if (token) return { type: "token", value: token }
+                if (token) {
+                    // Check if it's a prescription URL
+                    if (url.pathname.includes("/prescription/view")) {
+                        return { type: "prescription", value: token, fullUrl: jsonData.access_url }
+                    }
+                    return { type: "token", value: token }
+                }
             }
             // Legacy direct patient data
             if (jsonData.patientId || jsonData.patient_id) {
@@ -155,6 +167,14 @@ const QrScanner = () => {
             // Extract token or legacy data
             const extracted = extractToken(decodedText)
 
+            // Handle prescription QR codes - redirect to dedicated prescription view page
+            if (extracted.type === "prescription") {
+                console.log("Prescription QR detected, redirecting to prescription view...")
+                // Navigate to the prescription view page with the token
+                navigate(`/prescription/view?token=${extracted.value}`)
+                return
+            }
+
             if (extracted.type === "token") {
                 // Token-based QR code - validate with backend
                 try {
@@ -181,7 +201,7 @@ const QrScanner = () => {
             setLoading(false)
             setScanSuccess(false)
         }
-    }, [processQrData])
+    }, [processQrData, navigate])
 
     // Handle PIN submission
     const handlePinSubmit = async (pin) => {

@@ -542,6 +542,25 @@ def deactivate_account():
                 "status": "error",
                 "message": "Failed to deactivate account"
             }), 500
+            
+        sr_client = supabase_service_role_client()
+        
+        if getattr(getattr(sr_client, 'auth', None), "admin", None):
+            try:
+                if hasattr(sr_client.auth.admin,"update_user"):
+                    sr_client.auth.admin.updater_user(user_id, {
+                        "disabled": True,
+                        "deleted_at": datetime.utcnow().isoformat()
+                    })
+                elif hasattr(sr_client.auth.admin,"update_user_by_id"):
+                    sr_client.auth.admin.update_user_by_id(user_id, {
+                        "disabled": True,
+                        "deleted_at": datetime.utcnow().isoformat()
+                    })
+                    
+            except Exception as admin_err:
+                current_app.logger.warning(f"Service-role admin update failed: {admin_err}")
+                raise
 
         current_app.logger.info(f"AUDIT: User {email} deactivated account from IP {request.remote_addr}")
 
