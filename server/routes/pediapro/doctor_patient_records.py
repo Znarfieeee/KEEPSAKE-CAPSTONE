@@ -2,7 +2,7 @@ from flask import Blueprint, jsonify, request, current_app
 from utils.access_control import require_auth, require_role
 from config.settings import supabase, supabase_service_role_client, get_authenticated_client
 from postgrest.exceptions import APIError as AuthApiError
-from utils.redis_client import get_redis_client
+from utils.redis_client import get_redis_client, clear_patient_cache
 from utils.invalidate_cache import invalidate_caches
 from utils.gen_password import generate_password
 import json, datetime
@@ -2204,9 +2204,13 @@ def delete_patient_record(patient_id):
         related_tables = [
             'delivery_record',
             'anthropometric_measurements',
+            'growth_milestones',
             'screening_tests',
-            'allergies',
             'prescriptions',
+            'vaccinations',
+            'facility_patients',
+            'allergies',
+            'parent_access',
             'appointments'
         ]
 
@@ -2242,6 +2246,13 @@ def delete_patient_record(patient_id):
 
         # Invalidate caches
         invalidate_caches('patient', patient_id)
+        
+        try:
+            facility_id = patient_data.get('facility_id') or current_user.get('facility_id')
+            cleared = clear_patient_cache(patient_id=patient_id, facility_id=facility_id)
+            current_app.logger.info(f"AUDIT: Cleared {cleared} Redis cache keys for patient {patient_id}")
+        except Exception as redis_err:
+            current_app.logger.warning(f"AUDIT: Failed to clear Redis cache for patient {patient_id}: {redis_err}")
 
         # Log successful deletion with details
         total_related_deleted = sum(deleted_related.values())

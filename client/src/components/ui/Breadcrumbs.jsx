@@ -62,7 +62,7 @@ const SEGMENT_LABELS = {
     nurse: 'Dashboard',
 }
 
-const DASHBOARD_SEGMENTS = ['admin', 'facility_admin', 'pediapro', 'parent', 'vital_custodian']
+const DASHBOARD_SEGMENTS = ['admin', 'facility_admin', 'pediapro', 'parent', 'nurse']
 
 function Breadcrumbs() {
     const location = useLocation()

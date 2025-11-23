@@ -10,6 +10,7 @@ import { BiCalendar } from 'react-icons/bi'
 import { BiCog } from 'react-icons/bi'
 import { TbHeartbeat } from 'react-icons/tb'
 import { MdQrCodeScanner } from 'react-icons/md'
+import { MessageSquarePlus } from 'lucide-react'
 import Hamburger from '@/components/ui/Hamburger'
 import AccountPlaceholder from '@/components/AccountPlaceholder'
 import NotificationBell from '@/components/notifications/NotificationBell'
@@ -51,7 +52,12 @@ const systemSideNavLinks = [
     {
         icon: <BiHelpCircle className="text-xl" />,
         title: 'Help & Support',
-        to: '/pediapro/help_support',
+        to: '/pediapro/help-support',
+    },
+    {
+        icon: <MessageSquarePlus className="text-xl" />,
+        title: 'Send Feedback',
+        to: '/pediapro/feedback',
     },
 ]
 

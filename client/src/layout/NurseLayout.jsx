@@ -5,9 +5,10 @@ import { Outlet, Link } from 'react-router-dom'
 import Breadcrumbs from '@/components/ui/Breadcrumbs'
 import { BiHelpCircle } from 'react-icons/bi'
 import { RiDashboardLine } from 'react-icons/ri'
-import { BiCog } from 'react-icons/bi'
+import { BiCog, BiCalendar } from 'react-icons/bi'
 import { TbHeartbeat } from 'react-icons/tb'
 import { MdQrCodeScanner } from 'react-icons/md'
+import { MessageSquarePlus } from 'lucide-react'
 import Hamburger from '@/components/ui/Hamburger'
 import AccountPlaceholder from '@/components/AccountPlaceholder'
 import NotificationBell from '@/components/notifications/NotificationBell'
@@ -19,9 +20,9 @@ const mainSideNavLinks = [
         to: '/nurse',
     },
     {
-        icon: <TbHeartbeat className="text-xl" />,
-        title: 'Patient Vitals',
-        to: '/nurse/patients',
+        icon: <BiCalendar className="text-xl" />,
+        title: 'Appointments',
+        to: '/nurse/appointments',
     },
     {
         icon: <TbHeartbeat className="text-xl" />,
@@ -44,7 +45,12 @@ const systemSideNavLinks = [
     {
         icon: <BiHelpCircle className="text-xl" />,
         title: 'Help & Support',
-        to: '/nurse/help_support',
+        to: '/nurse/help-support',
+    },
+    {
+        icon: <MessageSquarePlus className="text-xl" />,
+        title: 'Send Feedback',
+        to: '/nurse/feedback',
     },
 ]
 

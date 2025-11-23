@@ -30,8 +30,8 @@ import SystemConfigPage from '@/pages/systemAdmin/SystemConfigPage'
 import MaintenancePage from '@/pages/systemAdmin/MaintenancePage'
 
 // Facility_admin
-import FadminDashboard from '@/pages/facilityAdmin/FadminDashboard'
-import FadminFacilityUsersRegistry from './pages/facilityAdmin/FadminFacilityUsersRegistry'
+import FadminDashboard from '@/pages/facility_admin/FadminDashboard'
+import FadminFacilityUsersRegistry from './pages/facility_admin/FadminFacilityUsersRegistry'
 
 // Doctor
 import DoctorDashboard from '@/pages/pediapro/DoctorDashboard'
@@ -55,6 +55,13 @@ import ParentQrScanner from '@/pages/parent/ParentQrScanner'
 
 // Facility Admin QR Scanner
 import FacilityAdminQrScanner from '@/pages/facility_admin/FacilityAdminQrScanner'
+
+// Help & Feedback Pages (Shared)
+import HelpSupport from '@/pages/shared/HelpSupport'
+import Feedback from '@/pages/shared/Feedback'
+
+// Admin Feedback Management
+import FeedbackDashboard from '@/components/systemAdmin/FeedbackDashboard'
 
 import AdminLayout from '@/layout/AdminLayout'
 import FacilityAdminLayout from '@/layout/FacilityAdminLayout'
@@ -167,6 +174,18 @@ function App() {
                             path: 'settings',
                             element: <Settings />,
                         },
+                        {
+                            path: 'help-support',
+                            element: <HelpSupport />,
+                        },
+                        {
+                            path: 'feedback',
+                            element: <Feedback />,
+                        },
+                        {
+                            path: 'feedback-dashboard',
+                            element: <FeedbackDashboard />,
+                        },
                     ],
                 },
                 {
@@ -245,6 +264,14 @@ function App() {
                             path: 'qr_scanner',
                             element: <FacilityAdminQrScanner />,
                         },
+                        {
+                            path: 'help-support',
+                            element: <HelpSupport />,
+                        },
+                        {
+                            path: 'feedback',
+                            element: <Feedback />,
+                        },
                     ],
                 },
                 {
@@ -280,8 +307,12 @@ function App() {
                             element: <Settings />,
                         },
                         {
-                            path: 'help_support',
-                            element: <DoctorSupport />,
+                            path: 'help-support',
+                            element: <HelpSupport />,
+                        },
+                        {
+                            path: 'feedback',
+                            element: <Feedback />,
                         },
                         {
                             path: 'qr_scanner',
@@ -318,8 +349,12 @@ function App() {
                             element: <Settings />,
                         },
                         {
-                            path: 'help_support',
-                            element: <div>Parent Help & Support Page - Coming Soon</div>,
+                            path: 'help-support',
+                            element: <HelpSupport />,
+                        },
+                        {
+                            path: 'feedback',
+                            element: <Feedback />,
                         },
                         {
                             path: 'qr_scanner',
@@ -344,8 +379,8 @@ function App() {
                             element: <NurseQrScanner />,
                         },
                         {
-                            path: 'patient/:patientId/vitals',
-                            element: <div>Patient Vitals - Coming Soon</div>,
+                            path: 'appointments',
+                            element: <DoctorAppointments />,
                         },
                         {
                             path: 'patient_records',
@@ -358,6 +393,14 @@ function App() {
                         {
                             path: 'settings',
                             element: <Settings />,
+                        },
+                        {
+                            path: 'help-support',
+                            element: <HelpSupport />,
+                        },
+                        {
+                            path: 'feedback',
+                            element: <Feedback />,
                         },
                     ],
                 },

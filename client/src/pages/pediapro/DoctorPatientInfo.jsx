@@ -1,5 +1,6 @@
 import React, { useState, useEffect, lazy, Suspense } from 'react'
 import { useParams, useNavigate, useLocation, Link } from 'react-router-dom'
+import { useAuth } from '@/context/auth'
 
 // UI Components
 import { IoMdArrowBack } from 'react-icons/io'
@@ -20,6 +21,7 @@ import { showToast } from '@/util/alertHelper'
 const EditPatientModal = lazy(() => import('@/components/doctors/patient_records/EditPatientModal'))
 
 const DoctorPatientInfo = () => {
+    const { user } = useAuth()
     const { patientId } = useParams()
     const navigate = useNavigate()
     const location = useLocation()
@@ -30,6 +32,8 @@ const DoctorPatientInfo = () => {
     const [editingPatient, setEditingPatient] = useState(null)
     const [showDeleteDialog, setShowDeleteDialog] = useState(false)
     const [deleteLoading] = useState(false)
+
+    console.log(user?.role)
 
     useEffect(() => {
         const fetchPatientData = async () => {
@@ -44,7 +48,7 @@ const DoctorPatientInfo = () => {
                     if (!location.state?.patient) {
                         navigate(location.pathname, {
                             replace: true,
-                            state: { patient: response.data }
+                            state: { patient: response.data },
                         })
                     }
                 } else {
@@ -174,7 +178,11 @@ const DoctorPatientInfo = () => {
             <div className="flex justify-between items-center mb-6">
                 <div className="flex items-center gap-2 text-black ">
                     <Link
-                        to="/pediapro/patient_records"
+                        to={
+                            user?.role === 'doctor'
+                                ? '/pediapro/patient_records'
+                                : '/nurse/patient_records'
+                        }
                         className="hover:text-primary transition duration-300 ease-in-out"
                     >
                         <IoMdArrowBack className="text-2xl" />
@@ -200,17 +208,21 @@ const DoctorPatientInfo = () => {
                                 <Edit size={16} />
                             </Button>
                         </TooltipHelper>
-                        <TooltipHelper content="Delete patient">
-                            <Button
-                                variant="destructive"
-                                size="sm"
-                                onClick={handleDeleteClick}
-                                className="px-2"
-                            >
-                                Delete
-                                <Trash2 size={16} />
-                            </Button>
-                        </TooltipHelper>
+                        {user?.role !== 'nurse' ? (
+                            <TooltipHelper content="Delete patient">
+                                <Button
+                                    variant="destructive"
+                                    size="sm"
+                                    onClick={handleDeleteClick}
+                                    className="px-2"
+                                >
+                                    Delete
+                                    <Trash2 size={16} />
+                                </Button>
+                            </TooltipHelper>
+                        ) : (
+                            ''
+                        )}
                     </div>
                 </div>
             </div>

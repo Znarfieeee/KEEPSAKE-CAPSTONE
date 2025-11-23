@@ -32,7 +32,6 @@ def get_authenticated_client() -> Client:
     """
     # Check if we have an authenticated client stored in Flask's request context
     if hasattr(g, 'supabase_auth_client') and g.supabase_auth_client is not None:
-        print("DEBUG: Using authenticated client from request context")
         return g.supabase_auth_client
 
     # Fall back to anon client (RLS will apply with anonymous context)
@@ -58,22 +57,10 @@ def set_authenticated_client(access_token: str) -> Client:
     # Set the JWT token for PostgREST requests - this enables auth.uid() in RLS
     auth_client.postgrest.auth(access_token)
 
-    # Debug: Log that we're setting up authenticated client
-    print(f"DEBUG: Setting authenticated client with token prefix: {access_token[:50]}...")
-
     # Store in Flask's g object for request-scoped access
     g.supabase_auth_client = auth_client
 
     return auth_client
 
 
-# Default global supabase client (for backwards compatibility)
-# NOTE: For authenticated operations, use get_authenticated_client() instead
-try:
-    supabase = supabase_anon_client()
-    if supabase:
-        print("Successfully connected to supabase!")
-    else:
-        print("Error connecting to supabase!")
-except Exception as e:
-    print("Error: "+str(e))
+supabase = supabase_anon_client()

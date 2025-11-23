@@ -1,4 +1,5 @@
 import React, { useState } from 'react'
+import { useAuth } from '@/context/auth'
 
 // UI Components
 import { Button } from '@/components/ui/button'
@@ -36,6 +37,8 @@ const PatientRecordsTable = ({
     const totalPages = Math.ceil(records.length / itemsPerPage) || 1
     const startIdx = (page - 1) * itemsPerPage
     const currentData = records.slice(startIdx, startIdx + itemsPerPage)
+
+    const { user } = useAuth()
 
     const handleDeleteClick = (patient) => {
         setDeleteDialog({ open: true, patient })
@@ -146,16 +149,20 @@ const PatientRecordsTable = ({
                                             </Button>
                                         </TooltipHelper>
 
-                                        <TooltipHelper content="Delete User">
-                                            <Button
-                                                variant="ghost"
-                                                size="icon"
-                                                className="hover:text-red-600 hover:bg-red-100"
-                                                onClick={() => handleDeleteClick(patient)}
-                                            >
-                                                <Trash2 className="size-4" />
-                                            </Button>
-                                        </TooltipHelper>
+                                        {user?.role === 'doctor' ? (
+                                            <TooltipHelper content="Delete Patient">
+                                                <Button
+                                                    variant="ghost"
+                                                    size="icon"
+                                                    className="hover:text-red-600 hover:bg-red-100"
+                                                    onClick={() => handleDeleteClick(patient)}
+                                                >
+                                                    <Trash2 className="size-4" />
+                                                </Button>
+                                            </TooltipHelper>
+                                        ) : (
+                                            ''
+                                        )}
                                     </div>
                                 </td>
                             </tr>

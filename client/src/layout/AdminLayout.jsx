@@ -1,5 +1,5 @@
 import { AiOutlineTool } from 'react-icons/ai'
-import { BiCog } from 'react-icons/bi'
+import { BiCog, BiHelpCircle, BiMessageSquareDetail } from 'react-icons/bi'
 import React, { useState, useEffect, useRef } from 'react'
 import Breadcrumbs from '../components/ui/Breadcrumbs'
 import { Outlet, Link } from 'react-router-dom'
@@ -11,7 +11,7 @@ import { TbActivityHeartbeat } from 'react-icons/tb'
 import { BsBuilding } from 'react-icons/bs'
 import { CgFileDocument } from 'react-icons/cg'
 import { RiDashboardLine } from 'react-icons/ri'
-import { Users } from 'lucide-react'
+import { Users, MessageSquarePlus } from 'lucide-react'
 import Hamburger from '../components/ui/Hamburger'
 import AccountPlaceholder from '../components/AccountPlaceholder'
 import NotificationBell from '../components/notifications/NotificationBell'
@@ -67,6 +67,21 @@ const systemSideNavLinks = [
         icon: <AiOutlineTool className="text-xl" />,
         title: 'Maintenance Mode',
         to: '/admin/maintenance_mode',
+    },
+    {
+        icon: <BiHelpCircle className="text-xl" />,
+        title: 'Help & Support',
+        to: '/admin/help-support',
+    },
+    {
+        icon: <MessageSquarePlus className="text-xl" />,
+        title: 'Send Feedback',
+        to: '/admin/feedback',
+    },
+    {
+        icon: <BiMessageSquareDetail className="text-xl" />,
+        title: 'Feedback Management',
+        to: '/admin/feedback-dashboard',
     },
 ]
 

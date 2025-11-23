@@ -9,6 +9,7 @@ import { BiCalendar } from 'react-icons/bi'
 import { BiHelpCircle } from 'react-icons/bi'
 import { BiCog } from 'react-icons/bi'
 import { MdQrCodeScanner } from 'react-icons/md'
+import { MessageSquarePlus } from 'lucide-react'
 import Hamburger from '../components/ui/Hamburger'
 import AccountPlaceholder from '../components/AccountPlaceholder'
 import NotificationBell from '../components/notifications/NotificationBell'
@@ -45,7 +46,12 @@ const systemSideNavLinks = [
     {
         icon: <BiHelpCircle className="text-xl" />,
         title: 'Help & Support',
-        to: '/parent/help_support',
+        to: '/parent/help-support',
+    },
+    {
+        icon: <MessageSquarePlus className="text-xl" />,
+        title: 'Send Feedback',
+        to: '/parent/feedback',
     },
 ]
 
