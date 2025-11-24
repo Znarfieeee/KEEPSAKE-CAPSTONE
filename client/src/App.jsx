@@ -69,6 +69,7 @@ import FacilityAdminLayout from '@/layout/FacilityAdminLayout'
 import PediaproLayout from '@/layout/PediaproLayout'
 import ParentLayout from '@/layout/ParentLayout'
 import NurseLayout from '@/layout/NurseLayout'
+import NurseDashboard from './pages/vital_custodian/NurseDashboard'
 
 const AuthWrapper = () => (
     <AuthProvider>
@@ -373,7 +374,7 @@ function App() {
                     children: [
                         {
                             index: true,
-                            element: <div>Nurse Dashboard - Coming Soon</div>,
+                            element: <NurseDashboard />,
                         },
                         {
                             path: 'qr_scanner',
