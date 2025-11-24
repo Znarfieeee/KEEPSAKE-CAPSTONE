@@ -381,7 +381,7 @@ const DoctorDashboard = () => {
                                     <QuickActionButton
                                         icon={Activity}
                                         label="View Records"
-                                        onClick={() => navigate('/pediapro/patients')}
+                                        onClick={() => navigate('/pediapro/patient_records')}
                                     />
                                     <QuickActionButton
                                         icon={Clock}
