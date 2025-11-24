@@ -1,174 +1,498 @@
-import React from 'react'
-import { mockData } from './mockdata'
-
-// UI Components
-import { Calendar, Users, Activity, User, Plus } from 'lucide-react'
+import React, { useState, useEffect, useMemo } from 'react'
+import { useNavigate } from 'react-router-dom'
+import {
+    Calendar,
+    Users,
+    Activity,
+    User,
+    Plus,
+    Clock,
+    AlertCircle,
+    CheckCircle,
+    TrendingUp,
+    Syringe,
+} from 'lucide-react'
+import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/Button'
+import { Skeleton } from '@/components/ui/skeleton'
+import { getAppointmentsForMyFacility } from '@/api/doctors/appointment'
+import { getPatients } from '@/api/doctors/patient'
 
 const DoctorDashboard = () => {
-    const StatCard = ({ title, value, subtitle, icon: Icon, trend }) => (
-        <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
-            <div className="flex items-center justify-between">
-                <div>
-                    <p className="text-sm font-medium text-gray-600">{title}</p>
-                    <p className="text-3xl font-bold text-gray-900 mt-2">{value}</p>
-                    {subtitle && <p className="text-sm text-gray-500 mt-1">{subtitle}</p>}
-                </div>
-                <div className="h-12 w-12 bg-blue-50 rounded-lg flex items-center justify-center">
-                    <Icon className="h-6 w-6 text-blue-600" />
-                </div>
-            </div>
-        </div>
-    )
+    const navigate = useNavigate()
+    const [appointments, setAppointments] = useState([])
+    const [patients, setPatients] = useState([])
+    const [vaccinations, setVaccinations] = useState([])
+    const [loadingAppointments, setLoadingAppointments] = useState(true)
+    const [loadingPatients, setLoadingPatients] = useState(true)
+    const [loadingVaccinations, setLoadingVaccinations] = useState(true)
 
-    const PatientCard = ({ patient, showDate = false }) => (
-        <div className="flex items-center justify-between p-3 hover:bg-gray-50 rounded-lg">
-            <div className="flex items-center space-x-3">
-                <div className="h-10 w-10 bg-blue-100 rounded-full flex items-center justify-center">
-                    <User className="h-5 w-5 text-blue-600" />
-                </div>
-                <div>
-                    <p className="font-medium text-gray-900">{patient.name}</p>
-                    <p className="text-sm text-gray-500">
-                        {showDate ? patient.date : patient.time} • {patient.type}
-                    </p>
+    // Fetch appointments, patients, and vaccinations on mount
+    useEffect(() => {
+        fetchAppointmentsAndPatients()
+        fetchVaccinationData()
+    }, [])
+
+    const fetchAppointmentsAndPatients = async () => {
+        try {
+            setLoadingAppointments(true)
+            setLoadingPatients(true)
+
+            const [appointmentsRes, patientsRes] = await Promise.all([
+                getAppointmentsForMyFacility(),
+                getPatients(),
+            ])
+
+            if (appointmentsRes?.status === 'success') {
+                setAppointments(appointmentsRes.data || [])
+            }
+            if (patientsRes?.status === 'success') {
+                setPatients(patientsRes.data || [])
+                // Extract vaccination data from patient related records
+                const allVaccinations = []
+                patientsRes.data.forEach((patient) => {
+                    if (patient.related_records?.vaccinations) {
+                        allVaccinations.push(...patient.related_records.vaccinations)
+                    }
+                })
+                setVaccinations(allVaccinations)
+            }
+        } catch (err) {
+            console.error('Error fetching dashboard data:', err)
+        } finally {
+            setLoadingAppointments(false)
+            setLoadingPatients(false)
+        }
+    }
+
+    const fetchVaccinationData = async () => {
+        try {
+            setLoadingVaccinations(true)
+            // Vaccination data is fetched with patient data
+        } catch (err) {
+            console.error('Error fetching vaccination data:', err)
+        } finally {
+            setLoadingVaccinations(false)
+        }
+    }
+
+    // Compute dashboard metrics
+    const dashboardMetrics = useMemo(() => {
+        const today = new Date()
+        today.setHours(0, 0, 0, 0)
+
+        const todaysAppointments = appointments.filter((apt) => {
+            if (!apt.appointment_date) return false
+            const aptDate = new Date(apt.appointment_date)
+            aptDate.setHours(0, 0, 0, 0)
+            return aptDate.getTime() === today.getTime()
+        })
+
+        const upcomingAppointments = appointments.filter((apt) => {
+            if (!apt.appointment_date) return false
+            const aptDate = new Date(apt.appointment_date)
+            aptDate.setHours(0, 0, 0, 0)
+            return aptDate >= today
+        })
+
+        // Vaccination metrics
+        const completedVaccinations = vaccinations.filter((v) => v.administered_date).length
+        const totalVaccinations = vaccinations.length
+        const overdueVaccinations = vaccinations.filter((v) => {
+            if (!v.next_dose_due) return false
+            return new Date(v.next_dose_due) < new Date()
+        }).length
+        const vaccCompliancePercent =
+            totalVaccinations > 0
+                ? Math.round((completedVaccinations / totalVaccinations) * 100)
+                : 0
+
+        return {
+            totalPatients: patients.length,
+            todaysPatients: todaysAppointments.length,
+            upcomingAppointments: upcomingAppointments.length,
+            completedAppointments: appointments.filter((a) => a.status === 'completed').length,
+            totalVaccinations,
+            completedVaccinations,
+            overdueVaccinations,
+            vaccCompliancePercent,
+        }
+    }, [appointments, patients, vaccinations])
+
+    const StatCard = ({ title, value, subtitle, icon: Icon, color = 'blue' }) => {
+        const colorStyles = {
+            blue: 'border-blue-200 bg-gradient-to-br from-blue-50 to-white',
+            green: 'border-green-200 bg-gradient-to-br from-green-50 to-white',
+            purple: 'border-purple-200 bg-gradient-to-br from-purple-50 to-white',
+            orange: 'border-orange-200 bg-gradient-to-br from-orange-50 to-white',
+        }
+        const iconColors = {
+            blue: 'bg-blue-100 text-blue-600',
+            green: 'bg-green-100 text-green-600',
+            purple: 'bg-purple-100 text-purple-600',
+            orange: 'bg-orange-100 text-orange-600',
+        }
+
+        return (
+            <div
+                className={`${colorStyles[color]} border rounded-xl p-5 h-full shadow-sm hover:shadow-md transition-all duration-200`}
+            >
+                <div className="flex items-center justify-between">
+                    <div className="space-y-1">
+                        <p className="text-sm font-medium text-gray-600">{title}</p>
+                        {loadingAppointments || loadingPatients || loadingVaccinations ? (
+                            <Skeleton className="h-8 w-20 mt-1" />
+                        ) : (
+                            <p className="text-4xl font-bold text-gray-900">{value}</p>
+                        )}
+                        {subtitle && <p className="text-xs text-gray-500 mt-1">{subtitle}</p>}
+                    </div>
+                    {Icon && (
+                        <div
+                            className={`${iconColors[color]} p-3 rounded-lg flex items-center justify-center`}
+                        >
+                            <Icon className="h-6 w-6" />
+                        </div>
+                    )}
                 </div>
             </div>
-            <span
-                className={`px-3 py-1 rounded-full text-xs font-medium ${
-                    patient.status === 'Urgent'
-                        ? 'bg-red-100 text-red-800'
-                        : patient.status === 'Check-up'
-                        ? 'bg-green-100 text-green-800'
-                        : patient.status === 'Waiting'
-                        ? 'bg-yellow-100 text-yellow-800'
-                        : patient.status === 'Completed'
-                        ? 'bg-gray-100 text-gray-800'
-                        : 'bg-blue-100 text-blue-800'
-                }`}
-            >
-                {patient.status}
-            </span>
-        </div>
+        )
+    }
+
+    const PatientCard = ({ patient, showDate = false, showStatus = true }) => {
+        const displayName =
+            patient.patient_name ||
+            `${patient.firstname || ''} ${patient.lastname || ''}`.trim() ||
+            'Unknown Patient'
+        const dateDisplay = showDate
+            ? new Date(patient.appointment_date).toLocaleDateString()
+            : patient.appointment_time
+
+        return (
+            <div className="flex items-center justify-between p-3 hover:bg-gray-50 rounded-lg">
+                <div className="flex items-center space-x-3">
+                    <div className="h-10 w-10 bg-blue-100 rounded-full flex items-center justify-center">
+                        <User className="h-5 w-5 text-blue-600" />
+                    </div>
+                    <div>
+                        <p className="font-medium text-gray-900">{displayName}</p>
+                        <p className="text-sm text-gray-500">
+                            {dateDisplay || 'N/A'} • {patient.appointment_type || 'General'}
+                        </p>
+                    </div>
+                </div>
+                {showStatus && (
+                    <span
+                        className={`px-3 py-1 rounded-full text-xs font-medium ${
+                            patient.status === 'completed'
+                                ? 'bg-green-100 text-green-800'
+                                : patient.status === 'scheduled'
+                                ? 'bg-blue-100 text-blue-800'
+                                : patient.status === 'cancelled'
+                                ? 'bg-red-100 text-red-800'
+                                : 'bg-yellow-100 text-yellow-800'
+                        }`}
+                    >
+                        {patient.status
+                            ? patient.status.charAt(0).toUpperCase() + patient.status.slice(1)
+                            : 'Scheduled'}
+                    </span>
+                )}
+            </div>
+        )
+    }
+
+    const AppointmentOverviewCard = ({ appointments = [], isLoading = false }) => {
+        const upcoming = appointments
+            .filter((apt) => {
+                if (!apt.appointment_date) return false
+                const aptDate = new Date(apt.appointment_date)
+                aptDate.setHours(0, 0, 0, 0)
+                return aptDate >= new Date(new Date().setHours(0, 0, 0, 0))
+            })
+            .sort((a, b) => new Date(a.appointment_date) - new Date(b.appointment_date))
+            .slice(0, 5)
+
+        return (
+            <Card>
+                <CardHeader>
+                    <div className="flex items-center justify-between w-full h-full">
+                        <CardTitle className="flex items-center gap-2">
+                            <Clock className="w-5 h-5 text-blue-600" />
+                            Upcoming Appointments
+                        </CardTitle>
+                        <Button
+                            onClick={() => navigate('/pediapro/appointments')}
+                            variant="outline"
+                            size="sm"
+                        >
+                            View All
+                        </Button>
+                    </div>
+                </CardHeader>
+                <CardContent>
+                    {isLoading ? (
+                        <div className="space-y-3">
+                            {[1, 2, 3].map((i) => (
+                                <Skeleton key={i} className="h-12 w-full" />
+                            ))}
+                        </div>
+                    ) : upcoming.length === 0 ? (
+                        <div className="text-center py-6 text-gray-600">
+                            <p>No upcoming appointments</p>
+                        </div>
+                    ) : (
+                        <div className="space-y-2">
+                            {upcoming.map((apt) => (
+                                <PatientCard
+                                    key={apt.id || apt.appointment_id}
+                                    patient={apt}
+                                    showDate={true}
+                                />
+                            ))}
+                        </div>
+                    )}
+                </CardContent>
+            </Card>
+        )
+    }
+
+    const PediatricHealthCard = ({ title, metric, value, unit, icon: Icon, color = 'blue' }) => {
+        const colorClasses = {
+            blue: 'bg-blue-50 text-blue-600',
+            green: 'bg-green-50 text-green-600',
+            orange: 'bg-orange-50 text-orange-600',
+            purple: 'bg-purple-50 text-purple-600',
+        }
+
+        return (
+            <Card className="h-40">
+                <CardContent className="pt-6">
+                    <div className="flex flex-col justify-between h-full">
+                        <div>
+                            <p className="text-sm font-medium text-gray-600">{title}</p>
+                            <p className="text-sm text-gray-500">{metric}</p>
+                        </div>
+                        <div className="flex items-end justify-between">
+                            <div>
+                                {loadingPatients ? (
+                                    <Skeleton className="h-8 w-20" />
+                                ) : (
+                                    <>
+                                        <p className="text-2xl font-bold text-gray-900">{value}</p>
+                                        <p className="text-xs text-gray-500">{unit}</p>
+                                    </>
+                                )}
+                            </div>
+                            <div
+                                className={`p-3 rounded-lg flex items-center justify-center ${colorClasses[color]}`}
+                            >
+                                <Icon className="h-6 w-6" />
+                            </div>
+                        </div>
+                    </div>
+                </CardContent>
+            </Card>
+        )
+    }
+
+    const QuickActionButton = ({ icon: Icon, label, onClick, variant = 'primary' }) => (
+        <button
+            onClick={onClick}
+            className={`flex flex-col items-center justify-center p-4 rounded-lg border transition-all ${
+                variant === 'primary'
+                    ? 'border-blue-300 bg-blue-50 hover:bg-blue-100 text-blue-600'
+                    : 'border-gray-300 bg-white hover:bg-gray-50 text-gray-600'
+            }`}
+        >
+            <Icon className="h-6 w-6 mb-2" />
+            <span className="text-xs font-medium text-center">{label}</span>
+        </button>
     )
 
     return (
         <>
-            <div className="space-y-6">
-                {/* Stats Grid */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    <StatCard
-                        title="Today's Patients"
-                        value="4"
-                        subtitle="Currently in office"
-                        icon={Users}
-                    />
-                    <StatCard
-                        title="Upcoming Appointments"
-                        value="2"
-                        subtitle="Next 30 days"
-                        icon={Calendar}
-                    />
-                    <StatCard
-                        title="Vaccination Compliance"
-                        value="75%"
-                        subtitle="On track this month"
-                        icon={Activity}
-                    />
-                </div>
+            <div className="p-6 bg-gray-50 min-h-screen">
+                {/* Header */}
+                {/* <div className="mb-6">
+                    <h1 className="text-3xl font-bold text-gray-900">Doctor Dashboard</h1>
+                    <p className="text-gray-600 text-sm mt-1">
+                        Welcome back! Here's your facility overview.
+                    </p>
+                </div> */}
 
-                {/* Main Content Grid */}
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                    {/* Today's Patients */}
-                    <div className="lg:col-span-2 bg-white rounded-lg shadow-sm border border-gray-200">
-                        <div className="p-6 border-b border-gray-200">
-                            <h3 className="text-lg font-semibold text-gray-900">
-                                Today's Patients
-                            </h3>
-                            <p className="text-sm text-gray-500">Saturday, April 26, 2025</p>
-                        </div>
-                        <div className="p-6 space-y-2">
-                            {mockData.todaysPatients.map((patient) => (
-                                <PatientCard key={patient.id} patient={patient} />
-                            ))}
-                        </div>
+                {/* Main Grid Layout */}
+                <div className="grid grid-cols-12 grid-rows-5 gap-4">
+                    {/* Row 1: Stat Cards (3 cols each) */}
+                    {/* Total Patients */}
+                    <div className="col-span-3">
+                        <StatCard
+                            title="Total Patients"
+                            value={dashboardMetrics.totalPatients}
+                            subtitle="In your facility"
+                            icon={Users}
+                            color="blue"
+                        />
                     </div>
 
-                    {/* Vaccination Status */}
-                    <div className="bg-white rounded-lg shadow-sm border border-gray-200">
-                        <div className="p-6 border-b border-b-gray-200">
-                            <h3 className="text-lg font-semibold text-gray-900">
-                                Vaccination Status
-                            </h3>
-                            <p className="text-sm text-gray-500">
-                                Overall patient vaccination compliance
-                            </p>
-                        </div>
-                        <div className="p-6">
-                            <div className="relative w-32 h-32 mx-auto mb-4">
-                                <svg className="w-32 h-32 transform -rotate-90">
-                                    <circle
-                                        cx="64"
-                                        cy="64"
-                                        r="56"
-                                        stroke="#e5e7eb"
-                                        strokeWidth="8"
-                                        fill="none"
+                    {/* Today's Patients Stat */}
+                    <div className="col-span-3 col-start-4">
+                        <StatCard
+                            title="Today's Patients"
+                            value={dashboardMetrics.todaysPatients}
+                            subtitle="Appointments"
+                            icon={Calendar}
+                            color="green"
+                        />
+                    </div>
+
+                    {/* Upcoming Appointments Stat */}
+                    <div className="col-span-3 col-start-7">
+                        <StatCard
+                            title="Upcoming Appointments"
+                            value={dashboardMetrics.upcomingAppointments}
+                            subtitle="Next 30 days"
+                            icon={Clock}
+                            color="purple"
+                        />
+                    </div>
+
+                    {/* Quick Actions - Right Column, Row 1-2 */}
+                    <div className="col-span-3 row-span-2 col-start-10">
+                        <Card className="h-full">
+                            <CardHeader className="pb-3">
+                                <CardTitle className="text-base">Quick Actions</CardTitle>
+                            </CardHeader>
+                            <CardContent>
+                                <div className="grid grid-cols-2 gap-3">
+                                    <QuickActionButton
+                                        icon={Plus}
+                                        label="Add Patient"
+                                        onClick={() => navigate('/pediapro/patients/new')}
+                                        variant="primary"
                                     />
-                                    <circle
-                                        cx="64"
-                                        cy="64"
-                                        r="56"
-                                        stroke="#06b6d4"
-                                        strokeWidth="8"
-                                        fill="none"
-                                        strokeDasharray={`${75 * 3.51} 351.86`}
-                                        className="transition-all duration-500"
+                                    <QuickActionButton
+                                        icon={Calendar}
+                                        label="Add Appointment"
+                                        onClick={() => navigate('/pediapro/appointments/new')}
+                                        variant="primary"
                                     />
-                                </svg>
-                                <div className="absolute inset-0 flex items-center justify-center">
-                                    <span className="text-2xl font-bold text-gray-900">75%</span>
+                                    <QuickActionButton
+                                        icon={Activity}
+                                        label="View Records"
+                                        onClick={() => navigate('/pediapro/patients')}
+                                    />
+                                    <QuickActionButton
+                                        icon={Clock}
+                                        label="Schedule"
+                                        onClick={() => navigate('/pediapro/appointments')}
+                                    />
                                 </div>
-                            </div>
-                            <div className="space-y-2 text-sm">
-                                <div className="flex justify-between">
-                                    <span className="text-gray-600">Complete:</span>
-                                    <span className="font-medium">75%</span>
-                                </div>
-                                <div className="flex justify-between">
-                                    <span className="text-gray-600">Upcoming:</span>
-                                    <span className="font-medium">15%</span>
-                                </div>
-                                <div className="flex justify-between">
-                                    <span className="text-gray-600">Overdue:</span>
-                                    <span className="font-medium text-red-600">10%</span>
-                                </div>
-                            </div>
-                        </div>
+                            </CardContent>
+                        </Card>
                     </div>
-                </div>
 
-                {/* Upcoming Appointments */}
-                <div className="bg-white rounded-lg shadow-sm border border-gray-200">
-                    <div className="p-6 border-b border-b-gray-200 flex justify-between items-center">
-                        <div>
-                            <h3 className="text-lg font-semibold text-gray-900">
-                                Upcoming Appointments
-                            </h3>
-                            <p className="text-sm text-gray-500">Next schedule for today</p>
-                        </div>
-                        <button className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center space-x-2">
-                            <Plus className="h-4 w-4" />
-                            <span>Add Appointment</span>
-                        </button>
+                    {/* Today's Patients List - Row 2-4, Col 1-9 */}
+                    <div className="col-span-9 row-span-3 row-start-2">
+                        <Card className="h-full overflow-y-auto">
+                            <CardHeader className="sticky top-0 bg-white z-10 pb-3">
+                                <div className="flex items-center justify-between">
+                                    <CardTitle className="flex items-center gap-2">
+                                        <Users className="w-5 h-5 text-blue-600" />
+                                        Today's Patients
+                                    </CardTitle>
+                                </div>
+                                <CardDescription>
+                                    {new Date().toLocaleDateString('en-US', {
+                                        weekday: 'long',
+                                        month: 'long',
+                                        day: 'numeric',
+                                    })}
+                                </CardDescription>
+                            </CardHeader>
+                            <CardContent className="space-y-2">
+                                {loadingAppointments ? (
+                                    <div className="space-y-3">
+                                        {[1, 2, 3, 4, 5].map((i) => (
+                                            <Skeleton key={i} className="h-12 w-full" />
+                                        ))}
+                                    </div>
+                                ) : (
+                                    <>
+                                        {appointments
+                                            .filter((apt) => {
+                                                if (!apt.appointment_date) return false
+                                                const today = new Date()
+                                                today.setHours(0, 0, 0, 0)
+                                                const aptDate = new Date(apt.appointment_date)
+                                                aptDate.setHours(0, 0, 0, 0)
+                                                return aptDate.getTime() === today.getTime()
+                                            })
+                                            .slice(0, 10)
+                                            .map((apt) => (
+                                                <PatientCard
+                                                    key={apt.id || apt.appointment_id}
+                                                    patient={apt}
+                                                />
+                                            ))}
+                                        {appointments.filter((apt) => {
+                                            if (!apt.appointment_date) return false
+                                            const today = new Date()
+                                            today.setHours(0, 0, 0, 0)
+                                            const aptDate = new Date(apt.appointment_date)
+                                            aptDate.setHours(0, 0, 0, 0)
+                                            return aptDate.getTime() === today.getTime()
+                                        }).length === 0 && (
+                                            <div className="text-center py-8 text-gray-500 text-sm">
+                                                <p>No patients scheduled for today</p>
+                                            </div>
+                                        )}
+                                    </>
+                                )}
+                            </CardContent>
+                        </Card>
                     </div>
-                    <div className="p-6 space-y-2">
-                        {mockData.upcomingAppointments.map((appointment) => (
-                            <PatientCard
-                                key={appointment.id}
-                                patient={appointment}
-                                showDate={true}
-                            />
-                        ))}
+
+                    {/* Upcoming Appointments - Row 5-7, Col 1-9 */}
+                    <div className="col-span-9 row-span-3 col-start-1 row-start-5">
+                        <AppointmentOverviewCard
+                            appointments={appointments}
+                            isLoading={loadingAppointments}
+                        />
+                    </div>
+
+                    {/* Health Metrics - Row 3-10, Col 10-12 */}
+                    <div className="col-span-3 row-span-8 col-start-10 row-start-3 space-y-4">
+                        {/* Average Weight */}
+                        <PediatricHealthCard
+                            title="Average Weight"
+                            metric="Latest measurements"
+                            value="18.5"
+                            unit="kg"
+                            icon={TrendingUp}
+                            color="green"
+                        />
+
+                        {/* Average Height */}
+                        <PediatricHealthCard
+                            title="Average Height"
+                            metric="Latest measurements"
+                            value="92"
+                            unit="cm"
+                            icon={TrendingUp}
+                            color="blue"
+                        />
+
+                        {/* Health Alerts */}
+                        <PediatricHealthCard
+                            title="Health Alerts"
+                            metric="Requires attention"
+                            value={patients.filter((p) => p.health_status === 'at-risk').length}
+                            unit="patients"
+                            icon={AlertCircle}
+                            color="orange"
+                        />
                     </div>
                 </div>
             </div>
