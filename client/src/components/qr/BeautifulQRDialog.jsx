@@ -1,7 +1,7 @@
-import React, { useState, useRef, useEffect } from "react"
-import { generateQRCode } from "../../api/qrCode"
-import BrandedQRCode from "./BrandedQRCode"
-import PINInput from "./PINInput"
+import React, { useState, useRef, useEffect } from 'react'
+import { generateQRCode } from '../../api/qrCode'
+import BrandedQRCode from './BrandedQRCode'
+import PINInput from './PINInput'
 import {
     FiDownload,
     FiCopy,
@@ -15,18 +15,12 @@ import {
     FiEye,
     FiChevronDown,
     FiRefreshCw,
-    FiShuffle
-} from "react-icons/fi"
-import { AiOutlineLoading3Quarters } from "react-icons/ai"
-import { MdQrCode2 } from "react-icons/md"
+    FiShuffle,
+} from 'react-icons/fi'
+import { AiOutlineLoading3Quarters } from 'react-icons/ai'
+import { MdQrCode2 } from 'react-icons/md'
 
-const BeautifulQRDialog = ({
-    isOpen,
-    onClose,
-    patientId,
-    patientName,
-    onGenerate = null
-}) => {
+const BeautifulQRDialog = ({ isOpen, onClose, patientId, patientName, onGenerate = null }) => {
     const qrRef = useRef(null)
     const [loading, setLoading] = useState(false)
     const [error, setError] = useState(null)
@@ -35,7 +29,7 @@ const BeautifulQRDialog = ({
 
     // Configuration state
     const [usePinProtection, setUsePinProtection] = useState(false)
-    const [pinCode, setPinCode] = useState("")
+    const [pinCode, setPinCode] = useState('')
     const [expiresInDays, setExpiresInDays] = useState(30)
     const [maxUses, setMaxUses] = useState(100)
 
@@ -45,7 +39,7 @@ const BeautifulQRDialog = ({
             setGeneratedQR(null)
             setError(null)
             setUsePinProtection(false)
-            setPinCode("")
+            setPinCode('')
             setExpiresInDays(30)
             setMaxUses(100)
             setCopied(false)
@@ -66,22 +60,22 @@ const BeautifulQRDialog = ({
         try {
             // Validate PIN if enabled
             if (usePinProtection && (pinCode.length !== 4 || !/^\d{4}$/.test(pinCode))) {
-                setError("PIN must be exactly 4 digits")
+                setError('PIN must be exactly 4 digits')
                 setLoading(false)
                 return
             }
 
             const qrData = {
                 patient_id: patientId,
-                share_type: "parent_access",
+                share_type: 'parent_access',
                 expires_in_days: expiresInDays,
-                scope: ["view_only", "allergies", "vaccinations", "appointments"],
+                scope: ['view_only', 'allergies', 'vaccinations', 'appointments'],
                 max_uses: maxUses,
                 allow_emergency_access: false,
                 metadata: {
-                    shared_by: "parent",
-                    patient_name: patientName
-                }
+                    shared_by: 'parent',
+                    patient_name: patientName,
+                },
             }
 
             // Add PIN if enabled
@@ -92,7 +86,7 @@ const BeautifulQRDialog = ({
             const response = await generateQRCode(qrData)
 
             if (!response || !response.token || !response.access_url) {
-                throw new Error("Invalid response from server. Please try again.")
+                throw new Error('Invalid response from server. Please try again.')
             }
 
             setGeneratedQR({
@@ -102,24 +96,25 @@ const BeautifulQRDialog = ({
                 expiresAt: response.expires_at,
                 hasPinProtection: usePinProtection && !!pinCode,
                 expiresInDays: expiresInDays,
-                maxUses: maxUses
+                maxUses: maxUses,
             })
 
             if (onGenerate) {
                 onGenerate(response)
             }
         } catch (err) {
-            console.error("QR Generation Error:", err)
-            let errorMessage = "Failed to generate QR code. Please try again."
+            console.error('QR Generation Error:', err)
+            let errorMessage = 'Failed to generate QR code. Please try again.'
 
             if (err.message) {
-                if (err.message.includes("Patient not found")) {
-                    errorMessage = "Patient record not found. Please contact support."
-                } else if (err.message.includes("permission")) {
-                    errorMessage = "You don't have permission to generate QR codes for this patient."
-                } else if (err.message.includes("network") || err.message.includes("internet")) {
-                    errorMessage = "Network error. Please check your connection and try again."
-                } else if (err.message.includes("Server error")) {
+                if (err.message.includes('Patient not found')) {
+                    errorMessage = 'Patient record not found. Please contact support.'
+                } else if (err.message.includes('permission')) {
+                    errorMessage =
+                        "You don't have permission to generate QR codes for this patient."
+                } else if (err.message.includes('network') || err.message.includes('internet')) {
+                    errorMessage = 'Network error. Please check your connection and try again.'
+                } else if (err.message.includes('Server error')) {
                     errorMessage = err.message // Show full server error for debugging
                 } else {
                     errorMessage = err.message
@@ -136,8 +131,8 @@ const BeautifulQRDialog = ({
         if (!qrRef.current) return
 
         try {
-            const canvas = document.createElement("canvas")
-            const ctx = canvas.getContext("2d")
+            const canvas = document.createElement('canvas')
+            const ctx = canvas.getContext('2d')
 
             const size = 600
             canvas.width = size
@@ -145,35 +140,35 @@ const BeautifulQRDialog = ({
 
             // Gradient background - using KEEPSAKE primary colors
             const gradient = ctx.createLinearGradient(0, 0, size, size + 200)
-            gradient.addColorStop(0, "rgb(59, 130, 246)") // Primary blue
-            gradient.addColorStop(0.5, "rgb(96, 165, 250)") // Accent light blue
-            gradient.addColorStop(1, "rgb(147, 197, 253)") // Light blue
+            gradient.addColorStop(0, 'rgb(59, 130, 246)') // Primary blue
+            gradient.addColorStop(0.5, 'rgb(96, 165, 250)') // Accent light blue
+            gradient.addColorStop(1, 'rgb(147, 197, 253)') // Light blue
             ctx.fillStyle = gradient
             ctx.fillRect(0, 0, canvas.width, canvas.height)
 
             // Semi-transparent overlay
-            ctx.fillStyle = "rgba(255, 255, 255, 0.95)"
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.95)'
             ctx.fillRect(20, 20, size - 40, size + 160)
 
             // Patient name
-            ctx.fillStyle = "#1f2937"
-            ctx.font = "bold 32px Arial"
-            ctx.textAlign = "center"
-            ctx.fillText(patientName || "Patient QR Code", size / 2, 80)
+            ctx.fillStyle = '#1f2937'
+            ctx.font = 'bold 32px Arial'
+            ctx.textAlign = 'center'
+            ctx.fillText(patientName || 'Patient QR Code', size / 2, 80)
 
             // KEEPSAKE branding
-            ctx.font = "20px Arial"
-            ctx.fillStyle = "#6b7280"
-            ctx.fillText("KEEPSAKE Healthcare", size / 2, 115)
+            ctx.font = '20px Arial'
+            ctx.fillStyle = '#6b7280'
+            ctx.fillText('KEEPSAKE Healthcare', size / 2, 115)
 
             // Capture QR code
-            const svgElements = qrRef.current.querySelectorAll("svg")
-            const imgElement = qrRef.current.querySelector("img")
+            const svgElements = qrRef.current.querySelectorAll('svg')
+            const imgElement = qrRef.current.querySelector('img')
 
             if (svgElements.length > 0) {
                 const qrSvg = svgElements[0]
                 const svgData = new XMLSerializer().serializeToString(qrSvg)
-                const svgBlob = new Blob([svgData], { type: "image/svg+xml;charset=utf-8" })
+                const svgBlob = new Blob([svgData], { type: 'image/svg+xml;charset=utf-8' })
                 const url = URL.createObjectURL(svgBlob)
 
                 const qrImg = new Image()
@@ -186,8 +181,8 @@ const BeautifulQRDialog = ({
                         const y = 150
 
                         // White background for QR
-                        ctx.fillStyle = "#ffffff"
-                        ctx.shadowColor = "rgba(0, 0, 0, 0.1)"
+                        ctx.fillStyle = '#ffffff'
+                        ctx.shadowColor = 'rgba(0, 0, 0, 0.1)'
                         ctx.shadowBlur = 20
                         ctx.fillRect(x - 15, y - 15, qrSize + 30, qrSize + 30)
                         ctx.shadowBlur = 0
@@ -200,7 +195,7 @@ const BeautifulQRDialog = ({
                             const logoX = size / 2 - logoSize / 2
                             const logoY = y + qrSize / 2 - logoSize / 2
 
-                            ctx.fillStyle = "#ffffff"
+                            ctx.fillStyle = '#fffafa'
                             ctx.beginPath()
                             ctx.roundRect(logoX - 8, logoY - 8, logoSize + 16, logoSize + 16, 12)
                             ctx.fill()
@@ -208,23 +203,30 @@ const BeautifulQRDialog = ({
                             try {
                                 ctx.drawImage(imgElement, logoX, logoY, logoSize, logoSize)
                             } catch (logoErr) {
-                                console.warn("Could not draw logo:", logoErr)
+                                console.warn('Could not draw logo:', logoErr)
                             }
                         }
 
                         // Footer info
-                        ctx.fillStyle = "#4b5563"
-                        ctx.font = "16px Arial"
-                        const expiryDate = new Date(generatedQR.expiresAt).toLocaleDateString("en-US", {
-                            year: "numeric",
-                            month: "long",
-                            day: "numeric"
-                        })
+                        ctx.fillStyle = '#4b5563'
+                        ctx.font = '16px Arial'
+                        const expiryDate = new Date(generatedQR.expiresAt).toLocaleDateString(
+                            'en-US',
+                            {
+                                year: 'numeric',
+                                month: 'long',
+                                day: 'numeric',
+                            }
+                        )
                         ctx.fillText(`Valid until ${expiryDate}`, size / 2, y + qrSize + 60)
 
-                        ctx.font = "14px Arial"
-                        ctx.fillStyle = "#9ca3af"
-                        ctx.fillText("Scan to access medical records securely", size / 2, y + qrSize + 90)
+                        ctx.font = '14px Arial'
+                        ctx.fillStyle = '#9ca3af'
+                        ctx.fillText(
+                            'Scan to access medical records securely',
+                            size / 2,
+                            y + qrSize + 90
+                        )
 
                         URL.revokeObjectURL(url)
                         resolve()
@@ -233,15 +235,15 @@ const BeautifulQRDialog = ({
                     qrImg.src = url
                 })
 
-                const pngFile = canvas.toDataURL("image/png", 1.0)
-                const downloadLink = document.createElement("a")
-                downloadLink.download = `${patientName?.replace(/\s+/g, "_")}_KEEPSAKE_QR.png`
+                const pngFile = canvas.toDataURL('image/png', 1.0)
+                const downloadLink = document.createElement('a')
+                downloadLink.download = `${patientName?.replace(/\s+/g, '_')}_KEEPSAKE_QR.png`
                 downloadLink.href = pngFile
                 downloadLink.click()
             }
         } catch (err) {
-            console.error("Download failed:", err)
-            alert("Failed to download QR code. Please try again.")
+            console.error('Download failed:', err)
+            alert('Failed to download QR code. Please try again.')
         }
     }
 
@@ -253,11 +255,11 @@ const BeautifulQRDialog = ({
             setCopied(true)
             setTimeout(() => setCopied(false), 2000)
         } catch {
-            const textArea = document.createElement("textarea")
+            const textArea = document.createElement('textarea')
             textArea.value = generatedQR.accessUrl
             document.body.appendChild(textArea)
             textArea.select()
-            document.execCommand("copy")
+            document.execCommand('copy')
             document.body.removeChild(textArea)
             setCopied(true)
             setTimeout(() => setCopied(false), 2000)
@@ -265,12 +267,12 @@ const BeautifulQRDialog = ({
     }
 
     const formatExpiryDate = (dateString) => {
-        if (!dateString) return "N/A"
+        if (!dateString) return 'N/A'
         try {
-            return new Date(dateString).toLocaleDateString("en-US", {
-                year: "numeric",
-                month: "long",
-                day: "numeric"
+            return new Date(dateString).toLocaleDateString('en-US', {
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric',
             })
         } catch {
             return dateString
@@ -311,9 +313,7 @@ const BeautifulQRDialog = ({
                     <h2 className="text-[28px] font-bold text-gray-900 mb-2 bg-gradient-to-br from-primary to-accent bg-clip-text text-transparent">
                         Share Medical Records
                     </h2>
-                    <p className="text-[15px] text-gray-500">
-                        Secure QR code for {patientName}
-                    </p>
+                    <p className="text-[15px] text-gray-500">Secure QR code for {patientName}</p>
                 </div>
 
                 {/* Content */}
@@ -325,8 +325,12 @@ const BeautifulQRDialog = ({
                             <div className="space-y-3">
                                 <div className="flex items-center justify-between">
                                     <label className="text-sm font-semibold text-gray-700 flex items-center gap-2">
-                                        {usePinProtection ? <FiLock className="text-green-600" /> : <FiUnlock className="text-gray-400" />}
-                                        PIN Protection {!usePinProtection && "(Optional)"}
+                                        {usePinProtection ? (
+                                            <FiLock className="text-green-600" />
+                                        ) : (
+                                            <FiUnlock className="text-gray-400" />
+                                        )}
+                                        PIN Protection {!usePinProtection && '(Optional)'}
                                     </label>
                                     <div className="flex items-center gap-2">
                                         <input
@@ -335,11 +339,14 @@ const BeautifulQRDialog = ({
                                             checked={usePinProtection}
                                             onChange={(e) => {
                                                 setUsePinProtection(e.target.checked)
-                                                if (!e.target.checked) setPinCode("")
+                                                if (!e.target.checked) setPinCode('')
                                             }}
                                             className="w-4 h-4 text-primary border-gray-300 rounded focus:ring-primary"
                                         />
-                                        <label htmlFor="pin-toggle" className="text-sm text-gray-600">
+                                        <label
+                                            htmlFor="pin-toggle"
+                                            className="text-sm text-gray-600"
+                                        >
                                             {usePinProtection ? 'Enabled' : 'Disabled'}
                                         </label>
                                     </div>
@@ -363,7 +370,8 @@ const BeautifulQRDialog = ({
                                             </button>
                                         </div>
                                         <p className="text-xs text-center text-gray-500">
-                                            Healthcare providers will need this PIN to access the data
+                                            Healthcare providers will need this PIN to access the
+                                            data
                                         </p>
                                     </div>
                                 )}
@@ -374,9 +382,12 @@ const BeautifulQRDialog = ({
                                         <div className="flex items-start gap-2">
                                             <FiAlertCircle className="text-amber-600 mt-0.5 flex-shrink-0" />
                                             <div className="flex-1">
-                                                <p className="text-sm font-medium text-amber-900">Consider adding PIN protection</p>
+                                                <p className="text-sm font-medium text-amber-900">
+                                                    Consider adding PIN protection
+                                                </p>
                                                 <p className="text-xs text-amber-700 mt-0.5">
-                                                    Recommended when sharing outside trusted healthcare providers
+                                                    Recommended when sharing outside trusted
+                                                    healthcare providers
                                                 </p>
                                             </div>
                                         </div>
@@ -399,8 +410,8 @@ const BeautifulQRDialog = ({
                                             disabled={loading}
                                             className={`px-3 py-2 text-sm rounded-md border transition-colors ${
                                                 expiresInDays === days
-                                                    ? "bg-primary text-white border-primary"
-                                                    : "bg-white text-gray-700 border-gray-300 hover:border-primary"
+                                                    ? 'bg-primary text-white border-primary'
+                                                    : 'bg-white text-gray-700 border-gray-300 hover:border-primary'
                                             } ${loading ? 'opacity-50 cursor-not-allowed' : ''}`}
                                         >
                                             {days} day{days !== 1 ? 's' : ''}
@@ -421,7 +432,14 @@ const BeautifulQRDialog = ({
                                         min="1"
                                         max="100"
                                         value={maxUses}
-                                        onChange={(e) => setMaxUses(Math.min(100, Math.max(1, parseInt(e.target.value) || 1)))}
+                                        onChange={(e) =>
+                                            setMaxUses(
+                                                Math.min(
+                                                    100,
+                                                    Math.max(1, parseInt(e.target.value) || 1)
+                                                )
+                                            )
+                                        }
                                         disabled={loading}
                                         className="w-24 px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary focus:border-primary disabled:opacity-50"
                                     />
@@ -444,7 +462,11 @@ const BeautifulQRDialog = ({
                             {/* Generate Button */}
                             <button
                                 onClick={handleGenerate}
-                                disabled={loading || !patientId || (usePinProtection && pinCode.length !== 4)}
+                                disabled={
+                                    loading ||
+                                    !patientId ||
+                                    (usePinProtection && pinCode.length !== 4)
+                                }
                                 className="w-full bg-gradient-to-br from-primary to-accent text-white font-semibold py-4 rounded-xl hover:-translate-y-0.5 hover:shadow-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0 flex items-center justify-center gap-2 text-base"
                             >
                                 <MdQrCode2 className="text-xl" />
@@ -462,12 +484,16 @@ const BeautifulQRDialog = ({
                     ) : loading ? (
                         <div className="flex flex-col items-center justify-center py-12 gap-4">
                             <AiOutlineLoading3Quarters className="text-5xl text-primary animate-spin" />
-                            <span className="text-gray-500 text-[15px]">Generating secure QR code...</span>
+                            <span className="text-gray-500 text-[15px]">
+                                Generating secure QR code...
+                            </span>
                         </div>
                     ) : error && !generatedQR ? (
                         <div className="text-center py-8">
                             <FiAlertCircle className="text-[56px] text-red-500 mb-4 mx-auto" />
-                            <h3 className="text-xl text-gray-900 mb-2">Oops! Something went wrong</h3>
+                            <h3 className="text-xl text-gray-900 mb-2">
+                                Oops! Something went wrong
+                            </h3>
                             <p className="text-gray-500 text-sm leading-relaxed mb-6">{error}</p>
                             <button
                                 className="bg-gradient-to-br from-primary to-accent text-white border-none px-8 py-3 rounded-xl text-[15px] font-semibold cursor-pointer transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_10px_20px_hsl(var(--primary)/0.3)]"
@@ -503,27 +529,40 @@ const BeautifulQRDialog = ({
                                 <div className="bg-gradient-to-br from-gray-50 to-gray-100 p-4 rounded-xl flex items-center gap-3 border border-gray-200 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_4px_12px_rgba(0,0,0,0.1)] hover:border-primary">
                                     <FiLock className="text-xl text-primary flex-shrink-0" />
                                     <div>
-                                        <div className="text-[11px] text-gray-400 uppercase font-semibold tracking-wider mb-0.5">Security</div>
-                                        <div className="text-[13px] text-gray-900 font-semibold">Encrypted</div>
+                                        <div className="text-[11px] text-gray-400 uppercase font-semibold tracking-wider mb-0.5">
+                                            Security
+                                        </div>
+                                        <div className="text-[13px] text-gray-900 font-semibold">
+                                            Encrypted
+                                        </div>
                                     </div>
                                 </div>
                                 <div className="bg-gradient-to-br from-gray-50 to-gray-100 p-4 rounded-xl flex items-center gap-3 border border-gray-200 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_4px_12px_rgba(0,0,0,0.1)] hover:border-primary">
                                     <FiClock className="text-xl text-primary flex-shrink-0" />
                                     <div>
-                                        <div className="text-[11px] text-gray-400 uppercase font-semibold tracking-wider mb-0.5">Valid Until</div>
+                                        <div className="text-[11px] text-gray-400 uppercase font-semibold tracking-wider mb-0.5">
+                                            Valid Until
+                                        </div>
                                         <div className="text-[13px] text-gray-900 font-semibold">
-                                            {new Date(generatedQR.expiresAt).toLocaleDateString("en-US", {
-                                                month: "short",
-                                                day: "numeric"
-                                            })}
+                                            {new Date(generatedQR.expiresAt).toLocaleDateString(
+                                                'en-US',
+                                                {
+                                                    month: 'short',
+                                                    day: 'numeric',
+                                                }
+                                            )}
                                         </div>
                                     </div>
                                 </div>
                                 <div className="bg-gradient-to-br from-gray-50 to-gray-100 p-4 rounded-xl flex items-center gap-3 border border-gray-200 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_4px_12px_rgba(0,0,0,0.1)] hover:border-primary">
                                     <FiEye className="text-xl text-primary flex-shrink-0" />
                                     <div>
-                                        <div className="text-[11px] text-gray-400 uppercase font-semibold tracking-wider mb-0.5">Access</div>
-                                        <div className="text-[13px] text-gray-900 font-semibold">View Only</div>
+                                        <div className="text-[11px] text-gray-400 uppercase font-semibold tracking-wider mb-0.5">
+                                            Access
+                                        </div>
+                                        <div className="text-[13px] text-gray-900 font-semibold">
+                                            View Only
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -532,12 +571,16 @@ const BeautifulQRDialog = ({
                             {generatedQR.hasPinProtection ? (
                                 <div className="flex items-center justify-center gap-2 mb-4 px-4 py-2 bg-green-50 border border-green-200 rounded-lg w-fit mx-auto">
                                     <FiLock className="text-green-600" />
-                                    <span className="text-sm font-semibold text-green-700">PIN Protected</span>
+                                    <span className="text-sm font-semibold text-green-700">
+                                        PIN Protected
+                                    </span>
                                 </div>
                             ) : (
                                 <div className="flex items-center justify-center gap-2 mb-4 px-4 py-2 bg-gray-50 border border-gray-200 rounded-lg w-fit mx-auto">
                                     <FiUnlock className="text-gray-500" />
-                                    <span className="text-sm font-semibold text-gray-600">No PIN</span>
+                                    <span className="text-sm font-semibold text-gray-600">
+                                        No PIN
+                                    </span>
                                 </div>
                             )}
 
@@ -553,8 +596,9 @@ const BeautifulQRDialog = ({
                             {/* Instructions */}
                             <div className="bg-gradient-to-br from-yellow-100 to-yellow-200 p-4 rounded-xl mb-6 border border-yellow-400">
                                 <p className="m-0 text-[13px] text-yellow-900 leading-relaxed">
-                                    <strong className="text-yellow-950">How to use:</strong> Healthcare providers can scan this QR code
-                                    to securely access {patientName}'s medical information including allergies,
+                                    <strong className="text-yellow-950">How to use:</strong>{' '}
+                                    Healthcare providers can scan this QR code to securely access{' '}
+                                    {patientName}'s medical information including allergies,
                                     vaccinations, and appointments.
                                 </p>
                             </div>
