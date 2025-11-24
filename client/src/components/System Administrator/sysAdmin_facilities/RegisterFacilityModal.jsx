@@ -24,7 +24,7 @@ import {
     StepperTitle,
     StepperTrigger,
 } from '@/components/ui/stepper'
-import Checkbox from '@/components/ui/Checkbox'
+import { Checkbox } from '@/components/ui/Checkbox'
 
 const initialForm = {
     facility_name: '',

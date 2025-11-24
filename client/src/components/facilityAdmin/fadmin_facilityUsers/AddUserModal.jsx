@@ -8,7 +8,7 @@ import {
     StepperSeparator,
     StepperTrigger,
 } from '@/components/ui/stepper'
-import Checkbox from '@/components/ui/Checkbox'
+import { Checkbox } from '@/components/ui/Checkbox'
 import {
     Select,
     SelectContent,

@@ -283,7 +283,7 @@ function DoctorPatientRecords() {
         // Navigate to the patient information page with the patient ID
         if (user?.role == 'doctor') {
             navigate(`/pediapro/patient_records/${record.id}`, {
-                state: { patient: record, user: user },
+                state: { patient: record },
             })
         } else {
             navigate(`/nurse/patient_records/${record.id}`, {
