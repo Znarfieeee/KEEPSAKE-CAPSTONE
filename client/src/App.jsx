@@ -70,6 +70,7 @@ import PediaproLayout from '@/layout/PediaproLayout'
 import ParentLayout from '@/layout/ParentLayout'
 import NurseLayout from '@/layout/NurseLayout'
 import NurseDashboard from './pages/vital_custodian/NurseDashboard'
+import NurseReports from './pages/vital_custodian/NurseReports'
 
 const AuthWrapper = () => (
     <AuthProvider>
@@ -391,6 +392,10 @@ function App() {
                         {
                             path: 'patient_records/:patientId',
                             element: <DoctorPatientInfo />,
+                        },
+                        {
+                            path: 'reports',
+                            element: <NurseReports />,
                         },
                         {
                             path: 'settings',

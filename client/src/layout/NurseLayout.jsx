@@ -8,7 +8,7 @@ import { RiDashboardLine } from 'react-icons/ri'
 import { BiCog, BiCalendar } from 'react-icons/bi'
 import { TbHeartbeat } from 'react-icons/tb'
 import { MdQrCodeScanner } from 'react-icons/md'
-import { MessageSquarePlus } from 'lucide-react'
+import { ChartNoAxesCombined, MessageSquarePlus } from 'lucide-react'
 import Hamburger from '@/components/ui/Hamburger'
 import AccountPlaceholder from '@/components/AccountPlaceholder'
 import NotificationBell from '@/components/notifications/NotificationBell'
@@ -33,6 +33,11 @@ const mainSideNavLinks = [
         icon: <MdQrCodeScanner className="text-xl" />,
         title: 'QR Code Scanner',
         to: '/nurse/qr_scanner',
+    },
+    {
+        icon: <ChartNoAxesCombined className="text-xl" />,
+        title: 'Reports',
+        to: '/nurse/reports',
     },
 ]
 

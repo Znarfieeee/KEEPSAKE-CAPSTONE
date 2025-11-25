@@ -52,7 +52,7 @@ const monitoringSideNavLinks = [
     },
     {
         icon: <ChartNoAxesCombined className="text-xl" />,
-        title: 'Data Reports',
+        title: 'Reports & Analytics',
         to: '/admin/reports',
     },
 ]

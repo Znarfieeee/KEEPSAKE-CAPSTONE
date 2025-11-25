@@ -347,12 +347,16 @@ ${JSON.stringify(getReportData(reportType), null, 2)}
     return (
         <div className="min-h-screen bg-gray-50 p-6">
             {/* Header */}
-            <div className="mb-8">
-                <h1 className="text-4xl font-bold text-gray-900">Data Reports</h1>
+            {/* <div className="mb-8">
+                <div className="flex items-center gap-3 mb-2">
+                    <TrendingUp className="text-blue-600" size={36} />
+                    <h1 className="text-4xl font-bold text-gray-900">Reports & Analytics</h1>
+                </div>
                 <p className="text-gray-600 mt-2">
-                    Generate and export system-wide reports with flexible date ranges and formats
+                    Comprehensive system-wide analytics and reporting with data visualization,
+                    insights, and flexible export options
                 </p>
-            </div>
+            </div> */}
 
             {/* Summary Metrics */}
             <div className="grid grid-cols-6 gap-4 mb-8">
@@ -471,30 +475,40 @@ ${JSON.stringify(getReportData(reportType), null, 2)}
                 </CardContent>
             </Card>
 
-            {/* Report Selection */}
-            <div className="grid grid-cols-3 gap-4 mb-8">
-                <ReportCard
-                    icon={Activity}
-                    title="User Activity"
-                    description="Login trends, registrations, and active users"
-                    reportKey="user-activity"
-                    isSelected={selectedReport === 'user-activity'}
-                />
-                <ReportCard
-                    icon={Building2}
-                    title="Facility Statistics"
-                    description="Patient counts, appointments, and staff information"
-                    reportKey="facility-stats"
-                    isSelected={selectedReport === 'facility-stats'}
-                />
-                <ReportCard
-                    icon={TrendingUp}
-                    title="System Usage"
-                    description="Dashboard views, reports, exports, and API calls"
-                    reportKey="system-usage"
-                    isSelected={selectedReport === 'system-usage'}
-                />
-            </div>
+            {/* Report Selection - Analytics & Reports */}
+            <Card className="border border-gray-200 shadow-sm mb-8">
+                <CardHeader className="border-b border-gray-200">
+                    <CardTitle className="text-lg font-bold text-gray-900 flex items-center gap-2">
+                        <TrendingUp size={20} />
+                        Analytics & Reports
+                    </CardTitle>
+                </CardHeader>
+                <CardContent className="pt-6">
+                    <div className="grid grid-cols-3 gap-4">
+                        <ReportCard
+                            icon={Activity}
+                            title="User Activity Analytics"
+                            description="Login trends, user registrations, and active user metrics"
+                            reportKey="user-activity"
+                            isSelected={selectedReport === 'user-activity'}
+                        />
+                        <ReportCard
+                            icon={Building2}
+                            title="Facility Performance Report"
+                            description="Patient counts by facility, appointment metrics, staff overview"
+                            reportKey="facility-stats"
+                            isSelected={selectedReport === 'facility-stats'}
+                        />
+                        <ReportCard
+                            icon={TrendingUp}
+                            title="System Usage Analytics"
+                            description="Dashboard activity, report generation, API usage, data exports"
+                            reportKey="system-usage"
+                            isSelected={selectedReport === 'system-usage'}
+                        />
+                    </div>
+                </CardContent>
+            </Card>
 
             {/* Report Visualization */}
             <div className="grid grid-cols-2 gap-6 mb-8">

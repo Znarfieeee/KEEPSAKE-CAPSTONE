@@ -84,13 +84,13 @@ const Feedback = () => {
                 {/* Header */}
                 <div className="mb-8">
                     {/* Back Link */}
-                    <Link
+                    {/* <Link
                         to={`${getBasePath()}/help-support`}
                         className="inline-flex items-center text-cyan-600 hover:text-cyan-700 mb-4 text-base font-medium"
                     >
                         <ArrowLeft className="mr-2 h-5 w-5" />
                         Back to Help & Support
-                    </Link>
+                    </Link> */}
 
                     <div className="flex items-center gap-4">
                         <div className="p-3 bg-cyan-100 rounded-xl">
