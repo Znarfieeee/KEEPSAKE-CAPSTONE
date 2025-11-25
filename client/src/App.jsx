@@ -25,7 +25,7 @@ import UsersRegistry from '@/pages/systemAdmin/UsersRegistry'
 import SubscriptionPage from '@/pages/systemAdmin/SubscriptionPage'
 import TokenInvitations from '@/pages/systemAdmin/TokenInvitations'
 import AuditLogsPage from '@/pages/systemAdmin/AuditLogsPage'
-import ApiWebhooksPage from '@/pages/systemAdmin/ApiWebhooksPage'
+import DataReports from '@/pages/systemAdmin/DataReports'
 import SystemConfigPage from '@/pages/systemAdmin/SystemConfigPage'
 import MaintenancePage from '@/pages/systemAdmin/MaintenancePage'
 
@@ -161,8 +161,8 @@ function App() {
                             element: <AuditLogsPage />,
                         },
                         {
-                            path: 'api_webhooks',
-                            element: <ApiWebhooksPage />,
+                            path: 'reports',
+                            element: <DataReports />,
                         },
                         {
                             path: 'system_config',
@@ -185,7 +185,7 @@ function App() {
                             element: <Feedback />,
                         },
                         {
-                            path: 'feedback-dashboard',
+                            path: 'feedback_dashboard',
                             element: <FeedbackDashboard />,
                         },
                     ],

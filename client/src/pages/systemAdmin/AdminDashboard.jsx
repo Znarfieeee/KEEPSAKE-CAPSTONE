@@ -288,7 +288,7 @@ const AdminDashboard = () => {
                 </div>
 
                 {/* Bottom Section - Component Cards */}
-                <div className="col-span-4">
+                {/* <div className="col-span-4">
                     <div className="bg-white rounded-xl shadow-lg p-6 h-full">
                         <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
                             <Building2 className="w-5 h-5 text-blue-600" />
@@ -356,7 +356,7 @@ const AdminDashboard = () => {
                         </h3>
                         <RevenueSources />
                     </div>
-                </div>
+                </div> */}
             </div>
         </div>
     )

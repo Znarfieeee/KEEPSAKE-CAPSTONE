@@ -60,6 +60,8 @@ const SEGMENT_LABELS = {
 
     // Nurse || Staff
     nurse: 'Dashboard',
+
+    feedback_dashboard: 'Feedbacks',
 }
 
 const DASHBOARD_SEGMENTS = ['admin', 'facility_admin', 'pediapro', 'parent', 'nurse']
