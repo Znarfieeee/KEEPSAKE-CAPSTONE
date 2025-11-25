@@ -4,7 +4,7 @@ import { Outlet, Link } from 'react-router-dom'
 
 // UI Components
 import { RiDashboardLine } from 'react-icons/ri'
-import { TbHeartbeat } from 'react-icons/tb'
+import { TbHeartbeat, TbBrandGoogleAnalytics } from 'react-icons/tb'
 import { BiCalendar } from 'react-icons/bi'
 import { BiHelpCircle } from 'react-icons/bi'
 import { BiCog } from 'react-icons/bi'
@@ -29,6 +29,11 @@ const mainSideNavLinks = [
         icon: <BiCalendar className="text-xl" />,
         title: 'Appointments',
         to: '/parent/appointments',
+    },
+    {
+        icon: <TbBrandGoogleAnalytics className="text-xl" />,
+        title: 'Reports',
+        to: '/parent/reports',
     },
     {
         icon: <MdQrCodeScanner className="text-xl" />,

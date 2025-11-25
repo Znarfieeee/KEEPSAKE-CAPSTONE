@@ -275,9 +275,9 @@ function ParentDashboard() {
         <div className="space-y-6">
             {/* Header */}
             <div>
-                <p className="text-gray-600 mt-2">
+                {/* <p className="text-gray-600 mt-2">
                     Welcome! View and manage your children's health information.
-                </p>
+                </p> */}
                 <Link to="appointments" class>
                     View Appointments
                 </Link>

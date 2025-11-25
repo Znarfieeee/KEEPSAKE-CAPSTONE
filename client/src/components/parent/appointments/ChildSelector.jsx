@@ -71,7 +71,7 @@ const ChildSelector = ({
                         childColor
                     )}
                 >
-                    {getInitials(selectedChild)}
+                    {/* {getInitials(selectedChild)} */}
                 </div>
                 <span>{getChildName(selectedChild)}</span>
                 <span className="text-xs text-gray-500">({appointmentCount})</span>

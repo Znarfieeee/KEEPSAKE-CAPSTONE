@@ -71,6 +71,7 @@ import ParentLayout from '@/layout/ParentLayout'
 import NurseLayout from '@/layout/NurseLayout'
 import NurseDashboard from './pages/vital_custodian/NurseDashboard'
 import NurseReports from './pages/vital_custodian/NurseReports'
+import ParentReports from './pages/parent/ParentReports'
 
 const AuthWrapper = () => (
     <AuthProvider>
@@ -346,6 +347,10 @@ function App() {
                         {
                             path: 'appointments',
                             element: <ParentAppointments />,
+                        },
+                        {
+                            path: 'reports',
+                            element: <ParentReports />,
                         },
                         {
                             path: 'settings',
