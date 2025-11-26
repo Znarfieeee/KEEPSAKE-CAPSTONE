@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect, useMemo } from 'react'
 import {
     BarChart,
     LineChart,
@@ -17,69 +17,87 @@ import {
 import {
     Building2,
     Users,
-    AlertTriangle,
     DollarSign,
-    TrendingUp,
-    Activity,
-    Users2,
     Heart,
+    AlertCircle,
+    RefreshCw,
+    UserCircle,
 } from 'lucide-react'
-import TotalFacilities from '@/components/System Administrator/sysAdmin_dashboard/TotalFacilities'
-import ActiveUsers from '@/components/System Administrator/sysAdmin_dashboard/ActiveUsers'
-import SystemHealth from '@/components/System Administrator/sysAdmin_dashboard/SystemHealth'
-import MonthlyRevenue from '@/components/System Administrator/sysAdmin_dashboard/MonthlyRevenue'
+import { Skeleton } from '@/components/ui/skeleton'
 import ActiveUsersByRole from '@/components/System Administrator/sysAdmin_dashboard/ActiveUsersByRole'
-import SystemMonitoring from '@/components/System Administrator/sysAdmin_dashboard/SystemMonitoring'
-import FacilitySubscriptions from '@/components/System Administrator/sysAdmin_dashboard/FacilitySubscriptions'
-import ParentSubscriptions from '@/components/System Administrator/sysAdmin_dashboard/ParentSubscriptions'
-import RevenueSources from '@/components/System Administrator/sysAdmin_dashboard/RevenueSources'
+import { getAdminDashboardMetrics } from '@/api/admin/dashboard'
 
 const AdminDashboard = () => {
-    const [dashboardData] = useState({
-        totalFacilities: 1247,
-        activeUsers: 5840,
-        systemHealth: 98.7,
-        monthlyRevenue: 125000,
-        facilitiesGrowth: 12,
-        usersGrowth: 8,
-        healthTrend: 2.3,
-        revenueGrowth: 15,
-    })
+    const [dashboardData, setDashboardData] = useState(null)
+    const [loading, setLoading] = useState(true)
+    const [error, setError] = useState(null)
+    const [subscriptionView, setSubscriptionView] = useState('facility') // 'facility' or 'parent'
 
-    // Monthly revenue data
-    const monthlyRevenueData = [
-        { month: 'Jan', revenue: 98000, target: 100000 },
-        { month: 'Feb', revenue: 102000, target: 100000 },
-        { month: 'Mar', revenue: 108000, target: 110000 },
-        { month: 'Apr', revenue: 115000, target: 115000 },
-        { month: 'May', revenue: 120000, target: 120000 },
-        { month: 'Jun', revenue: 125000, target: 125000 },
-    ]
+    useEffect(() => {
+        fetchDashboardData()
+    }, [])
 
-    // Subscription data
-    const subscriptionData = [
-        { name: 'Premium', value: 450, color: '#3b82f6' },
-        { name: 'Basic', value: 320, color: '#f59e0b' },
-    ]
+    const fetchDashboardData = async () => {
+        try {
+            setLoading(true)
+            setError(null)
+            const response = await getAdminDashboardMetrics()
 
-    // System monitoring data
-    const systemMonitoringData = [
-        { time: '12:00 AM', uptime: 99.9, performance: 98 },
-        { time: '3:00 AM', uptime: 99.8, performance: 97.5 },
-        { time: '6:00 AM', uptime: 99.95, performance: 98.5 },
-        { time: '9:00 AM', uptime: 99.7, performance: 96.8 },
-        { time: '12:00 PM', uptime: 99.85, performance: 98 },
-        { time: '3:00 PM', uptime: 99.9, performance: 98.2 },
-        { time: '6:00 PM', uptime: 99.88, performance: 97.9 },
-    ]
+            if (response?.status === 'success') {
+                setDashboardData(response.data)
+            }
+        } catch {
+            setError('Failed to load dashboard data')
+        } finally {
+            setLoading(false)
+        }
+    }
 
-    // Parent subscriptions growth
-    const parentSubscriptionsGrowth = [
-        { month: 'Week 1', parents: 2400 },
-        { month: 'Week 2', parents: 2700 },
-        { month: 'Week 3', parents: 3200 },
-        { month: 'Week 4', parents: 3800 },
-    ]
+    // Calculate subscription data based on selected view
+    const subscriptionData = useMemo(() => {
+        if (!dashboardData) return []
+
+        if (subscriptionView === 'facility') {
+            // Facility subscription distribution by plan type
+            if (!dashboardData?.facility_subscriptions) return []
+            return [
+                {
+                    name: 'Standard',
+                    value: dashboardData.facility_subscriptions.standard,
+                    color: '#3b82f6', // Blue
+                },
+                {
+                    name: 'Premium',
+                    value: dashboardData.facility_subscriptions.premium,
+                    color: '#8b5cf6', // Purple
+                },
+                {
+                    name: 'Enterprise',
+                    value: dashboardData.facility_subscriptions.enterprise,
+                    color: '#f59e0b', // Orange
+                },
+            ].filter((item) => item.value > 0)
+        } else {
+            // Parent subscription distribution
+            if (!dashboardData?.parent_subscriptions) return []
+            const total = dashboardData.parent_subscriptions.total || 0
+            const subscribed = dashboardData.parent_subscriptions.subscribed || 0
+            const notSubscribed = total - subscribed
+
+            return [
+                {
+                    name: 'Subscribed',
+                    value: subscribed,
+                    color: '#10b981',
+                },
+                {
+                    name: 'Not Subscribed',
+                    value: notSubscribed,
+                    color: '#ef4444',
+                },
+            ].filter((item) => item.value > 0)
+        }
+    }, [dashboardData, subscriptionView])
 
     const StatCard = ({ icon: Icon, title, value, growth, subtitle, colorClass }) => {
         const colorStyles = {
@@ -99,15 +117,16 @@ const AdminDashboard = () => {
             <div
                 className={`${
                     colorStyles[colorClass] || colorStyles.blue
-                } border rounded-xl p-6 shadow-sm hover:shadow-md transition-all duration-200 h-full`}
+                } border rounded-xl p-4 shadow-sm hover:shadow-md transition-all duration-200 h-full`}
             >
                 <div className="flex items-start justify-between">
-                    <div className="space-y-2">
-                        <p className="text-sm font-medium text-gray-600">{title}</p>
-                        <h3 className="text-3xl font-bold text-gray-900">{value}</h3>
-                        {growth && (
-                            <p className="text-xs text-gray-600 mt-2">
-                                {growth > 0 ? '↑' : '↓'} {Math.abs(growth)}% from last month
+                    <div className="space-y-1">
+                        <p className="text-xs font-medium text-gray-600">{title}</p>
+                        <h3 className="text-2xl font-bold text-gray-900">{value}</h3>
+                        {growth !== undefined && growth !== null && (
+                            <p className="text-xs text-gray-600">
+                                {growth > 0 ? '↑' : growth < 0 ? '↓' : ''}{' '}
+                                {Math.abs(growth).toFixed(1)}% from last month
                             </p>
                         )}
                         {subtitle && <p className="text-xs text-gray-500">{subtitle}</p>}
@@ -116,9 +135,9 @@ const AdminDashboard = () => {
                         <div
                             className={`${
                                 iconColors[colorClass] || iconColors.blue
-                            } p-3 rounded-lg flex items-center justify-center`}
+                            } p-2 rounded-lg flex items-center justify-center`}
                         >
-                            <Icon className="h-6 w-6" />
+                            <Icon className="h-5 w-5" />
                         </div>
                     )}
                 </div>
@@ -126,56 +145,96 @@ const AdminDashboard = () => {
         )
     }
 
-    return (
-        <div className="min-h-screen bg-gray-50 p-6">
-            {/* Header */}
-            <div className="mb-8">
-                <h1 className="text-4xl font-bold text-gray-900">Admin Dashboard</h1>
-                <p className="text-gray-600 mt-2">System overview and analytics</p>
+    // Loading state
+    if (loading) {
+        return (
+            <div className="min-h-screen bg-gray-50 p-4">
+                <div className="grid grid-cols-4 gap-4 mb-4">
+                    <Skeleton className="h-24 w-full" />
+                    <Skeleton className="h-24 w-full" />
+                    <Skeleton className="h-24 w-full" />
+                    <Skeleton className="h-24 w-full" />
+                </div>
+                <div className="grid grid-cols-12 gap-4">
+                    <Skeleton className="col-span-6 h-64" />
+                    <Skeleton className="col-span-3 h-64" />
+                    <Skeleton className="col-span-3 h-64" />
+                    <Skeleton className="col-span-6 h-56" />
+                    <Skeleton className="col-span-6 h-56" />
+                </div>
             </div>
+        )
+    }
 
+    // Error state
+    if (error) {
+        return (
+            <div className="min-h-screen bg-gray-50 p-4 flex items-center justify-center">
+                <div className="text-center">
+                    <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
+                    <p className="text-lg text-gray-700 mb-4">{error}</p>
+                    <button
+                        onClick={fetchDashboardData}
+                        className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 inline-flex items-center gap-2"
+                    >
+                        <RefreshCw className="h-4 w-4" />
+                        Retry
+                    </button>
+                </div>
+            </div>
+        )
+    }
+
+    return (
+        <div className="min-h-screen bg-gray-50 p-4">
             {/* Main Grid Layout */}
-            <div className="grid grid-cols-12 grid-rows-auto gap-6">
+            <div className="grid grid-cols-12 grid-rows-auto gap-4">
                 {/* Row 1: Stat Cards - 12 cols */}
-                <div className="col-span-12 grid grid-cols-4 gap-6">
+                <div className="col-span-12 grid grid-cols-4 gap-4">
                     <StatCard
                         icon={Building2}
                         title="Total Facilities"
-                        value={dashboardData.totalFacilities.toLocaleString()}
-                        growth={dashboardData.facilitiesGrowth}
+                        value={
+                            dashboardData?.core_metrics?.total_facilities?.toLocaleString() || '0'
+                        }
+                        growth={dashboardData?.core_metrics?.facilities_growth}
                         colorClass="blue"
                     />
                     <StatCard
                         icon={Users}
                         title="Active Users"
-                        value={dashboardData.activeUsers.toLocaleString()}
-                        growth={dashboardData.usersGrowth}
+                        value={dashboardData?.core_metrics?.active_users?.toLocaleString() || '0'}
+                        growth={dashboardData?.core_metrics?.users_growth}
                         colorClass="green"
                     />
                     <StatCard
                         icon={Heart}
                         title="System Health"
-                        value={`${dashboardData.systemHealth}%`}
-                        growth={dashboardData.healthTrend}
+                        value={`${
+                            dashboardData?.core_metrics?.system_health?.toFixed(1) || '0.0'
+                        }%`}
+                        growth={dashboardData?.core_metrics?.health_trend}
                         colorClass="purple"
                     />
                     <StatCard
                         icon={DollarSign}
                         title="Monthly Revenue"
-                        value={`$${(dashboardData.monthlyRevenue / 1000).toFixed(0)}K`}
-                        growth={dashboardData.revenueGrowth}
+                        value={`$${
+                            dashboardData?.core_metrics?.monthly_revenue?.toLocaleString() || '0'
+                        }`}
+                        growth={dashboardData?.core_metrics?.revenue_growth}
                         colorClass="orange"
                     />
                 </div>
 
                 {/* Row 2-3: Charts */}
                 {/* Monthly Revenue Chart - 6 cols, 3 rows */}
-                <div className="col-span-6 row-span-3 bg-white rounded-xl shadow-lg p-6">
-                    <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                <div className="col-span-6 row-span-3 bg-white rounded-xl shadow-lg p-4">
+                    <h3 className="text-base font-semibold text-gray-900 mb-3">
                         Monthly Revenue Trend
                     </h3>
-                    <ResponsiveContainer width="100%" height={300}>
-                        <LineChart data={monthlyRevenueData}>
+                    <ResponsiveContainer width="100%" height={250}>
+                        <LineChart data={dashboardData?.monthly_revenue_trend || []}>
                             <CartesianGrid strokeDasharray="3 3" />
                             <XAxis dataKey="month" />
                             <YAxis />
@@ -192,7 +251,7 @@ const AdminDashboard = () => {
                                 dataKey="revenue"
                                 stroke="#3b82f6"
                                 strokeWidth={3}
-                                dot={{ fill: '#3b82f6', r: 5 }}
+                                dot={{ fill: '#3b82f6', r: 4 }}
                                 name="Actual Revenue"
                             />
                             <Line
@@ -208,75 +267,132 @@ const AdminDashboard = () => {
                 </div>
 
                 {/* Subscription Distribution - 3 cols, 3 rows */}
-                <div className="col-span-3 row-span-3 bg-white rounded-xl shadow-lg p-6">
-                    <h3 className="text-lg font-semibold text-gray-900 mb-4">
-                        Subscription Distribution
-                    </h3>
-                    <ResponsiveContainer width="100%" height={300}>
-                        <PieChart>
-                            <Pie
-                                data={subscriptionData}
-                                cx="50%"
-                                cy="50%"
-                                labelLine={false}
-                                label={({ name, value }) => `${name} (${value})`}
-                                outerRadius={80}
-                                fill="#8884d8"
-                                dataKey="value"
+                <div className="col-span-3 row-span-3 bg-white rounded-xl shadow-lg p-4">
+                    <div className="flex items-center justify-between mb-3">
+                        <h3 className="text-base font-semibold text-gray-900">
+                            Subscription Distribution
+                        </h3>
+                        {/* Icon Toggle Buttons */}
+                        <div className="flex gap-1 bg-gray-100 rounded-lg p-1">
+                            <button
+                                onClick={() => setSubscriptionView('facility')}
+                                className={`p-1.5 rounded transition-colors ${
+                                    subscriptionView === 'facility'
+                                        ? 'bg-primary text-white'
+                                        : 'text-gray-600 hover:bg-gray-200'
+                                }`}
+                                title="Facilities"
                             >
-                                {subscriptionData.map((entry, index) => (
-                                    <Cell key={`cell-${index}`} fill={entry.color} />
-                                ))}
-                            </Pie>
-                            <Tooltip />
-                        </PieChart>
-                    </ResponsiveContainer>
+                                <Building2 className="h-4 w-4" />
+                            </button>
+                            <button
+                                onClick={() => setSubscriptionView('parent')}
+                                className={`p-1.5 rounded transition-colors ${
+                                    subscriptionView === 'parent'
+                                        ? 'bg-primary text-white'
+                                        : 'text-gray-600 hover:bg-gray-200'
+                                }`}
+                                title="Parents"
+                            >
+                                <UserCircle className="h-4 w-4" />
+                            </button>
+                        </div>
+                    </div>
+
+                    {subscriptionData.length > 0 ? (
+                        <ResponsiveContainer width="100%" height={180}>
+                            <PieChart>
+                                <Pie
+                                    data={subscriptionData}
+                                    cx="50%"
+                                    cy="50%"
+                                    labelLine={false}
+                                    outerRadius={60}
+                                    fill="#8884d8"
+                                    dataKey="value"
+                                >
+                                    {subscriptionData.map((entry, index) => (
+                                        <Cell key={`cell-${index}`} fill={entry.color} />
+                                    ))}
+                                </Pie>
+                                <Tooltip
+                                    content={({ active, payload }) => {
+                                        if (active && payload && payload.length) {
+                                            return (
+                                                <div className="bg-white px-3 py-2 border border-gray-200 rounded-lg shadow-lg">
+                                                    <p className="text-xs font-medium text-gray-900">
+                                                        {payload[0].name}: {payload[0].value}
+                                                    </p>
+                                                </div>
+                                            )
+                                        }
+                                        return null
+                                    }}
+                                />
+                                <Legend
+                                    verticalAlign="bottom"
+                                    height={36}
+                                    formatter={(value, entry) => (
+                                        <span className="text-xs text-gray-700">
+                                            {value} ({entry.payload.value})
+                                        </span>
+                                    )}
+                                />
+                            </PieChart>
+                        </ResponsiveContainer>
+                    ) : (
+                        <div className="flex items-center justify-center h-[180px]">
+                            <p className="text-sm text-gray-500">No data available</p>
+                        </div>
+                    )}
                 </div>
 
                 {/* System Monitoring - 3 cols, 3 rows */}
-                <div className="col-span-3 row-span-3 bg-white rounded-xl shadow-lg p-6">
-                    <h3 className="text-lg font-semibold text-gray-900 mb-4">System Monitoring</h3>
-                    <ResponsiveContainer width="100%" height={300}>
-                        <LineChart data={systemMonitoringData}>
+                <div className="col-span-3 row-span-3 bg-white rounded-xl shadow-lg p-4">
+                    <h3 className="text-base font-semibold text-gray-900 mb-3">
+                        Database Performance
+                    </h3>
+                    <ResponsiveContainer width="100%" height={250}>
+                        <LineChart data={dashboardData?.system_monitoring || []}>
                             <CartesianGrid strokeDasharray="3 3" />
-                            <XAxis dataKey="time" angle={-45} textAnchor="end" height={80} />
-                            <YAxis domain={[95, 100]} />
+                            <XAxis dataKey="time" angle={-45} textAnchor="end" height={70} />
+                            <YAxis domain={[90, 100]} />
                             <Tooltip />
                             <Legend />
                             <Line
                                 type="monotone"
-                                dataKey="uptime"
-                                stroke="#10b981"
-                                name="Uptime %"
+                                dataKey="avg_query_time"
+                                stroke="#3b82f6"
+                                name="Avg Query %"
                                 strokeWidth={2}
                             />
                             <Line
                                 type="monotone"
-                                dataKey="performance"
-                                stroke="#3b82f6"
-                                name="Performance %"
+                                dataKey="p95_query_time"
+                                stroke="#10b981"
+                                name="P95 Query %"
                                 strokeWidth={2}
                             />
                         </LineChart>
                     </ResponsiveContainer>
                 </div>
 
-                {/* Row 4: Parent Subscriptions Growth - 6 cols */}
-                <div className="col-span-6 bg-white rounded-xl shadow-lg p-6">
-                    <h3 className="text-lg font-semibold text-gray-900 mb-4">
-                        Parent Subscriptions Growth
+                {/* Row 4: Weekly Active Users - 6 cols */}
+                <div className="col-span-6 bg-white rounded-xl shadow-lg p-4">
+                    <h3 className="text-base font-semibold text-gray-900 mb-3">
+                        Weekly Active Users
                     </h3>
-                    <ResponsiveContainer width="100%" height={250}>
-                        <BarChart data={parentSubscriptionsGrowth}>
+                    <ResponsiveContainer width="100%" height={220}>
+                        <BarChart data={dashboardData?.weekly_active_users || []}>
                             <CartesianGrid strokeDasharray="3 3" />
-                            <XAxis dataKey="month" />
+                            <XAxis dataKey="week" />
                             <YAxis />
                             <Tooltip />
                             <Bar
-                                dataKey="parents"
-                                fill="#8b5cf6"
+                                dataKey="active_users"
+                                fill="#3b82f6"
                                 radius={[8, 8, 0, 0]}
-                                name="Active Parents"
+                                name="Active Users"
                             />
                         </BarChart>
                     </ResponsiveContainer>
@@ -284,79 +400,8 @@ const AdminDashboard = () => {
 
                 {/* Active Users by Role - 6 cols */}
                 <div className="col-span-6">
-                    <ActiveUsersByRole />
+                    <ActiveUsersByRole usersByRole={dashboardData?.users_by_role || {}} />
                 </div>
-
-                {/* Bottom Section - Component Cards */}
-                {/* <div className="col-span-4">
-                    <div className="bg-white rounded-xl shadow-lg p-6 h-full">
-                        <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                            <Building2 className="w-5 h-5 text-blue-600" />
-                            Facilities
-                        </h3>
-                        <TotalFacilities />
-                    </div>
-                </div>
-
-                <div className="col-span-4">
-                    <div className="bg-white rounded-xl shadow-lg p-6 h-full">
-                        <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                            <Users className="w-5 h-5 text-green-600" />
-                            Active Users
-                        </h3>
-                        <ActiveUsers />
-                    </div>
-                </div>
-
-                <div className="col-span-4">
-                    <div className="bg-white rounded-xl shadow-lg p-6 h-full">
-                        <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                            <Heart className="w-5 h-5 text-purple-600" />
-                            System Health
-                        </h3>
-                        <SystemHealth />
-                    </div>
-                </div>
-
-                <div className="col-span-4">
-                    <div className="bg-white rounded-xl shadow-lg p-6 h-full">
-                        <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                            <DollarSign className="w-5 h-5 text-orange-600" />
-                            Revenue
-                        </h3>
-                        <MonthlyRevenue />
-                    </div>
-                </div>
-
-                <div className="col-span-4">
-                    <div className="bg-white rounded-xl shadow-lg p-6 h-full">
-                        <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                            <Users2 className="w-5 h-5 text-indigo-600" />
-                            Facility Subscriptions
-                        </h3>
-                        <FacilitySubscriptions />
-                    </div>
-                </div>
-
-                <div className="col-span-4">
-                    <div className="bg-white rounded-xl shadow-lg p-6 h-full">
-                        <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                            <Users className="w-5 h-5 text-pink-600" />
-                            Parent Subscriptions
-                        </h3>
-                        <ParentSubscriptions />
-                    </div>
-                </div>
-
-                <div className="col-span-4">
-                    <div className="bg-white rounded-xl shadow-lg p-6 h-full">
-                        <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                            <TrendingUp className="w-5 h-5 text-cyan-600" />
-                            Revenue Sources
-                        </h3>
-                        <RevenueSources />
-                    </div>
-                </div> */}
             </div>
         </div>
     )

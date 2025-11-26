@@ -19,7 +19,7 @@ ACCESS_COOKIE = "keepsake_session"      # short-lived JWT
 REFRESH_COOKIE = "keepsake_session"    # long-lived refresh token
 SESSION_PREFIX = "keepsake_session:"
 CACHE_PREFIX = "patient_cache:"
-SESSION_TIMEOUT = 1800 #30 minutes
+SESSION_TIMEOUT = 86400 * 30  # 30 days - no auto-logout for inactive sessions
 REFRESH_TOKEN_TIMEOUT = 7 * 24 * 60 * 60  # 7 days
 
 auth_bp = Blueprint('auth', __name__)

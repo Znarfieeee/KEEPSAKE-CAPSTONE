@@ -10,7 +10,7 @@ import json
 
 settings_bp = Blueprint('user_settings', __name__)
 SESSION_PREFIX = 'keepsake_session:'
-SESSION_TIMEOUT = 1800  # 30 minutes
+SESSION_TIMEOUT = 86400 * 30  # 30 days - no auto-logout for inactive sessions
 
 # Email validation regex
 EMAIL_REGEX = re.compile(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$')
