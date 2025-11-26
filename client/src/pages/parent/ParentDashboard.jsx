@@ -662,43 +662,53 @@ function ParentDashboard() {
                 {/* Quick Access Card - Desktop only */}
                 <Card className="shadow-sm hover:shadow-md transition-shadow hidden lg:flex">
                     <CardContent className="pt-6 w-full">
-                        <div className="grid grid-cols-2 gap-2">
+                        <div className="grid grid-cols-2 gap-3">
                             <Link to="/parent/qr_scanner">
                                 <Button
                                     variant="ghost"
-                                    className="w-full h-auto py-3 flex flex-col gap-1.5 hover:border-blue-400 hover:bg-blue-50"
+                                    className="w-full h-auto py-4 px-3 flex flex-col gap-2 hover:border-blue-400 hover:bg-blue-50 rounded-lg"
                                 >
                                     <TooltipHelper content="Scan QR Code" side="top">
-                                        <ScanQrCode className="w-5 h-5 text-blue-600" />
+                                        <ScanQrCode className="w-6 h-6 text-blue-600" />
                                     </TooltipHelper>
+                                    <span className="text-xs font-medium text-gray-700">
+                                        Scan QR
+                                    </span>
                                 </Button>
                             </Link>
                             <Link to="/parent/share-qr">
                                 <Button
                                     variant="ghost"
-                                    className="w-full h-auto py-3 flex flex-col gap-1.5 hover:border-green-400 hover:bg-green-50"
+                                    className="w-full h-auto py-4 px-3 flex flex-col gap-2 hover:border-green-400 hover:bg-green-50 rounded-lg"
                                 >
                                     <TooltipHelper content="Share QR Code" side="top">
-                                        <QrCode className="w-5 h-5 text-green-600" />
+                                        <QrCode className="w-6 h-6 text-green-600" />
                                     </TooltipHelper>
+                                    <span className="text-xs font-medium text-gray-700">
+                                        Share QR
+                                    </span>
                                 </Button>
                             </Link>
                             <Link to="/parent/children">
                                 <Button
                                     variant="ghost"
-                                    className="w-full h-auto py-3 flex flex-col gap-1.5 hover:border-purple-400 hover:bg-purple-50"
+                                    className="w-full h-auto py-4 px-3 flex flex-col gap-2 hover:border-purple-400 hover:bg-purple-50 rounded-lg"
                                 >
-                                    <FileText className="w-5 h-5 text-purple-600" />
-                                    <span className="text-[10px] font-medium">Records</span>
+                                    <FileText className="w-6 h-6 text-purple-600" />
+                                    <span className="text-xs font-medium text-gray-700">
+                                        Records
+                                    </span>
                                 </Button>
                             </Link>
                             <Link to="/parent/appointments">
                                 <Button
                                     variant="ghost"
-                                    className="w-full h-auto py-3 flex flex-col gap-1.5 hover:border-orange-400 hover:bg-orange-50"
+                                    className="w-full h-auto py-4 px-3 flex flex-col gap-2 hover:border-orange-400 hover:bg-orange-50 rounded-lg"
                                 >
-                                    <Calendar className="w-5 h-5 text-orange-600" />
-                                    <span className="text-[10px] font-medium">Appointments</span>
+                                    <Calendar className="w-6 h-6 text-orange-600" />
+                                    <span className="text-xs font-medium text-gray-700">
+                                        Appointments
+                                    </span>
                                 </Button>
                             </Link>
                         </div>
