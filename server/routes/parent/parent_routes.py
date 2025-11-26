@@ -2,9 +2,11 @@ from flask import Blueprint, jsonify, request, current_app
 from utils.access_control import require_auth, require_role
 from config.settings import supabase, supabase_service_role_client
 from postgrest.exceptions import APIError as AuthApiError
-import json
 import traceback
 import uuid
+import httpx
+
+# HTTPX_CLIENT = httpx.Client(http2=False, timeout=30.0)
 
 # Create blueprint for parent routes
 parent_bp = Blueprint('parent', __name__)

@@ -11,7 +11,7 @@ import { TbActivityHeartbeat } from 'react-icons/tb'
 import { BsBuilding } from 'react-icons/bs'
 import { CgFileDocument } from 'react-icons/cg'
 import { RiDashboardLine } from 'react-icons/ri'
-import { Users, MessageSquarePlus } from 'lucide-react'
+import { Users, MessageSquarePlus, ChartNoAxesCombined } from 'lucide-react'
 import Hamburger from '../components/ui/Hamburger'
 import AccountPlaceholder from '../components/AccountPlaceholder'
 import NotificationBell from '../components/notifications/NotificationBell'
@@ -37,11 +37,11 @@ const mainSideNavLinks = [
         title: 'Subscription & Billing',
         to: '/admin/sub_billing',
     },
-    {
-        icon: <FiKey className="text-xl" />,
-        title: 'Token & Invite System',
-        to: '/admin/tokinv_system',
-    },
+    // {
+    //     icon: <FiKey className="text-xl" />,
+    //     title: 'Token & Invite System',
+    //     to: '/admin/tokinv_system',
+    // },
 ]
 
 const monitoringSideNavLinks = [
@@ -51,9 +51,9 @@ const monitoringSideNavLinks = [
         to: '/admin/audit_logs',
     },
     {
-        icon: <TbActivityHeartbeat className="text-xl" />,
-        title: 'Api & Webhooks',
-        to: '/admin/api_webhooks',
+        icon: <ChartNoAxesCombined className="text-xl" />,
+        title: 'Reports & Analytics',
+        to: '/admin/reports',
     },
 ]
 
@@ -73,15 +73,15 @@ const systemSideNavLinks = [
         title: 'Help & Support',
         to: '/admin/help-support',
     },
-    {
-        icon: <MessageSquarePlus className="text-xl" />,
-        title: 'Send Feedback',
-        to: '/admin/feedback',
-    },
+    // {
+    //     icon: <MessageSquarePlus className="text-xl" />,
+    //     title: 'Send Feedback',
+    //     to: '/admin/feedback',
+    // },
     {
         icon: <BiMessageSquareDetail className="text-xl" />,
         title: 'Feedback Management',
-        to: '/admin/feedback-dashboard',
+        to: '/admin/feedback_dashboard',
     },
 ]
 

@@ -315,9 +315,9 @@ const FeedbackDashboard = () => {
             {/* Filters */}
             <Card>
                 <CardContent className="p-4">
-                    <div className="flex flex-col sm:flex-row gap-4">
+                    <div className="flex flex-col sm:flex-row sm:justify-between gap-4">
                         {/* Search */}
-                        <div className="flex-1 relative">
+                        <div className="flex-1 relative max-w-2xl">
                             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
                             <Input
                                 placeholder="Search feedback..."
@@ -328,37 +328,41 @@ const FeedbackDashboard = () => {
                         </div>
 
                         {/* Status Filter */}
-                        <Select value={statusFilter} onValueChange={setStatusFilter}>
-                            <SelectTrigger className="w-full sm:w-[180px]">
-                                <Filter className="mr-2 h-4 w-4" />
-                                <SelectValue placeholder="Status" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="all">All Statuses</SelectItem>
-                                <SelectItem value="submitted">Submitted</SelectItem>
-                                <SelectItem value="under_review">Under Review</SelectItem>
-                                <SelectItem value="in_progress">In Progress</SelectItem>
-                                <SelectItem value="resolved">Resolved</SelectItem>
-                                <SelectItem value="closed">Closed</SelectItem>
-                            </SelectContent>
-                        </Select>
+                        <div className="flex flex-col sm:flex-row">
+                            <Select value={statusFilter} onValueChange={setStatusFilter}>
+                                <SelectTrigger className="w-full sm:w-[180px]">
+                                    <Filter className="mr-2 h-4 w-4" />
+                                    <SelectValue placeholder="Status" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="all">All Statuses</SelectItem>
+                                    <SelectItem value="submitted">Submitted</SelectItem>
+                                    <SelectItem value="under_review">Under Review</SelectItem>
+                                    <SelectItem value="in_progress">In Progress</SelectItem>
+                                    <SelectItem value="resolved">Resolved</SelectItem>
+                                    <SelectItem value="closed">Closed</SelectItem>
+                                </SelectContent>
+                            </Select>
 
-                        {/* Type Filter */}
-                        <Select value={typeFilter} onValueChange={setTypeFilter}>
-                            <SelectTrigger className="w-full sm:w-[180px]">
-                                <Filter className="mr-2 h-4 w-4" />
-                                <SelectValue placeholder="Type" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="all">All Types</SelectItem>
-                                <SelectItem value="bug_report">Bug Reports</SelectItem>
-                                <SelectItem value="feature_suggestion">
-                                    Feature Suggestions
-                                </SelectItem>
-                                <SelectItem value="general_feedback">General Feedback</SelectItem>
-                                <SelectItem value="question">Questions</SelectItem>
-                            </SelectContent>
-                        </Select>
+                            {/* Type Filter */}
+                            <Select value={typeFilter} onValueChange={setTypeFilter}>
+                                <SelectTrigger className="w-full sm:w-[180px]">
+                                    <Filter className="mr-2 h-4 w-4" />
+                                    <SelectValue placeholder="Type" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="all">All Types</SelectItem>
+                                    <SelectItem value="bug_report">Bug Reports</SelectItem>
+                                    <SelectItem value="feature_suggestion">
+                                        Feature Suggestions
+                                    </SelectItem>
+                                    <SelectItem value="general_feedback">
+                                        General Feedback
+                                    </SelectItem>
+                                    <SelectItem value="question">Questions</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
                     </div>
                 </CardContent>
             </Card>
@@ -549,8 +553,7 @@ const FeedbackDashboard = () => {
                 <div className="flex flex-col sm:flex-row items-center justify-between gap-4 px-4 py-4 bg-white rounded-lg border mt-4">
                     <p className="text-sm text-gray-500 text-center sm:text-left">
                         Showing {(currentPage - 1) * itemsPerPage + 1} to{' '}
-                        {Math.min(currentPage * itemsPerPage, totalItems)} of {totalItems}{' '}
-                        results
+                        {Math.min(currentPage * itemsPerPage, totalItems)} of {totalItems} results
                     </p>
                     <div className="flex items-center gap-2">
                         <Button

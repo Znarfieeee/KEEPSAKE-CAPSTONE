@@ -1,12 +1,10 @@
 import React, { useState, useMemo } from 'react'
 import ExcelJS from 'exceljs'
 import {
-    LineChart,
-    Line,
     BarChart,
     Bar,
-    AreaChart,
-    Area,
+    LineChart,
+    Line,
     PieChart,
     Pie,
     Cell,
@@ -16,27 +14,28 @@ import {
     Tooltip,
     Legend,
     ResponsiveContainer,
+    AreaChart,
+    Area,
 } from 'recharts'
 import {
     Download,
     Calendar,
     Users,
+    Building2,
     Activity,
     TrendingUp,
-    Heart,
-    Zap,
-    Building2,
-    Filter,
-    FileText,
-    CheckCircle2,
     Clock,
+    CheckCircle2,
+    AlertCircle,
+    FileText,
+    Filter,
 } from 'lucide-react'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/Button'
 
-const DoctorReports = () => {
-    const [selectedReport, setSelectedReport] = useState('patient-health')
+const NurseReports = () => {
+    const [selectedReport, setSelectedReport] = useState('appointment-rate')
     const [dateRange, setDateRange] = useState({
         startDate: new Date(new Date().setDate(new Date().getDate() - 30))
             .toISOString()
@@ -45,155 +44,141 @@ const DoctorReports = () => {
     })
     const [exportFormat, setExportFormat] = useState(null)
 
-    // Patient Health Trend Data - Growth
-    const patientGrowthData = [
-        { patient: 'John Doe', age: 8, height: 128, weight: 28, bmi: 17.1, growthPercentile: 68 },
-        { patient: 'Jane Smith', age: 6, height: 116, weight: 21, bmi: 15.6, growthPercentile: 72 },
-        {
-            patient: 'Michael Johnson',
-            age: 10,
-            height: 142,
-            weight: 38,
-            bmi: 18.8,
-            growthPercentile: 65,
-        },
-        {
-            patient: 'Sarah Williams',
-            age: 5,
-            height: 109,
-            weight: 19,
-            bmi: 16.0,
-            growthPercentile: 70,
-        },
-        {
-            patient: 'David Brown',
-            age: 9,
-            height: 135,
-            weight: 32,
-            bmi: 17.5,
-            growthPercentile: 69,
-        },
-    ]
-
-    // Patient Health Trend Data - Vitals
-    const patientVitalsData = [
-        {
-            patient: 'John Doe',
-            bloodPressure: '110/70',
-            heartRate: 82,
-            temperature: 98.6,
-            oxygenSaturation: 98,
-        },
-        {
-            patient: 'Jane Smith',
-            bloodPressure: '105/68',
-            heartRate: 88,
-            temperature: 98.4,
-            oxygenSaturation: 99,
-        },
-        {
-            patient: 'Michael Johnson',
-            bloodPressure: '112/72',
-            heartRate: 80,
-            temperature: 98.7,
-            oxygenSaturation: 98,
-        },
-        {
-            patient: 'Sarah Williams',
-            bloodPressure: '103/66',
-            heartRate: 90,
-            temperature: 98.5,
-            oxygenSaturation: 99,
-        },
-        {
-            patient: 'David Brown',
-            bloodPressure: '108/69',
-            heartRate: 84,
-            temperature: 98.6,
-            oxygenSaturation: 98,
-        },
-    ]
-
-    // Patient Health Trend Data - Immunizations
-    const patientImmunizationData = [
-        { patient: 'John Doe', mmr: true, polio: true, dpt: true, hepatitisB: true, completed: 4 },
-        {
-            patient: 'Jane Smith',
-            mmr: true,
-            polio: true,
-            dpt: false,
-            hepatitisB: true,
-            completed: 3,
-        },
-        {
-            patient: 'Michael Johnson',
-            mmr: true,
-            polio: true,
-            dpt: true,
-            hepatitisB: true,
-            completed: 4,
-        },
-        {
-            patient: 'Sarah Williams',
-            mmr: false,
-            polio: true,
-            dpt: true,
-            hepatitisB: true,
-            completed: 3,
-        },
-        {
-            patient: 'David Brown',
-            mmr: true,
-            polio: true,
-            dpt: true,
-            hepatitisB: true,
-            completed: 4,
-        },
-    ]
-
-    // Appointment Rate Data
+    // Mock data for Appointment Rate Analysis
     const appointmentRateData = [
-        { date: '2025-10-25', scheduled: 24, completed: 22, cancelled: 2, noshow: 0, rate: 91.7 },
-        { date: '2025-10-26', scheduled: 28, completed: 26, cancelled: 1, noshow: 1, rate: 92.9 },
-        { date: '2025-10-27', scheduled: 26, completed: 25, cancelled: 1, noshow: 0, rate: 96.2 },
-        { date: '2025-10-28', scheduled: 32, completed: 30, cancelled: 2, noshow: 0, rate: 93.8 },
-        { date: '2025-10-29', scheduled: 29, completed: 28, cancelled: 1, noshow: 0, rate: 96.6 },
-        { date: '2025-10-30', scheduled: 31, completed: 30, cancelled: 0, noshow: 1, rate: 96.8 },
+        { date: '2025-10-25', scheduled: 18, completed: 16, cancelled: 2, noshow: 0, rate: 88.9 },
+        { date: '2025-10-26', scheduled: 22, completed: 20, cancelled: 1, noshow: 1, rate: 90.9 },
+        { date: '2025-10-27', scheduled: 19, completed: 18, cancelled: 0, noshow: 1, rate: 94.7 },
+        { date: '2025-10-28', scheduled: 25, completed: 23, cancelled: 2, noshow: 0, rate: 92.0 },
+        { date: '2025-10-29', scheduled: 21, completed: 20, cancelled: 1, noshow: 0, rate: 95.2 },
+        { date: '2025-10-30', scheduled: 24, completed: 23, cancelled: 0, noshow: 1, rate: 95.8 },
     ]
 
-    // Record Update Frequency Data
+    // Mock data for Record Update Frequency (by patient for this facility)
     const recordUpdateFrequencyData = [
-        { facility: 'Central Clinic', daily: 89, weekly: 34, monthly: 12, updateRate: 98.2 },
-        { facility: 'North Medical', daily: 102, weekly: 41, monthly: 8, updateRate: 98.8 },
-        { facility: 'South Health Center', daily: 76, weekly: 48, monthly: 24, updateRate: 97.1 },
-        { facility: 'East Pediatric', daily: 95, weekly: 60, monthly: 10, updateRate: 98.6 },
-        { facility: 'West Family Care', daily: 108, weekly: 70, monthly: 8, updateRate: 99.1 },
+        {
+            patientId: 'P001',
+            patientName: 'John Doe',
+            daily: 2,
+            weekly: 1,
+            monthly: 0,
+            updated: 98.2,
+        },
+        {
+            patientId: 'P002',
+            patientName: 'Jane Smith',
+            daily: 3,
+            weekly: 0,
+            monthly: 0,
+            updated: 100.0,
+        },
+        {
+            patientId: 'P003',
+            patientName: 'Michael Johnson',
+            daily: 1,
+            weekly: 2,
+            monthly: 1,
+            updated: 97.1,
+        },
+        {
+            patientId: 'P004',
+            patientName: 'Sarah Williams',
+            daily: 2,
+            weekly: 1,
+            monthly: 0,
+            updated: 98.6,
+        },
+        {
+            patientId: 'P005',
+            patientName: 'David Brown',
+            daily: 3,
+            weekly: 0,
+            monthly: 0,
+            updated: 99.1,
+        },
     ]
 
-    // Growth Trend Over Time
-    const growthTrendData = [
-        { month: 'June', heightPercentile: 62, weightPercentile: 58, bmiPercentile: 60 },
-        { month: 'July', heightPercentile: 64, weightPercentile: 61, bmiPercentile: 62 },
-        { month: 'August', heightPercentile: 66, weightPercentile: 64, bmiPercentile: 64 },
-        { month: 'September', heightPercentile: 68, weightPercentile: 66, bmiPercentile: 65 },
-        { month: 'October', heightPercentile: 69, weightPercentile: 68, bmiPercentile: 67 },
+    // Mock data for Patient Performance Overview (this facility's patients)
+    const facilityPerformanceData = [
+        {
+            patientId: 'P001',
+            patientName: 'John Doe',
+            age: 8,
+            totalAppointments: 12,
+            completedAppointments: 11,
+            completionRate: 91.7,
+            lastVisit: '2025-10-28',
+            recordsUpdated: 45,
+        },
+        {
+            patientId: 'P002',
+            patientName: 'Jane Smith',
+            age: 6,
+            totalAppointments: 8,
+            completedAppointments: 8,
+            completionRate: 100.0,
+            lastVisit: '2025-10-30',
+            recordsUpdated: 62,
+        },
+        {
+            patientId: 'P003',
+            patientName: 'Michael Johnson',
+            age: 10,
+            totalAppointments: 14,
+            completedAppointments: 13,
+            completionRate: 92.9,
+            lastVisit: '2025-10-27',
+            recordsUpdated: 38,
+        },
+        {
+            patientId: 'P004',
+            patientName: 'Sarah Williams',
+            age: 5,
+            totalAppointments: 10,
+            completedAppointments: 9,
+            completionRate: 90.0,
+            lastVisit: '2025-10-29',
+            recordsUpdated: 51,
+        },
+        {
+            patientId: 'P005',
+            patientName: 'David Brown',
+            age: 9,
+            totalAppointments: 11,
+            completedAppointments: 11,
+            completionRate: 100.0,
+            lastVisit: '2025-10-30',
+            recordsUpdated: 58,
+        },
     ]
 
-    // Immunization Status Distribution
-    const immunizationDistribution = [
-        { name: 'Fully Immunized', value: 45, color: '#10B981' },
-        { name: 'Partially Immunized', value: 28, color: '#F59E0B' },
-        { name: 'Not Immunized', value: 7, color: '#EF4444' },
+    // Mock data for Record Update Types
+    const recordUpdateTypesData = [
+        { name: 'Medical Records', value: 340, color: '#3B82F6' },
+        { name: 'Vital Signs', value: 280, color: '#10B981' },
+        { name: 'Medications', value: 195, color: '#F59E0B' },
+        { name: 'Immunizations', value: 165, color: '#8B5CF6' },
+        { name: 'Notes & Observations', value: 220, color: '#EF4444' },
+    ]
+
+    // Mock data for Daily Appointment Status
+    const dailyAppointmentStatusData = [
+        { hour: '09:00', scheduled: 8, completed: 7, pending: 1 },
+        { hour: '10:00', scheduled: 10, completed: 10, pending: 0 },
+        { hour: '11:00', scheduled: 9, completed: 8, pending: 1 },
+        { hour: '14:00', scheduled: 7, completed: 6, pending: 1 },
+        { hour: '15:00', scheduled: 11, completed: 11, pending: 0 },
+        { hour: '16:00', scheduled: 8, completed: 7, pending: 1 },
     ]
 
     const summaryMetrics = useMemo(() => {
         return {
-            totalPatients: 127,
-            totalAppointments: 170,
-            avgCompletionRate: 94.65,
-            recordsUpdatedToday: 423,
-            avgUpdateFrequency: 98.36,
-            fullyImmunizedCount: 45,
+            facilityName: 'Central Clinic',
+            totalPatients: 55,
+            totalAppointments: 55,
+            avgCompletionRate: 94.92,
+            recordsUpdatedToday: 254,
+            avgRecordUpdateFrequency: 98.6,
         }
     }, [])
 
@@ -239,17 +224,17 @@ const DoctorReports = () => {
 
     const exportToPDF = (reportType, filename) => {
         const content = `
-KEEPSAKE - DOCTOR REPORTS - ${reportType.replace(/-/g, ' ').toUpperCase()}
+KEEPSAKE - NURSE CLINIC REPORTS - ${reportType.replace(/-/g, ' ').toUpperCase()}
 Generated: ${new Date().toLocaleDateString()}
 Date Range: ${dateRange.startDate} to ${dateRange.endDate}
 
 Summary Metrics:
+- Total Facilities: ${summaryMetrics.totalFacilities}
 - Total Patients: ${summaryMetrics.totalPatients}
 - Total Appointments: ${summaryMetrics.totalAppointments}
 - Average Completion Rate: ${summaryMetrics.avgCompletionRate}%
 - Records Updated Today: ${summaryMetrics.recordsUpdatedToday}
-- Average Update Frequency: ${summaryMetrics.avgUpdateFrequency}%
-- Fully Immunized: ${summaryMetrics.fullyImmunizedCount}
+- Average Record Update Frequency: ${summaryMetrics.avgRecordUpdateFrequency}%
 
 Report Details:
 ${JSON.stringify(getReportData(reportType), null, 2)}
@@ -264,8 +249,11 @@ ${JSON.stringify(getReportData(reportType), null, 2)}
             const workbook = new ExcelJS.Workbook()
             const worksheet = workbook.addWorksheet('Report Data')
 
+            // Add title and metadata
             const titleRow = worksheet.addRow([
-                `KEEPSAKE - DOCTOR REPORTS - ${selectedReport.replace(/-/g, ' ').toUpperCase()}`,
+                `KEEPSAKE - NURSE CLINIC REPORTS - ${selectedReport
+                    .replace(/-/g, ' ')
+                    .toUpperCase()}`,
             ])
             titleRow.font = { bold: true, size: 14, color: { argb: 'FF1F497D' } }
             titleRow.alignment = { horizontal: 'center', vertical: 'center' }
@@ -283,24 +271,29 @@ ${JSON.stringify(getReportData(reportType), null, 2)}
             dateRangeRow.alignment = { horizontal: 'left' }
             worksheet.mergeCells('A3:F3')
 
+            // Add empty row for spacing
             worksheet.addRow([])
 
+            // Add headers
             const headers = Object.keys(data[0])
             const headerRow = worksheet.addRow(
                 headers.map((h) => h.replace(/_/g, ' ').toUpperCase())
             )
 
+            // Style header row
             headerRow.font = { bold: true, color: { argb: 'FFFFFFFF' } }
             headerRow.fill = {
                 type: 'pattern',
                 pattern: 'solid',
-                fgColor: { argb: 'FF3B82F6' },
+                fgColor: { argb: 'FF10B981' },
             }
             headerRow.alignment = { horizontal: 'center', vertical: 'center' }
 
+            // Add data rows
             data.forEach((row, index) => {
                 const dataRow = worksheet.addRow(headers.map((header) => row[header]))
 
+                // Alternate row colors for better readability
                 if (index % 2 === 0) {
                     dataRow.fill = {
                         type: 'pattern',
@@ -309,6 +302,7 @@ ${JSON.stringify(getReportData(reportType), null, 2)}
                     }
                 }
 
+                // Add borders to all cells
                 dataRow.eachCell((cell) => {
                     cell.border = {
                         top: { style: 'thin', color: { argb: 'FFD3D3D3' } },
@@ -321,6 +315,7 @@ ${JSON.stringify(getReportData(reportType), null, 2)}
                 dataRow.alignment = { horizontal: 'left', vertical: 'center' }
             })
 
+            // Add borders to header row
             headerRow.eachCell((cell) => {
                 cell.border = {
                     top: { style: 'thin', color: { argb: 'FF000000' } },
@@ -330,6 +325,7 @@ ${JSON.stringify(getReportData(reportType), null, 2)}
                 }
             })
 
+            // Auto-fit column widths
             worksheet.columns.forEach((column) => {
                 let maxLength = 0
                 column.eachCell({ includeEmpty: true }, (cell) => {
@@ -341,6 +337,7 @@ ${JSON.stringify(getReportData(reportType), null, 2)}
                 column.width = Math.min(maxLength + 2, 50)
             })
 
+            // Generate and download the file
             const buffer = await workbook.xlsx.writeBuffer()
             const blob = new Blob([buffer], {
                 type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
@@ -365,12 +362,12 @@ ${JSON.stringify(getReportData(reportType), null, 2)}
 
     const getReportData = (reportType) => {
         switch (reportType) {
-            case 'patient-health':
-                return patientGrowthData
             case 'appointment-rate':
                 return appointmentRateData
             case 'record-update':
                 return recordUpdateFrequencyData
+            case 'facility-performance':
+                return facilityPerformanceData
             default:
                 return []
         }
@@ -379,7 +376,7 @@ ${JSON.stringify(getReportData(reportType), null, 2)}
     const handleExport = async (format) => {
         const reportData = getReportData(selectedReport)
         const timestamp = new Date().toISOString().split('T')[0]
-        const filename = `doctor-${selectedReport}-report-${timestamp}`
+        const filename = `nurse-${selectedReport}-report-${timestamp}`
 
         switch (format) {
             case 'xlsx':
@@ -404,10 +401,10 @@ ${JSON.stringify(getReportData(reportType), null, 2)}
         setExportFormat(null)
     }
 
-    const StatBox = ({ icon: Icon, label, value, color = 'blue' }) => {
+    const StatBox = ({ icon: Icon, label, value, color = 'green' }) => {
         const colorClasses = {
-            blue: 'bg-blue-50 border-blue-200 text-blue-700',
             green: 'bg-green-50 border-green-200 text-green-700',
+            blue: 'bg-blue-50 border-blue-200 text-blue-700',
             purple: 'bg-purple-50 border-purple-200 text-purple-700',
             orange: 'bg-orange-50 border-orange-200 text-orange-700',
         }
@@ -430,12 +427,12 @@ ${JSON.stringify(getReportData(reportType), null, 2)}
             onClick={() => setSelectedReport(reportKey)}
             className={`p-4 border-2 rounded-lg cursor-pointer transition-all ${
                 isSelected
-                    ? 'border-blue-500 bg-blue-50'
+                    ? 'border-green-500 bg-green-50'
                     : 'border-gray-200 bg-white hover:border-gray-300'
             }`}
         >
             <div className="flex items-start gap-3">
-                <Icon className={isSelected ? 'text-blue-600' : 'text-gray-600'} size={24} />
+                <Icon className={isSelected ? 'text-green-600' : 'text-gray-600'} size={24} />
                 <div>
                     <h3 className="font-semibold text-gray-900">{title}</h3>
                     <p className="text-sm text-gray-600 mt-1">{description}</p>
@@ -449,17 +446,30 @@ ${JSON.stringify(getReportData(reportType), null, 2)}
             {/* Header */}
             {/* <div className="mb-8">
                 <div className="flex items-center gap-3 mb-2">
-                    <TrendingUp size={36} className="text-blue-600" />
-                    <h1 className="text-3xl font-bold text-gray-900">Doctor Reports & Analytics</h1>
+                    <TrendingUp size={36} className="text-green-600" />
+                    <h1 className="text-3xl font-bold text-gray-900">Clinic Reports & Analytics</h1>
                 </div>
                 <p className="text-gray-600">
-                    Comprehensive patient health analytics, clinic performance metrics, and
-                    exportable reports
+                    Comprehensive facility analytics with appointment rates, record updates, and
+                    performance metrics
                 </p>
             </div> */}
 
             {/* Summary Metrics */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4 mb-8">
+                <div className="col-span-full lg:col-span-1">
+                    <div className="bg-green-50 border border-green-200 text-green-700 rounded-lg p-4">
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <p className="text-sm text-gray-600">Current Facility</p>
+                                <p className="text-2xl font-bold mt-1">
+                                    {summaryMetrics.facilityName}
+                                </p>
+                            </div>
+                            <Building2 size={32} className="opacity-50" />
+                        </div>
+                    </div>
+                </div>
                 <StatBox
                     icon={Users}
                     label="Total Patients"
@@ -485,15 +495,9 @@ ${JSON.stringify(getReportData(reportType), null, 2)}
                     color="orange"
                 />
                 <StatBox
-                    icon={Heart}
-                    label="Fully Immunized"
-                    value={summaryMetrics.fullyImmunizedCount}
-                    color="red"
-                />
-                <StatBox
                     icon={Clock}
                     label="Update Frequency"
-                    value={`${summaryMetrics.avgUpdateFrequency.toFixed(1)}%`}
+                    value={`${summaryMetrics.avgRecordUpdateFrequency.toFixed(1)}%`}
                     color="blue"
                 />
             </div>
@@ -502,32 +506,32 @@ ${JSON.stringify(getReportData(reportType), null, 2)}
             <Card className="mb-8 border border-gray-200 shadow-sm">
                 <CardHeader className="border-b border-gray-200">
                     <CardTitle className="text-lg font-bold text-gray-900 flex items-center gap-2">
-                        <TrendingUp size={24} className="text-blue-600" />
-                        Doctor Reports & Analytics
+                        <TrendingUp size={24} className="text-green-600" />
+                        Clinic Reports & Analytics
                     </CardTitle>
                 </CardHeader>
                 <CardContent className="pt-6">
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <ReportCard
-                            title="Patient Health Trends"
-                            icon={Heart}
-                            description="Growth metrics, vital signs, and immunization status for your patients"
-                            reportKey="patient-health"
-                            isSelected={selectedReport === 'patient-health'}
-                        />
-                        <ReportCard
                             title="Appointment Rate Analytics"
                             icon={Calendar}
-                            description="Scheduled vs completed appointments, cancellations, and completion rates"
+                            description="Daily appointment completion rates, cancellations, and no-shows for this facility"
                             reportKey="appointment-rate"
                             isSelected={selectedReport === 'appointment-rate'}
                         />
                         <ReportCard
-                            title="Record Update Frequency"
+                            title="Patient Record Updates"
                             icon={Activity}
-                            description="Daily, weekly, and monthly record updates across all facilities"
+                            description="Record update frequency by patient - daily, weekly, and monthly update tracking"
                             reportKey="record-update"
                             isSelected={selectedReport === 'record-update'}
+                        />
+                        <ReportCard
+                            title="Patient Performance Report"
+                            icon={Users}
+                            description="Individual patient metrics including appointment completion, visit history, and record updates"
+                            reportKey="facility-performance"
+                            isSelected={selectedReport === 'facility-performance'}
                         />
                     </div>
                 </CardContent>
@@ -553,7 +557,7 @@ ${JSON.stringify(getReportData(reportType), null, 2)}
                                 onChange={(e) =>
                                     setDateRange({ ...dateRange, startDate: e.target.value })
                                 }
-                                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-green-500 focus:border-green-500"
                             />
                         </div>
                         <div className="flex-1">
@@ -566,7 +570,7 @@ ${JSON.stringify(getReportData(reportType), null, 2)}
                                 onChange={(e) =>
                                     setDateRange({ ...dateRange, endDate: e.target.value })
                                 }
-                                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-green-500 focus:border-green-500"
                             />
                         </div>
                         <div className="flex gap-2">
@@ -575,7 +579,7 @@ ${JSON.stringify(getReportData(reportType), null, 2)}
                                     onClick={() =>
                                         setExportFormat(exportFormat === null ? 'csv' : null)
                                     }
-                                    className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md"
+                                    className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-md"
                                 >
                                     <Download size={18} />
                                     Export
@@ -584,35 +588,35 @@ ${JSON.stringify(getReportData(reportType), null, 2)}
                                     <div className="absolute top-full mt-2 right-0 bg-white border border-gray-200 rounded-md shadow-lg p-2 z-10 w-40">
                                         <button
                                             onClick={() => handleExport('xlsx')}
-                                            className="w-full text-left px-3 py-2 hover:bg-blue-50 rounded text-sm text-gray-700 flex items-center gap-2"
+                                            className="w-full text-left px-3 py-2 hover:bg-green-50 rounded text-sm text-gray-700 flex items-center gap-2"
                                         >
                                             <FileText size={16} />
                                             Excel
                                         </button>
                                         <button
                                             onClick={() => handleExport('csv')}
-                                            className="w-full text-left px-3 py-2 hover:bg-blue-50 rounded text-sm text-gray-700 flex items-center gap-2"
+                                            className="w-full text-left px-3 py-2 hover:bg-green-50 rounded text-sm text-gray-700 flex items-center gap-2"
                                         >
                                             <FileText size={16} />
                                             CSV
                                         </button>
                                         {/* <button
                                             onClick={() => handleExport('json')}
-                                            className="w-full text-left px-3 py-2 hover:bg-blue-50 rounded text-sm text-gray-700 flex items-center gap-2"
+                                            className="w-full text-left px-3 py-2 hover:bg-green-50 rounded text-sm text-gray-700 flex items-center gap-2"
                                         >
                                             <FileText size={16} />
                                             JSON
                                         </button> */}
                                         <button
                                             onClick={() => handleExport('txt')}
-                                            className="w-full text-left px-3 py-2 hover:bg-blue-50 rounded text-sm text-gray-700 flex items-center gap-2"
+                                            className="w-full text-left px-3 py-2 hover:bg-green-50 rounded text-sm text-gray-700 flex items-center gap-2"
                                         >
                                             <FileText size={16} />
                                             TXT
                                         </button>
                                         <button
                                             onClick={() => handleExport('pdf')}
-                                            className="w-full text-left px-3 py-2 hover:bg-blue-50 rounded text-sm text-gray-700 flex items-center gap-2"
+                                            className="w-full text-left px-3 py-2 hover:bg-green-50 rounded text-sm text-gray-700 flex items-center gap-2"
                                         >
                                             <FileText size={16} />
                                             PDF
@@ -631,44 +635,15 @@ ${JSON.stringify(getReportData(reportType), null, 2)}
                 <Card className="border border-gray-200 shadow-sm">
                     <CardHeader className="border-b border-gray-200">
                         <CardTitle className="text-lg font-bold text-gray-900">
-                            {selectedReport === 'patient-health' &&
-                                'Patient Growth Percentile Trends'}
                             {selectedReport === 'appointment-rate' &&
                                 'Daily Appointment Completion Trends'}
                             {selectedReport === 'record-update' &&
-                                'Record Update Frequency by Facility'}
+                                'Patient Record Update Frequency'}
+                            {selectedReport === 'facility-performance' &&
+                                'Patient Appointment Summary'}
                         </CardTitle>
                     </CardHeader>
                     <CardContent className="pt-6">
-                        {selectedReport === 'patient-health' && (
-                            <ResponsiveContainer width="100%" height={300}>
-                                <LineChart data={growthTrendData}>
-                                    <CartesianGrid strokeDasharray="3 3" />
-                                    <XAxis dataKey="month" />
-                                    <YAxis />
-                                    <Tooltip />
-                                    <Legend />
-                                    <Line
-                                        type="monotone"
-                                        dataKey="heightPercentile"
-                                        stroke="#3B82F6"
-                                        name="Height Percentile"
-                                    />
-                                    <Line
-                                        type="monotone"
-                                        dataKey="weightPercentile"
-                                        stroke="#10B981"
-                                        name="Weight Percentile"
-                                    />
-                                    <Line
-                                        type="monotone"
-                                        dataKey="bmiPercentile"
-                                        stroke="#F59E0B"
-                                        name="BMI Percentile"
-                                    />
-                                </LineChart>
-                            </ResponsiveContainer>
-                        )}
                         {selectedReport === 'appointment-rate' && (
                             <ResponsiveContainer width="100%" height={300}>
                                 <LineChart data={appointmentRateData}>
@@ -703,7 +678,7 @@ ${JSON.stringify(getReportData(reportType), null, 2)}
                                 <BarChart data={recordUpdateFrequencyData}>
                                     <CartesianGrid strokeDasharray="3 3" />
                                     <XAxis
-                                        dataKey="facility"
+                                        dataKey="patientName"
                                         angle={-45}
                                         textAnchor="end"
                                         height={80}
@@ -727,6 +702,32 @@ ${JSON.stringify(getReportData(reportType), null, 2)}
                                 </BarChart>
                             </ResponsiveContainer>
                         )}
+                        {selectedReport === 'facility-performance' && (
+                            <ResponsiveContainer width="100%" height={300}>
+                                <BarChart data={facilityPerformanceData}>
+                                    <CartesianGrid strokeDasharray="3 3" />
+                                    <XAxis
+                                        dataKey="facility"
+                                        angle={-45}
+                                        textAnchor="end"
+                                        height={80}
+                                    />
+                                    <YAxis />
+                                    <Tooltip />
+                                    <Legend />
+                                    <Bar
+                                        dataKey="activeAppointments"
+                                        fill="#10B981"
+                                        name="Active Appointments"
+                                    />
+                                    <Bar
+                                        dataKey="completionRate"
+                                        fill="#3B82F6"
+                                        name="Completion Rate"
+                                    />
+                                </BarChart>
+                            </ResponsiveContainer>
+                        )}
                     </CardContent>
                 </Card>
 
@@ -734,34 +735,12 @@ ${JSON.stringify(getReportData(reportType), null, 2)}
                 <Card className="border border-gray-200 shadow-sm">
                     <CardHeader className="border-b border-gray-200">
                         <CardTitle className="text-lg font-bold text-gray-900">
-                            {selectedReport === 'patient-health' &&
-                                'Immunization Status Distribution'}
-                            {selectedReport === 'appointment-rate' && 'Completion Rate %'}
-                            {selectedReport === 'record-update' && 'Facility Update Rate Summary'}
+                            {selectedReport === 'appointment-rate' && 'Daily Completion Rate %'}
+                            {selectedReport === 'record-update' && 'Update Type Distribution'}
+                            {selectedReport === 'facility-performance' && 'Patient Records Updated'}
                         </CardTitle>
                     </CardHeader>
                     <CardContent className="pt-6">
-                        {selectedReport === 'patient-health' && (
-                            <ResponsiveContainer width="100%" height={300}>
-                                <PieChart>
-                                    <Pie
-                                        data={immunizationDistribution}
-                                        cx="50%"
-                                        cy="50%"
-                                        labelLine={false}
-                                        label={({ name, value }) => `${name}: ${value}`}
-                                        outerRadius={80}
-                                        fill="#8884d8"
-                                        dataKey="value"
-                                    >
-                                        {immunizationDistribution.map((entry, index) => (
-                                            <Cell key={`cell-${index}`} fill={entry.color} />
-                                        ))}
-                                    </Pie>
-                                    <Tooltip />
-                                </PieChart>
-                            </ResponsiveContainer>
-                        )}
                         {selectedReport === 'appointment-rate' && (
                             <ResponsiveContainer width="100%" height={300}>
                                 <LineChart data={appointmentRateData}>
@@ -782,10 +761,31 @@ ${JSON.stringify(getReportData(reportType), null, 2)}
                         )}
                         {selectedReport === 'record-update' && (
                             <ResponsiveContainer width="100%" height={300}>
-                                <BarChart data={recordUpdateFrequencyData}>
+                                <PieChart>
+                                    <Pie
+                                        data={recordUpdateTypesData}
+                                        cx="50%"
+                                        cy="50%"
+                                        labelLine={false}
+                                        label={({ name, value }) => `${name}: ${value}`}
+                                        outerRadius={80}
+                                        fill="#8884d8"
+                                        dataKey="value"
+                                    >
+                                        {recordUpdateTypesData.map((entry, index) => (
+                                            <Cell key={`cell-${index}`} fill={entry.color} />
+                                        ))}
+                                    </Pie>
+                                    <Tooltip />
+                                </PieChart>
+                            </ResponsiveContainer>
+                        )}
+                        {selectedReport === 'facility-performance' && (
+                            <ResponsiveContainer width="100%" height={300}>
+                                <BarChart data={facilityPerformanceData}>
                                     <CartesianGrid strokeDasharray="3 3" />
                                     <XAxis
-                                        dataKey="facility"
+                                        dataKey="patientName"
                                         angle={-45}
                                         textAnchor="end"
                                         height={80}
@@ -793,7 +793,16 @@ ${JSON.stringify(getReportData(reportType), null, 2)}
                                     <YAxis />
                                     <Tooltip />
                                     <Legend />
-                                    <Bar dataKey="updateRate" fill="#3B82F6" name="Update Rate %" />
+                                    <Bar
+                                        dataKey="completedAppointments"
+                                        fill="#3B82F6"
+                                        name="Completed Appointments"
+                                    />
+                                    <Bar
+                                        dataKey="recordsUpdated"
+                                        fill="#10B981"
+                                        name="Records Updated"
+                                    />
                                 </BarChart>
                             </ResponsiveContainer>
                         )}
@@ -801,29 +810,37 @@ ${JSON.stringify(getReportData(reportType), null, 2)}
                 </Card>
             </div>
 
-            {/* Additional Insights Chart for Patient Health */}
-            {selectedReport === 'patient-health' && (
+            {/* Daily Appointment Status (Bonus Chart) */}
+            {selectedReport === 'appointment-rate' && (
                 <Card className="mb-8 border border-gray-200 shadow-sm">
                     <CardHeader className="border-b border-gray-200">
                         <CardTitle className="text-lg font-bold text-gray-900">
-                            Patient BMI & Growth Status
+                            Today&apos;s Appointment Timeline
                         </CardTitle>
                     </CardHeader>
                     <CardContent className="pt-6">
                         <ResponsiveContainer width="100%" height={300}>
-                            <BarChart data={patientGrowthData}>
+                            <AreaChart data={dailyAppointmentStatusData}>
                                 <CartesianGrid strokeDasharray="3 3" />
-                                <XAxis dataKey="patient" angle={-45} textAnchor="end" height={80} />
+                                <XAxis dataKey="hour" />
                                 <YAxis />
                                 <Tooltip />
                                 <Legend />
-                                <Bar dataKey="bmi" fill="#3B82F6" name="BMI" />
-                                <Bar
-                                    dataKey="growthPercentile"
+                                <Area
+                                    type="monotone"
+                                    dataKey="completed"
+                                    stackId="1"
                                     fill="#10B981"
-                                    name="Growth Percentile"
+                                    name="Completed"
                                 />
-                            </BarChart>
+                                <Area
+                                    type="monotone"
+                                    dataKey="pending"
+                                    stackId="1"
+                                    fill="#F59E0B"
+                                    name="Pending"
+                                />
+                            </AreaChart>
                         </ResponsiveContainer>
                     </CardContent>
                 </Card>
@@ -833,9 +850,9 @@ ${JSON.stringify(getReportData(reportType), null, 2)}
             <Card className="border border-gray-200 shadow-sm">
                 <CardHeader className="border-b border-gray-200">
                     <CardTitle className="text-lg font-bold text-gray-900">
-                        {selectedReport === 'patient-health' && 'Detailed Patient Health Data'}
-                        {selectedReport === 'appointment-rate' && 'Appointment Details'}
-                        {selectedReport === 'record-update' && 'Record Update Details by Facility'}
+                        {selectedReport === 'appointment-rate' && 'Daily Appointment Details'}
+                        {selectedReport === 'record-update' && 'Patient Record Update Details'}
+                        {selectedReport === 'facility-performance' && 'Patient Performance Details'}
                     </CardTitle>
                 </CardHeader>
                 <CardContent className="pt-6">
@@ -921,7 +938,7 @@ ${JSON.stringify(getReportData(reportType), null, 2)}
                             >
                                 <p className="font-semibold text-gray-900 text-sm">{item.format}</p>
                                 <p className="text-xs text-gray-600 mt-1">{item.desc}</p>
-                                <p className="text-xs text-blue-600 mt-2 italic">{item.tip}</p>
+                                <p className="text-xs text-green-600 mt-2 italic">{item.tip}</p>
                             </div>
                         ))}
                     </div>
@@ -931,4 +948,4 @@ ${JSON.stringify(getReportData(reportType), null, 2)}
     )
 }
 
-export default DoctorReports
+export default NurseReports

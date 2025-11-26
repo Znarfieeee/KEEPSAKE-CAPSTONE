@@ -34,8 +34,6 @@ const DoctorPatientInfo = () => {
     const [showDeleteDialog, setShowDeleteDialog] = useState(false)
     const [deleteLoading] = useState(false)
 
-    console.log(user?.role)
-
     useEffect(() => {
         const fetchPatientData = async () => {
             try {
@@ -202,10 +200,7 @@ const DoctorPatientInfo = () => {
                         {/* Share with Parent Button */}
                         {user?.role === 'doctor' && (
                             <TooltipHelper content="Share QR code with parent">
-                                <DoctorParentQRShareButton
-                                    patient={patient}
-                                    size="sm"
-                                />
+                                <DoctorParentQRShareButton patient={patient} size="sm" />
                             </TooltipHelper>
                         )}
                         <TooltipHelper content="Edit patient">

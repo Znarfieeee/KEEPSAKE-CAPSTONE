@@ -41,7 +41,7 @@ const SEGMENT_LABELS = {
     screening: 'Screening Tests',
     allergies: 'Allergies',
     'parent-access': 'Parent Access',
-    reports: 'Reports',
+    reports: 'Reports & Analytics',
     audit: 'Audit & Logs',
     // api_webhooks: 'API & Webhooks',
     // system_config: 'System Configuration',
@@ -60,6 +60,9 @@ const SEGMENT_LABELS = {
 
     // Nurse || Staff
     nurse: 'Dashboard',
+
+    feedback: 'Feedback',
+    feedback_dashboard: 'Feedback',
 }
 
 const DASHBOARD_SEGMENTS = ['admin', 'facility_admin', 'pediapro', 'parent', 'nurse']

@@ -25,7 +25,7 @@ import UsersRegistry from '@/pages/systemAdmin/UsersRegistry'
 import SubscriptionPage from '@/pages/systemAdmin/SubscriptionPage'
 import TokenInvitations from '@/pages/systemAdmin/TokenInvitations'
 import AuditLogsPage from '@/pages/systemAdmin/AuditLogsPage'
-import ApiWebhooksPage from '@/pages/systemAdmin/ApiWebhooksPage'
+import DataReports from '@/pages/systemAdmin/DataReports'
 import SystemConfigPage from '@/pages/systemAdmin/SystemConfigPage'
 import MaintenancePage from '@/pages/systemAdmin/MaintenancePage'
 
@@ -69,6 +69,9 @@ import FacilityAdminLayout from '@/layout/FacilityAdminLayout'
 import PediaproLayout from '@/layout/PediaproLayout'
 import ParentLayout from '@/layout/ParentLayout'
 import NurseLayout from '@/layout/NurseLayout'
+import NurseDashboard from './pages/vital_custodian/NurseDashboard'
+import NurseReports from './pages/vital_custodian/NurseReports'
+import ParentReports from './pages/parent/ParentReports'
 
 const AuthWrapper = () => (
     <AuthProvider>
@@ -160,8 +163,8 @@ function App() {
                             element: <AuditLogsPage />,
                         },
                         {
-                            path: 'api_webhooks',
-                            element: <ApiWebhooksPage />,
+                            path: 'reports',
+                            element: <DataReports />,
                         },
                         {
                             path: 'system_config',
@@ -184,7 +187,7 @@ function App() {
                             element: <Feedback />,
                         },
                         {
-                            path: 'feedback-dashboard',
+                            path: 'feedback_dashboard',
                             element: <FeedbackDashboard />,
                         },
                     ],
@@ -346,6 +349,10 @@ function App() {
                             element: <ParentAppointments />,
                         },
                         {
+                            path: 'reports',
+                            element: <ParentReports />,
+                        },
+                        {
                             path: 'settings',
                             element: <Settings />,
                         },
@@ -373,7 +380,7 @@ function App() {
                     children: [
                         {
                             index: true,
-                            element: <div>Nurse Dashboard - Coming Soon</div>,
+                            element: <NurseDashboard />,
                         },
                         {
                             path: 'qr_scanner',
@@ -390,6 +397,10 @@ function App() {
                         {
                             path: 'patient_records/:patientId',
                             element: <DoctorPatientInfo />,
+                        },
+                        {
+                            path: 'reports',
+                            element: <NurseReports />,
                         },
                         {
                             path: 'settings',

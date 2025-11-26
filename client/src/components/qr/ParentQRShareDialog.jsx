@@ -1,31 +1,13 @@
-import React, { useState, useRef } from "react"
-import {
-    Dialog,
-    DialogContent,
-    DialogHeader,
-    DialogTitle,
-    DialogDescription,
-} from "../ui/dialog"
-import { Button } from "../ui/Button"
-import BrandedQRCode from "./BrandedQRCode"
-import { generateQRCode } from "../../api/qrCode"
-import {
-    FiDownload,
-    FiCopy,
-    FiCheckCircle,
-    FiAlertCircle,
-    FiShare2
-} from "react-icons/fi"
-import { MdQrCode2 } from "react-icons/md"
-import { AiOutlineLoading3Quarters } from "react-icons/ai"
+import React, { useState, useRef } from 'react'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '../ui/dialog'
+import { Button } from '../ui/Button'
+import BrandedQRCode from './BrandedQRCode'
+import { generateQRCode } from '../../api/qrCode'
+import { FiDownload, FiCopy, FiCheckCircle, FiAlertCircle, FiShare2 } from 'react-icons/fi'
+import { MdQrCode2 } from 'react-icons/md'
+import { AiOutlineLoading3Quarters } from 'react-icons/ai'
 
-const ParentQRShareDialog = ({
-    isOpen,
-    onClose,
-    patientId,
-    patientName,
-    onGenerate = null
-}) => {
+const ParentQRShareDialog = ({ isOpen, onClose, patientId, patientName, onGenerate = null }) => {
     const qrRef = useRef(null)
     const [loading, setLoading] = useState(false)
     const [error, setError] = useState(null)
@@ -51,48 +33,49 @@ const ParentQRShareDialog = ({
         try {
             const qrData = {
                 patient_id: patientId,
-                share_type: "parent_access",
+                share_type: 'parent_access',
                 expires_in_days: 30,
-                scope: ["view_only", "allergies", "vaccinations", "appointments"],
+                scope: ['view_only', 'allergies', 'vaccinations', 'appointments'],
                 max_uses: 100, // High limit for parent sharing
                 allow_emergency_access: false,
                 metadata: {
-                    shared_by: "parent",
-                    patient_name: patientName
-                }
+                    shared_by: 'parent',
+                    patient_name: patientName,
+                },
             }
 
             const response = await generateQRCode(qrData)
 
             // Validate response
             if (!response || !response.token || !response.access_url) {
-                throw new Error("Invalid response from server. Please try again.")
+                throw new Error('Invalid response from server. Please try again.')
             }
 
             setGeneratedQR({
                 qrId: response.qr_id,
                 token: response.token,
                 accessUrl: response.access_url,
-                expiresAt: response.expires_at
+                expiresAt: response.expires_at,
             })
 
             if (onGenerate) {
                 onGenerate(response)
             }
         } catch (err) {
-            console.error("QR Generation Error:", err)
-            let errorMessage = "Failed to generate QR code. Please try again."
+            console.error('QR Generation Error:', err)
+            let errorMessage = 'Failed to generate QR code. Please try again.'
 
             // Provide more specific error messages
             if (err.message) {
-                if (err.message.includes("Patient not found")) {
-                    errorMessage = "Patient record not found. Please contact support."
-                } else if (err.message.includes("permission")) {
-                    errorMessage = "You don't have permission to generate QR codes for this patient."
-                } else if (err.message.includes("network") || err.message.includes("internet")) {
-                    errorMessage = "Network error. Please check your connection and try again."
-                } else if (err.message.includes("Server error")) {
-                    errorMessage = "Server is experiencing issues. Please try again in a moment."
+                if (err.message.includes('Patient not found')) {
+                    errorMessage = 'Patient record not found. Please contact support.'
+                } else if (err.message.includes('permission')) {
+                    errorMessage =
+                        "You don't have permission to generate QR codes for this patient."
+                } else if (err.message.includes('network') || err.message.includes('internet')) {
+                    errorMessage = 'Network error. Please check your connection and try again.'
+                } else if (err.message.includes('Server error')) {
+                    errorMessage = 'Server is experiencing issues. Please try again in a moment.'
                 } else {
                     errorMessage = err.message
                 }
@@ -109,46 +92,44 @@ const ParentQRShareDialog = ({
 
         try {
             // Create a canvas element
-            const canvas = document.createElement("canvas")
-            const ctx = canvas.getContext("2d")
+            const canvas = document.createElement('canvas')
+            const ctx = canvas.getContext('2d')
 
             // Set canvas size (with padding)
             const size = 500
             canvas.width = size
-            canvas.height = size + 150 // Extra space for header and footer
+            canvas.height = size + 150
 
             // White background
-            ctx.fillStyle = "#ffffff"
+            ctx.fillStyle = '#fffafa'
             ctx.fillRect(0, 0, canvas.width, canvas.height)
 
             // Add gradient header background
             const gradient = ctx.createLinearGradient(0, 0, size, 0)
-            gradient.addColorStop(0, "#3b82f6")
-            gradient.addColorStop(1, "#8b5cf6")
+            gradient.addColorStop(0, '#3b82f6')
+            gradient.addColorStop(1, '#8b5cf6')
             ctx.fillStyle = gradient
             ctx.fillRect(0, 0, size, 80)
 
             // Patient name at top (white text on gradient)
-            ctx.fillStyle = "#ffffff"
-            ctx.font = "bold 24px Arial"
-            ctx.textAlign = "center"
-            ctx.fillText(patientName || "Patient QR Code", size / 2, 35)
+            ctx.fillStyle = '#fffafa'
+            ctx.font = 'bold 24px Arial'
+            ctx.textAlign = 'center'
+            ctx.fillText(patientName || 'Patient QR Code', size / 2, 35)
 
             // Subtitle
-            ctx.font = "16px Arial"
-            ctx.fillText("KEEPSAKE Healthcare", size / 2, 60)
+            ctx.font = '16px Arial'
+            ctx.fillText('KEEPSAKE Healthcare', size / 2, 60)
 
             // Capture the QR code with logo
             const qrContainer = qrRef.current
-
-            // Use html2canvas-like approach - convert the whole container to canvas
-            const svgElements = qrContainer.querySelectorAll("svg")
-            const imgElement = qrContainer.querySelector("img")
+            const svgElements = qrContainer.querySelectorAll('svg')
+            const imgElement = qrContainer.querySelector('img')
 
             if (svgElements.length > 0) {
                 const qrSvg = svgElements[0] // First SVG is the QR code
                 const svgData = new XMLSerializer().serializeToString(qrSvg)
-                const svgBlob = new Blob([svgData], { type: "image/svg+xml;charset=utf-8" })
+                const svgBlob = new Blob([svgData], { type: 'image/svg+xml;charset=utf-8' })
                 const url = URL.createObjectURL(svgBlob)
 
                 const qrImg = new Image()
@@ -169,11 +150,11 @@ const ParentQRShareDialog = ({
                             const logoY = y + qrSize / 2 - logoSize / 2
 
                             // White background for logo
-                            ctx.fillStyle = "#ffffff"
+                            ctx.fillStyle = '#fffafa'
                             ctx.beginPath()
                             ctx.roundRect(logoX - 5, logoY - 5, logoSize + 10, logoSize + 10, 8)
                             ctx.fill()
-                            ctx.strokeStyle = "#e5e7eb"
+                            ctx.strokeStyle = '#e5e7eb'
                             ctx.lineWidth = 2
                             ctx.stroke()
 
@@ -181,23 +162,30 @@ const ParentQRShareDialog = ({
                             try {
                                 ctx.drawImage(imgElement, logoX, logoY, logoSize, logoSize)
                             } catch (logoErr) {
-                                console.warn("Could not draw logo:", logoErr)
+                                console.warn('Could not draw logo:', logoErr)
                             }
                         }
 
                         // Footer info
-                        ctx.fillStyle = "#6b7280"
-                        ctx.font = "14px Arial"
-                        const expiryDate = new Date(generatedQR.expiresAt).toLocaleDateString("en-US", {
-                            year: "numeric",
-                            month: "long",
-                            day: "numeric"
-                        })
+                        ctx.fillStyle = '#6b7280'
+                        ctx.font = '14px Arial'
+                        const expiryDate = new Date(generatedQR.expiresAt).toLocaleDateString(
+                            'en-US',
+                            {
+                                year: 'numeric',
+                                month: 'long',
+                                day: 'numeric',
+                            }
+                        )
                         ctx.fillText(`Valid until: ${expiryDate}`, size / 2, size + 100)
 
-                        ctx.font = "12px Arial"
-                        ctx.fillStyle = "#9ca3af"
-                        ctx.fillText("Scan with KEEPSAKE app to access medical records", size / 2, size + 130)
+                        ctx.font = '12px Arial'
+                        ctx.fillStyle = '#9ca3af'
+                        ctx.fillText(
+                            'Scan with KEEPSAKE app to access medical records',
+                            size / 2,
+                            size + 130
+                        )
 
                         URL.revokeObjectURL(url)
                         resolve()
@@ -207,15 +195,15 @@ const ParentQRShareDialog = ({
                 })
 
                 // Convert to PNG and download
-                const pngFile = canvas.toDataURL("image/png", 1.0)
-                const downloadLink = document.createElement("a")
-                downloadLink.download = `${patientName?.replace(/\s+/g, "_")}_KEEPSAKE_QR.png`
+                const pngFile = canvas.toDataURL('image/png', 1.0)
+                const downloadLink = document.createElement('a')
+                downloadLink.download = `${patientName?.replace(/\s+/g, '_')}_KEEPSAKE_QR.png`
                 downloadLink.href = pngFile
                 downloadLink.click()
             }
         } catch (err) {
-            console.error("Download failed:", err)
-            alert("Failed to download QR code. Please try again.")
+            console.error('Download failed:', err)
+            alert('Failed to download QR code. Please try again.')
         }
     }
 
@@ -228,11 +216,11 @@ const ParentQRShareDialog = ({
             setTimeout(() => setCopied(false), 2000)
         } catch {
             // Fallback for older browsers
-            const textArea = document.createElement("textarea")
+            const textArea = document.createElement('textarea')
             textArea.value = generatedQR.accessUrl
             document.body.appendChild(textArea)
             textArea.select()
-            document.execCommand("copy")
+            document.execCommand('copy')
             document.body.removeChild(textArea)
             setCopied(true)
             setTimeout(() => setCopied(false), 2000)
@@ -240,12 +228,12 @@ const ParentQRShareDialog = ({
     }
 
     const formatExpiryDate = (dateString) => {
-        if (!dateString) return "N/A"
+        if (!dateString) return 'N/A'
         try {
-            return new Date(dateString).toLocaleDateString("en-US", {
-                year: "numeric",
-                month: "long",
-                day: "numeric"
+            return new Date(dateString).toLocaleDateString('en-US', {
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric',
             })
         } catch {
             return dateString
@@ -332,18 +320,19 @@ const ParentQRShareDialog = ({
                             {/* Instructions */}
                             <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
                                 <p className="text-xs text-amber-800">
-                                    <strong>How to use:</strong> Share this QR code with healthcare providers.
-                                    They can scan it to access {patientName}'s medical information including
-                                    allergies, vaccinations, and appointments.
+                                    <strong>How to use:</strong> Share this QR code with healthcare
+                                    providers. They can scan it to access {patientName}'s medical
+                                    information including allergies, vaccinations, and appointments.
                                 </p>
                             </div>
 
                             {/* Security Notice */}
                             <div className="bg-green-50 border border-green-200 rounded-lg p-3">
                                 <p className="text-xs text-green-800">
-                                    <strong>Security:</strong> This QR code is encrypted and expires on{" "}
-                                    {formatExpiryDate(generatedQR.expiresAt)}. Only authorized healthcare
-                                    facilities can access the information. You can revoke access at any time.
+                                    <strong>Security:</strong> This QR code is encrypted and expires
+                                    on {formatExpiryDate(generatedQR.expiresAt)}. Only authorized
+                                    healthcare facilities can access the information. You can revoke
+                                    access at any time.
                                 </p>
                             </div>
 
@@ -380,11 +369,7 @@ const ParentQRShareDialog = ({
                 </div>
 
                 <div className="pt-4 border-t">
-                    <Button
-                        variant="outline"
-                        onClick={onClose}
-                        className="w-full"
-                    >
+                    <Button variant="outline" onClick={onClose} className="w-full">
                         Close
                     </Button>
                 </div>
