@@ -33,7 +33,7 @@ import {
     ScanQrCode,
     QrCode,
 } from 'lucide-react'
-import { cn, getStatusBadgeColor } from '@/util/utils'
+import { cn } from '@/util/utils'
 import { TooltipHelper } from '@/util/TooltipHelper'
 import {
     LineChart,

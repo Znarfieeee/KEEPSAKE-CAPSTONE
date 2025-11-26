@@ -4,7 +4,7 @@ import axios from 'axios'
 
 export const getPatients = async () => {
   try {
-    const response = await axios.get(`${backendConnection()}/patient_records`, axiosConfig)
+    const response = await axios.get(`${backendConnection()}/patient_records?include_related=true`, axiosConfig)
     return response.data
   } catch (error) {
     console.error('Get patients error:', error)
