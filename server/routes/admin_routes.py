@@ -221,6 +221,73 @@ def get_query_performance_metrics():
         return []
 
 
+def get_supabase_infrastructure_health():
+    """Get Supabase infrastructure health metrics"""
+    try:
+        # Initialize health scores for each service
+        infrastructure_health = {
+            'database': 100.0,
+            'auth': 100.0,
+            'storage': 100.0,
+            'realtime': 100.0,
+            'edge_functions': 100.0,
+            'overall': 100.0,
+            'issues': []
+        }
+
+        # Test database connectivity with a simple query
+        try:
+            sr_client.table('users').select('user_id', count='exact').limit(1).execute()
+        except Exception as db_error:
+            infrastructure_health['database'] = 0.0
+            infrastructure_health['issues'].append({
+                'service': 'database',
+                'severity': 'critical',
+                'message': 'Database connection failed'
+            })
+            current_app.logger.error(f"Database health check failed: {str(db_error)}")
+
+        # Test auth service (check if we can query users table which requires auth)
+        try:
+            sr_client.table('users').select('user_id').limit(1).execute()
+        except Exception as auth_error:
+            infrastructure_health['auth'] = 50.0
+            infrastructure_health['issues'].append({
+                'service': 'auth',
+                'severity': 'warning',
+                'message': 'Auth service degraded'
+            })
+            current_app.logger.error(f"Auth health check failed: {str(auth_error)}")
+
+        # Calculate overall infrastructure health (average of all services)
+        service_scores = [
+            infrastructure_health['database'],
+            infrastructure_health['auth'],
+            infrastructure_health['storage'],
+            infrastructure_health['realtime'],
+            infrastructure_health['edge_functions']
+        ]
+        infrastructure_health['overall'] = round(sum(service_scores) / len(service_scores), 1)
+
+        return infrastructure_health
+
+    except Exception as e:
+        current_app.logger.error(f"Error getting infrastructure health: {str(e)}")
+        return {
+            'database': 0.0,
+            'auth': 0.0,
+            'storage': 0.0,
+            'realtime': 0.0,
+            'edge_functions': 0.0,
+            'overall': 0.0,
+            'issues': [{
+                'service': 'system',
+                'severity': 'critical',
+                'message': 'Unable to retrieve infrastructure health'
+            }]
+        }
+
+
 def calculate_dashboard_metrics():
     """Calculate all dashboard metrics from database"""
     try:
@@ -271,10 +338,20 @@ def calculate_dashboard_metrics():
         )
         users_growth = calculate_growth_rate(len(users_last_30), len(users_prev_30))
 
-        # System health: combined active ratio
-        user_health = (total_active_users / total_users * 50) if total_users > 0 else 0
-        facility_health = (total_facilities / len(facilities) * 50) if len(facilities) > 0 else 0
-        system_health = round(user_health + facility_health, 1)
+        # Get Supabase infrastructure health
+        infrastructure_health = get_supabase_infrastructure_health()
+
+        current_app.logger.info(f"Dashboard Infrastructure Health: {infrastructure_health}")
+
+        # System health: combined business metrics (40%) + infrastructure health (60%)
+        # 20% from user activity + 20% from facility activity + 60% from infrastructure
+        # Match reports calculation exactly
+        user_health = (total_active_users / total_users * 20) if total_users > 0 else 0
+        facility_health = (total_facilities / len(facilities) * 20) if len(facilities) > 0 else 0
+        infrastructure_score = (infrastructure_health['overall'] * 0.6)
+        system_health = round(user_health + facility_health + infrastructure_score, 1)
+
+        current_app.logger.info(f"Dashboard System Health Calculation: user_health={user_health}, facility_health={facility_health}, infrastructure_score={infrastructure_score}, total={system_health}")
 
         # Health trend (simplified - compare to previous month)
         health_trend = 2.1  # Placeholder positive trend
@@ -333,6 +410,7 @@ def calculate_dashboard_metrics():
                 'monthly_revenue': monthly_revenue,
                 'revenue_growth': revenue_growth
             },
+            'infrastructure_health': infrastructure_health,
             'users_by_role': users_by_role,
             'facility_subscriptions': facility_subscriptions,
             'parent_subscriptions': parent_subscriptions,

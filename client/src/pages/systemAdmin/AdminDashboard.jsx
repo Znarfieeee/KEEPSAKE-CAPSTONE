@@ -27,6 +27,39 @@ import { Skeleton } from '@/components/ui/skeleton'
 import ActiveUsersByRole from '@/components/System Administrator/sysAdmin_dashboard/ActiveUsersByRole'
 import { getAdminDashboardMetrics } from '@/api/admin/dashboard'
 
+// Service Health Bar Component
+const ServiceHealthBar = ({ label, value, color }) => {
+    const colorClasses = {
+        blue: 'bg-blue-500',
+        green: 'bg-green-500',
+        purple: 'bg-purple-500',
+        orange: 'bg-orange-500',
+        indigo: 'bg-indigo-500',
+    }
+
+    const getHealthColor = (val) => {
+        if (val >= 90) return colorClasses[color] || 'bg-green-500'
+        if (val >= 70) return 'bg-yellow-500'
+        if (val >= 50) return 'bg-orange-500'
+        return 'bg-red-500'
+    }
+
+    return (
+        <div className="space-y-1">
+            <div className="flex items-center justify-between text-xs">
+                <span className="font-medium text-gray-700">{label}</span>
+                <span className="font-semibold text-gray-900">{value.toFixed(1)}%</span>
+            </div>
+            <div className="w-full bg-gray-200 rounded-full h-2">
+                <div
+                    className={`h-2 rounded-full transition-all duration-300 ${getHealthColor(value)}`}
+                    style={{ width: `${Math.min(100, Math.max(0, value))}%` }}
+                />
+            </div>
+        </div>
+    )
+}
+
 const AdminDashboard = () => {
     const [dashboardData, setDashboardData] = useState(null)
     const [loading, setLoading] = useState(true)
@@ -434,8 +467,75 @@ const AdminDashboard = () => {
                     )}
                 </div>
 
-                {/* System Monitoring - 3 cols, 3 rows */}
+                {/* Supabase Infrastructure Health - 3 cols, 3 rows */}
                 <div className="col-span-3 row-span-3 bg-white rounded-xl shadow-lg p-4">
+                    <h3 className="text-base font-semibold text-gray-900 mb-3">
+                        Infrastructure Health
+                    </h3>
+                    {loading ? (
+                        <div className="space-y-2">
+                            <Skeleton className="h-[250px] w-full" />
+                        </div>
+                    ) : (
+                        <div className="space-y-3">
+                            {/* Overall Health Score */}
+                            <div className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg p-3 border border-blue-200">
+                                <div className="flex items-center justify-between">
+                                    <span className="text-sm font-medium text-gray-700">Overall Health</span>
+                                    <span className="text-2xl font-bold text-blue-600">
+                                        {dashboardData?.infrastructure_health?.overall?.toFixed(1) || '0.0'}%
+                                    </span>
+                                </div>
+                            </div>
+
+                            {/* Individual Service Health */}
+                            <div className="space-y-2">
+                                <ServiceHealthBar
+                                    label="Database"
+                                    value={dashboardData?.infrastructure_health?.database || 0}
+                                    color="blue"
+                                />
+                                <ServiceHealthBar
+                                    label="Auth"
+                                    value={dashboardData?.infrastructure_health?.auth || 0}
+                                    color="green"
+                                />
+                                <ServiceHealthBar
+                                    label="Storage"
+                                    value={dashboardData?.infrastructure_health?.storage || 0}
+                                    color="purple"
+                                />
+                                <ServiceHealthBar
+                                    label="Realtime"
+                                    value={dashboardData?.infrastructure_health?.realtime || 0}
+                                    color="orange"
+                                />
+                                <ServiceHealthBar
+                                    label="Edge Functions"
+                                    value={dashboardData?.infrastructure_health?.edge_functions || 0}
+                                    color="indigo"
+                                />
+                            </div>
+
+                            {/* Issues Display */}
+                            {dashboardData?.infrastructure_health?.issues?.length > 0 && (
+                                <div className="mt-3 p-2 bg-red-50 border border-red-200 rounded-lg">
+                                    <p className="text-xs font-semibold text-red-700 mb-1">Active Issues:</p>
+                                    <div className="space-y-1">
+                                        {dashboardData.infrastructure_health.issues.map((issue, idx) => (
+                                            <p key={idx} className="text-xs text-red-600">
+                                                • {issue.service}: {issue.message}
+                                            </p>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    )}
+                </div>
+
+                {/* System Monitoring - 6 cols */}
+                <div className="col-span-6 bg-white rounded-xl shadow-lg p-4">
                     <h3 className="text-base font-semibold text-gray-900 mb-3">
                         Database Performance
                     </h3>

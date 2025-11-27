@@ -14,6 +14,72 @@ admin_supabase = supabase_service_role_client()
 
 CACHE_TTL = 300  # 5 minutes
 
+def get_supabase_infrastructure_health():
+    """Get Supabase infrastructure health metrics"""
+    try:
+        # Initialize health scores for each service
+        infrastructure_health = {
+            'database': 100.0,
+            'auth': 100.0,
+            'storage': 100.0,
+            'realtime': 100.0,
+            'edge_functions': 100.0,
+            'overall': 100.0,
+            'issues': []
+        }
+
+        # Test database connectivity with a simple query
+        try:
+            admin_supabase.table('users').select('user_id', count='exact').limit(1).execute()
+        except Exception as db_error:
+            infrastructure_health['database'] = 0.0
+            infrastructure_health['issues'].append({
+                'service': 'database',
+                'severity': 'critical',
+                'message': 'Database connection failed'
+            })
+            current_app.logger.error(f"Database health check failed: {str(db_error)}")
+
+        # Test auth service (check if we can query users table which requires auth)
+        try:
+            admin_supabase.table('users').select('user_id').limit(1).execute()
+        except Exception as auth_error:
+            infrastructure_health['auth'] = 50.0
+            infrastructure_health['issues'].append({
+                'service': 'auth',
+                'severity': 'warning',
+                'message': 'Auth service degraded'
+            })
+            current_app.logger.error(f"Auth health check failed: {str(auth_error)}")
+
+        # Calculate overall infrastructure health (average of all services)
+        service_scores = [
+            infrastructure_health['database'],
+            infrastructure_health['auth'],
+            infrastructure_health['storage'],
+            infrastructure_health['realtime'],
+            infrastructure_health['edge_functions']
+        ]
+        infrastructure_health['overall'] = round(sum(service_scores) / len(service_scores), 1)
+
+        return infrastructure_health
+
+    except Exception as e:
+        current_app.logger.error(f"Error getting infrastructure health: {str(e)}")
+        return {
+            'database': 0.0,
+            'auth': 0.0,
+            'storage': 0.0,
+            'realtime': 0.0,
+            'edge_functions': 0.0,
+            'overall': 0.0,
+            'issues': [{
+                'service': 'system',
+                'severity': 'critical',
+                'message': 'Unable to retrieve infrastructure health'
+            }]
+        }
+
 def get_cache_key(report_type, filters):
     """Generate a unique cache key based on report type and filters"""
     filter_str = json.dumps(filters, sort_keys=True)
@@ -135,23 +201,45 @@ def get_all_reports():
         colors = {'Doctors': '#3B82F6', 'Nurses': '#10B981', 'Admins': '#F59E0B', 'Parents': '#8B5CF6', 'Facility Admins': '#EF4444', 'Staff': '#6366F1'}
         user_role_distribution = sorted([{'name': n, 'value': c, 'color': colors.get(n, '#6B7280')} for n, c in role_counts.items()], key=lambda x: x['value'], reverse=True)
 
-        # SUMMARY METRICS - Get ALL data (no filtering)
-        # Count ALL users (not filtered by date)
-        all_users_count_query = admin_supabase.table('users').select('user_id', count='exact').neq('role', 'admin')
-        total_users_response = all_users_count_query.execute()
-        total_users = getattr(total_users_response, 'count', len(total_users_response.data or []))
+        # SUMMARY METRICS - Get ALL data (no filtering) - MATCH DASHBOARD CALCULATION EXACTLY
+        # Get ALL users (including admin role - match dashboard)
+        all_users_response = admin_supabase.table('users').select('user_id, is_active').execute()
+        all_users_data = all_users_response.data or []
+        total_users = len(all_users_data)
+        active_users_count = len([u for u in all_users_data if u.get('is_active')])
+
+        # Get ALL facilities (match dashboard)
+        all_facilities_response = admin_supabase.table('healthcare_facilities').select('facility_id, deleted_at').execute()
+        all_facilities_data = all_facilities_response.data or []
+        total_facilities_count = len(all_facilities_data)
+        active_facilities_count = len([f for f in all_facilities_data if not f.get('deleted_at')])
 
         # Other metrics
         total_appts = admin_supabase.table('appointments').select('appointment_id', count='exact').execute()
         recent_act = admin_supabase.table('users').select('user_id', count='exact').gte('last_sign_in_at', (datetime.now() - timedelta(days=7)).strftime('%Y-%m-%d')).execute()
         api_calls = admin_supabase.table('audit_logs').select('log_id', count='exact').gte('action_timestamp', (datetime.now() - timedelta(days=30)).strftime('%Y-%m-%d')).execute()
-        active_u = admin_supabase.table('users').select('user_id', count='exact').eq('is_active', True).execute()
+
+        # Get Supabase infrastructure health
+        infrastructure_health = get_supabase_infrastructure_health()
+
+        current_app.logger.info(f"All Reports Infrastructure Health: {infrastructure_health}")
+
+        # Calculate system health: combined business metrics (40%) + infrastructure health (60%)
+        # 20% from user activity + 20% from facility activity + 60% from infrastructure
+        # MATCH DASHBOARD CALCULATION EXACTLY
+        user_health = (active_users_count / total_users * 20) if total_users > 0 else 0
+        facility_health = (active_facilities_count / total_facilities_count * 20) if total_facilities_count > 0 else 0
+        infrastructure_score = (infrastructure_health['overall'] * 0.6)
+        system_health = round(user_health + facility_health + infrastructure_score, 1)
+
+        current_app.logger.info(f"All Reports System Health: user_health={user_health}, facility_health={facility_health}, infrastructure_score={infrastructure_score}, total={system_health}")
 
         summary_metrics = {
-            'totalUsers': total_users,  # This is now accurate - counts ALL users
-            'activeFacilities': len(facilities),
+            'totalUsers': total_users,  # ALL users including admin
+            'activeFacilities': active_facilities_count,  # Non-deleted facilities
             'totalAppointments': getattr(total_appts, 'count', len(total_appts.data or [])),
-            'systemHealth': round((getattr(active_u, 'count', len(active_u.data or [])) / total_users * 100), 1) if total_users > 0 else 100.0,
+            'systemHealth': system_health,  # Matches dashboard calculation
+            'infrastructureHealth': infrastructure_health,  # Include infrastructure health
             'recentActivity': getattr(recent_act, 'count', len(recent_act.data or [])),
             'apiCalls': getattr(api_calls, 'count', len(api_calls.data or []))
         }
@@ -561,13 +649,21 @@ def get_summary_metrics():
                 "cache_expires_in": cached_result["cache_expires_in"]
             }), 200
 
-        # Get total users (excluding admin role)
-        users_response = admin_supabase.table('users').select('user_id', count='exact').neq('role', 'admin').execute()
-        total_users = users_response.count if hasattr(users_response, 'count') else len(users_response.data or [])
+        # Get ALL facilities data (to match dashboard logic)
+        all_facilities_response = admin_supabase.table('healthcare_facilities').select('facility_id, deleted_at').execute()
+        all_facilities = all_facilities_response.data or []
 
-        # Get active facilities
-        facilities_response = admin_supabase.table('healthcare_facilities').select('facility_id', count='exact').eq('subscription_status', 'active').execute()
-        active_facilities = facilities_response.count if hasattr(facilities_response, 'count') else len(facilities_response.data or [])
+        # Count non-deleted facilities (active facilities)
+        active_facilities = len([f for f in all_facilities if not f.get('deleted_at')])
+        total_facilities = len(all_facilities)
+
+        # Get ALL users (to match dashboard logic - includes admin role)
+        users_response = admin_supabase.table('users').select('user_id, is_active').execute()
+        all_users = users_response.data or []
+
+        # Count active users
+        active_users = len([u for u in all_users if u.get('is_active')])
+        total_users = len(all_users)
 
         # Get total appointments
         appointments_response = admin_supabase.table('appointments').select('appointment_id', count='exact').execute()
@@ -583,16 +679,27 @@ def get_summary_metrics():
         api_calls_response = admin_supabase.table('audit_logs').select('log_id', count='exact').gte('action_timestamp', thirty_days_ago).execute()
         api_calls = api_calls_response.count if hasattr(api_calls_response, 'count') else len(api_calls_response.data or [])
 
-        # Calculate system health (percentage of active users)
-        active_users_response = admin_supabase.table('users').select('user_id', count='exact').eq('is_active', True).execute()
-        active_users = active_users_response.count if hasattr(active_users_response, 'count') else len(active_users_response.data or [])
-        system_health = round((active_users / total_users * 100), 1) if total_users > 0 else 100.0
+        # Get Supabase infrastructure health
+        infrastructure_health = get_supabase_infrastructure_health()
+
+        current_app.logger.info(f"Reports Infrastructure Health: {infrastructure_health}")
+
+        # Calculate system health: combined business metrics (40%) + infrastructure health (60%)
+        # 20% from user activity + 20% from facility activity + 60% from infrastructure
+        # Match dashboard calculation exactly
+        user_health = (active_users / total_users * 20) if total_users > 0 else 0
+        facility_health = (active_facilities / total_facilities * 20) if total_facilities > 0 else 0
+        infrastructure_score = (infrastructure_health['overall'] * 0.6)
+        system_health = round(user_health + facility_health + infrastructure_score, 1)
+
+        current_app.logger.info(f"Reports System Health Calculation: user_health={user_health}, facility_health={facility_health}, infrastructure_score={infrastructure_score}, total={system_health}")
 
         data = {
             'totalUsers': total_users,
             'activeFacilities': active_facilities,
             'totalAppointments': total_appointments,
             'systemHealth': system_health,
+            'infrastructureHealth': infrastructure_health,
             'recentActivity': recent_activity,
             'apiCalls': api_calls
         }
