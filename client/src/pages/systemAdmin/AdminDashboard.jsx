@@ -17,7 +17,7 @@ import {
 import {
     Building2,
     Users,
-    DollarSign,
+    PhilippinePesoIcon,
     Heart,
     AlertCircle,
     RefreshCw,
@@ -145,22 +145,42 @@ const AdminDashboard = () => {
         )
     }
 
-    // Loading state
-    if (loading) {
+    // Helper component for loading state within stat cards
+    const StatCardSkeleton = ({ icon: Icon, title, colorClass }) => {
+        const colorStyles = {
+            blue: 'border-blue-200 bg-gradient-to-br from-blue-50 to-white',
+            green: 'border-green-200 bg-gradient-to-br from-green-50 to-white',
+            purple: 'border-purple-200 bg-gradient-to-br from-purple-50 to-white',
+            orange: 'border-orange-200 bg-gradient-to-br from-orange-50 to-white',
+        }
+        const iconColors = {
+            blue: 'bg-blue-100 text-blue-600',
+            green: 'bg-green-100 text-green-600',
+            purple: 'bg-purple-100 text-purple-600',
+            orange: 'bg-orange-100 text-orange-600',
+        }
+
         return (
-            <div className="min-h-screen bg-gray-50 p-4">
-                <div className="grid grid-cols-4 gap-4 mb-4">
-                    <Skeleton className="h-24 w-full" />
-                    <Skeleton className="h-24 w-full" />
-                    <Skeleton className="h-24 w-full" />
-                    <Skeleton className="h-24 w-full" />
-                </div>
-                <div className="grid grid-cols-12 gap-4">
-                    <Skeleton className="col-span-6 h-64" />
-                    <Skeleton className="col-span-3 h-64" />
-                    <Skeleton className="col-span-3 h-64" />
-                    <Skeleton className="col-span-6 h-56" />
-                    <Skeleton className="col-span-6 h-56" />
+            <div
+                className={`${
+                    colorStyles[colorClass] || colorStyles.blue
+                } border rounded-xl p-4 shadow-sm h-full`}
+            >
+                <div className="flex items-start justify-between">
+                    <div className="space-y-1 flex-1">
+                        <p className="text-xs font-medium text-gray-600">{title}</p>
+                        <Skeleton className="h-8 w-24" />
+                        <Skeleton className="h-3 w-32" />
+                    </div>
+                    {Icon && (
+                        <div
+                            className={`${
+                                iconColors[colorClass] || iconColors.blue
+                            } p-2 rounded-lg flex items-center justify-center`}
+                        >
+                            <Icon className="h-5 w-5" />
+                        </div>
+                    )}
                 </div>
             </div>
         )
@@ -191,40 +211,71 @@ const AdminDashboard = () => {
             <div className="grid grid-cols-12 grid-rows-auto gap-4">
                 {/* Row 1: Stat Cards - 12 cols */}
                 <div className="col-span-12 grid grid-cols-4 gap-4">
-                    <StatCard
-                        icon={Building2}
-                        title="Total Facilities"
-                        value={
-                            dashboardData?.core_metrics?.total_facilities?.toLocaleString() || '0'
-                        }
-                        growth={dashboardData?.core_metrics?.facilities_growth}
-                        colorClass="blue"
-                    />
-                    <StatCard
-                        icon={Users}
-                        title="Active Users"
-                        value={dashboardData?.core_metrics?.active_users?.toLocaleString() || '0'}
-                        growth={dashboardData?.core_metrics?.users_growth}
-                        colorClass="green"
-                    />
-                    <StatCard
-                        icon={Heart}
-                        title="System Health"
-                        value={`${
-                            dashboardData?.core_metrics?.system_health?.toFixed(1) || '0.0'
-                        }%`}
-                        growth={dashboardData?.core_metrics?.health_trend}
-                        colorClass="purple"
-                    />
-                    <StatCard
-                        icon={DollarSign}
-                        title="Monthly Revenue"
-                        value={`$${
-                            dashboardData?.core_metrics?.monthly_revenue?.toLocaleString() || '0'
-                        }`}
-                        growth={dashboardData?.core_metrics?.revenue_growth}
-                        colorClass="orange"
-                    />
+                    {loading ? (
+                        <>
+                            <StatCardSkeleton
+                                icon={Building2}
+                                title="Total Facilities"
+                                colorClass="blue"
+                            />
+                            <StatCardSkeleton
+                                icon={Users}
+                                title="Active Users"
+                                colorClass="green"
+                            />
+                            <StatCardSkeleton
+                                icon={Heart}
+                                title="System Health"
+                                colorClass="purple"
+                            />
+                            <StatCardSkeleton
+                                icon={PhilippinePesoIcon}
+                                title="Monthly Revenue"
+                                colorClass="orange"
+                            />
+                        </>
+                    ) : (
+                        <>
+                            <StatCard
+                                icon={Building2}
+                                title="Total Facilities"
+                                value={
+                                    dashboardData?.core_metrics?.total_facilities?.toLocaleString() ||
+                                    '0'
+                                }
+                                growth={dashboardData?.core_metrics?.facilities_growth}
+                                colorClass="blue"
+                            />
+                            <StatCard
+                                icon={Users}
+                                title="Active Users"
+                                value={
+                                    dashboardData?.core_metrics?.active_users?.toLocaleString() || '0'
+                                }
+                                growth={dashboardData?.core_metrics?.users_growth}
+                                colorClass="green"
+                            />
+                            <StatCard
+                                icon={Heart}
+                                title="System Health"
+                                value={`${
+                                    dashboardData?.core_metrics?.system_health?.toFixed(1) || '0.0'
+                                }%`}
+                                growth={dashboardData?.core_metrics?.health_trend}
+                                colorClass="purple"
+                            />
+                            <StatCard
+                                icon={PhilippinePesoIcon}
+                                title="Monthly Revenue"
+                                value={`₱${
+                                    dashboardData?.core_metrics?.monthly_revenue?.toLocaleString() ||
+                                    '0'
+                                }`}
+                                growth={dashboardData?.core_metrics?.revenue_growth}
+                                colorClass="orange"
+                            />
+                        </>
+                    )}
                 </div>
 
                 {/* Row 2-3: Charts */}
@@ -233,37 +284,43 @@ const AdminDashboard = () => {
                     <h3 className="text-base font-semibold text-gray-900 mb-3">
                         Monthly Revenue Trend
                     </h3>
-                    <ResponsiveContainer width="100%" height={250}>
-                        <LineChart data={dashboardData?.monthly_revenue_trend || []}>
-                            <CartesianGrid strokeDasharray="3 3" />
-                            <XAxis dataKey="month" />
-                            <YAxis />
-                            <Tooltip
-                                contentStyle={{
-                                    backgroundColor: '#fff',
-                                    border: '1px solid #ccc',
-                                    borderRadius: '8px',
-                                }}
-                            />
-                            <Legend />
-                            <Line
-                                type="monotone"
-                                dataKey="revenue"
-                                stroke="#3b82f6"
-                                strokeWidth={3}
-                                dot={{ fill: '#3b82f6', r: 4 }}
-                                name="Actual Revenue"
-                            />
-                            <Line
-                                type="monotone"
-                                dataKey="target"
-                                stroke="#10b981"
-                                strokeWidth={2}
-                                strokeDasharray="5 5"
-                                name="Target"
-                            />
-                        </LineChart>
-                    </ResponsiveContainer>
+                    {loading ? (
+                        <div className="space-y-2">
+                            <Skeleton className="h-[250px] w-full" />
+                        </div>
+                    ) : (
+                        <ResponsiveContainer width="100%" height={250}>
+                            <LineChart data={dashboardData?.monthly_revenue_trend || []}>
+                                <CartesianGrid strokeDasharray="3 3" />
+                                <XAxis dataKey="month" />
+                                <YAxis />
+                                <Tooltip
+                                    contentStyle={{
+                                        backgroundColor: '#fff',
+                                        border: '1px solid #ccc',
+                                        borderRadius: '8px',
+                                    }}
+                                />
+                                <Legend />
+                                <Line
+                                    type="monotone"
+                                    dataKey="revenue"
+                                    stroke="#3b82f6"
+                                    strokeWidth={3}
+                                    dot={{ fill: '#3b82f6', r: 4 }}
+                                    name="Actual Revenue"
+                                />
+                                <Line
+                                    type="monotone"
+                                    dataKey="target"
+                                    stroke="#10b981"
+                                    strokeWidth={2}
+                                    strokeDasharray="5 5"
+                                    name="Target"
+                                />
+                            </LineChart>
+                        </ResponsiveContainer>
+                    )}
                 </div>
 
                 {/* Subscription Distribution - 3 cols, 3 rows */}
@@ -282,6 +339,7 @@ const AdminDashboard = () => {
                                         : 'text-gray-600 hover:bg-gray-200'
                                 }`}
                                 title="Facilities"
+                                disabled={loading}
                             >
                                 <Building2 className="h-4 w-4" />
                             </button>
@@ -293,13 +351,18 @@ const AdminDashboard = () => {
                                         : 'text-gray-600 hover:bg-gray-200'
                                 }`}
                                 title="Parents"
+                                disabled={loading}
                             >
                                 <UserCircle className="h-4 w-4" />
                             </button>
                         </div>
                     </div>
 
-                    {subscriptionData.length > 0 ? (
+                    {loading ? (
+                        <div className="space-y-2">
+                            <Skeleton className="h-[180px] w-full" />
+                        </div>
+                    ) : subscriptionData.length > 0 ? (
                         <ResponsiveContainer width="100%" height={180}>
                             <PieChart>
                                 <Pie
@@ -352,29 +415,35 @@ const AdminDashboard = () => {
                     <h3 className="text-base font-semibold text-gray-900 mb-3">
                         Database Performance
                     </h3>
-                    <ResponsiveContainer width="100%" height={250}>
-                        <LineChart data={dashboardData?.system_monitoring || []}>
-                            <CartesianGrid strokeDasharray="3 3" />
-                            <XAxis dataKey="time" angle={-45} textAnchor="end" height={70} />
-                            <YAxis domain={[90, 100]} />
-                            <Tooltip />
-                            <Legend />
-                            <Line
-                                type="monotone"
-                                dataKey="avg_query_time"
-                                stroke="#3b82f6"
-                                name="Avg Query %"
-                                strokeWidth={2}
-                            />
-                            <Line
-                                type="monotone"
-                                dataKey="p95_query_time"
-                                stroke="#10b981"
-                                name="P95 Query %"
-                                strokeWidth={2}
-                            />
-                        </LineChart>
-                    </ResponsiveContainer>
+                    {loading ? (
+                        <div className="space-y-2">
+                            <Skeleton className="h-[250px] w-full" />
+                        </div>
+                    ) : (
+                        <ResponsiveContainer width="100%" height={250}>
+                            <LineChart data={dashboardData?.system_monitoring || []}>
+                                <CartesianGrid strokeDasharray="3 3" />
+                                <XAxis dataKey="time" angle={-45} textAnchor="end" height={70} />
+                                <YAxis domain={[90, 100]} />
+                                <Tooltip />
+                                <Legend />
+                                <Line
+                                    type="monotone"
+                                    dataKey="avg_query_time"
+                                    stroke="#3b82f6"
+                                    name="Avg Query %"
+                                    strokeWidth={2}
+                                />
+                                <Line
+                                    type="monotone"
+                                    dataKey="p95_query_time"
+                                    stroke="#10b981"
+                                    name="P95 Query %"
+                                    strokeWidth={2}
+                                />
+                            </LineChart>
+                        </ResponsiveContainer>
+                    )}
                 </div>
 
                 {/* Row 4: Weekly Active Users - 6 cols */}
@@ -382,25 +451,38 @@ const AdminDashboard = () => {
                     <h3 className="text-base font-semibold text-gray-900 mb-3">
                         Weekly Active Users
                     </h3>
-                    <ResponsiveContainer width="100%" height={220}>
-                        <BarChart data={dashboardData?.weekly_active_users || []}>
-                            <CartesianGrid strokeDasharray="3 3" />
-                            <XAxis dataKey="week" />
-                            <YAxis />
-                            <Tooltip />
-                            <Bar
-                                dataKey="active_users"
-                                fill="#3b82f6"
-                                radius={[8, 8, 0, 0]}
-                                name="Active Users"
-                            />
-                        </BarChart>
-                    </ResponsiveContainer>
+                    {loading ? (
+                        <div className="space-y-2">
+                            <Skeleton className="h-[220px] w-full" />
+                        </div>
+                    ) : (
+                        <ResponsiveContainer width="100%" height={220}>
+                            <BarChart data={dashboardData?.weekly_active_users || []}>
+                                <CartesianGrid strokeDasharray="3 3" />
+                                <XAxis dataKey="week" />
+                                <YAxis />
+                                <Tooltip />
+                                <Bar
+                                    dataKey="active_users"
+                                    fill="#3b82f6"
+                                    radius={[8, 8, 0, 0]}
+                                    name="Active Users"
+                                />
+                            </BarChart>
+                        </ResponsiveContainer>
+                    )}
                 </div>
 
                 {/* Active Users by Role - 6 cols */}
                 <div className="col-span-6">
-                    <ActiveUsersByRole usersByRole={dashboardData?.users_by_role || {}} />
+                    {loading ? (
+                        <div className="bg-white rounded-xl shadow-lg p-4">
+                            <Skeleton className="h-8 w-48 mb-3" />
+                            <Skeleton className="h-[220px] w-full" />
+                        </div>
+                    ) : (
+                        <ActiveUsersByRole usersByRole={dashboardData?.users_by_role || {}} />
+                    )}
                 </div>
             </div>
         </div>

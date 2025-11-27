@@ -15,6 +15,7 @@ from routes.admin_routes import admin_bp
 from routes.admin.admin_facility import facility_bp
 from routes.admin.admin_users import users_bp
 from routes.admin.admin_audit import audit_bp
+from routes.admin.admin_subscription import subscription_bp
 from routes.pediapro.doctor_patient_records import patrecord_bp
 from routes.pediapro.doctor_patient_prescriptions import patrx_bp
 from routes.pediapro.doctor_vaccinations import vaccinations_bp
@@ -52,6 +53,7 @@ app.register_blueprint(admin_bp)
 app.register_blueprint(facility_bp)
 app.register_blueprint(users_bp)
 app.register_blueprint(audit_bp)
+app.register_blueprint(subscription_bp)
 app.register_blueprint(patrecord_bp)
 app.register_blueprint(patrx_bp)
 app.register_blueprint(vaccinations_bp)

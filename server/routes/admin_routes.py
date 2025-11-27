@@ -58,9 +58,9 @@ DASHBOARD_CACHE_KEY = "admin_dashboard:metrics"
 QUERY_PERF_KEY_PREFIX = "dashboard:query_perf:"
 CACHE_TTL = 300  # 5 minutes
 PLAN_PRICING = {
-    'standard': 99,
-    'premium': 199,
-    'enterprise': 399
+    'standard': 5544,    # ₱5,544/month
+    'premium': 11144,    # ₱11,144/month
+    'enterprise': 22344  # ₱22,344/month
 }
 
 # Helper functions for dashboard metrics
