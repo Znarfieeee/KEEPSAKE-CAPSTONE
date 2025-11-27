@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react'
+import React, { useState, useMemo, useEffect, useCallback } from 'react'
 import ExcelJS from 'exceljs'
 import {
     BarChart,
@@ -26,65 +26,101 @@ import {
     TrendingUp,
     Settings,
     Eye,
+    AlertCircle,
 } from 'lucide-react'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/Button'
+import { showToast } from '@/util/alertHelper'
+import ReportFilters from '@/components/System Administrator/sysAdmin_reports/ReportFilters'
+import ReportsSkeleton from '@/components/System Administrator/sysAdmin_reports/ReportsSkeleton'
+import { getAllReports } from '@/api/admin/reports'
+import { calculateDateRange } from '@/util/dateRangeHelper'
 
 const DataReports = () => {
     const [selectedReport, setSelectedReport] = useState('user-activity')
-    const [dateRange, setDateRange] = useState({
-        startDate: new Date(new Date().setDate(new Date().getDate() - 30))
-            .toISOString()
-            .split('T')[0],
-        endDate: new Date().toISOString().split('T')[0],
+
+    // Filter state
+    const [filters, setFilters] = useState({
+        datePreset: 'last-30-days',
+        dateRange: { startDate: '', endDate: '' },
+        roleFilter: 'all',
+        exportFormat: null,
     })
-    const [exportFormat, setExportFormat] = useState(null)
 
-    // Mock data for different reports
-    const userActivityData = [
-        { date: '2025-10-25', logins: 145, registrations: 12, active_users: 320 },
-        { date: '2025-10-26', logins: 158, registrations: 18, active_users: 335 },
-        { date: '2025-10-27', logins: 172, registrations: 22, active_users: 352 },
-        { date: '2025-10-28', logins: 165, registrations: 15, active_users: 345 },
-        { date: '2025-10-29', logins: 189, registrations: 28, active_users: 368 },
-        { date: '2025-10-30', logins: 201, registrations: 35, active_users: 395 },
-    ]
+    // Data state
+    const [reportData, setReportData] = useState({
+        userActivity: [],
+        facilityStats: [],
+        systemUsage: [],
+        userRoleDistribution: [],
+    })
+    const [summaryMetrics, setSummaryMetrics] = useState(null)
+    const [loading, setLoading] = useState(true)
+    const [error, setError] = useState(null)
+    const [cacheInfo, setCacheInfo] = useState({ cached: false, cache_expires_in: 0 })
 
-    const facilityStatsData = [
-        { facility: 'Central Clinic', patients: 245, appointments: 89, staff: 12 },
-        { facility: 'North Medical', patients: 312, appointments: 124, staff: 18 },
-        { facility: 'South Health Center', patients: 198, appointments: 67, staff: 9 },
-        { facility: 'East Pediatric', patients: 267, appointments: 95, staff: 14 },
-        { facility: 'West Family Care', patients: 289, appointments: 112, staff: 16 },
-    ]
+    // Data fetching function - Fetches ALL data once, filtering happens on frontend
+    const fetchReportData = useCallback(async (bustCache = false) => {
+        setLoading(true)
+        setError(null)
+        try {
+            // Fetch ALL report data without filters (filters applied on frontend)
+            const params = { bust_cache: bustCache }
+            const response = await getAllReports(params)
 
-    const systemUsageData = [
-        { category: 'Dashboard Views', value: 4250 },
-        { category: 'Reports Generated', value: 1820 },
-        { category: 'Data Exports', value: 890 },
-        { category: 'User Logins', value: 3450 },
-        { category: 'API Calls', value: 15230 },
-    ]
+            // Store raw data (we'll filter it on frontend)
+            setReportData({
+                userActivity: response.data.userActivity || [],
+                facilityStats: response.data.facilityStats || [],
+                systemUsage: response.data.systemUsage || [],
+                userRoleDistribution: response.data.userRoleDistribution || [],
+            })
 
-    const userRoleDistribution = [
-        { name: 'Doctors', value: 245, color: '#3B82F6' },
-        { name: 'Nurses', value: 189, color: '#10B981' },
-        { name: 'Admins', value: 34, color: '#F59E0B' },
-        { name: 'Parents', value: 1250, color: '#8B5CF6' },
-        { name: 'Facility Admins', value: 45, color: '#EF4444' },
-    ]
-
-    const summaryMetrics = useMemo(() => {
-        return {
-            totalUsers: 1763,
-            activeFacilities: 5,
-            totalAppointments: 487,
-            systemHealth: 98.7,
-            recentActivity: 3450,
-            apiCalls: 15230,
+            setSummaryMetrics(response.data.summaryMetrics)
+            setCacheInfo({
+                cached: response.cached || false,
+                cache_expires_in: response.cache_expires_in || 0,
+            })
+        } catch (error) {
+            console.error('Error fetching report data:', error)
+            setError(error.message || 'Failed to load report data')
+            showToast('error', 'Failed to load report data')
+        } finally {
+            setLoading(false)
         }
-    }, [])
+    }, []) // No dependencies - only fetch once on mount
+
+    // Fetch data only on mount or manual refresh
+    useEffect(() => {
+        fetchReportData()
+    }, [fetchReportData])
+
+    // FRONTEND FILTERING - Apply filters to data without hitting backend
+    const filteredData = useMemo(() => {
+        const { startDate, endDate } = calculateDateRange(filters.datePreset, filters.dateRange)
+
+        // Filter user activity by date range
+        const filteredUserActivity = reportData.userActivity.filter((item) => {
+            if (!startDate || !endDate) return true
+            return item.date >= startDate && item.date <= endDate
+        })
+
+        // Filter by role if not 'all'
+        const filteredRoleDistribution =
+            filters.roleFilter === 'all'
+                ? reportData.userRoleDistribution
+                : reportData.userRoleDistribution.filter((item) =>
+                      item.name.toLowerCase().includes(filters.roleFilter.toLowerCase())
+                  )
+
+        return {
+            userActivity: filteredUserActivity,
+            facilityStats: reportData.facilityStats,
+            systemUsage: reportData.systemUsage,
+            userRoleDistribution: filteredRoleDistribution,
+        }
+    }, [reportData, filters.datePreset, filters.dateRange, filters.roleFilter])
 
     // Export functions
     const exportToCSV = (data, filename) => {
@@ -126,33 +162,14 @@ const DataReports = () => {
         downloadFile(blob, `${filename}.txt`)
     }
 
-    const exportToPDF = (reportType, filename) => {
-        const content = `
-KEEPSAKE - ${reportType.toUpperCase()} REPORT
-Generated: ${new Date().toLocaleDateString()}
-Date Range: ${dateRange.startDate} to ${dateRange.endDate}
-
-Summary Metrics:
-- Total Users: ${summaryMetrics.totalUsers}
-- Active Facilities: ${summaryMetrics.activeFacilities}
-- Total Appointments: ${summaryMetrics.totalAppointments}
-- System Health: ${summaryMetrics.systemHealth}%
-- Recent Activity: ${summaryMetrics.recentActivity}
-- API Calls: ${summaryMetrics.apiCalls}
-
-Report Details:
-${JSON.stringify(getReportData(reportType), null, 2)}
-        `
-
-        const blob = new Blob([content], { type: 'application/pdf' })
-        downloadFile(blob, `${filename}.txt`)
-    }
-
     const exportToExcel = async (data, filename) => {
         try {
             // Create a new workbook and worksheet
             const workbook = new ExcelJS.Workbook()
             const worksheet = workbook.addWorksheet('Report Data')
+
+            // Calculate date range for export metadata
+            const { startDate, endDate } = calculateDateRange(filters.datePreset, filters.dateRange)
 
             // Add title and metadata
             const titleRow = worksheet.addRow([
@@ -169,7 +186,7 @@ ${JSON.stringify(getReportData(reportType), null, 2)}
             worksheet.mergeCells('A2:E2')
 
             const dateRangeRow = worksheet.addRow([
-                `Date Range: ${dateRange.startDate} to ${dateRange.endDate}`,
+                `Date Range: ${startDate || 'All'} to ${endDate || 'All'}`,
             ])
             dateRangeRow.alignment = { horizontal: 'left' }
             worksheet.mergeCells('A3:E3')
@@ -266,42 +283,52 @@ ${JSON.stringify(getReportData(reportType), null, 2)}
     const getReportData = (reportType) => {
         switch (reportType) {
             case 'user-activity':
-                return userActivityData
+                return filteredData.userActivity
             case 'facility-stats':
-                return facilityStatsData
+                return filteredData.facilityStats
             case 'system-usage':
-                return systemUsageData
+                return filteredData.systemUsage
             default:
                 return []
         }
     }
 
-    const handleExport = async (format) => {
-        const reportData = getReportData(selectedReport)
+    const handleExport = async () => {
+        if (!filters.exportFormat) return
+
+        const data = getReportData(selectedReport)
+        if (!data || data.length === 0) {
+            showToast('error', 'No data available to export')
+            return
+        }
+
         const timestamp = new Date().toISOString().split('T')[0]
         const filename = `${selectedReport}-report-${timestamp}`
 
-        switch (format) {
-            case 'xlsx':
-                await exportToExcel(reportData, filename)
-                break
-            case 'csv':
-                exportToCSV(reportData, filename)
-                break
-            case 'json':
-                exportToJSON(reportData, filename)
-                break
-            case 'txt':
-                exportToTXT(reportData, filename)
-                break
-            case 'pdf':
-                exportToPDF(selectedReport, filename)
-                break
-            default:
-                break
-        }
+        try {
+            switch (filters.exportFormat) {
+                case 'xlsx':
+                    await exportToExcel(data, filename)
+                    break
+                case 'csv':
+                    exportToCSV(data, filename)
+                    break
+                case 'json':
+                    exportToJSON(data, filename)
+                    break
+                case 'txt':
+                    exportToTXT(data, filename)
+                    break
+                default:
+                    break
+            }
 
-        setExportFormat(null)
+            showToast('success', `Report exported as ${filters.exportFormat.toUpperCase()}`)
+            setFilters({ ...filters, exportFormat: null })
+        } catch (error) {
+            console.error('Export error:', error)
+            showToast('error', 'Export failed')
+        }
     }
 
     const StatBox = ({ icon: Icon, label, value, color = 'blue' }) => {
@@ -344,136 +371,85 @@ ${JSON.stringify(getReportData(reportType), null, 2)}
         </div>
     )
 
+    // Show error state
+    if (error) {
+        return (
+            <div className="min-h-screen bg-gray-50 p-6">
+                <div className="flex flex-col items-center justify-center min-h-[400px]">
+                    <AlertCircle className="h-12 w-12 text-red-500 mb-4" />
+                    <p className="text-gray-700 text-lg mb-4">{error}</p>
+                    <Button
+                        onClick={() => fetchReportData(true)}
+                        className="bg-blue-600 hover:bg-blue-700 text-white"
+                    >
+                        Retry
+                    </Button>
+                </div>
+            </div>
+        )
+    }
+
     return (
         <div className="min-h-screen bg-gray-50 p-6">
-            {/* Header */}
-            {/* <div className="mb-8">
-                <div className="flex items-center gap-3 mb-2">
-                    <TrendingUp className="text-blue-600" size={36} />
-                    <h1 className="text-4xl font-bold text-gray-900">Reports & Analytics</h1>
-                </div>
-                <p className="text-gray-600 mt-2">
-                    Comprehensive system-wide analytics and reporting with data visualization,
-                    insights, and flexible export options
-                </p>
-            </div> */}
-
-            {/* Summary Metrics */}
-            <div className="grid grid-cols-6 gap-4 mb-8">
+            {/* Summary Metrics - Always visible, never shows skeleton */}
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-8">
                 <StatBox
                     icon={Users}
                     label="Total Users"
-                    value={summaryMetrics.totalUsers}
+                    value={summaryMetrics?.totalUsers || 0}
                     color="blue"
                 />
                 <StatBox
                     icon={Building2}
                     label="Active Facilities"
-                    value={summaryMetrics.activeFacilities}
+                    value={summaryMetrics?.activeFacilities || 0}
                     color="green"
                 />
                 <StatBox
                     icon={Calendar}
                     label="Total Appointments"
-                    value={summaryMetrics.totalAppointments}
+                    value={summaryMetrics?.totalAppointments || 0}
                     color="purple"
                 />
                 <StatBox
                     icon={Activity}
                     label="System Health"
-                    value={`${summaryMetrics.systemHealth}%`}
+                    value={`${summaryMetrics?.systemHealth || 0}%`}
                     color="orange"
                 />
                 <StatBox
                     icon={TrendingUp}
                     label="Recent Activity"
-                    value={summaryMetrics.recentActivity}
+                    value={summaryMetrics?.recentActivity || 0}
                     color="blue"
                 />
                 <StatBox
                     icon={Settings}
                     label="API Calls"
-                    value={summaryMetrics.apiCalls}
+                    value={summaryMetrics?.apiCalls || 0}
                     color="green"
                 />
             </div>
 
-            {/* Filters and Export */}
-            <Card className="border border-gray-200 shadow-sm mb-8">
-                <CardHeader className="border-b border-gray-200">
-                    <CardTitle className="text-lg font-bold text-gray-900 flex items-center gap-2">
-                        <Filter size={20} />
-                        Report Options
-                    </CardTitle>
-                </CardHeader>
-                <CardContent className="pt-6">
-                    <div className="grid grid-cols-3 gap-4">
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">
-                                Start Date
-                            </label>
-                            <input
-                                type="date"
-                                value={dateRange.startDate}
-                                onChange={(e) =>
-                                    setDateRange({ ...dateRange, startDate: e.target.value })
-                                }
-                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                            />
-                        </div>
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">
-                                End Date
-                            </label>
-                            <input
-                                type="date"
-                                value={dateRange.endDate}
-                                onChange={(e) =>
-                                    setDateRange({ ...dateRange, endDate: e.target.value })
-                                }
-                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                            />
-                        </div>
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">
-                                Export Format
-                            </label>
-                            <div className="flex gap-2">
-                                <button
-                                    onClick={() => handleExport('xlsx')}
-                                    className="flex-1 px-3 py-2 bg-green-50 border border-green-200 text-green-700 rounded-lg hover:bg-green-100 transition-all text-sm font-medium"
-                                >
-                                    Excel
-                                </button>
-                                <button
-                                    onClick={() => handleExport('csv')}
-                                    className="flex-1 px-3 py-2 bg-blue-50 border border-blue-200 text-blue-700 rounded-lg hover:bg-blue-100 transition-all text-sm font-medium"
-                                >
-                                    CSV
-                                </button>
-                                <button
-                                    onClick={() => handleExport('json')}
-                                    className="flex-1 px-3 py-2 bg-purple-50 border border-purple-200 text-purple-700 rounded-lg hover:bg-purple-100 transition-all text-sm font-medium"
-                                >
-                                    JSON
-                                </button>
-                                <button
-                                    onClick={() => handleExport('txt')}
-                                    className="flex-1 px-3 py-2 bg-orange-50 border border-orange-200 text-orange-700 rounded-lg hover:bg-orange-100 transition-all text-sm font-medium"
-                                >
-                                    TXT
-                                </button>
-                                <button
-                                    onClick={() => handleExport('pdf')}
-                                    className="flex-1 px-3 py-2 bg-red-50 border border-red-200 text-red-700 rounded-lg hover:bg-red-100 transition-all text-sm font-medium"
-                                >
-                                    PDF
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                </CardContent>
-            </Card>
+            {/* Report Filters */}
+            <div className="mb-8">
+                <ReportFilters
+                    datePreset={filters.datePreset}
+                    onDatePresetChange={(value) => setFilters({ ...filters, datePreset: value })}
+                    dateRange={filters.dateRange}
+                    onDateRangeChange={(value) => setFilters({ ...filters, dateRange: value })}
+                    roleFilter={filters.roleFilter}
+                    onRoleFilterChange={(value) => setFilters({ ...filters, roleFilter: value })}
+                    exportFormat={filters.exportFormat}
+                    onExportFormatChange={(value) =>
+                        setFilters({ ...filters, exportFormat: value })
+                    }
+                    onExport={handleExport}
+                    onRefresh={() => fetchReportData(true)}
+                    isRefreshing={loading}
+                    cacheInfo={cacheInfo}
+                />
+            </div>
 
             {/* Report Selection - Analytics & Reports */}
             <Card className="border border-gray-200 shadow-sm mb-8">
@@ -522,76 +498,108 @@ ${JSON.stringify(getReportData(reportType), null, 2)}
                         </CardTitle>
                     </CardHeader>
                     <CardContent className="pt-6">
-                        {selectedReport === 'user-activity' && (
-                            <ResponsiveContainer width="100%" height={300}>
-                                <LineChart data={userActivityData}>
-                                    <CartesianGrid strokeDasharray="3 3" />
-                                    <XAxis dataKey="date" />
-                                    <YAxis />
-                                    <Tooltip />
-                                    <Legend />
-                                    <Line
-                                        type="monotone"
-                                        dataKey="logins"
-                                        stroke="#3B82F6"
-                                        name="Logins"
-                                    />
-                                    <Line
-                                        type="monotone"
-                                        dataKey="registrations"
-                                        stroke="#10B981"
-                                        name="Registrations"
-                                    />
-                                    <Line
-                                        type="monotone"
-                                        dataKey="active_users"
-                                        stroke="#F59E0B"
-                                        name="Active Users"
-                                    />
-                                </LineChart>
-                            </ResponsiveContainer>
-                        )}
+                        {loading ? (
+                            <div className="flex items-center justify-center h-[300px]">
+                                <div className="animate-pulse text-gray-400">Loading chart data...</div>
+                            </div>
+                        ) : (
+                            <>
+                                {selectedReport === 'user-activity' &&
+                                    filteredData.userActivity.length > 0 && (
+                                        <ResponsiveContainer width="100%" height={300}>
+                                            <LineChart data={filteredData.userActivity}>
+                                                <CartesianGrid strokeDasharray="3 3" />
+                                                <XAxis dataKey="date" />
+                                                <YAxis />
+                                                <Tooltip />
+                                                <Legend />
+                                                <Line
+                                                    type="monotone"
+                                                    dataKey="logins"
+                                                    stroke="#3B82F6"
+                                                    name="Logins"
+                                                />
+                                                <Line
+                                                    type="monotone"
+                                                    dataKey="registrations"
+                                                    stroke="#10B981"
+                                                    name="Registrations"
+                                                />
+                                                <Line
+                                                    type="monotone"
+                                                    dataKey="active_users"
+                                                    stroke="#F59E0B"
+                                                    name="Active Users"
+                                                />
+                                            </LineChart>
+                                        </ResponsiveContainer>
+                                    )}
 
-                        {selectedReport === 'facility-stats' && (
-                            <ResponsiveContainer width="100%" height={300}>
-                                <BarChart data={facilityStatsData}>
-                                    <CartesianGrid strokeDasharray="3 3" />
-                                    <XAxis
-                                        dataKey="facility"
-                                        angle={-45}
-                                        textAnchor="end"
-                                        height={80}
-                                    />
-                                    <YAxis />
-                                    <Tooltip />
-                                    <Legend />
-                                    <Bar dataKey="patients" fill="#3B82F6" name="Patients" />
-                                    <Bar
-                                        dataKey="appointments"
-                                        fill="#10B981"
-                                        name="Appointments"
-                                    />
-                                    <Bar dataKey="staff" fill="#F59E0B" name="Staff" />
-                                </BarChart>
-                            </ResponsiveContainer>
-                        )}
+                                {selectedReport === 'user-activity' &&
+                                    filteredData.userActivity.length === 0 && (
+                                        <div className="flex items-center justify-center h-[300px] text-gray-500">
+                                            No data available for selected filters
+                                        </div>
+                                    )}
 
-                        {selectedReport === 'system-usage' && (
-                            <ResponsiveContainer width="100%" height={300}>
-                                <BarChart data={systemUsageData}>
-                                    <CartesianGrid strokeDasharray="3 3" />
-                                    <XAxis
-                                        dataKey="category"
-                                        angle={-45}
-                                        textAnchor="end"
-                                        height={100}
-                                    />
-                                    <YAxis />
-                                    <Tooltip />
-                                    <Legend />
-                                    <Bar dataKey="value" fill="#3B82F6" name="Count" />
-                                </BarChart>
-                            </ResponsiveContainer>
+                                {selectedReport === 'facility-stats' &&
+                                    filteredData.facilityStats.length > 0 && (
+                                        <ResponsiveContainer width="100%" height={300}>
+                                            <BarChart data={filteredData.facilityStats}>
+                                        <CartesianGrid strokeDasharray="3 3" />
+                                        <XAxis
+                                            dataKey="facility"
+                                            angle={-45}
+                                            textAnchor="end"
+                                            height={80}
+                                        />
+                                        <YAxis />
+                                        <Tooltip />
+                                        <Legend />
+                                        <Bar dataKey="patients" fill="#3B82F6" name="Patients" />
+                                        <Bar
+                                            dataKey="appointments"
+                                            fill="#10B981"
+                                            name="Appointments"
+                                        />
+                                        <Bar dataKey="staff" fill="#F59E0B" name="Staff" />
+                                            </BarChart>
+                                        </ResponsiveContainer>
+                                    )}
+
+                                {selectedReport === 'facility-stats' &&
+                                    filteredData.facilityStats.length === 0 && (
+                                        <div className="flex items-center justify-center h-[300px] text-gray-500">
+                                            No data available for selected filters
+                                        </div>
+                                    )}
+
+                                {selectedReport === 'system-usage' &&
+                                    filteredData.systemUsage.length > 0 && (
+                                        <ResponsiveContainer width="100%" height={300}>
+                                            <BarChart data={filteredData.systemUsage}>
+                                                <CartesianGrid strokeDasharray="3 3" />
+                                                <XAxis
+                                                    dataKey="category"
+                                                    angle={-45}
+                                                    textAnchor="end"
+                                                    height={100}
+                                                />
+                                                <YAxis />
+                                                <Tooltip />
+                                                <Legend />
+                                                <Bar dataKey="value" fill="#3B82F6" name="Count" />
+                                            </BarChart>
+                                        </ResponsiveContainer>
+                                    )}
+
+                                {selectedReport === 'system-usage' &&
+                                    filteredData.systemUsage.length === 0 && (
+                                        <div className="flex items-center justify-center h-[300px] text-gray-500">
+                                            No data available for selected filters
+                                        </div>
+                                    )}
+                            </>
                         )}
                     </CardContent>
                 </Card>
@@ -604,25 +612,31 @@ ${JSON.stringify(getReportData(reportType), null, 2)}
                         </CardTitle>
                     </CardHeader>
                     <CardContent className="pt-6">
-                        <ResponsiveContainer width="100%" height={300}>
-                            <PieChart>
-                                <Pie
-                                    data={userRoleDistribution}
-                                    cx="50%"
-                                    cy="50%"
-                                    labelLine={false}
-                                    label={({ name, value }) => `${name}: ${value}`}
-                                    outerRadius={80}
-                                    fill="#8884d8"
-                                    dataKey="value"
-                                >
-                                    {userRoleDistribution.map((entry, index) => (
-                                        <Cell key={`cell-${index}`} fill={entry.color} />
-                                    ))}
-                                </Pie>
-                                <Tooltip />
-                            </PieChart>
-                        </ResponsiveContainer>
+                        {filteredData.userRoleDistribution.length > 0 ? (
+                            <ResponsiveContainer width="100%" height={300}>
+                                <PieChart>
+                                    <Pie
+                                        data={filteredData.userRoleDistribution}
+                                        cx="50%"
+                                        cy="50%"
+                                        labelLine={false}
+                                        label={({ name, value }) => `${name}: ${value}`}
+                                        outerRadius={80}
+                                        fill="#8884d8"
+                                        dataKey="value"
+                                    >
+                                        {filteredData.userRoleDistribution.map((entry, index) => (
+                                            <Cell key={`cell-${index}`} fill={entry.color} />
+                                        ))}
+                                    </Pie>
+                                    <Tooltip />
+                                </PieChart>
+                            </ResponsiveContainer>
+                        ) : (
+                            <div className="flex items-center justify-center h-[300px] text-gray-500">
+                                No data available for selected filters
+                            </div>
+                        )}
                     </CardContent>
                 </Card>
             </div>
@@ -707,10 +721,6 @@ ${JSON.stringify(getReportData(reportType), null, 2)}
                                 <li className="flex items-center gap-2">
                                     <Badge className="bg-orange-100 text-orange-700">TXT</Badge>
                                     <span>Plain text format for viewing</span>
-                                </li>
-                                <li className="flex items-center gap-2">
-                                    <Badge className="bg-red-100 text-red-700">PDF</Badge>
-                                    <span>Document format for sharing</span>
                                 </li>
                             </ul>
                         </div>

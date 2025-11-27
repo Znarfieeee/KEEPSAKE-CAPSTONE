@@ -291,23 +291,45 @@ const AdminDashboard = () => {
                     ) : (
                         <ResponsiveContainer width="100%" height={250}>
                             <LineChart data={dashboardData?.monthly_revenue_trend || []}>
-                                <CartesianGrid strokeDasharray="3 3" />
-                                <XAxis dataKey="month" />
-                                <YAxis />
+                                <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                                <XAxis
+                                    dataKey="month"
+                                    tick={{ fontSize: 12 }}
+                                    tickLine={false}
+                                    axisLine={{ stroke: '#d1d5db' }}
+                                />
+                                <YAxis
+                                    tick={{ fontSize: 12 }}
+                                    tickLine={false}
+                                    axisLine={{ stroke: '#d1d5db' }}
+                                    tickFormatter={(value) =>
+                                        `₱${(value / 1000).toFixed(0)}k`
+                                    }
+                                />
                                 <Tooltip
                                     contentStyle={{
                                         backgroundColor: '#fff',
-                                        border: '1px solid #ccc',
+                                        border: '1px solid #e5e7eb',
                                         borderRadius: '8px',
+                                        boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)',
                                     }}
+                                    formatter={(value, name) => [
+                                        `₱${value.toLocaleString()}`,
+                                        name,
+                                    ]}
+                                    labelStyle={{ fontWeight: 'bold', marginBottom: '4px' }}
                                 />
-                                <Legend />
+                                <Legend
+                                    wrapperStyle={{ paddingTop: '10px' }}
+                                    iconType="line"
+                                />
                                 <Line
                                     type="monotone"
                                     dataKey="revenue"
                                     stroke="#3b82f6"
                                     strokeWidth={3}
-                                    dot={{ fill: '#3b82f6', r: 4 }}
+                                    dot={{ fill: '#3b82f6', r: 5, strokeWidth: 2, stroke: '#fff' }}
+                                    activeDot={{ r: 7 }}
                                     name="Actual Revenue"
                                 />
                                 <Line
@@ -316,6 +338,8 @@ const AdminDashboard = () => {
                                     stroke="#10b981"
                                     strokeWidth={2}
                                     strokeDasharray="5 5"
+                                    dot={{ fill: '#10b981', r: 4, strokeWidth: 2, stroke: '#fff' }}
+                                    activeDot={{ r: 6 }}
                                     name="Target"
                                 />
                             </LineChart>
