@@ -20,6 +20,8 @@ from routes.admin.admin_reports import reports_bp
 from routes.pediapro.doctor_patient_records import patrecord_bp
 from routes.pediapro.doctor_patient_prescriptions import patrx_bp
 from routes.pediapro.doctor_vaccinations import vaccinations_bp
+from routes.pediapro.doctor_reports import doctor_reports_bp
+from routes.vital_custodian.nurse_reports import nurse_reports_bp
 from routes.auth_routes import init_google_oauth
 from routes.pediapro.doctor_appointments import appointment_bp
 from routes.facility_admin.facility_users import fusers_bp
@@ -27,6 +29,7 @@ from routes.user_settings import settings_bp as user_settings_bp
 from routes.qr_routes import qr_bp
 from routes.notification_routes import notification_bp
 from routes.parent.parent_routes import parent_bp
+from routes.parent.parent_reports import parent_reports_bp
 from routes.medical_documents.document_routes import documents_bp
 from routes.parent_consent_routes import parent_consent_bp
 from routes.feedback_routes import feedback_bp
@@ -59,6 +62,8 @@ app.register_blueprint(reports_bp)
 app.register_blueprint(patrecord_bp)
 app.register_blueprint(patrx_bp)
 app.register_blueprint(vaccinations_bp)
+app.register_blueprint(doctor_reports_bp)
+app.register_blueprint(nurse_reports_bp)
 app.register_blueprint(appointment_bp)
 app.register_blueprint(fusers_bp)
 app.register_blueprint(documents_bp)
@@ -66,6 +71,7 @@ app.register_blueprint(user_settings_bp)
 app.register_blueprint(qr_bp)
 app.register_blueprint(notification_bp)
 app.register_blueprint(parent_bp)
+app.register_blueprint(parent_reports_bp)
 app.register_blueprint(parent_consent_bp)
 app.register_blueprint(feedback_bp)
 

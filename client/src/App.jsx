@@ -7,6 +7,7 @@ import { QrScannerProvider } from './context/QrScannerContext'
 // Pages
 import Landing_page from '@/pages/Landing_page'
 import Login from '@/pages/Login'
+import FirstLogin from '@/pages/FirstLogin'
 import NotFound from '@/pages/NotFound'
 import AuthSuccess from '@/pages/AuthSuccess'
 import AuthError from '@/pages/AuthError'
@@ -105,6 +106,14 @@ function App() {
                 {
                     path: '/login',
                     element: <Login />,
+                },
+                {
+                    path: '/first-login',
+                    element: (
+                        <ProtectedRoute>
+                            <FirstLogin />
+                        </ProtectedRoute>
+                    ),
                 },
                 {
                     path: '/forgot-password',

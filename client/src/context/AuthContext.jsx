@@ -139,7 +139,13 @@ export const AuthProvider = ({ children }) => {
                     lastRefreshRef.current = Date.now()
                     setSessionStatus('active')
 
-                    navigateOnLogin(response.user.role)
+                    // Check if this is first login
+                    if (response.user?.is_first_login) {
+                        // Redirect to first login page instead of dashboard
+                        navigate('/first-login', { replace: true })
+                    } else {
+                        navigateOnLogin(response.user.role)
+                    }
                     return response
                 } else {
                     // Use the specific error message from the backend response
@@ -154,7 +160,7 @@ export const AuthProvider = ({ children }) => {
                 setLoading(false)
             }
         },
-        [checkExistingSession, navigateOnLogin]
+        [checkExistingSession, navigateOnLogin, navigate]
     )
 
     const signOut = useCallback(
@@ -237,13 +243,7 @@ export const AuthProvider = ({ children }) => {
         }, REFRESH_INTERVAL)
 
         handleActivity()
-    }, [
-        isAuthenticated,
-        handleActivity,
-        clearAllTimers,
-        runRefreshSession,
-        REFRESH_INTERVAL,
-    ])
+    }, [isAuthenticated, handleActivity, clearAllTimers, runRefreshSession, REFRESH_INTERVAL])
 
     // Removed debug helpers (btnClicked/alerts) for production readiness
 

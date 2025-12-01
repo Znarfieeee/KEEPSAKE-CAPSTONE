@@ -23,10 +23,10 @@ import {
 import { Switch } from '@/components/ui/switch'
 import { showToast } from '@/util/alertHelper'
 import { cn } from '@/lib/utils'
-import { User, Briefcase, Shield, Save, Ban, Trash2 } from 'lucide-react'
+import { User, Briefcase, Shield, Save, Ban } from 'lucide-react'
 
 // Import API functions
-import { updateUser, updateUserStatus, deleteUser } from '@/api/admin/users'
+import { updateUser, updateUserStatus } from '@/api/admin/users'
 import { sanitizeObject } from '@/util/sanitize'
 
 // Tab Item Component
@@ -52,44 +52,24 @@ const EditUserModal = ({ open, user, onClose }) => {
     // Modal states
     const [activeTab, setActiveTab] = useState('basic')
     const [loading, setLoading] = useState(false)
-    const [deleteLoading, setDeleteLoading] = useState(false)
     const [statusLoading, setStatusLoading] = useState(false)
 
-    // Map display roles back to database values
-    const mapRoleToValue = useCallback((displayRole) => {
-        if (!displayRole) return ''
-        const roleMap = {
-            Admin: 'admin',
-            'Facility Admin': 'facility_admin',
-            'System Admin': 'admin',
-            Doctor: 'doctor',
-            Nurse: 'nurse',
-            Staff: 'staff',
-            Parent: 'parent',
-        }
-        return roleMap[displayRole] || displayRole.toLowerCase().replace(' ', '_')
-    }, [])
-
-    // Format phone number
-    const formatPhoneNumber = useCallback((contact) => {
-        if (!contact || contact === '—') return ''
-        if (contact.startsWith('+')) return contact
-        return contact
-    }, [])
-
-    // Initialize form data
+    // Initialize form data - optimized without unnecessary callbacks
     useEffect(() => {
         if (!user || !open) return
+
+        const phoneNumber = user.contact && user.contact !== '—' ? user.contact : ''
+        const roleValue = user.role?.toLowerCase().replace(' ', '_') || ''
 
         setBasicForm({
             email: user.email || '',
             firstname: user.firstname || '',
             lastname: user.lastname || '',
-            phone_number: formatPhoneNumber(user.contact),
+            phone_number: phoneNumber,
         })
 
         setProfessionalForm({
-            role: mapRoleToValue(user.role),
+            role: roleValue,
             specialty: user.specialty === '—' ? '' : user.specialty || '',
             license_number: user.license_number === '—' ? '' : user.license_number || '',
         })
@@ -98,7 +78,7 @@ const EditUserModal = ({ open, user, onClose }) => {
             is_subscribed: user.plan === 'Premium',
             subscription_expires: user.sub_exp || '',
         })
-    }, [user, open, mapRoleToValue, formatPhoneNumber])
+    }, [user?.id, open])
 
     // Helper to update form fields
     const updateForm = (setFormFn, field, value) =>
@@ -164,7 +144,6 @@ const EditUserModal = ({ open, user, onClose }) => {
                         ...updatePayload,
                         id: user.id,
                     }
-                    console.log('Dispatching user-updated event:', updatedUser)
                     window.dispatchEvent(
                         new CustomEvent('user-updated', {
                             detail: updatedUser,
@@ -172,9 +151,7 @@ const EditUserModal = ({ open, user, onClose }) => {
                     )
                 }
 
-                setTimeout(() => {
-                    onClose()
-                }, 500)
+                onClose()
             } else {
                 showToast('error', response.message || 'Failed to update user')
             }
@@ -223,56 +200,57 @@ const EditUserModal = ({ open, user, onClose }) => {
         }
     }
 
-    // Handle delete
-    const handleDelete = async () => {
-        const confirmText = `${user.firstname} ${user.lastname}`
-        const userInput = prompt(
-            `Are you sure you want to delete this user? This action cannot be undone.\n\nType "${confirmText}" to confirm:`
-        )
+    // Delete functionality commented out - use Disable/Enable User instead
+    // const handleDelete = async () => {
+    //     const confirmText = `${user.firstname} ${user.lastname}`
+    //     const userInput = prompt(
+    //         `Are you sure you want to delete this user? This action cannot be undone.\n\nType "${confirmText}" to confirm:`
+    //     )
 
-        if (userInput !== confirmText) {
-            if (userInput !== null) {
-                showToast('error', 'Confirmation text does not match')
-            }
-            return
-        }
+    //     if (userInput !== confirmText) {
+    //         if (userInput !== null) {
+    //             showToast('error', 'Confirmation text does not match')
+    //         }
+    //         return
+    //     }
 
-        try {
-            setDeleteLoading(true)
-            const response = await deleteUser(user.id)
+    //     try {
+    //         setDeleteLoading(true)
+    //         const response = await deleteUser(user.id)
 
-            if (response.status === 'success') {
-                showToast('success', 'User deleted successfully')
+    //         if (response.status === 'success') {
+    //             showToast('success', 'User deleted successfully')
 
-                // Dispatch event for real-time updates
-                if (typeof window !== 'undefined') {
-                    window.dispatchEvent(
-                        new CustomEvent('user-deleted', {
-                            detail: { id: user.id },
-                        })
-                    )
-                }
+    //             // Dispatch event for real-time updates
+    //             if (typeof window !== 'undefined') {
+    //                 window.dispatchEvent(
+    //                     new CustomEvent('user-deleted', {
+    //                         detail: { id: user.id },
+    //                     })
+    //                 )
+    //             }
 
-                onClose()
-            } else {
-                showToast('error', response.message || 'Failed to delete user')
-            }
-        } catch (error) {
-            console.error('Delete error:', error)
-            showToast('error', error.message || 'Failed to delete user')
-        } finally {
-            setDeleteLoading(false)
-        }
-    }
+    //             onClose()
+    //         } else {
+    //             showToast('error', response.message || 'Failed to delete user')
+    //         }
+    //     } catch (error) {
+    //         console.error('Delete error:', error)
+    //         showToast('error', error.message || 'Failed to delete user')
+    //     } finally {
+    //         setDeleteLoading(false)
+    //     }
+    // }
 
     // Handle modal close
     const handleClose = () => {
-        if (!loading && !deleteLoading && !statusLoading) {
+        if (!loading && !statusLoading) {
             onClose()
         }
     }
 
-    if (!user || !open) return null
+    if (!open) return null
+    if (!user) return null
 
     // Define tabs
     const tabs = [
@@ -549,7 +527,7 @@ const EditUserModal = ({ open, user, onClose }) => {
                         <Button
                             variant="outline"
                             onClick={handleStatusToggle}
-                            disabled={loading || deleteLoading || statusLoading}
+                            disabled={loading || statusLoading}
                             className={cn(
                                 user.status === 'active'
                                     ? 'border-orange-500 text-orange-600 hover:bg-orange-50'
@@ -563,26 +541,27 @@ const EditUserModal = ({ open, user, onClose }) => {
                                 ? 'Disable User'
                                 : 'Enable User'}
                         </Button>
-                        <Button
+                        {/* Delete functionality commented out - use Disable User instead */}
+                        {/* <Button
                             variant="destructive"
                             onClick={handleDelete}
-                            disabled={loading || deleteLoading || statusLoading}
+                            disabled={loading || statusLoading}
                         >
                             <Trash2 size={16} className="mr-2" />
                             {deleteLoading ? 'Deleting...' : 'Delete User'}
-                        </Button>
+                        </Button> */}
                     </div>
                     <div className="flex gap-2">
                         <Button
                             variant="outline"
                             onClick={handleClose}
-                            disabled={loading || deleteLoading || statusLoading}
+                            disabled={loading || statusLoading}
                         >
                             Cancel
                         </Button>
                         <Button
                             onClick={handleSubmit}
-                            disabled={loading || deleteLoading || statusLoading}
+                            disabled={loading || statusLoading}
                             className={cn(
                                 'bg-primary text-primary-foreground hover:bg-primary/90',
                                 loading && 'opacity-50 cursor-not-allowed'
@@ -598,4 +577,4 @@ const EditUserModal = ({ open, user, onClose }) => {
     )
 }
 
-export default EditUserModal
+export default React.memo(EditUserModal)

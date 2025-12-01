@@ -16,6 +16,33 @@ import {
     UserPen,
 } from 'lucide-react'
 
+// Helper function to get plan badge styling
+const getPlanBadgeColor = (plan) => {
+    const planLower = plan?.toLowerCase() || 'free'
+    switch (planLower) {
+        case 'premium':
+            return 'bg-amber-50 text-amber-700 border-amber-200'
+        case 'pro':
+            return 'bg-purple-50 text-purple-700 border-purple-200'
+        case 'free':
+        default:
+            return 'bg-gray-50 text-gray-600 border-gray-200'
+    }
+}
+
+// Plan Badge Component
+const PlanBadge = ({ plan }) => {
+    return (
+        <span
+            className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${getPlanBadgeColor(
+                plan
+            )}`}
+        >
+            {plan || 'Free'}
+        </span>
+    )
+}
+
 const UserTable = ({
     users = [],
     page,
@@ -78,7 +105,9 @@ const UserTable = ({
                                           {user.role}
                                       </span>
                                   </td>
-                                  <td className="p-2 whitespace-nowrap capitalize">{user.plan}</td>
+                                  <td className="p-2 whitespace-nowrap">
+                                      <PlanBadge plan={user.plan} />
+                                  </td>
                                   <td className="p-2 whitespace-nowrap">{user.sub_exp || '—'}</td>
                                   <td className="p-2 whitespace-nowrap">{user.last_login}</td>
                                   <td className="p-2 whitespace-nowrap">
@@ -97,11 +126,18 @@ const UserTable = ({
                                               </Button>
                                           </TooltipHelper>
 
-                                          <TooltipHelper content="Assign/Transfer Facility">
+                                          <TooltipHelper
+                                              content={
+                                                  user.role?.toLowerCase() === 'parent'
+                                                      ? 'Not available for parent users'
+                                                      : 'Assign/Transfer Facility'
+                                              }
+                                          >
                                               <Button
                                                   variant="ghost"
                                                   size="icon"
                                                   className="hover:text-yellow-600 hover:bg-yellow-100"
+                                                  disabled={user.role?.toLowerCase() === 'parent'}
                                                   onClick={() => onTransfer(user)}
                                               >
                                                   <ArrowRightLeft className="size-4" />
@@ -139,7 +175,8 @@ const UserTable = ({
                                               </Button>
                                           </TooltipHelper>
 
-                                          <TooltipHelper content="Delete User">
+                                          {/* Delete functionality commented out - use Deactivate instead */}
+                                          {/* <TooltipHelper content="Delete User">
                                               <Button
                                                   variant="ghost"
                                                   size="icon"
@@ -148,7 +185,7 @@ const UserTable = ({
                                               >
                                                   <Trash2 className="size-4" />
                                               </Button>
-                                          </TooltipHelper>
+                                          </TooltipHelper> */}
                                       </div>
                                   </td>
                               </tr>

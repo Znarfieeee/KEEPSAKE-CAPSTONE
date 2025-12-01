@@ -23,8 +23,18 @@ export const createUser = async (userData) => {
 }
 
 export const deleteUser = async (userId) => {
-    const response = await axios.delete(`${backendConnection()}/admin/users/${userId}`, axiosConfig)
-    return response.data
+    try {
+        const response = await axios.delete(`${backendConnection()}/admin/users/${userId}`, axiosConfig)
+        return response.data
+    } catch (error) {
+        // Handle axios error responses (400, 500, etc.)
+        if (error.response && error.response.data) {
+            // Return the error response data so the caller can access the message
+            return error.response.data
+        }
+        // If no response data, throw the error
+        throw error
+    }
 }
 
 export const updateUser = async (userId, userData) => {
@@ -37,12 +47,23 @@ export const updateUser = async (userId, userData) => {
 }
 
 export const updateUserStatus = async (userId, status) => {
-    const response = await axios.patch(
-        `${backendConnection()}/admin/users/${userId}/status`,
-        { is_active: status === 'active' },
-        axiosConfig
-    )
-    return response.data
+    try {
+        // Use the toggle-status endpoint which handles both activate and deactivate
+        const response = await axios.patch(
+            `${backendConnection()}/admin/users/${userId}/toggle-status`,
+            {},
+            axiosConfig
+        )
+        return response.data
+    } catch (error) {
+        // Handle axios error responses (400, 500, etc.)
+        if (error.response && error.response.data) {
+            // Return the error response data so the caller can access the message
+            return error.response.data
+        }
+        // If no response data, throw the error
+        throw error
+    }
 }
 
 export const assignUserToFacility = async (userId, facilityData) => {
