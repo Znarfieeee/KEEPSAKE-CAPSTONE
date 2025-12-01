@@ -27,22 +27,25 @@ auth_bp = Blueprint('auth', __name__)
 def is_first_login(user_id, supabase_user):
     """
     Detect if this is the user's first login.
-    Checks the public.users table's last_signed_in_at field.
+    Checks the public.users table's last_sign_in_at field.
     If it's NULL, the user hasn't completed their first login yet.
     """
     try:
         # Fetch the user record from public.users table
         user_record = supabase.table('users').select('last_sign_in_at').eq('user_id', user_id).execute()
-        
+
         if not user_record.data:
+            current_app.logger.warning(f"No user record found for user_id {user_id} in is_first_login check")
             return False
-        
-        # If last_signed_in_at is NULL/None in public.users, it's the first login
+
+        # If last_sign_in_at is NULL/None in public.users, it's the first login
         last_signed_in = user_record.data[0].get('last_sign_in_at')
-        
+
+        current_app.logger.info(f"FIRST LOGIN CHECK: user_id={user_id}, last_sign_in_at={last_signed_in}, is_first_login={last_signed_in is None or last_signed_in == ''}")
+
         if last_signed_in is None or last_signed_in == '':
             return True
-        
+
         return False
     except Exception as e:
         # If there's an error checking, assume not first login for safety
@@ -664,9 +667,9 @@ def login():
             }
             
             store_session_data(session_id, session_data)
-            
-            current_app.logger.info(f"AUDIT: User {email} logged in successfully from IP {request.remote_addr} - Session: {session_id}")
-            
+
+            current_app.logger.info(f"AUDIT: User {email} logged in successfully from IP {request.remote_addr} - Session: {session_id} - is_first_login: {first_login}")
+
             response = jsonify({
                 "status": "success",
                 "message": "Login successful!",
@@ -712,6 +715,8 @@ def login():
                 user_message = "Please enter a valid email address."
             elif "user not found" in error_message or "account not found" in error_message:
                 user_message = "No account found with this email address. Please contact your administrator if you believe this is an error."
+            elif "banned" in error_message or "user is banned" in error_message:
+                user_message = "Your account has been suspended or deactivated. Please contact your administrator for assistance."
             elif "account is inactive" in error_message or "user is inactive" in error_message:
                 user_message = "Your account has been deactivated. Please contact your administrator for assistance."
             elif "too many attempts" in error_message or "rate limit" in error_message:

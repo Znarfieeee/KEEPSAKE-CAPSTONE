@@ -25,6 +25,11 @@ const ProtectedRoute = ({ children, requiredRole }) => {
         return <Navigate to="/login" state={{ from: location }} replace />
     }
 
+    // Check if this is user's first login and they're not already on the first-login page
+    if (user?.is_first_login && location.pathname !== '/first-login') {
+        return <Navigate to="/first-login" replace />
+    }
+
     if (requiredRole && user?.role?.toLowerCase() !== requiredRole.toLowerCase()) {
         return (
             <div className="flex flex-col items-center justify-center min-h-screen bg-gray-100 p-4">
