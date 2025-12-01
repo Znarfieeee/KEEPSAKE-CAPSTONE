@@ -484,7 +484,7 @@ const UsersRegistry = () => {
     const matchPlan = useCallback(
         (u) => {
             if (!planFilter || planFilter === 'all') return true
-            const expectedPlan = planFilter === 'true' ? 'premium' : 'freemium'
+            const expectedPlan = planFilter === 'true' ? 'premium' : 'free'
             return u.plan.toLowerCase() === expectedPlan
         },
         [planFilter]

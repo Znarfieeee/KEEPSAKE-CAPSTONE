@@ -83,6 +83,32 @@ export const changePassword = async (passwordData) => {
 }
 
 /**
+ * Complete first login by updating last_signed_in_at
+ */
+export const completeFirstLogin = async () => {
+    try {
+        const response = await fetch(`${API_BASE_URL}/settings/complete-first-login`, {
+            method: 'POST',
+            credentials: 'include',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+        })
+
+        const data = await response.json()
+
+        if (!response.ok) {
+            throw new Error(data.message || 'Failed to complete first login')
+        }
+
+        return data
+    } catch (error) {
+        console.error('Complete first login error:', error)
+        throw error
+    }
+}
+
+/**
  * Request email change with verification code
  */
 export const requestEmailChange = async (newEmail) => {

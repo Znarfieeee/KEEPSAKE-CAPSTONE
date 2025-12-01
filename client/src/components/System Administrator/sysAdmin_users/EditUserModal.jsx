@@ -524,7 +524,7 @@ const EditUserModal = ({ open, user, onClose }) => {
 
                 <DialogFooter className="flex justify-between mt-8">
                     <div className="flex gap-2">
-                        <Button
+                        {/* <Button
                             variant="outline"
                             onClick={handleStatusToggle}
                             disabled={loading || statusLoading}
@@ -540,7 +540,7 @@ const EditUserModal = ({ open, user, onClose }) => {
                                 : user.status === 'active'
                                 ? 'Disable User'
                                 : 'Enable User'}
-                        </Button>
+                        </Button> */}
                         {/* Delete functionality commented out - use Disable User instead */}
                         {/* <Button
                             variant="destructive"

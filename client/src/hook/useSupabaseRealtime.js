@@ -243,7 +243,7 @@ export const useUsersRealtime = ({ onUserChange }) => {
             specialty: raw.specialty || '—',
             license_number: raw.license_number || '—',
             contact: raw.phone_number || '—',
-            plan: raw.is_subscribed === 'true' ? 'Premium' : 'Freemium',
+            plan: raw.is_subscribed ? 'Premium' : 'Free',
             status: raw.is_active ? 'active' : 'inactive',
             sub_exp: raw.subscription_expires,
             created_at: new Date(raw.created_at).toLocaleDateString(),

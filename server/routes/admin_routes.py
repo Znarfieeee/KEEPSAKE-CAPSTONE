@@ -222,52 +222,34 @@ def get_query_performance_metrics():
 
 
 def get_supabase_infrastructure_health():
-    """Get Supabase infrastructure health metrics"""
+    """
+    Get Supabase infrastructure health metrics
+    Uses comprehensive database health monitoring
+    """
     try:
-        # Initialize health scores for each service
-        infrastructure_health = {
-            'database': 100.0,
-            'auth': 100.0,
-            'storage': 100.0,
-            'realtime': 100.0,
-            'edge_functions': 100.0,
-            'overall': 100.0,
+        from utils.database_health import get_comprehensive_database_health
+
+        # Get comprehensive health data
+        health_data = get_comprehensive_database_health()
+
+        # Extract infrastructure health from the comprehensive data
+        infrastructure_health = health_data.get('infrastructure_health', {
+            'database': 0.0,
+            'auth': 0.0,
+            'storage': 0.0,
+            'realtime': 0.0,
+            'edge_functions': 0.0,
+            'overall': 0.0,
             'issues': []
-        }
+        })
 
-        # Test database connectivity with a simple query
-        try:
-            sr_client.table('users').select('user_id', count='exact').limit(1).execute()
-        except Exception as db_error:
-            infrastructure_health['database'] = 0.0
-            infrastructure_health['issues'].append({
-                'service': 'database',
-                'severity': 'critical',
-                'message': 'Database connection failed'
-            })
-            current_app.logger.error(f"Database health check failed: {str(db_error)}")
-
-        # Test auth service (check if we can query users table which requires auth)
-        try:
-            sr_client.table('users').select('user_id').limit(1).execute()
-        except Exception as auth_error:
-            infrastructure_health['auth'] = 50.0
-            infrastructure_health['issues'].append({
-                'service': 'auth',
-                'severity': 'warning',
-                'message': 'Auth service degraded'
-            })
-            current_app.logger.error(f"Auth health check failed: {str(auth_error)}")
-
-        # Calculate overall infrastructure health (average of all services)
-        service_scores = [
-            infrastructure_health['database'],
-            infrastructure_health['auth'],
-            infrastructure_health['storage'],
-            infrastructure_health['realtime'],
-            infrastructure_health['edge_functions']
-        ]
-        infrastructure_health['overall'] = round(sum(service_scores) / len(service_scores), 1)
+        # Log additional metrics for debugging
+        db_metrics = health_data.get('database_metrics', {})
+        current_app.logger.info(
+            f"Database Health: response_time={db_metrics.get('response_time_ms')}ms, "
+            f"avg_query_time={db_metrics.get('avg_query_time_ms')}ms, "
+            f"health_score={infrastructure_health.get('overall')}%"
+        )
 
         return infrastructure_health
 
@@ -283,7 +265,7 @@ def get_supabase_infrastructure_health():
             'issues': [{
                 'service': 'system',
                 'severity': 'critical',
-                'message': 'Unable to retrieve infrastructure health'
+                'message': f'Unable to retrieve infrastructure health: {str(e)}'
             }]
         }
 

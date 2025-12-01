@@ -162,10 +162,32 @@ def update_profile():
             "message": "Failed to update profile"
         }), 500
 
+def validate_password_strength(password):
+    """
+    Validate password strength against security requirements.
+    Returns tuple: (is_valid, error_message)
+    """
+    if len(password) < 8:
+        return False, "Password must be at least 8 characters long"
+    
+    if not re.search(r'[A-Z]', password):
+        return False, "Password must contain at least one uppercase letter"
+    
+    if not re.search(r'[a-z]', password):
+        return False, "Password must contain at least one lowercase letter"
+    
+    if not re.search(r'[0-9]', password):
+        return False, "Password must contain at least one number"
+    
+    if not re.search(r'[!@#$%^&*(),.?":{}|<>]', password):
+        return False, "Password must contain at least one special character"
+    
+    return True, None
+
 @settings_bp.route('/settings/change-password', methods=['POST'])
 @require_auth
 def change_password():
-    """Change user password"""
+    """Change user password and update last_signed_in_at"""
     try:
         user_id = request.current_user.get('id')
         email = request.current_user.get('email')
@@ -188,10 +210,12 @@ def change_password():
                 "message": "New passwords do not match"
             }), 400
 
-        if len(new_password) < 8:
+        # Validate password strength
+        is_valid, error_msg = validate_password_strength(new_password)
+        if not is_valid:
             return jsonify({
                 "status": "error",
-                "message": "Password must be at least 8 characters long"
+                "message": error_msg
             }), 400
 
         # Verify current password by attempting to sign in
@@ -241,6 +265,41 @@ def change_password():
         return jsonify({
             "status": "error",
             "message": "Failed to change password"
+        }), 500
+
+@settings_bp.route('/settings/complete-first-login', methods=['POST'])
+@require_auth
+def complete_first_login():
+    """Mark first login as complete by updating last_signed_in_at"""
+    try:
+        user_id = request.current_user.get('id')
+        email = request.current_user.get('email')
+
+        # Update last_signed_in_at in public.users table
+        now = datetime.utcnow().isoformat()
+        users_update = supabase.table('users').update({
+            'last_sign_in_at': now
+        }).eq('user_id', user_id).execute()
+
+        if not users_update.data:
+            current_app.logger.warning(f"Failed to update last_signed_in_at for user {email}")
+            return jsonify({
+                "status": "error",
+                "message": "Failed to complete first login"
+            }), 500
+
+        current_app.logger.info(f"AUDIT: User {email} completed first login from IP {request.remote_addr}")
+
+        return jsonify({
+            "status": "success",
+            "message": "First login completed successfully"
+        }), 200
+
+    except Exception as e:
+        current_app.logger.error(f"Error completing first login: {str(e)}")
+        return jsonify({
+            "status": "error",
+            "message": "Failed to complete first login"
         }), 500
 
 @settings_bp.route('/settings/request-email-change', methods=['POST'])
