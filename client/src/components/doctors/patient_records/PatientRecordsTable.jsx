@@ -4,15 +4,8 @@ import { useAuth } from '@/context/auth'
 // UI Components
 import { Button } from '@/components/ui/button'
 import ConfirmationDialog from '@/components/ui/ConfirmationDialog'
-import { Eye, Archive, Trash2, UserPen } from 'lucide-react'
+import { Eye, Archive, Trash2, UserPen, ChevronLeft, ChevronRight } from 'lucide-react'
 import DoctorParentQRShareButton from '@/components/qr/DoctorParentQRShareButton'
-import {
-    Pagination,
-    PaginationContent,
-    PaginationItem,
-    PaginationNext,
-    PaginationPrevious,
-} from '@/components/ui/pagination'
 
 // Helper
 import { TooltipHelper } from '@/util/TooltipHelper'
@@ -24,7 +17,7 @@ const PatientRecordsTable = ({
     page,
     setPage,
     itemsPerPage,
-    // setItemsPerPage,
+    setItemsPerPage,
     onView,
     onEdit,
     onEditHover,
@@ -183,28 +176,38 @@ const PatientRecordsTable = ({
             </table>
 
             {/* Pagination */}
-            <div className="w-full flex items-center justify-between">
-                <div className="text-sm text-gray-500">
-                    Showing {startIdx + 1} to {Math.min(startIdx + itemsPerPage, records.length)} of{' '}
-                    {records.length} records
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mt-4">
+                <div className="flex items-center gap-2">
+                    <span className="text-sm">Rows per page:</span>
+                    <select
+                        value={itemsPerPage}
+                        onChange={(e) => setItemsPerPage(Number(e.target.value))}
+                        className="border rounded-md px-2 py-1 text-sm dark:bg-input/30 dark:border-input"
+                    >
+                        {[10, 25, 50].map((n) => (
+                            <option key={n} value={n}>
+                                {n}
+                            </option>
+                        ))}
+                    </select>
                 </div>
-                <Pagination>
-                    <PaginationContent>
-                        <TooltipHelper content="Previous">
-                            <PaginationItem>
-                                <PaginationPrevious onClick={handlePrev} />
-                            </PaginationItem>
-                        </TooltipHelper>
-                        <PaginationItem>
-                            Page {page} of {totalPages}
-                        </PaginationItem>
-                        <TooltipHelper content="Next">
-                            <PaginationItem>
-                                <PaginationNext onClick={handleNext} />
-                            </PaginationItem>
-                        </TooltipHelper>
-                    </PaginationContent>
-                </Pagination>
+                <div className="flex items-center gap-2 text-sm">
+                    <span>
+                        {startIdx + 1}-{Math.min(startIdx + itemsPerPage, records.length)} of{' '}
+                        {records.length}
+                    </span>
+                    <Button size="icon" variant="ghost" onClick={handlePrev} disabled={page === 1}>
+                        <ChevronLeft className="size-4" />
+                    </Button>
+                    <Button
+                        size="icon"
+                        variant="ghost"
+                        onClick={handleNext}
+                        disabled={page === totalPages}
+                    >
+                        <ChevronRight className="size-4" />
+                    </Button>
+                </div>
             </div>
 
             {/* Delete confirmation dialog */}
