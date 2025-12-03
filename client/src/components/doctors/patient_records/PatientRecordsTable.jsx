@@ -4,8 +4,22 @@ import { useAuth } from '@/context/auth'
 // UI Components
 import { Button } from '@/components/ui/button'
 import ConfirmationDialog from '@/components/ui/ConfirmationDialog'
-import { Eye, Archive, Trash2, UserPen, ChevronLeft, ChevronRight } from 'lucide-react'
+import {
+    Eye,
+    Archive,
+    Trash2,
+    UserPen,
+    ChevronLeft,
+    ChevronRight,
+    MoreVertical,
+} from 'lucide-react'
 import DoctorParentQRShareButton from '@/components/qr/DoctorParentQRShareButton'
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 
 // Helper
 import { TooltipHelper } from '@/util/TooltipHelper'
@@ -57,43 +71,47 @@ const PatientRecordsTable = ({
 
     return (
         <div className="w-full overflow-x-auto">
-            <table className="w-full text-sm">
+            <table className="w-full text-xs sm:text-sm">
                 <thead className="border-b border-gray-300 text-xs uppercase text-muted-foreground">
                     <tr className="text-left">
-                        <th className="py-3 px-2">Name</th>
-                        <th className="py-3 px-2 text-center">Sex</th>
-                        <th className="py-3 px-2 text-center">Age</th>
-                        <th className="py-3 px-2">
+                        <th className="py-3 px-2 sm:px-3">Name</th>
+                        <th className="py-3 px-2 sm:px-3 text-center">Sex</th>
+                        <th className="py-3 px-2 sm:px-3 text-center">Age</th>
+                        <th className="py-3 px-2 sm:px-3">
                             Birthdate{' '}
                             <span className="text-xs font-medium text-gray-400">(YYYY-MM-DD)</span>
                         </th>
-                        <th className="py-3 px-2">Actions</th>
+                        <th className="py-3 px-2 sm:px-3">Actions</th>
                     </tr>
                 </thead>
                 <tbody>
                     {loading ? (
                         Array.from({ length: itemsPerPage }).map((_, idx) => (
                             <tr key={idx} className="border-b last:border-none animate-pulse">
-                                {Array.from({ length: 8 }).map((__, cIdx) => (
-                                    <td key={cIdx} className="p-2 whitespace-nowrap">
+                                {Array.from({ length: 5 }).map((__, cIdx) => (
+                                    <td key={cIdx} className="p-2 sm:p-3 whitespace-nowrap">
                                         <div className="h-4 bg-gray-300 rounded w-full" />
                                     </td>
                                 ))}
                             </tr>
                         ))
                     ) : currentData.length === 0 ? (
-                        <NoResults
-                            message="No records found"
-                            suggestion="Try adjusting your search or filter criteria"
-                        />
+                        <tr>
+                            <td colSpan="5" className="p-8 text-center sm:col-span-5">
+                                <NoResults
+                                    message="No records found"
+                                    suggestion="Try adjusting your search or filter criteria"
+                                />
+                            </td>
+                        </tr>
                     ) : (
                         currentData.map((patient) => (
                             <tr
                                 key={patient.id}
                                 className="border-b border-gray-200 last:border-none"
                             >
-                                <td className="p-2 whitespace-nowrap">{`${patient.firstname} ${patient.lastname}`}</td>
-                                <td className="p-2 whitespace-nowrap text-center">
+                                <td className="p-2 sm:p-3 whitespace-nowrap text-xs sm:text-sm">{`${patient.firstname} ${patient.lastname}`}</td>
+                                <td className="p-2 sm:p-3 whitespace-nowrap text-center">
                                     <span
                                         className={`inline-flex items-center rounded-md px-2 py-1 text-xs font-medium ${getSexBadgeColor(
                                             patient.sex
@@ -103,20 +121,23 @@ const PatientRecordsTable = ({
                                             patient.sex.slice(1).toLowerCase()}
                                     </span>
                                 </td>
-                                <td className="p-2 whitespace-nowrap capitalize  text-center">
+                                <td className="p-2 sm:p-3 whitespace-nowrap capitalize text-center text-xs sm:text-sm">
                                     {patient.age}
                                 </td>
-                                <td className="p-2 whitespace-nowrap">{patient.birthdate}</td>
-                                <td className="p-2 whitespace-nowrap">
-                                    <div className="flex gap-1">
+                                <td className="p-2 sm:p-3 whitespace-nowrap text-xs sm:text-sm">
+                                    {patient.birthdate}
+                                </td>
+                                <td className="p-2 sm:p-3 whitespace-nowrap">
+                                    {/* Desktop: Individual buttons */}
+                                    <div className="hidden sm:flex gap-0.5 sm:gap-1 flex-wrap">
                                         <TooltipHelper content="View Details">
                                             <Button
                                                 variant="ghost"
-                                                size="icon"
-                                                className="hover:text-blue-600 hover:bg-blue-100"
+                                                size="sm"
+                                                className="hover:text-blue-600 hover:bg-blue-100 h-8 w-8 p-0"
                                                 onClick={() => onView(patient)}
                                             >
-                                                <Eye className="size-4" />
+                                                <Eye className="size-3 sm:size-4" />
                                             </Button>
                                         </TooltipHelper>
 
@@ -133,23 +154,23 @@ const PatientRecordsTable = ({
                                         <TooltipHelper content="Archive">
                                             <Button
                                                 variant="ghost"
-                                                size="icon"
-                                                className="hover:text-yellow-600 hover:bg-yellow-100"
+                                                size="sm"
+                                                className="hover:text-yellow-600 hover:bg-yellow-100 h-8 w-8 p-0"
                                                 onClick={() => onArchive(patient)}
                                             >
-                                                <Archive className="size-4" />
+                                                <Archive className="size-3 sm:size-4" />
                                             </Button>
                                         </TooltipHelper>
 
                                         <TooltipHelper content="Edit Patient">
                                             <Button
                                                 variant="ghost"
-                                                size="icon"
-                                                className="hover:text-green-600 hover:bg-green-100"
+                                                size="sm"
+                                                className="hover:text-green-600 hover:bg-green-100 h-8 w-8 p-0"
                                                 onClick={() => onEdit(patient)}
                                                 onMouseEnter={onEditHover}
                                             >
-                                                <UserPen className="size-4" />
+                                                <UserPen className="size-3 sm:size-4" />
                                             </Button>
                                         </TooltipHelper>
 
@@ -157,16 +178,67 @@ const PatientRecordsTable = ({
                                             <TooltipHelper content="Delete Patient">
                                                 <Button
                                                     variant="ghost"
-                                                    size="icon"
-                                                    className="hover:text-red-600 hover:bg-red-100"
+                                                    size="sm"
+                                                    className="hover:text-red-600 hover:bg-red-100 h-8 w-8 p-0"
                                                     onClick={() => handleDeleteClick(patient)}
                                                 >
-                                                    <Trash2 className="size-4" />
+                                                    <Trash2 className="size-3 sm:size-4" />
                                                 </Button>
                                             </TooltipHelper>
                                         ) : (
                                             ''
                                         )}
+                                    </div>
+
+                                    {/* Mobile: Dropdown menu */}
+                                    <div className="sm:hidden">
+                                        <DropdownMenu>
+                                            <DropdownMenuTrigger asChild>
+                                                <Button
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    className="h-8 w-8 p-0"
+                                                >
+                                                    <MoreVertical className="size-4" />
+                                                </Button>
+                                            </DropdownMenuTrigger>
+                                            <DropdownMenuContent align="end">
+                                                <DropdownMenuItem onClick={() => onView(patient)}>
+                                                    <Eye className="size-4 mr-2" />
+                                                    View Details
+                                                </DropdownMenuItem>
+
+                                                {user?.role === 'doctor' && (
+                                                    <DropdownMenuItem>
+                                                        <DoctorParentQRShareButton
+                                                            patient={patient}
+                                                            iconOnly={false}
+                                                        />
+                                                    </DropdownMenuItem>
+                                                )}
+
+                                                <DropdownMenuItem
+                                                    onClick={() => onArchive(patient)}
+                                                >
+                                                    <Archive className="size-4 mr-2" />
+                                                    Archive
+                                                </DropdownMenuItem>
+
+                                                <DropdownMenuItem onClick={() => onEdit(patient)}>
+                                                    <UserPen className="size-4 mr-2" />
+                                                    Edit Patient
+                                                </DropdownMenuItem>
+
+                                                {user?.role === 'doctor' && (
+                                                    <DropdownMenuItem
+                                                        onClick={() => handleDeleteClick(patient)}
+                                                    >
+                                                        <Trash2 className="size-4 mr-2" />
+                                                        Delete Patient
+                                                    </DropdownMenuItem>
+                                                )}
+                                            </DropdownMenuContent>
+                                        </DropdownMenu>
                                     </div>
                                 </td>
                             </tr>
@@ -176,37 +248,91 @@ const PatientRecordsTable = ({
             </table>
 
             {/* Pagination */}
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mt-4">
-                <div className="flex items-center gap-2">
-                    <span className="text-sm">Rows per page:</span>
-                    <select
-                        value={itemsPerPage}
-                        onChange={(e) => setItemsPerPage(Number(e.target.value))}
-                        className="border rounded-md px-2 py-1 text-sm dark:bg-input/30 dark:border-input"
-                    >
-                        {[10, 25, 50].map((n) => (
-                            <option key={n} value={n}>
-                                {n}
-                            </option>
-                        ))}
-                    </select>
-                </div>
-                <div className="flex items-center gap-2 text-sm">
-                    <span>
+            <div className="flex flex-col gap-3 mt-4">
+                {/* Mobile: Rows per page and pagination on same row */}
+                <div className="sm:hidden flex items-center justify-between gap-2 text-xs">
+                    <div className="flex items-center gap-1">
+                        <label className="whitespace-nowrap">Rows:</label>
+                        <select
+                            value={itemsPerPage}
+                            onChange={(e) => setItemsPerPage(Number(e.target.value))}
+                            className="border rounded px-1.5 py-0.5 text-xs dark:bg-input/30 dark:border-input"
+                        >
+                            {[10, 25, 50].map((n) => (
+                                <option key={n} value={n}>
+                                    {n}
+                                </option>
+                            ))}
+                        </select>
+                    </div>
+                    <span className="whitespace-nowrap">
                         {startIdx + 1}-{Math.min(startIdx + itemsPerPage, records.length)} of{' '}
                         {records.length}
                     </span>
-                    <Button size="icon" variant="ghost" onClick={handlePrev} disabled={page === 1}>
-                        <ChevronLeft className="size-4" />
-                    </Button>
-                    <Button
-                        size="icon"
-                        variant="ghost"
-                        onClick={handleNext}
-                        disabled={page === totalPages}
-                    >
-                        <ChevronRight className="size-4" />
-                    </Button>
+                    <div className="flex gap-0.5">
+                        <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={handlePrev}
+                            disabled={page === 1}
+                            className="h-7 w-7 p-0"
+                        >
+                            <ChevronLeft className="size-3.5" />
+                        </Button>
+                        <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={handleNext}
+                            disabled={page === totalPages}
+                            className="h-7 w-7 p-0"
+                        >
+                            <ChevronRight className="size-3.5" />
+                        </Button>
+                    </div>
+                </div>
+
+                {/* Desktop: Original layout */}
+                <div className="hidden sm:flex sm:items-center sm:justify-between gap-3 text-sm">
+                    <div className="flex items-center gap-2">
+                        <span className="whitespace-nowrap">Rows per page:</span>
+                        <select
+                            value={itemsPerPage}
+                            onChange={(e) => setItemsPerPage(Number(e.target.value))}
+                            className="border rounded-md px-2 py-1 text-sm dark:bg-input/30 dark:border-input"
+                        >
+                            {[10, 25, 50].map((n) => (
+                                <option key={n} value={n}>
+                                    {n}
+                                </option>
+                            ))}
+                        </select>
+                    </div>
+                    <div className="flex items-center gap-2">
+                        <span>
+                            {startIdx + 1}-{Math.min(startIdx + itemsPerPage, records.length)} of{' '}
+                            {records.length}
+                        </span>
+                        <div className="flex gap-1">
+                            <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={handlePrev}
+                                disabled={page === 1}
+                                className="h-8 w-8 p-0"
+                            >
+                                <ChevronLeft className="size-4" />
+                            </Button>
+                            <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={handleNext}
+                                disabled={page === totalPages}
+                                className="h-8 w-8 p-0"
+                            >
+                                <ChevronRight className="size-4" />
+                            </Button>
+                        </div>
+                    </div>
                 </div>
             </div>
 
