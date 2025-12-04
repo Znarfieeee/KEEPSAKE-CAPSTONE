@@ -23,10 +23,7 @@ import { cn, getUserStatusBadgeColor, formatUserStatus } from '@/util/utils'
 const StatusBadge = ({ status }) => {
     const badgeColor = getUserStatusBadgeColor(status)
     return (
-        <Badge
-            variant="outline"
-            className={cn('gap-1.5 px-2.5 py-0.5 border font-medium capitalize', badgeColor)}
-        >
+        <Badge className={cn('gap-1.5 px-2.5 py-0.5 font-medium capitalize', badgeColor)}>
             <span
                 className={cn(
                     'size-1.5 rounded-full animate-pulse',
@@ -45,7 +42,6 @@ const FacilityUsersTable = ({
     itemsPerPage,
     setItemsPerPage,
     onView,
-    onGoto,
     onEdit,
     onActivateDeactivate,
     onDelete,
@@ -67,8 +63,8 @@ const FacilityUsersTable = ({
             setIsDeleting(true)
             await onDelete(deleteDialog.user)
             setDeleteDialog({ open: false, user: null })
-        } catch (error) {
-            console.error('Error deleting user from facility:', error)
+        } catch {
+            // Error handled by parent component
         } finally {
             setIsDeleting(false)
         }

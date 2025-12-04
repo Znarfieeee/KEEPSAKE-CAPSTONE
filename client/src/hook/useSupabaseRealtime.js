@@ -45,7 +45,6 @@ export const useSupabaseRealtime = ({
     useEffect(() => {
         // Skip subscription if filter is explicitly null (e.g., userId is not available)
         if (filter === null && table === 'notifications') {
-            console.log('Skipping real-time subscription - user not authenticated')
             return
         }
 
@@ -93,19 +92,9 @@ export const useSupabaseRealtime = ({
                     },
                     handleDelete
                 )
-                .subscribe((status) => {
-                    if (status === 'SUBSCRIBED') {
-                        console.log(`Real-time subscription active for ${table}`)
-                    } else if (status === 'CHANNEL_ERROR') {
-                        console.error(`Real-time subscription error for ${table}`)
-                    } else if (status === 'TIMED_OUT') {
-                        console.warn(`Real-time subscription timed out for ${table}`)
-                    } else if (status === 'CLOSED') {
-                        console.log(`Real-time subscription closed for ${table}`)
-                    }
-                })
+                .subscribe()
         } catch (error) {
-            console.error('Error setting up real-time subscription:', error)
+            // Silent fail for real-time subscriptions
         }
 
         return () => {
@@ -113,7 +102,7 @@ export const useSupabaseRealtime = ({
                 try {
                     supabase.removeChannel(subscription)
                 } catch (error) {
-                    console.error('Error removing real-time channel:', error)
+                    // Silent fail
                 }
             }
         }
@@ -306,7 +295,6 @@ export const useUsersRealtime = ({ onUserChange }) => {
                 facility_id: data.healthcare_facilities?.id || null,
             }
         } catch (error) {
-            console.error('Error fetching facility info:', error)
             return {
                 assigned_facility: 'Not Assigned',
                 facility_role: '—',
@@ -473,7 +461,6 @@ export const usePatientsRealtime = ({ onPatientChange }) => {
     // Set up custom event listeners for immediate UI updates
     useEffect(() => {
         const handleCustomPatientCreated = (event) => {
-            console.log('Custom patient-created event received:', event.detail)
             const patient = event.detail
             if (patient) {
                 const formattedPatient = formatPatients(patient)
@@ -489,7 +476,6 @@ export const usePatientsRealtime = ({ onPatientChange }) => {
         }
 
         const handleCustomPatientUpdated = (event) => {
-            console.log('Custom patient-updated event received:', event.detail)
             const patient = event.detail
             if (patient) {
                 const formattedPatient = formatPatients(patient)
@@ -505,7 +491,6 @@ export const usePatientsRealtime = ({ onPatientChange }) => {
         }
 
         const handleCustomPatientDeleted = (event) => {
-            console.log('Custom patient-deleted event received:', event.detail)
             const patient = event.detail
             if (patient) {
                 // For delete events, we just need the ID
@@ -615,7 +600,6 @@ export const useAppointmentsRealtime = ({ onAppointmentChange, doctorId, facilit
     // Set up custom event listeners for immediate UI updates
     useEffect(() => {
         const handleCustomAppointmentCreated = (event) => {
-            console.log('Custom appointment-created event received:', event.detail)
             const appointment = event.detail
             if (appointment) {
                 // Custom events are explicitly dispatched by our code when the current user
@@ -635,7 +619,6 @@ export const useAppointmentsRealtime = ({ onAppointmentChange, doctorId, facilit
         }
 
         const handleCustomAppointmentUpdated = (event) => {
-            console.log('Custom appointment-updated event received:', event.detail)
             const appointment = event.detail
             if (appointment) {
                 const formattedAppointment = formatAppointment(appointment)
@@ -651,7 +634,6 @@ export const useAppointmentsRealtime = ({ onAppointmentChange, doctorId, facilit
         }
 
         const handleCustomAppointmentDeleted = (event) => {
-            console.log('Custom appointment-deleted event received:', event.detail)
             const appointment = event.detail
             if (appointment) {
                 const appointmentToDelete = {
@@ -734,7 +716,7 @@ export const useAuditLogsRealtime = ({ onAuditLogChange }) => {
                     userInfo = data
                 }
             } catch (error) {
-                console.error('Error fetching user info for audit log:', error)
+                // Silent fail
             }
 
             const formatted = {
@@ -766,7 +748,7 @@ export const useAuditLogsRealtime = ({ onAuditLogChange }) => {
                     userInfo = data
                 }
             } catch (error) {
-                console.error('Error fetching user info for audit log:', error)
+                // Silent fail
             }
 
             const formatted = {

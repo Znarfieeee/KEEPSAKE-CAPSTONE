@@ -2,17 +2,26 @@ import React, { useEffect, useState, useCallback, useMemo } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuth } from '@/context/auth'
 import { getAllFacilityUsers, getFacilityUsers } from '@/api/admin/facility'
+import { updateUserStatus, removeUserFromFacility, updateFacilityUser } from '@/api/admin/users'
 
 // UI Components
 import FacilityUsersTable from '@/components/System Administrator/sysAdmin_facilities/FacilityUsersTable'
+import FacilityUserDetailModal from '@/components/System Administrator/sysAdmin_facilities/FacilityUserDetailModal'
+import EditFacilityUserModal from '@/components/System Administrator/sysAdmin_facilities/EditFacilityUserModal'
 import Unauthorized from '@/components/Unauthorized'
 import { Button } from '@/components/ui/Button'
-import { RefreshCw, Download, ArrowLeft, Home, ChevronRight, ChevronLeft } from 'lucide-react'
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@/components/ui/select'
+import { Download, ChevronLeft } from 'lucide-react'
 
 // Helper
 import { showToast } from '@/util/alertHelper'
 import { displayRoles } from '@/util/roleHelper'
-import { BiLeftArrow } from 'react-icons/bi'
 
 const FacilityUsersRegistry = () => {
     const { user } = useAuth()
@@ -27,6 +36,12 @@ const FacilityUsersRegistry = () => {
     const [roleFilter, setRoleFilter] = useState('all')
     const [page, setPage] = useState(1)
     const [itemsPerPage, setItemsPerPage] = useState(10)
+
+    // Modal state
+    const [showUserDetail, setShowUserDetail] = useState(false)
+    const [selectedUser, setSelectedUser] = useState(null)
+    const [showEditUser, setShowEditUser] = useState(false)
+    const [editingUser, setEditingUser] = useState(null)
 
     // Get facility from URL query params
     const facilityIdFromUrl = searchParams.get('facility')
@@ -50,8 +65,7 @@ const FacilityUsersRegistry = () => {
             } else {
                 showToast('error', response.message || 'Failed to load facility users')
             }
-        } catch (error) {
-            console.error('Error fetching facility users:', error)
+        } catch {
             showToast('error', 'Failed to load facility users')
         } finally {
             setLoading(false)
@@ -111,41 +125,61 @@ const FacilityUsersRegistry = () => {
     }
 
     const handleView = (user) => {
-        console.log('View user:', user)
-        showToast('info', 'User detail modal coming soon')
+        setSelectedUser(user)
+        setShowUserDetail(true)
     }
 
     const handleGoto = (facilityId) => {
-        // Navigate to the facility's detail page or dashboard
-        navigate(`/system-admin/facilities/${facilityId}`)
+        navigate(`/admin/facilities?highlight=${facilityId}`)
     }
 
     const handleEdit = (user) => {
-        console.log('Edit user:', user)
-        showToast('info', 'Edit user assignment modal coming soon')
+        setEditingUser(user)
+        setShowEditUser(true)
+    }
+
+    const handleSaveEdit = async (facilityId, userId, userData) => {
+        try {
+            const response = await updateFacilityUser(facilityId, userId, userData)
+
+            if (response.status === 'success') {
+                showToast('success', 'User updated successfully')
+                await fetchFacilityUsers()
+            } else {
+                showToast('error', response.message || 'Failed to update user')
+            }
+        } catch {
+            showToast('error', 'Failed to update user')
+        }
     }
 
     const handleActivateDeactivate = async (user) => {
         try {
-            const action = user.is_active ? 'deactivate' : 'activate'
-            showToast(
-                'info',
-                `${action.charAt(0).toUpperCase() + action.slice(1)} user feature coming soon`
-            )
-            // TODO: Implement API endpoint for activating/deactivating users
-        } catch (error) {
-            console.error('Error toggling user status:', error)
+            const action = user.is_active ? 'deactivated' : 'activated'
+            const response = await updateUserStatus(user.user_id)
+
+            if (response.status === 'success') {
+                showToast('success', `User ${action} successfully`)
+                await fetchFacilityUsers()
+            } else {
+                showToast('error', response.message || 'Failed to update user status')
+            }
+        } catch {
             showToast('error', 'Failed to update user status')
         }
     }
 
     const handleDelete = async (user) => {
         try {
-            showToast('info', 'Remove user feature coming soon')
-            // TODO: Implement API endpoint for removing users from facilities
-            // This should call: DELETE /admin/facilities/${user.facility_id}/users/${user.user_id}
-        } catch (error) {
-            console.error('Error removing user from facility:', error)
+            const response = await removeUserFromFacility(user.facility_id, user.user_id)
+
+            if (response.status === 'success') {
+                showToast('success', 'User removed from facility successfully')
+                await fetchFacilityUsers()
+            } else {
+                showToast('error', response.message || 'Failed to remove user from facility')
+            }
+        } catch {
             showToast('error', 'Failed to remove user from facility')
         }
     }
@@ -228,34 +262,42 @@ const FacilityUsersRegistry = () => {
                         className="w-full px-4 py-2 border rounded-md dark:bg-input/30 dark:border-input"
                     />
                 </div>
-                <div className="flex flex-col sm:flex-row sm:gap-4">
-                    <select
+                <div className="flex flex-col sm:flex-row gap-2">
+                    <Select
                         value={roleFilter}
-                        onChange={(e) => {
-                            setRoleFilter(e.target.value)
+                        onValueChange={(value) => {
+                            setRoleFilter(value)
                             setPage(1)
                         }}
-                        className="px-4 py-2 border rounded-md dark:bg-input/30 dark:border-input"
                     >
-                        <option value="all">All Roles</option>
-                        {uniqueRoles.map((role) => (
-                            <option key={role} value={role}>
-                                {displayRoles(role)}
-                            </option>
-                        ))}
-                    </select>
-                    <select
+                        <SelectTrigger className="w-[180px]">
+                            <SelectValue placeholder="All Roles" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="all">All Roles</SelectItem>
+                            {uniqueRoles.map((role) => (
+                                <SelectItem key={role} value={role}>
+                                    {displayRoles(role)}
+                                </SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+                    <Select
                         value={statusFilter}
-                        onChange={(e) => {
-                            setStatusFilter(e.target.value)
+                        onValueChange={(value) => {
+                            setStatusFilter(value)
                             setPage(1)
                         }}
-                        className="px-4 py-2 border rounded-md dark:bg-input/30 dark:border-input"
                     >
-                        <option value="all">All Status</option>
-                        <option value="active">Active</option>
-                        <option value="inactive">Inactive</option>
-                    </select>
+                        <SelectTrigger className="w-[180px]">
+                            <SelectValue placeholder="All Status" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="all">All Status</SelectItem>
+                            <SelectItem value="active">Active</SelectItem>
+                            <SelectItem value="inactive">Inactive</SelectItem>
+                        </SelectContent>
+                    </Select>
                 </div>
             </div>
 
@@ -285,6 +327,27 @@ const FacilityUsersRegistry = () => {
                     <span>{uniqueRoles.length} unique roles across facilities</span>
                 )}
             </div>
+
+            {/* User Detail Modal */}
+            <FacilityUserDetailModal
+                open={showUserDetail}
+                user={selectedUser}
+                onClose={() => {
+                    setShowUserDetail(false)
+                    setSelectedUser(null)
+                }}
+            />
+
+            {/* Edit User Modal */}
+            <EditFacilityUserModal
+                open={showEditUser}
+                user={editingUser}
+                onClose={() => {
+                    setShowEditUser(false)
+                    setEditingUser(null)
+                }}
+                onSave={handleSaveEdit}
+            />
         </div>
     )
 }

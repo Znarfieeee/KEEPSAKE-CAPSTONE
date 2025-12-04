@@ -75,9 +75,18 @@ export const assignUserToFacility = async (userId, facilityData) => {
     return response.data
 }
 
-export const removeUserFromFacility = async (userId, facilityId) => {
+export const removeUserFromFacility = async (facilityId, userId) => {
     const response = await axios.delete(
-        `${backendConnection()}/admin/users/${userId}/facilities/${facilityId}`,
+        `${backendConnection()}/admin/facilities/${facilityId}/users/${userId}`,
+        axiosConfig
+    )
+    return response.data
+}
+
+export const updateFacilityUser = async (facilityId, userId, userData) => {
+    const response = await axios.put(
+        `${backendConnection()}/admin/facilities/${facilityId}/users/${userId}`,
+        userData,
         axiosConfig
     )
     return response.data
@@ -92,4 +101,5 @@ export default {
     updateUserStatus,
     assignUserToFacility,
     removeUserFromFacility,
+    updateFacilityUser,
 }
