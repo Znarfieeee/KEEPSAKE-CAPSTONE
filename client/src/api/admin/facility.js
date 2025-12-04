@@ -54,9 +54,10 @@ export const getAllFacilityUsers = async ({ bust_cache = false } = {}) => {
   return response.data
 }
 
-export const getFacilityUsers = async (facilityId) => {
+export const getFacilityUsers = async (facilityId, params = {}) => {
+  const { bust_cache = false } = params
   const response = await axios.get(
-    `${backendConnection()}/admin/facilities/${facilityId}/users`,
+    `${backendConnection()}/admin/facilities/${facilityId}/users${bust_cache ? '?bust_cache=true' : ''}`,
     axiosConfig
   )
   return response.data

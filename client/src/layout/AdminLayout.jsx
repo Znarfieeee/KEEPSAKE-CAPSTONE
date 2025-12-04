@@ -2,7 +2,7 @@ import { AiOutlineTool } from 'react-icons/ai'
 import { BiCog, BiHelpCircle, BiMessageSquareDetail } from 'react-icons/bi'
 import React, { useState, useEffect, useRef } from 'react'
 import Breadcrumbs from '../components/ui/Breadcrumbs'
-import { Outlet, Link } from 'react-router-dom'
+import { Outlet, Link, useLocation } from 'react-router-dom'
 
 // UI Components
 import { FiKey } from 'react-icons/fi'
@@ -86,11 +86,16 @@ const systemSideNavLinks = [
 ]
 
 function AdminLayout() {
+    const location = useLocation()
     const [drawerOpen, setDrawerOpen] = useState(false)
     const sidebarRef = useRef(null)
     const hamburgerRef = useRef(null)
 
     const toggleDrawer = () => setDrawerOpen((open) => !open)
+
+    // Pages that have their own custom breadcrumbs and don't need the generic one
+    const pagesWithCustomBreadcrumbs = ['/admin/facility-users']
+    const shouldShowGenericBreadcrumbs = !pagesWithCustomBreadcrumbs.includes(location.pathname)
 
     useEffect(() => {
         function handleClickOutside(event) {
@@ -194,7 +199,7 @@ function AdminLayout() {
             {/* Main Content */}
             <main className="pt-16 min-h-screen">
                 <div className="p-6">
-                    <Breadcrumbs />
+                    {shouldShowGenericBreadcrumbs && <Breadcrumbs />}
                     <Outlet />
                 </div>
             </main>

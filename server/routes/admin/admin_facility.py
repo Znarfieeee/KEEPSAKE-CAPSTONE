@@ -474,6 +474,7 @@ def get_facility_users(facility_id):
     """
     try:
         # Query with joins to get complete user information
+        # Only return active assignments (end_date is null)
         resp = supabase.table('facility_users').select(
             '''
             facility_id,
@@ -501,7 +502,7 @@ def get_facility_users(facility_id):
                 updated_at
             )
             '''
-        ).execute()
+        ).eq('facility_id', facility_id).is_('end_date', 'null').execute()
         
         if getattr(resp, 'error', None):
             current_app.logger.error(f"Failed to fetch facility users: {resp.error.message}")
@@ -511,25 +512,38 @@ def get_facility_users(facility_id):
                 "details": resp.error.message if resp.error else "Unknown"
             }), 400
         
+        # Get facility name once (all users are from the same facility)
+        facility_name = None
+        facility_status = None
+        if resp.data:
+            facility_resp = supabase.table('healthcare_facilities').select('facility_name, subscription_status').eq('facility_id', facility_id).single().execute()
+            if not getattr(facility_resp, 'error', None) and facility_resp.data:
+                facility_name = facility_resp.data.get('facility_name')
+                facility_status = facility_resp.data.get('subscription_status')
+
         # Format the response
         facility_users = []
         for record in resp.data:
             user_data = record['users']
             facility_users.append({
+                'facility_id': facility_id,
                 'user_id': user_data['user_id'],
                 'email': user_data['email'],
                 'firstname': user_data['firstname'],
                 'lastname': user_data['lastname'],
-                'facility_role': record['role'],
+                'role': record['role'],
                 'department': record.get('department'),
                 'specialty': user_data['specialty'],
                 'license_number': user_data['license_number'],
                 'phone_number': user_data['phone_number'],
                 'start_date': record['start_date'],
+                'end_date': record.get('end_date'),
                 'is_active': user_data['is_active'],
-                'created_at': user_data['created_at']
+                'created_at': user_data['created_at'],
+                'facility_name': facility_name or 'Unknown',
+                'facility_status': facility_status or 'unknown'
             })
-        
+
         return jsonify({
             "status": "success",
             "users": facility_users,

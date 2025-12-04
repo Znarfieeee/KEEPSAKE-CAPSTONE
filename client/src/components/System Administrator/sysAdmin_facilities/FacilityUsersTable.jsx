@@ -3,7 +3,16 @@ import React, { useState } from 'react'
 // UI Components
 import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/badge'
-import { Eye, Trash2, ChevronLeft, ChevronRight, UserPen, Building2 } from 'lucide-react'
+import {
+    Eye,
+    Trash2,
+    ChevronLeft,
+    ChevronRight,
+    UserPen,
+    Building2,
+    UserCheck,
+    UserX,
+} from 'lucide-react'
 import ConfirmationDialog from '@/components/ui/ConfirmationDialog'
 
 // Helper
@@ -38,6 +47,7 @@ const FacilityUsersTable = ({
     onView,
     onGoto,
     onEdit,
+    onActivateDeactivate,
     onDelete,
     loading = false,
 }) => {
@@ -78,8 +88,6 @@ const FacilityUsersTable = ({
                         <th className="py-3 px-2">Department</th>
                         <th className="py-3 px-2">Specialty</th>
                         <th className="py-3 px-2">Contact Number</th>
-                        <th className="py-3 px-2">Facility</th>
-                        <th className="py-3 px-2">Start Date</th>
                         <th className="py-3 px-2">Status</th>
                         <th className="py-3 px-2">Actions</th>
                     </tr>
@@ -108,21 +116,9 @@ const FacilityUsersTable = ({
                                   <td className="p-2 whitespace-nowrap">
                                       {user.department || '—'}
                                   </td>
-                                  <td className="p-2 whitespace-nowrap">
-                                      {user.specialty || '—'}
-                                  </td>
+                                  <td className="p-2 whitespace-nowrap">{user.specialty || '—'}</td>
                                   <td className="p-2 whitespace-nowrap">
                                       {user.phone_number || '—'}
-                                  </td>
-                                  <td className="p-2 whitespace-nowrap">
-                                      {user.facility_name.length > 25
-                                          ? `${user.facility_name.substring(0, 25)}...`
-                                          : user.facility_name}
-                                  </td>
-                                  <td className="p-2 whitespace-nowrap">
-                                      {user.start_date
-                                          ? new Date(user.start_date).toLocaleDateString()
-                                          : '—'}
                                   </td>
                                   <td className="p-2 whitespace-nowrap">
                                       <StatusBadge
@@ -142,20 +138,35 @@ const FacilityUsersTable = ({
                                                   <Eye className="size-4" />
                                               </Button>
                                           </TooltipHelper>
-                                          <TooltipHelper content="Go-to Facility">
+                                          <TooltipHelper
+                                              content={
+                                                  user.is_active
+                                                      ? 'Deactivate User'
+                                                      : 'Activate User'
+                                              }
+                                          >
                                               <Button
                                                   variant="ghost"
                                                   size="icon"
-                                                  onClick={() => onGoto(user.facility_id)}
+                                                  className={
+                                                      user.is_active
+                                                          ? 'hover:text-orange-600 hover:bg-orange-100'
+                                                          : 'hover:text-green-600 hover:bg-green-100'
+                                                  }
+                                                  onClick={() => onActivateDeactivate(user)}
                                               >
-                                                  <Building2 className="size-4" />
+                                                  {user.is_active ? (
+                                                      <UserX className="size-4" />
+                                                  ) : (
+                                                      <UserCheck className="size-4" />
+                                                  )}
                                               </Button>
                                           </TooltipHelper>
                                           <TooltipHelper content="Edit User Assignment">
                                               <Button
                                                   variant="ghost"
                                                   size="icon"
-                                                  className="hover:text-green-600 hover:bg-green-100"
+                                                  className="hover:text-purple-600 hover:bg-purple-100"
                                                   onClick={() => onEdit(user)}
                                               >
                                                   <UserPen className="size-4" />
@@ -196,8 +207,8 @@ const FacilityUsersTable = ({
                 </div>
                 <div className="flex items-center gap-2 text-sm">
                     <span>
-                        {startIdx + 1}-{Math.min(startIdx + itemsPerPage, facilityUsers.length)}{' '}
-                        of {facilityUsers.length}
+                        {startIdx + 1}-{Math.min(startIdx + itemsPerPage, facilityUsers.length)} of{' '}
+                        {facilityUsers.length}
                     </span>
                     <Button size="icon" variant="ghost" onClick={handlePrev} disabled={page === 1}>
                         <ChevronLeft className="size-4" />

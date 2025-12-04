@@ -124,19 +124,34 @@ export const useSupabaseRealtime = ({
 
 export const useFacilitiesRealtime = ({ onFacilityChange }) => {
     const formatFacility = useCallback(
-        (raw) => ({
-            id: raw.facility_id,
-            name: raw.facility_name,
-            location: `${raw.address}, ${raw.city}, ${raw.zip_code}`,
-            type: raw.type,
-            plan: raw.plan,
-            expiry: raw.subscription_expires,
-            admin: raw.admin || raw.email || '—',
-            status: raw.subscription_status,
-            contact: raw.contact_number,
-            email: raw.email,
-            website: raw.website,
-        }),
+        (raw) => {
+            if (!raw) return null
+
+            // Handle different data formats (raw DB vs formatted)
+            const id = raw.facility_id || raw.id
+            const name = raw.facility_name || raw.name
+            const address = raw.address || ''
+            const city = raw.city || ''
+            const zipCode = raw.zip_code || ''
+
+            // Build location string safely
+            const locationParts = [address, city, zipCode].filter((part) => part && part.trim())
+            const location = locationParts.length > 0 ? locationParts.join(', ') : '—'
+
+            return {
+                id: id,
+                name: name || '—',
+                location: location,
+                type: raw.type || '—',
+                plan: raw.plan || 'basic',
+                expiry: raw.subscription_expires || raw.expiry || '—',
+                admin: raw.admin || raw.email || '—',
+                status: raw.subscription_status || raw.status || 'inactive',
+                contact: raw.contact_number || raw.contact || '—',
+                email: raw.email || '—',
+                website: raw.website || '',
+            }
+        },
         []
     )
 
@@ -145,11 +160,13 @@ export const useFacilitiesRealtime = ({ onFacilityChange }) => {
             // Only process if not deleted
             if (!newFacility.deleted_at) {
                 const formatted = formatFacility(newFacility)
-                onFacilityChange({
-                    type: 'INSERT',
-                    facility: formatted,
-                    raw: newFacility,
-                })
+                if (formatted) {
+                    onFacilityChange({
+                        type: 'INSERT',
+                        facility: formatted,
+                        raw: newFacility,
+                    })
+                }
             }
         },
         [formatFacility, onFacilityChange]
@@ -158,6 +175,7 @@ export const useFacilitiesRealtime = ({ onFacilityChange }) => {
     const handleUpdate = useCallback(
         (updatedFacility, oldFacility) => {
             const formatted = formatFacility(updatedFacility)
+            if (!formatted) return
 
             // Check if this is a soft delete (facility was active, now has deleted_at)
             if (!oldFacility.deleted_at && updatedFacility.deleted_at) {
@@ -186,11 +204,13 @@ export const useFacilitiesRealtime = ({ onFacilityChange }) => {
     const handleDelete = useCallback(
         (deletedFacility) => {
             const formatted = formatFacility(deletedFacility)
-            onFacilityChange({
-                type: 'DELETE',
-                facility: formatted,
-                raw: deletedFacility,
-            })
+            if (formatted) {
+                onFacilityChange({
+                    type: 'DELETE',
+                    facility: formatted,
+                    raw: deletedFacility,
+                })
+            }
         },
         [formatFacility, onFacilityChange]
     )

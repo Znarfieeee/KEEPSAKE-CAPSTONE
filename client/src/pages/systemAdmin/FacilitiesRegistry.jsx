@@ -175,15 +175,19 @@ const FacilitiesRegistry = () => {
             setLoading(true)
             const response = await getFacilities({ bust_cache: false })
 
-            if (response.status === 'success' && response.data) {
-                setFacilities(response.data.map(formatFacility))
+            console.log('Facilities API response:', response)
+
+            if (response && response.status === 'success' && response.data) {
+                const formattedFacilities = response.data.map(formatFacility)
+                console.log('Formatted facilities:', formattedFacilities)
+                setFacilities(formattedFacilities)
             } else {
                 showToast('error', 'Failed to load facilities')
-                console.error('API error:', response)
+                console.error('API error - Full response:', response)
             }
         } catch (error) {
             showToast('error', 'Failed to load facilities')
-            console.error('Error:', error)
+            console.error('Error fetching facilities:', error)
         } finally {
             setLoading(false)
         }
