@@ -35,7 +35,7 @@ const UserFilters = ({
 
     const planOptions = [
         { value: "all", label: "All Plans" },
-        { value: "false", label: "Freemium" },
+        { value: "false", label: "Free" },
         { value: "true", label: "Premium" },
     ]
 

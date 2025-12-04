@@ -13,26 +13,23 @@ export const AuthProvider = ({ children }) => {
     const [sessionStatus, setSessionStatus] = useState()
     const navigate = useNavigate()
 
-    const IDLE_LOGOUT_TIME = 30 * 60 * 1000 // 30 minutes - auto logout
+    // Session timing constants
     const REFRESH_INTERVAL = 15 * 60 * 1000 // 15 minutes - refresh tokens
     const ACTIVITY_THROTTLE = 30 * 1000 // 30 seconds - throttle activity updates
     const VISIBILITY_REFRESH_THRESHOLD = 5 * 60 * 1000 // 5 minutes - refresh when returning to tab
+    // Note: No IDLE_LOGOUT_TIME - sessions persist for 30 days based on backend Redis timeout
 
     const refreshTimerRef = useRef(null)
-    const idleTimerRef = useRef(null)
     const lastActivityRef = useRef(Date.now())
     const lastRefreshRef = useRef(Date.now())
     const isActiveRef = useRef(true)
     const refreshPromiseRef = useRef(null) // Prevent concurrent refresh calls
 
     const clearAllTimers = useCallback(() => {
-        ;[refreshTimerRef, idleTimerRef].forEach((timer) => {
-            if (timer.current) {
-                clearTimeout(timer.current)
-                clearInterval(timer.current)
-                timer.current = null
-            }
-        })
+        if (refreshTimerRef.current) {
+            clearInterval(refreshTimerRef.current)
+            refreshTimerRef.current = null
+        }
     }, [])
 
     const navigateOnLogin = useCallback(
@@ -63,17 +60,33 @@ export const AuthProvider = ({ children }) => {
     const checkExistingSession = useCallback(async () => {
         try {
             const data = await getSession()
-            if (data.status === 'success') {
+            if (data.status === 'success' && data.user) {
+                console.log('[AUTH] checkExistingSession - found session:', {
+                    email: data.user?.email,
+                    is_first_login: data.user?.is_first_login,
+                    last_sign_in_at: data.user?.last_sign_in_at
+                })
+
                 setUser(data.user)
                 setIsAuthenticated(true)
+                lastActivityRef.current = Date.now()
+                lastRefreshRef.current = Date.now()
+                setSessionStatus('active')
+
+                // Check if this is first login and redirect to first-login page
+                if (data.user?.is_first_login) {
+                    console.log('[AUTH] checkExistingSession - redirecting to /first-login')
+                    navigate('/first-login', { replace: true })
+                }
+
                 return true
             }
             return false
-        } catch {
-            // Suppress detailed error logging
+        } catch (error) {
+            // Silent failure - expected when no session exists
             return false
         }
-    }, [])
+    }, [navigate])
 
     const runRefreshSession = useCallback(
         async (force = false) => {
@@ -93,6 +106,12 @@ export const AuthProvider = ({ children }) => {
                         setIsAuthenticated(true)
                         lastRefreshRef.current = Date.now()
                         setSessionStatus('active')
+
+                        // Check if this is first login and redirect to first-login page
+                        if (data.user?.is_first_login) {
+                            navigate('/first-login', { replace: true })
+                        }
+
                         return true
                     }
 
@@ -117,7 +136,7 @@ export const AuthProvider = ({ children }) => {
             refreshPromiseRef.current = refreshPromise()
             return refreshPromiseRef.current
         },
-        [isAuthenticated, isRefreshing]
+        [isAuthenticated, isRefreshing, navigate]
     )
 
     const signIn = useCallback(
@@ -133,13 +152,28 @@ export const AuthProvider = ({ children }) => {
                 const response = await login(email, password)
 
                 if (response.status === 'success') {
+                    console.log('[AUTH] Login response received:', {
+                        email: response.user?.email,
+                        role: response.user?.role,
+                        is_first_login: response.user?.is_first_login,
+                        last_sign_in_at: response.user?.last_sign_in_at
+                    })
+
                     showToast('success', 'Login successful')
                     setUser(response.user)
                     setIsAuthenticated(true)
                     lastRefreshRef.current = Date.now()
                     setSessionStatus('active')
 
-                    navigateOnLogin(response.user.role)
+                    // Check if this is first login
+                    if (response.user?.is_first_login) {
+                        console.log('[AUTH] First login detected - redirecting to /first-login')
+                        // Redirect to first login page instead of dashboard
+                        navigate('/first-login', { replace: true })
+                    } else {
+                        console.log('[AUTH] Not first login - navigating to dashboard for role:', response.user.role)
+                        navigateOnLogin(response.user.role)
+                    }
                     return response
                 } else {
                     // Use the specific error message from the backend response
@@ -154,7 +188,7 @@ export const AuthProvider = ({ children }) => {
                 setLoading(false)
             }
         },
-        [checkExistingSession, navigateOnLogin]
+        [checkExistingSession, navigateOnLogin, navigate]
     )
 
     const signOut = useCallback(
@@ -207,16 +241,9 @@ export const AuthProvider = ({ children }) => {
         isActiveRef.current = true
         setSessionStatus('active')
 
-        if (idleTimerRef.current) clearTimeout(idleTimerRef.current)
-
-        idleTimerRef.current = setTimeout(() => {
-            if (isAuthenticated && isActiveRef.current) {
-                setSessionStatus('expired')
-                showToast('info', 'Logging out due to inactivity')
-                signOut(true)
-            }
-        }, IDLE_LOGOUT_TIME)
-    }, [isAuthenticated, signOut, ACTIVITY_THROTTLE, IDLE_LOGOUT_TIME])
+        // Idle logout disabled - sessions now expire based on backend Redis timeout (30 days)
+        // No automatic logout on inactivity - only token expiry will log users out
+    }, [isAuthenticated, ACTIVITY_THROTTLE])
 
     useEffect(() => {
         if (!isAuthenticated) return
@@ -235,25 +262,16 @@ export const AuthProvider = ({ children }) => {
         refreshTimerRef.current = setInterval(async () => {
             const now = Date.now()
             const timeSinceLastRefresh = now - lastRefreshRef.current
-            const timeSinceLastActivity = now - lastActivityRef.current
 
-            if (
-                timeSinceLastActivity < IDLE_LOGOUT_TIME &&
-                timeSinceLastRefresh >= REFRESH_INTERVAL
-            ) {
+            // Refresh token every 15 minutes regardless of activity
+            // No idle check - sessions persist for 30 days based on backend Redis timeout
+            if (timeSinceLastRefresh >= REFRESH_INTERVAL) {
                 await runRefreshSession()
             }
         }, REFRESH_INTERVAL)
 
         handleActivity()
-    }, [
-        isAuthenticated,
-        handleActivity,
-        clearAllTimers,
-        runRefreshSession,
-        IDLE_LOGOUT_TIME,
-        REFRESH_INTERVAL,
-    ])
+    }, [isAuthenticated, handleActivity, clearAllTimers, runRefreshSession, REFRESH_INTERVAL])
 
     // Removed debug helpers (btnClicked/alerts) for production readiness
 
@@ -262,19 +280,30 @@ export const AuthProvider = ({ children }) => {
             try {
                 setLoading(true)
 
+                // First, try to get existing session
                 const hasValidSession = await checkExistingSession()
-                if (!hasValidSession) {
+
+                if (hasValidSession) {
+                    // Session exists and is valid, user is logged in
+                    lastRefreshRef.current = Date.now()
+                    lastActivityRef.current = Date.now()
+                    setSessionStatus('active')
+                } else {
+                    // Try to refresh the session with the stored token
                     const refreshedSession = await runRefreshSession()
-                    if (!refreshedSession) {
+
+                    if (refreshedSession) {
+                        // Session refreshed successfully
+                        lastActivityRef.current = Date.now()
+                    } else {
+                        // No valid session, user needs to log in
                         setUser(null)
                         setIsAuthenticated(false)
                         setSessionStatus('expired')
                     }
-                } else {
-                    lastRefreshRef.current = Date.now()
-                    setSessionStatus('active')
                 }
-            } catch (_) {
+            } catch (error) {
+                // Silent failure - expected on first visit or after session expiry
                 setUser(null)
                 setIsAuthenticated(false)
                 setSessionStatus('expired')
@@ -347,8 +376,8 @@ export const AuthProvider = ({ children }) => {
         sessionTiming: {
             lastActivity: lastActivityRef.current,
             lastRefresh: lastRefreshRef.current,
-            idleTimeoutMs: IDLE_LOGOUT_TIME,
             refreshIntervalMs: REFRESH_INTERVAL,
+            // Note: No idle timeout - sessions persist for 30 days via backend
         },
     }
 

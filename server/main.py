@@ -15,9 +15,13 @@ from routes.admin_routes import admin_bp
 from routes.admin.admin_facility import facility_bp
 from routes.admin.admin_users import users_bp
 from routes.admin.admin_audit import audit_bp
+from routes.admin.admin_subscription import subscription_bp
+from routes.admin.admin_reports import reports_bp
 from routes.pediapro.doctor_patient_records import patrecord_bp
 from routes.pediapro.doctor_patient_prescriptions import patrx_bp
 from routes.pediapro.doctor_vaccinations import vaccinations_bp
+from routes.pediapro.doctor_reports import doctor_reports_bp
+from routes.vital_custodian.nurse_reports import nurse_reports_bp
 from routes.auth_routes import init_google_oauth
 from routes.pediapro.doctor_appointments import appointment_bp
 from routes.facility_admin.facility_users import fusers_bp
@@ -25,9 +29,14 @@ from routes.user_settings import settings_bp as user_settings_bp
 from routes.qr_routes import qr_bp
 from routes.notification_routes import notification_bp
 from routes.parent.parent_routes import parent_bp
+from routes.parent.parent_reports import parent_reports_bp
+from routes.parent.parent_subscription import parent_subscription_bp
 from routes.medical_documents.document_routes import documents_bp
 from routes.parent_consent_routes import parent_consent_bp
 from routes.feedback_routes import feedback_bp
+from routes.facility_contact import facility_contact_bp
+from routes.admin.admin_parent_subscription import admin_parent_subscription_bp
+from routes.public_routes import public_bp
 
 app = Flask("keepsake")
 
@@ -48,13 +57,18 @@ except Exception as e:
 # Blueprints
 app.register_blueprint(settings_bp)
 app.register_blueprint(auth_bp)
+app.register_blueprint(public_bp)
 app.register_blueprint(admin_bp)
 app.register_blueprint(facility_bp)
 app.register_blueprint(users_bp)
 app.register_blueprint(audit_bp)
+app.register_blueprint(subscription_bp)
+app.register_blueprint(reports_bp)
 app.register_blueprint(patrecord_bp)
 app.register_blueprint(patrx_bp)
 app.register_blueprint(vaccinations_bp)
+app.register_blueprint(doctor_reports_bp)
+app.register_blueprint(nurse_reports_bp)
 app.register_blueprint(appointment_bp)
 app.register_blueprint(fusers_bp)
 app.register_blueprint(documents_bp)
@@ -62,8 +76,12 @@ app.register_blueprint(user_settings_bp)
 app.register_blueprint(qr_bp)
 app.register_blueprint(notification_bp)
 app.register_blueprint(parent_bp)
+app.register_blueprint(parent_reports_bp)
+app.register_blueprint(parent_subscription_bp)
 app.register_blueprint(parent_consent_bp)
 app.register_blueprint(feedback_bp)
+app.register_blueprint(facility_contact_bp)
+app.register_blueprint(admin_parent_subscription_bp)
 
 # Redis session configuration with enhanced error handling
 def setup_redis_session():

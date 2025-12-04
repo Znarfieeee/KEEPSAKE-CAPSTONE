@@ -218,28 +218,13 @@ function DoctorPatientRecords() {
 
     const handleExportCSV = () => {
         try {
-            const headers = [
-                'First Name',
-                'Last Name',
-                'Age',
-                'Sex',
-                'Birth Weight',
-                'Birth Height',
-                'Blood Type',
-                'Gestation Weeks',
-                'Birth Date',
-                'Status',
-            ]
+            const headers = ['First Name', 'Last Name', 'Age', 'Sex', 'Birth Date', 'Status']
 
             const rows = filteredRecords.map((p) => [
                 p.firstname,
                 p.lastname,
                 `${p.age} ${p.ageUnit}`,
                 p.sex,
-                p.birth_weight || '—',
-                p.birth_height || '—',
-                p.bloodtype || '—',
-                p.gestation_weeks || '—',
                 new Date(p.birthdate).toLocaleDateString(),
                 p.is_active ? 'Active' : 'Inactive',
             ])
@@ -252,7 +237,13 @@ function DoctorPatientRecords() {
             const url = URL.createObjectURL(blob)
             const link = document.createElement('a')
             link.href = url
-            link.download = 'patient_records.csv'
+
+            const now = new Date()
+            const timestamp =
+                now.toISOString().replace(/[:.]/g, '').split('T')[0] +
+                now.toTimeString().split(' ')[0].replace(/:/g, '')
+            link.download = `patient_records_${timestamp}.csv`
+
             link.click()
             URL.revokeObjectURL(url)
 
@@ -440,7 +431,7 @@ function DoctorPatientRecords() {
     }
 
     return (
-        <div className="p-6 px-20 space-y-6">
+        <div className="p-4 sm:p-6 lg:px-20 space-y-4 sm:space-y-6 min-h-screen">
             {/* Add Patient Modal with Dialog/Trigger */}
             <Dialog open={showAddModal} onOpenChange={setShowAddModal}>
                 <PatientRecordsHeader

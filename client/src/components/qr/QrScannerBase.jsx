@@ -1,71 +1,79 @@
-import React, { useState, useCallback, useRef, useEffect } from "react"
-import { useNavigate } from "react-router-dom"
-import jsQR from "jsqr"
+import React, { useState, useCallback, useRef, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
+import jsQR from 'jsqr'
 
 // Context
-import { useAuth } from "../../context/auth"
-import { useQrScanner } from "../../context/QrScannerContext"
+import { useAuth } from '../../context/auth'
+import { useQrScanner } from '../../context/QrScannerContext'
 
 // API
-import { accessQRCode, grantParentAccess, checkQRCodeType } from "../../api/qrCode"
+import { accessQRCode, grantParentAccess, checkQRCodeType } from '../../api/qrCode'
 
 // UI Components
-import { IoMdArrowBack } from "react-icons/io"
-import { FiCheckCircle, FiAlertCircle, FiLock, FiClock, FiHash, FiShield, FiCamera, FiUpload, FiImage, FiX, FiUsers } from "react-icons/fi"
-import { BiUser, BiCalendar, BiIdCard } from "react-icons/bi"
-import { MdMedicalServices, MdVaccines } from "react-icons/md"
-import { AiOutlineLoading3Quarters } from "react-icons/ai"
-import EnhancedQrScanner from "../ui/EnhancedQrScanner"
-import { Card } from "../ui/Card"
-import { Button } from "../ui/Button"
-import QRPinInputModal from "./QRPinInputModal"
+import { IoMdArrowBack } from 'react-icons/io'
+import {
+    FiCheckCircle,
+    FiAlertCircle,
+    FiLock,
+    FiClock,
+    FiHash,
+    FiShield,
+    FiCamera,
+    FiUpload,
+    FiImage,
+    FiX,
+    FiUsers,
+} from 'react-icons/fi'
+import { BiUser, BiCalendar, BiIdCard } from 'react-icons/bi'
+import { MdMedicalServices, MdVaccines } from 'react-icons/md'
+import { AiOutlineLoading3Quarters } from 'react-icons/ai'
+import EnhancedQrScanner from '../ui/EnhancedQrScanner'
+import { Card } from '../ui/Card'
+import { Button } from '../ui/Button'
+import QRPinInputModal from './QRPinInputModal'
 
 // Role-specific dashboard routes for navigation
 const DASHBOARD_ROUTES = {
-    pediapro: "/pediapro",
-    doctor: "/pediapro",
-    vital_custodian: "/vital_custodian",
-    nurse: "/vital_custodian",
-    keepsaker: "/parent",
-    parent: "/parent",
-    facility_admin: "/facility_admin",
-    admin: "/admin",
-    system_admin: "/admin"
+    pediapro: '/pediapro',
+    doctor: '/pediapro',
+    vital_custodian: '/vital_custodian',
+    nurse: '/vital_custodian',
+    keepsaker: '/parent',
+    parent: '/parent',
+    facility_admin: '/facility_admin',
+    admin: '/admin',
+    system_admin: '/admin',
 }
 
 // Role display names
 const ROLE_NAMES = {
-    pediapro: "Doctor",
-    doctor: "Doctor",
-    vital_custodian: "Nurse/Staff",
-    nurse: "Nurse/Staff",
-    keepsaker: "Parent",
-    parent: "Parent",
-    guardian: "Parent/Guardian",
-    facility_admin: "Facility Admin",
-    system_admin: "System Admin"
+    pediapro: 'Doctor',
+    doctor: 'Doctor',
+    vital_custodian: 'Nurse/Staff',
+    nurse: 'Nurse/Staff',
+    keepsaker: 'Parent',
+    parent: 'Parent',
+    guardian: 'Parent/Guardian',
+    facility_admin: 'Facility Admin',
+    system_admin: 'System Admin',
 }
 
 // Action display names
 const ACTION_NAMES = {
-    patient_details: "View Patient Details",
-    vital_signs: "Record Vital Signs",
-    child_info: "View Child Information",
-    patient_management: "Manage Patient",
-    system_view: "System View"
+    patient_details: 'View Patient Details',
+    vital_signs: 'Record Vital Signs',
+    child_info: 'View Child Information',
+    patient_management: 'Manage Patient',
+    system_view: 'System View',
 }
 
 // Scan mode enum
 const SCAN_MODES = {
-    CAMERA: "camera",
-    UPLOAD: "upload"
+    CAMERA: 'camera',
+    UPLOAD: 'upload',
 }
 
-const QrScannerBase = ({
-    roleTitle = "User",
-    roleColor = "primary",
-    customBackPath = null
-}) => {
+const QrScannerBase = ({ roleTitle = 'User', roleColor = 'primary', customBackPath = null }) => {
     const navigate = useNavigate()
     const { user, isAuthenticated } = useAuth()
     const { processQrData, clearScanResult, getRoleAction, getNavigationPath } = useQrScanner()
@@ -101,12 +109,12 @@ const QrScannerBase = ({
 
     // Get role display name
     const getRoleDisplayName = (role) => {
-        return ROLE_NAMES[role] || role || "User"
+        return ROLE_NAMES[role] || role || 'User'
     }
 
     // Get action display name
     const getActionDisplayName = (action) => {
-        return ACTION_NAMES[action] || "View"
+        return ACTION_NAMES[action] || 'View'
     }
 
     // Handle role-aware back navigation
@@ -115,7 +123,7 @@ const QrScannerBase = ({
             navigate(customBackPath)
             return
         }
-        const dashboardPath = DASHBOARD_ROUTES[user?.role] || "/"
+        const dashboardPath = DASHBOARD_ROUTES[user?.role] || '/'
         navigate(dashboardPath)
     }
 
@@ -124,13 +132,13 @@ const QrScannerBase = ({
         // Check if it's a URL with token parameter
         try {
             const url = new URL(data)
-            const token = url.searchParams.get("token")
+            const token = url.searchParams.get('token')
             if (token) {
                 // Check if it's a prescription URL - should redirect to prescription view
-                if (url.pathname.includes("/prescription/view")) {
-                    return { type: "prescription", value: token, fullUrl: data }
+                if (url.pathname.includes('/prescription/view')) {
+                    return { type: 'prescription', value: token, fullUrl: data }
                 }
-                return { type: "token", value: token }
+                return { type: 'token', value: token }
             }
         } catch {
             // Not a URL, continue checking
@@ -139,21 +147,21 @@ const QrScannerBase = ({
         // Check if it's JSON with token field
         try {
             const jsonData = JSON.parse(data)
-            if (jsonData.token) return { type: "token", value: jsonData.token }
+            if (jsonData.token) return { type: 'token', value: jsonData.token }
             if (jsonData.access_url) {
                 const url = new URL(jsonData.access_url)
-                const token = url.searchParams.get("token")
+                const token = url.searchParams.get('token')
                 if (token) {
                     // Check if it's a prescription URL
-                    if (url.pathname.includes("/prescription/view")) {
-                        return { type: "prescription", value: token, fullUrl: jsonData.access_url }
+                    if (url.pathname.includes('/prescription/view')) {
+                        return { type: 'prescription', value: token, fullUrl: jsonData.access_url }
                     }
-                    return { type: "token", value: token }
+                    return { type: 'token', value: token }
                 }
             }
             // Legacy direct patient data
             if (jsonData.patientId || jsonData.patient_id) {
-                return { type: "legacy", value: jsonData }
+                return { type: 'legacy', value: jsonData }
             }
         } catch {
             // Not valid JSON
@@ -161,11 +169,11 @@ const QrScannerBase = ({
 
         // Check if it looks like a token string (base64url format)
         if (/^[A-Za-z0-9_-]{30,}$/.test(data)) {
-            return { type: "token", value: data }
+            return { type: 'token', value: data }
         }
 
         // Default: treat as legacy data
-        return { type: "legacy", value: data }
+        return { type: 'legacy', value: data }
     }
 
     // Validate token with backend API
@@ -177,7 +185,10 @@ const QrScannerBase = ({
             const patientData = response.patient_data || {}
             setPatientInfo({
                 id: patientData.patient_id || patientData.id,
-                name: `${patientData.firstname || ""} ${patientData.middlename || ""} ${patientData.lastname || ""}`.trim() || "Unknown Patient",
+                name:
+                    `${patientData.firstname || ''} ${patientData.middlename || ''} ${
+                        patientData.lastname || ''
+                    }`.trim() || 'Unknown Patient',
                 dateOfBirth: patientData.date_of_birth || patientData.dateOfBirth,
                 sex: patientData.sex,
                 bloodType: patientData.bloodtype,
@@ -186,7 +197,7 @@ const QrScannerBase = ({
                 vaccinations: patientData.vaccinations || [],
                 appointments: patientData.appointments || [],
                 vitals: patientData.vitals || [],
-                facilityId: patientData.facility_id || user?.facility_id
+                facilityId: patientData.facility_id || user?.facility_id,
             })
 
             // Set QR metadata
@@ -198,7 +209,7 @@ const QrScannerBase = ({
                     ? response.qr_metadata.max_uses - (response.qr_metadata.use_count || 0)
                     : null,
                 shareType: response.qr_metadata?.share_type,
-                generatedBy: response.qr_metadata?.generated_by_name
+                generatedBy: response.qr_metadata?.generated_by_name,
             })
 
             return true
@@ -222,22 +233,24 @@ const QrScannerBase = ({
             const extracted = extractToken(decodedText)
 
             // Handle prescription QR codes - redirect to dedicated prescription view page
-            if (extracted.type === "prescription") {
-                console.log("Prescription QR detected, redirecting to prescription view...")
+            if (extracted.type === 'prescription') {
+                console.log('Prescription QR detected, redirecting to prescription view...')
                 navigate(`/prescription/view?token=${extracted.value}`)
                 return
             }
 
-            if (extracted.type === "token") {
+            if (extracted.type === 'token') {
                 // First, check QR code type to determine handling
                 try {
                     const qrTypeInfo = await checkQRCodeType(extracted.value)
 
                     // Handle parent access grant QR codes
-                    if (qrTypeInfo.share_type === "parent_access_grant") {
+                    if (qrTypeInfo.share_type === 'parent_access_grant') {
                         // Check if user is a parent
                         if (!user || !['parent', 'keepsaker', 'guardian'].includes(user.role)) {
-                            setError("Only parents can claim parent access. Please log in with a parent account.")
+                            setError(
+                                'Only parents can claim parent access. Please log in with a parent account.'
+                            )
                             setLoading(false)
                             return
                         }
@@ -251,7 +264,7 @@ const QrScannerBase = ({
                             setParentAccessLoading(false)
                             return
                         } catch (grantErr) {
-                            setError(grantErr.message || "Failed to grant parent access")
+                            setError(grantErr.message || 'Failed to grant parent access')
                             setLoading(false)
                             setParentAccessLoading(false)
                             setScanSuccess(false)
@@ -264,7 +277,11 @@ const QrScannerBase = ({
                     setLoading(false)
                 } catch (err) {
                     // Check if PIN is required (using explicit flag or message)
-                    if (err.requiresPin || err.message?.includes("PIN required") || err.message?.includes("pin required")) {
+                    if (
+                        err.requiresPin ||
+                        err.message?.includes('PIN required') ||
+                        err.message?.includes('pin required')
+                    ) {
                         setPendingToken(extracted.value)
                         setShowPinModal(true)
                         setLoading(false)
@@ -278,89 +295,97 @@ const QrScannerBase = ({
                 setLoading(false)
             }
         } catch (err) {
-            console.error("Error handling scan:", err)
-            setError(err.message || "Failed to process scanned QR code")
+            console.error('Error handling scan:', err)
+            setError(err.message || 'Failed to process scanned QR code')
             setLoading(false)
             setScanSuccess(false)
         }
     }
 
     // Handle successful QR code scan from camera
-    const handleScanSuccess = useCallback(async (decodedText, decodedResult) => {
-        await processScannedData(decodedText)
-    }, [processQrData, navigate])
+    const handleScanSuccess = useCallback(
+        async (decodedText, decodedResult) => {
+            await processScannedData(decodedText)
+        },
+        [processQrData, navigate]
+    )
 
     // Handle QR code upload and decode
-    const handleUploadDecode = useCallback(async (file) => {
-        if (!file) return
+    const handleUploadDecode = useCallback(
+        async (file) => {
+            if (!file) return
 
-        // Validate file type
-        const validTypes = ["image/png", "image/jpeg", "image/jpg", "image/gif", "image/webp"]
-        if (!validTypes.includes(file.type)) {
-            setError("Invalid file type. Please upload PNG, JPG, GIF, or WebP images.")
-            return
-        }
+            // Validate file type
+            const validTypes = ['image/png', 'image/jpeg', 'image/jpg', 'image/gif', 'image/webp']
+            if (!validTypes.includes(file.type)) {
+                setError('Invalid file type. Please upload PNG, JPG, GIF, or WebP images.')
+                return
+            }
 
-        // Validate file size (max 5MB)
-        if (file.size > 5 * 1024 * 1024) {
-            setError("File too large. Maximum size is 5MB.")
-            return
-        }
+            // Validate file size (max 5MB)
+            if (file.size > 5 * 1024 * 1024) {
+                setError('File too large. Maximum size is 5MB.')
+                return
+            }
 
-        setProcessingUpload(true)
-        setError(null)
+            setProcessingUpload(true)
+            setError(null)
 
-        try {
-            // Create image from file
-            const imageUrl = URL.createObjectURL(file)
-            setUploadPreview(imageUrl)
-            setUploadedImage(file)
+            try {
+                // Create image from file
+                const imageUrl = URL.createObjectURL(file)
+                setUploadPreview(imageUrl)
+                setUploadedImage(file)
 
-            const img = new Image()
-            img.onload = async () => {
-                try {
-                    // Create canvas and draw image
-                    const canvas = canvasRef.current || document.createElement("canvas")
-                    canvas.width = img.width
-                    canvas.height = img.height
-                    const ctx = canvas.getContext("2d", { willReadFrequently: true })
-                    ctx.drawImage(img, 0, 0)
+                const img = new Image()
+                img.onload = async () => {
+                    try {
+                        // Create canvas and draw image
+                        const canvas = canvasRef.current || document.createElement('canvas')
+                        canvas.width = img.width
+                        canvas.height = img.height
+                        const ctx = canvas.getContext('2d', { willReadFrequently: true })
+                        ctx.drawImage(img, 0, 0)
 
-                    // Get image data for jsQR
-                    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height)
+                        // Get image data for jsQR
+                        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height)
 
-                    // Try to decode QR code
-                    const code = jsQR(imageData.data, imageData.width, imageData.height, {
-                        inversionAttempts: "attemptBoth"
-                    })
+                        // Try to decode QR code
+                        const code = jsQR(imageData.data, imageData.width, imageData.height, {
+                            inversionAttempts: 'attemptBoth',
+                        })
 
-                    if (code) {
-                        console.log("QR Code found in uploaded image:", code.data)
+                        if (code) {
+                            console.log('QR Code found in uploaded image:', code.data)
+                            setProcessingUpload(false)
+                            await processScannedData(code.data)
+                        } else {
+                            setProcessingUpload(false)
+                            setError(
+                                'No QR code found in the uploaded image. Please try another image or use camera scan.'
+                            )
+                        }
+                    } catch (err) {
+                        console.error('Error decoding QR:', err)
                         setProcessingUpload(false)
-                        await processScannedData(code.data)
-                    } else {
-                        setProcessingUpload(false)
-                        setError("No QR code found in the uploaded image. Please try another image or use camera scan.")
+                        setError('Failed to decode QR code from image.')
                     }
-                } catch (err) {
-                    console.error("Error decoding QR:", err)
-                    setProcessingUpload(false)
-                    setError("Failed to decode QR code from image.")
                 }
-            }
 
-            img.onerror = () => {
+                img.onerror = () => {
+                    setProcessingUpload(false)
+                    setError('Failed to load image. Please try another file.')
+                }
+
+                img.src = imageUrl
+            } catch (err) {
+                console.error('Error processing upload:', err)
                 setProcessingUpload(false)
-                setError("Failed to load image. Please try another file.")
+                setError('Failed to process uploaded image.')
             }
-
-            img.src = imageUrl
-        } catch (err) {
-            console.error("Error processing upload:", err)
-            setProcessingUpload(false)
-            setError("Failed to process uploaded image.")
-        }
-    }, [processScannedData])
+        },
+        [processScannedData]
+    )
 
     // Handle file input change
     const handleFileChange = (e) => {
@@ -400,7 +425,7 @@ const QrScannerBase = ({
         setUploadPreview(null)
         setError(null)
         if (fileInputRef.current) {
-            fileInputRef.current.value = ""
+            fileInputRef.current.value = ''
         }
     }
 
@@ -417,7 +442,7 @@ const QrScannerBase = ({
             setPendingToken(null)
             setPinLoading(false)
         } catch (err) {
-            setPinError(err.message || "Invalid PIN")
+            setPinError(err.message || 'Invalid PIN')
             setPinLoading(false)
         }
     }
@@ -440,20 +465,20 @@ const QrScannerBase = ({
             patientId = qrData.patientId || qrData.patient_id
         } else if (qrData.id) {
             patientId = qrData.id
-        } else if (qrData.type === "text") {
+        } else if (qrData.type === 'text') {
             patientId = qrData.value
         }
 
         if (patientId) {
             // Simulate API delay
-            await new Promise(resolve => setTimeout(resolve, 500))
+            await new Promise((resolve) => setTimeout(resolve, 500))
 
             // Mock patient data for legacy QR codes
             setPatientInfo({
                 id: patientId,
-                name: qrData.patientName || "Unknown Patient",
-                dateOfBirth: qrData.dateOfBirth || "N/A",
-                facilityId: qrData.facilityId || user?.facility_id
+                name: qrData.patientName || 'Unknown Patient',
+                dateOfBirth: qrData.dateOfBirth || 'N/A',
+                facilityId: qrData.facilityId || user?.facility_id,
             })
 
             // No metadata for legacy codes
@@ -468,18 +493,18 @@ const QrScannerBase = ({
             let path = null
 
             switch (role) {
-                case "pediapro":
-                case "doctor":
+                case 'pediapro':
+                case 'doctor':
                     path = `/pediapro/patient_records/${patientInfo.id}`
                     break
-                case "vital_custodian":
+                case 'vital_custodian':
                     path = `/vital_custodian/patient/${patientInfo.id}/vitals`
                     break
-                case "keepsaker":
-                case "parent":
+                case 'keepsaker':
+                case 'parent':
                     path = `/parent/child/${patientInfo.id}`
                     break
-                case "facility_admin":
+                case 'facility_admin':
                     path = `/facility_admin/patients/${patientInfo.id}`
                     break
                 default:
@@ -498,7 +523,7 @@ const QrScannerBase = ({
             if (path) {
                 navigate(path)
             } else {
-                setError("Unable to determine navigation path for this QR code")
+                setError('Unable to determine navigation path for this QR code')
             }
         }
     }
@@ -518,13 +543,13 @@ const QrScannerBase = ({
         setParentAccessLoading(false)
         clearScanResult()
         if (fileInputRef.current) {
-            fileInputRef.current.value = ""
+            fileInputRef.current.value = ''
         }
     }
 
     // Handle navigation to parent dashboard after access grant
     const handleGoToParentDashboard = () => {
-        navigate("/parent")
+        navigate('/parent')
     }
 
     // Handle viewing child details after parent access grant
@@ -532,33 +557,33 @@ const QrScannerBase = ({
         if (parentAccessGrant?.patient_id) {
             navigate(`/parent/child/${parentAccessGrant.patient_id}`)
         } else {
-            navigate("/parent")
+            navigate('/parent')
         }
     }
 
     // Format scope for display
     const formatScope = (scope) => {
         const scopeLabels = {
-            view_only: "Basic Info",
-            allergies: "Allergies",
-            prescriptions: "Prescriptions",
-            vaccinations: "Vaccinations",
-            appointments: "Appointments",
-            vitals: "Vital Signs",
-            full_access: "Full Access"
+            view_only: 'Basic Info',
+            allergies: 'Allergies',
+            prescriptions: 'Prescriptions',
+            vaccinations: 'Vaccinations',
+            appointments: 'Appointments',
+            vitals: 'Vital Signs',
+            full_access: 'Full Access',
         }
-        if (!Array.isArray(scope)) return "View Only"
-        return scope.map(s => scopeLabels[s] || s).join(", ")
+        if (!Array.isArray(scope)) return 'View Only'
+        return scope.map((s) => scopeLabels[s] || s).join(', ')
     }
 
     // Format date for display
     const formatDate = (dateString) => {
-        if (!dateString) return "N/A"
+        if (!dateString) return 'N/A'
         try {
-            return new Date(dateString).toLocaleDateString("en-US", {
-                year: "numeric",
-                month: "long",
-                day: "numeric"
+            return new Date(dateString).toLocaleDateString('en-US', {
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric',
             })
         } catch {
             return dateString
@@ -567,14 +592,14 @@ const QrScannerBase = ({
 
     // Format datetime for display
     const formatDateTime = (dateString) => {
-        if (!dateString) return "N/A"
+        if (!dateString) return 'N/A'
         try {
-            return new Date(dateString).toLocaleString("en-US", {
-                year: "numeric",
-                month: "short",
-                day: "numeric",
-                hour: "2-digit",
-                minute: "2-digit"
+            return new Date(dateString).toLocaleString('en-US', {
+                year: 'numeric',
+                month: 'short',
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit',
             })
         } catch {
             return dateString
@@ -584,7 +609,7 @@ const QrScannerBase = ({
     // Auto-redirect if not authenticated
     useEffect(() => {
         if (!isAuthenticated) {
-            navigate("/login")
+            navigate('/login')
         }
     }, [isAuthenticated, navigate])
 
@@ -597,20 +622,23 @@ const QrScannerBase = ({
             <div className="absolute top-8 left-8 z-10">
                 <div
                     onClick={handleGoBack}
-                    className="flex items-center gap-2 text-gray-700 hover:text-primary transition duration-300 ease-in-out cursor-pointer bg-white px-4 py-2 rounded-lg shadow-sm hover:shadow-md">
+                    className="flex items-center gap-2 text-gray-700 hover:text-primary transition duration-300 ease-in-out cursor-pointer bg-white px-4 py-2 rounded-lg shadow-sm hover:shadow-md"
+                >
                     <IoMdArrowBack className="text-2xl" />
                     <span className="text-sm font-medium">Go back</span>
                 </div>
             </div>
 
-            <div className="container mx-auto px-4 py-20">
+            <div className="container mx-auto px-4">
                 <div className="max-w-4xl mx-auto">
                     {/* Header */}
                     <div className="text-center mb-8">
-                        <h1 className="text-4xl font-bold text-gray-800 mb-2">QR Code Scanner</h1>
                         {user && (
                             <p className="text-gray-600">
-                                Scanning as <span className={`font-semibold text-${roleColor}`}>{roleTitle || getRoleDisplayName(user.role)}</span>
+                                Scanning as{' '}
+                                <span className={`font-semibold text-${roleColor}`}>
+                                    {roleTitle || getRoleDisplayName(user.role)}
+                                </span>
                             </p>
                         )}
                     </div>
@@ -620,36 +648,48 @@ const QrScannerBase = ({
                         // Parent Access Grant Success UI
                         <div className="space-y-6">
                             {/* Success Banner */}
-                            <div className="flex items-center gap-3 p-4 bg-emerald-50 border border-emerald-200 rounded-lg">
+                            <div className="flex items-center gap-3 p-4 bg-secondary/20 border border-secondary rounded-lg">
                                 <div className="p-2 bg-emerald-100 rounded-full">
                                     <FiUsers className="text-3xl text-emerald-600" />
                                 </div>
                                 <div>
-                                    <h3 className="font-semibold text-emerald-900">Access Granted Successfully!</h3>
+                                    <h3 className="font-semibold text-emerald-900">
+                                        Access Granted Successfully!
+                                    </h3>
                                     <p className="text-sm text-emerald-700">
-                                        You now have access to {parentAccessGrant.patient_name || "your child"}'s medical records
+                                        You now have access to{' '}
+                                        {parentAccessGrant.patient_name || 'your child'}'s medical
+                                        records
                                     </p>
                                 </div>
                             </div>
 
                             {/* Patient Info Card */}
                             <Card className="p-6 shadow-lg">
-                                <h3 className="text-xl font-semibold text-gray-800 mb-4">Child Information</h3>
+                                <h3 className="text-xl font-semibold text-gray-800 mb-4">
+                                    Child Information
+                                </h3>
                                 <div className="space-y-3">
                                     <div className="flex items-center gap-3">
-                                        <BiUser className="text-2xl text-emerald-500" />
+                                        <BiUser className="text-2xl text-primary" />
                                         <div>
                                             <p className="text-xs text-gray-500">Child's Name</p>
-                                            <p className="font-medium text-gray-800">{parentAccessGrant.patient_name}</p>
+                                            <p className="font-medium text-gray-800">
+                                                {parentAccessGrant.patient_name}
+                                            </p>
                                         </div>
                                     </div>
                                     {parentAccessGrant.patient_data?.date_of_birth && (
                                         <div className="flex items-center gap-3">
-                                            <BiCalendar className="text-2xl text-emerald-500" />
+                                            <BiCalendar className="text-2xl text-primary" />
                                             <div>
-                                                <p className="text-xs text-gray-500">Date of Birth</p>
+                                                <p className="text-xs text-gray-500">
+                                                    Date of Birth
+                                                </p>
                                                 <p className="font-medium text-gray-800">
-                                                    {formatDate(parentAccessGrant.patient_data.date_of_birth)}
+                                                    {formatDate(
+                                                        parentAccessGrant.patient_data.date_of_birth
+                                                    )}
                                                 </p>
                                             </div>
                                         </div>
@@ -659,7 +699,9 @@ const QrScannerBase = ({
 
                             {/* What You Can Do */}
                             <Card className="p-4 bg-blue-50 border border-blue-200">
-                                <h4 className="font-semibold text-blue-900 mb-2">What you can do now:</h4>
+                                <h4 className="font-semibold text-blue-900 mb-2">
+                                    What you can do now:
+                                </h4>
                                 <ul className="text-sm text-blue-700 space-y-1 list-disc list-inside">
                                     <li>View your child's medical records</li>
                                     <li>See upcoming appointments</li>
@@ -672,7 +714,7 @@ const QrScannerBase = ({
                             <div className="flex gap-4">
                                 <Button
                                     onClick={handleViewChildDetails}
-                                    className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-medium py-3 rounded-lg transition duration-200"
+                                    className="flex-1 text-white font-medium py-3 rounded-lg transition duration-200"
                                 >
                                     View Child's Records
                                 </Button>
@@ -698,8 +740,8 @@ const QrScannerBase = ({
                                         }}
                                         className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-all ${
                                             scanMode === SCAN_MODES.CAMERA
-                                                ? "bg-white text-primary shadow-sm"
-                                                : "text-gray-600 hover:text-gray-800"
+                                                ? 'bg-white text-primary shadow-sm'
+                                                : 'text-gray-600 hover:text-gray-800'
                                         }`}
                                     >
                                         <FiCamera className="text-lg" />
@@ -712,8 +754,8 @@ const QrScannerBase = ({
                                         }}
                                         className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-all ${
                                             scanMode === SCAN_MODES.UPLOAD
-                                                ? "bg-white text-primary shadow-sm"
-                                                : "text-gray-600 hover:text-gray-800"
+                                                ? 'bg-white text-primary shadow-sm'
+                                                : 'text-gray-600 hover:text-gray-800'
                                         }`}
                                     >
                                         <FiUpload className="text-lg" />
@@ -745,9 +787,10 @@ const QrScannerBase = ({
                                                 relative flex flex-col items-center justify-center
                                                 w-full h-[400px] border-2 border-dashed rounded-2xl
                                                 cursor-pointer transition-all duration-300
-                                                ${isDragging
-                                                    ? "border-primary bg-primary/5 scale-[1.02]"
-                                                    : "border-gray-300 hover:border-primary hover:bg-gray-50"
+                                                ${
+                                                    isDragging
+                                                        ? 'border-primary bg-primary/5 scale-[1.02]'
+                                                        : 'border-gray-300 hover:border-primary hover:bg-gray-50'
                                                 }
                                             `}
                                         >
@@ -759,14 +802,24 @@ const QrScannerBase = ({
                                                 className="hidden"
                                             />
 
-                                            <div className={`p-4 rounded-full mb-4 transition-all ${
-                                                isDragging ? "bg-primary/10" : "bg-gray-100"
-                                            }`}>
-                                                <FiImage className={`text-4xl ${isDragging ? "text-primary" : "text-gray-400"}`} />
+                                            <div
+                                                className={`p-4 rounded-full mb-4 transition-all ${
+                                                    isDragging ? 'bg-primary/10' : 'bg-gray-100'
+                                                }`}
+                                            >
+                                                <FiImage
+                                                    className={`text-4xl ${
+                                                        isDragging
+                                                            ? 'text-primary'
+                                                            : 'text-gray-400'
+                                                    }`}
+                                                />
                                             </div>
 
                                             <p className="text-lg font-medium text-gray-700 mb-2">
-                                                {isDragging ? "Drop image here" : "Upload QR Code Image"}
+                                                {isDragging
+                                                    ? 'Drop image here'
+                                                    : 'Upload QR Code Image'}
                                             </p>
                                             <p className="text-sm text-gray-500 mb-4">
                                                 Drag and drop or click to browse
@@ -790,7 +843,9 @@ const QrScannerBase = ({
                                                     <div className="absolute inset-0 flex items-center justify-center bg-black/50">
                                                         <div className="flex flex-col items-center gap-3 text-white">
                                                             <AiOutlineLoading3Quarters className="text-4xl animate-spin" />
-                                                            <span className="text-sm">Scanning QR code...</span>
+                                                            <span className="text-sm">
+                                                                Scanning QR code...
+                                                            </span>
                                                         </div>
                                                     </div>
                                                 )}
@@ -831,7 +886,8 @@ const QrScannerBase = ({
 
                                     {/* Instructions */}
                                     <p className="text-sm text-gray-500 text-center">
-                                        Upload a clear image of a QR code - Ensure the QR code is fully visible
+                                        Upload a clear image of a QR code - Ensure the QR code is
+                                        fully visible
                                     </p>
                                 </div>
                             )}
@@ -842,8 +898,12 @@ const QrScannerBase = ({
                             <div className="flex items-center gap-3 p-4 bg-green-50 border border-green-200 rounded-lg">
                                 <FiCheckCircle className="text-3xl text-green-600 flex-shrink-0" />
                                 <div>
-                                    <h3 className="font-semibold text-green-900">QR Code Scanned Successfully!</h3>
-                                    <p className="text-sm text-green-700">Patient information retrieved</p>
+                                    <h3 className="font-semibold text-green-900">
+                                        QR Code Scanned Successfully!
+                                    </h3>
+                                    <p className="text-sm text-green-700">
+                                        Patient information retrieved
+                                    </p>
                                 </div>
                             </div>
 
@@ -852,21 +912,27 @@ const QrScannerBase = ({
                                 <Card className="p-4 bg-blue-50 border border-blue-200">
                                     <div className="flex items-center gap-2 mb-3">
                                         <FiShield className="text-blue-600" />
-                                        <h4 className="font-semibold text-blue-900">Secure Access Information</h4>
+                                        <h4 className="font-semibold text-blue-900">
+                                            Secure Access Information
+                                        </h4>
                                     </div>
                                     <div className="grid grid-cols-2 gap-3 text-sm">
                                         <div className="flex items-center gap-2">
                                             <FiHash className="text-blue-500" />
                                             <div>
                                                 <p className="text-xs text-blue-600">Access Type</p>
-                                                <p className="font-medium text-blue-900 capitalize">{qrMetadata.accessType?.replace("_", " ")}</p>
+                                                <p className="font-medium text-blue-900 capitalize">
+                                                    {qrMetadata.accessType?.replace('_', ' ')}
+                                                </p>
                                             </div>
                                         </div>
                                         <div className="flex items-center gap-2">
                                             <FiLock className="text-blue-500" />
                                             <div>
                                                 <p className="text-xs text-blue-600">Data Scope</p>
-                                                <p className="font-medium text-blue-900">{formatScope(qrMetadata.scope)}</p>
+                                                <p className="font-medium text-blue-900">
+                                                    {formatScope(qrMetadata.scope)}
+                                                </p>
                                             </div>
                                         </div>
                                         {qrMetadata.expiresAt && (
@@ -874,7 +940,9 @@ const QrScannerBase = ({
                                                 <FiClock className="text-blue-500" />
                                                 <div>
                                                     <p className="text-xs text-blue-600">Expires</p>
-                                                    <p className="font-medium text-blue-900">{formatDateTime(qrMetadata.expiresAt)}</p>
+                                                    <p className="font-medium text-blue-900">
+                                                        {formatDateTime(qrMetadata.expiresAt)}
+                                                    </p>
                                                 </div>
                                             </div>
                                         )}
@@ -882,8 +950,12 @@ const QrScannerBase = ({
                                             <div className="flex items-center gap-2">
                                                 <FiHash className="text-blue-500" />
                                                 <div>
-                                                    <p className="text-xs text-blue-600">Uses Remaining</p>
-                                                    <p className="font-medium text-blue-900">{qrMetadata.usesRemaining}</p>
+                                                    <p className="text-xs text-blue-600">
+                                                        Uses Remaining
+                                                    </p>
+                                                    <p className="font-medium text-blue-900">
+                                                        {qrMetadata.usesRemaining}
+                                                    </p>
                                                 </div>
                                             </div>
                                         )}
@@ -896,32 +968,46 @@ const QrScannerBase = ({
                                 <Card className="p-8 flex items-center justify-center">
                                     <div className="flex flex-col items-center gap-3">
                                         <AiOutlineLoading3Quarters className="text-4xl text-primary animate-spin" />
-                                        <span className="text-gray-600">Validating QR code and loading patient information...</span>
+                                        <span className="text-gray-600">
+                                            Validating QR code and loading patient information...
+                                        </span>
                                     </div>
                                 </Card>
                             ) : patientInfo ? (
                                 <Card className="p-6 shadow-lg">
-                                    <h3 className="text-xl font-semibold text-gray-800 mb-4">Patient Information</h3>
+                                    <h3 className="text-xl font-semibold text-gray-800 mb-4">
+                                        Patient Information
+                                    </h3>
                                     <div className="space-y-3">
                                         <div className="flex items-center gap-3">
                                             <BiIdCard className="text-2xl text-gray-500" />
                                             <div>
                                                 <p className="text-xs text-gray-500">Patient ID</p>
-                                                <p className="font-medium text-gray-800 font-mono text-sm">{patientInfo.id}</p>
+                                                <p className="font-medium text-gray-800 font-mono text-sm">
+                                                    {patientInfo.id}
+                                                </p>
                                             </div>
                                         </div>
                                         <div className="flex items-center gap-3">
                                             <BiUser className="text-2xl text-gray-500" />
                                             <div>
-                                                <p className="text-xs text-gray-500">Patient Name</p>
-                                                <p className="font-medium text-gray-800">{patientInfo.name}</p>
+                                                <p className="text-xs text-gray-500">
+                                                    Patient Name
+                                                </p>
+                                                <p className="font-medium text-gray-800">
+                                                    {patientInfo.name}
+                                                </p>
                                             </div>
                                         </div>
                                         <div className="flex items-center gap-3">
                                             <BiCalendar className="text-2xl text-gray-500" />
                                             <div>
-                                                <p className="text-xs text-gray-500">Date of Birth</p>
-                                                <p className="font-medium text-gray-800">{formatDate(patientInfo.dateOfBirth)}</p>
+                                                <p className="text-xs text-gray-500">
+                                                    Date of Birth
+                                                </p>
+                                                <p className="font-medium text-gray-800">
+                                                    {formatDate(patientInfo.dateOfBirth)}
+                                                </p>
                                             </div>
                                         </div>
                                         {patientInfo.sex && (
@@ -929,7 +1015,9 @@ const QrScannerBase = ({
                                                 <BiUser className="text-2xl text-gray-500" />
                                                 <div>
                                                     <p className="text-xs text-gray-500">Sex</p>
-                                                    <p className="font-medium text-gray-800 capitalize">{patientInfo.sex}</p>
+                                                    <p className="font-medium text-gray-800 capitalize">
+                                                        {patientInfo.sex}
+                                                    </p>
                                                 </div>
                                             </div>
                                         )}
@@ -937,8 +1025,12 @@ const QrScannerBase = ({
                                             <div className="flex items-center gap-3">
                                                 <MdMedicalServices className="text-2xl text-gray-500" />
                                                 <div>
-                                                    <p className="text-xs text-gray-500">Blood Type</p>
-                                                    <p className="font-medium text-gray-800">{patientInfo.bloodType}</p>
+                                                    <p className="text-xs text-gray-500">
+                                                        Blood Type
+                                                    </p>
+                                                    <p className="font-medium text-gray-800">
+                                                        {patientInfo.bloodType}
+                                                    </p>
                                                 </div>
                                             </div>
                                         )}
@@ -948,14 +1040,24 @@ const QrScannerBase = ({
                                             <div className="mt-4 pt-4 border-t border-gray-200">
                                                 <div className="flex items-center gap-2 mb-2">
                                                     <FiAlertCircle className="text-red-500" />
-                                                    <p className="text-sm font-semibold text-red-700">Allergies ({patientInfo.allergies.length})</p>
+                                                    <p className="text-sm font-semibold text-red-700">
+                                                        Allergies ({patientInfo.allergies.length})
+                                                    </p>
                                                 </div>
                                                 <div className="space-y-1">
-                                                    {patientInfo.allergies.slice(0, 3).map((allergy, idx) => (
-                                                        <p key={idx} className="text-sm text-gray-700 pl-6">
-                                                            • {allergy.allergen} - <span className="capitalize">{allergy.severity}</span>
-                                                        </p>
-                                                    ))}
+                                                    {patientInfo.allergies
+                                                        .slice(0, 3)
+                                                        .map((allergy, idx) => (
+                                                            <p
+                                                                key={idx}
+                                                                className="text-sm text-gray-700 pl-6"
+                                                            >
+                                                                • {allergy.allergen} -{' '}
+                                                                <span className="capitalize">
+                                                                    {allergy.severity}
+                                                                </span>
+                                                            </p>
+                                                        ))}
                                                     {patientInfo.allergies.length > 3 && (
                                                         <p className="text-xs text-gray-500 pl-6">
                                                             +{patientInfo.allergies.length - 3} more
@@ -969,17 +1071,27 @@ const QrScannerBase = ({
                                             <div className="mt-4 pt-4 border-t border-gray-200">
                                                 <div className="flex items-center gap-2 mb-2">
                                                     <MdMedicalServices className="text-blue-500" />
-                                                    <p className="text-sm font-semibold text-blue-700">Recent Prescriptions ({patientInfo.prescriptions.length})</p>
+                                                    <p className="text-sm font-semibold text-blue-700">
+                                                        Recent Prescriptions (
+                                                        {patientInfo.prescriptions.length})
+                                                    </p>
                                                 </div>
                                                 <div className="space-y-1">
-                                                    {patientInfo.prescriptions.slice(0, 2).map((rx, idx) => (
-                                                        <p key={idx} className="text-sm text-gray-700 pl-6">
-                                                            • {rx.findings || "Prescription"} - {formatDate(rx.prescription_date)}
-                                                        </p>
-                                                    ))}
+                                                    {patientInfo.prescriptions
+                                                        .slice(0, 2)
+                                                        .map((rx, idx) => (
+                                                            <p
+                                                                key={idx}
+                                                                className="text-sm text-gray-700 pl-6"
+                                                            >
+                                                                • {rx.findings || 'Prescription'} -{' '}
+                                                                {formatDate(rx.prescription_date)}
+                                                            </p>
+                                                        ))}
                                                     {patientInfo.prescriptions.length > 2 && (
                                                         <p className="text-xs text-gray-500 pl-6">
-                                                            +{patientInfo.prescriptions.length - 2} more
+                                                            +{patientInfo.prescriptions.length - 2}{' '}
+                                                            more
                                                         </p>
                                                     )}
                                                 </div>
@@ -990,17 +1102,27 @@ const QrScannerBase = ({
                                             <div className="mt-4 pt-4 border-t border-gray-200">
                                                 <div className="flex items-center gap-2 mb-2">
                                                     <MdVaccines className="text-green-500" />
-                                                    <p className="text-sm font-semibold text-green-700">Vaccinations ({patientInfo.vaccinations.length})</p>
+                                                    <p className="text-sm font-semibold text-green-700">
+                                                        Vaccinations (
+                                                        {patientInfo.vaccinations.length})
+                                                    </p>
                                                 </div>
                                                 <div className="space-y-1">
-                                                    {patientInfo.vaccinations.slice(0, 3).map((vax, idx) => (
-                                                        <p key={idx} className="text-sm text-gray-700 pl-6">
-                                                            • {vax.vaccine_name} - Dose {vax.dose_number}
-                                                        </p>
-                                                    ))}
+                                                    {patientInfo.vaccinations
+                                                        .slice(0, 3)
+                                                        .map((vax, idx) => (
+                                                            <p
+                                                                key={idx}
+                                                                className="text-sm text-gray-700 pl-6"
+                                                            >
+                                                                • {vax.vaccine_name} - Dose{' '}
+                                                                {vax.dose_number}
+                                                            </p>
+                                                        ))}
                                                     {patientInfo.vaccinations.length > 3 && (
                                                         <p className="text-xs text-gray-500 pl-6">
-                                                            +{patientInfo.vaccinations.length - 3} more
+                                                            +{patientInfo.vaccinations.length - 3}{' '}
+                                                            more
                                                         </p>
                                                     )}
                                                 </div>
@@ -1035,7 +1157,6 @@ const QrScannerBase = ({
                                     Scan Another
                                 </Button>
                             </div>
-
                         </div>
                     )}
                 </div>

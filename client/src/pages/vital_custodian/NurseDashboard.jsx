@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react'
+import React, { useState, useEffect, useMemo, Suspense, lazy } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
     Calendar,
@@ -7,19 +7,27 @@ import {
     AlertCircle,
     CheckCircle,
     Clock,
-    Thermometer,
     Heart,
-    Pill,
     Zap,
     TrendingUp,
-    Plus,
+    UserCheck,
+    ClipboardCheck,
+    Bell,
+    ScanQrCodeIcon,
+    ClockPlusIcon,
 } from 'lucide-react'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/Button'
 import { Skeleton } from '@/components/ui/skeleton'
+import { Dialog } from '@/components/ui/dialog'
 import { getAppointmentsForMyFacility } from '@/api/doctors/appointment'
 import { getPatients } from '@/api/doctors/patient'
+
+// Lazy load modal components for better performance
+const ScheduleAppointmentModal = lazy(() =>
+    import('@/components/doctors/appointments/ScheduleAppointmentModal')
+)
 
 const NurseDashboard = () => {
     const navigate = useNavigate()
@@ -28,8 +36,32 @@ const NurseDashboard = () => {
     const [loadingAppointments, setLoadingAppointments] = useState(true)
     const [loadingPatients, setLoadingPatients] = useState(true)
 
+    // Modal states
+    const [showScheduleAppointmentModal, setShowScheduleAppointmentModal] = useState(false)
+
     useEffect(() => {
         fetchDashboardData()
+    }, [])
+
+    // Real-time updates listener
+    useEffect(() => {
+        const handleAppointmentUpdated = () => {
+            fetchDashboardData()
+        }
+
+        const handlePatientCreated = () => {
+            fetchDashboardData()
+        }
+
+        window.addEventListener('appointment-updated', handleAppointmentUpdated)
+        window.addEventListener('appointment-created', handleAppointmentUpdated)
+        window.addEventListener('patient-created', handlePatientCreated)
+
+        return () => {
+            window.removeEventListener('appointment-updated', handleAppointmentUpdated)
+            window.removeEventListener('appointment-created', handleAppointmentUpdated)
+            window.removeEventListener('patient-created', handlePatientCreated)
+        }
     }, [])
 
     const fetchDashboardData = async () => {
@@ -75,11 +107,66 @@ const NurseDashboard = () => {
             return aptDate >= today
         })
 
+        // NURSE-SPECIFIC METRICS
+
+        // Pending check-ins (scheduled or confirmed appointments today without check-in)
+        const pendingCheckIns = todaysAppointments.filter(
+            (apt) => apt.status === 'scheduled' || apt.status === 'confirmed'
+        ).length
+
+        // Patients with critical allergies
+        const criticalAllergies = patients.filter((patient) => {
+            if (!patient.related_records?.allergies) return false
+            return patient.related_records.allergies.some(
+                (allergy) =>
+                    allergy.severity?.toLowerCase() === 'severe' ||
+                    allergy.severity?.toLowerCase() === 'critical'
+            )
+        }).length
+
+        // Measurements recorded today (from anthropometric records)
+        let measurementsToday = 0
+        patients.forEach((patient) => {
+            if (patient.related_records?.anthropometric_measurements) {
+                const todayMeasurements =
+                    patient.related_records.anthropometric_measurements.filter((m) => {
+                        if (!m.measurement_date) return false
+                        const mDate = new Date(m.measurement_date)
+                        mDate.setHours(0, 0, 0, 0)
+                        return mDate.getTime() === today.getTime()
+                    })
+                measurementsToday += todayMeasurements.length
+            }
+        })
+
+        // Patients needing measurement updates (no measurements in last 30 days)
+        const thirtyDaysAgo = new Date()
+        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
+        const patientsNeedingMeasurements = patients.filter((patient) => {
+            if (!patient.related_records?.anthropometric_measurements) return true
+            const measurements = patient.related_records.anthropometric_measurements
+            if (measurements.length === 0) return true
+
+            const latestMeasurement = measurements.reduce((latest, current) => {
+                const latestDate = new Date(latest.measurement_date || 0)
+                const currentDate = new Date(current.measurement_date || 0)
+                return currentDate > latestDate ? current : latest
+            })
+
+            const latestDate = new Date(latestMeasurement.measurement_date)
+            return latestDate < thirtyDaysAgo
+        }).length
+
         return {
             totalPatients: patients.length,
             todaysAppointments: todaysAppointments.length,
             upcomingAppointments: upcomingAppointments.length,
             completedAppointments: appointments.filter((a) => a.status === 'completed').length,
+            // Nurse-specific metrics
+            pendingCheckIns,
+            criticalAllergies,
+            measurementsToday,
+            patientsNeedingMeasurements,
         }
     }, [appointments, patients])
 
@@ -203,24 +290,6 @@ const NurseDashboard = () => {
         )
     }
 
-    const QuickActionButton = ({ icon: Icon, label, onClick, variant = 'default' }) => {
-        const variantStyles = {
-            default: 'bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200',
-            success: 'bg-green-50 hover:bg-green-100 text-green-700 border border-green-200',
-            warning: 'bg-orange-50 hover:bg-orange-100 text-orange-700 border border-orange-200',
-        }
-
-        return (
-            <button
-                onClick={onClick}
-                className={`${variantStyles[variant]} rounded-lg px-4 py-3 text-sm font-medium transition-all flex items-center gap-2 w-full justify-center`}
-            >
-                <Icon size={16} />
-                {label}
-            </button>
-        )
-    }
-
     return (
         <div className="min-h-screen bg-gray-50 p-6">
             {/* Main Grid Layout */}
@@ -256,30 +325,43 @@ const NurseDashboard = () => {
 
                 {/* Quick Actions Card - Top Right */}
                 <div className="col-span-3 row-span-2 col-start-10">
-                    <Card className="border border-gray-200 shadow-sm h-full">
-                        <CardHeader className="border-b border-gray-200">
-                            <CardTitle className="text-lg font-bold text-gray-900">
-                                Quick Access
-                            </CardTitle>
+                    <Card className="shadow-sm hover:shadow-md transition-shadow">
+                        <CardHeader className="pb-3">
+                            <CardTitle className="text-lg md:text-xl">Quick Access</CardTitle>
                         </CardHeader>
-                        <CardContent className="pt-6 space-y-3">
-                            <QuickActionButton
-                                icon={Plus}
-                                label="Record Measurement"
-                                onClick={() => navigate('/nurse/measurements')}
-                            />
-                            <QuickActionButton
-                                icon={Pill}
-                                label="View Prescriptions"
-                                onClick={() => navigate('/nurse/prescriptions')}
-                                variant="success"
-                            />
-                            <QuickActionButton
-                                icon={Thermometer}
-                                label="QR Scanner"
-                                onClick={() => navigate('/nurse/qr_scanner')}
-                                variant="warning"
-                            />
+                        <CardContent className="pt-6 w-full">
+                            <div className="grid grid-cols-1 gap-3">
+                                <Button
+                                    variant="ghost"
+                                    onClick={() => setShowScheduleAppointmentModal(true)}
+                                    className="w-full h-auto py-4 px-3 flex flex-col gap-2 rounded-lg hover:border-blue-400 hover:bg-blue-50"
+                                >
+                                    <ClockPlusIcon className="w-6 h-6 text-blue-600" />
+                                    <span className="text-xs font-medium text-gray-700">
+                                        Schedule Appointment
+                                    </span>
+                                </Button>
+                                <Button
+                                    variant="ghost"
+                                    onClick={() => navigate('/nurse/appointments')}
+                                    className="w-full h-auto py-4 px-3 flex flex-col gap-2 rounded-lg hover:border-orange-400 hover:bg-orange-50"
+                                >
+                                    <Calendar className="w-6 h-6 text-orange-600" />
+                                    <span className="text-xs font-medium text-gray-700">
+                                        View Appointments
+                                    </span>
+                                </Button>
+                                <Button
+                                    variant="ghost"
+                                    onClick={() => navigate('/nurse/qr_scanner')}
+                                    className="w-full h-auto py-4 px-3 flex flex-col gap-2 rounded-lg hover:border-green-400 hover:bg-green-50"
+                                >
+                                    <ScanQrCodeIcon className="w-6 h-6 text-green-600" />
+                                    <span className="text-xs font-medium text-gray-700">
+                                        QR Scanner
+                                    </span>
+                                </Button>
+                            </div>
                         </CardContent>
                     </Card>
                 </div>
@@ -391,23 +473,119 @@ const NurseDashboard = () => {
                     </Card>
                 </div>
 
-                {/* Empty Space for Layout - Bottom Middle */}
+                {/* Nurse Reminders & Alerts - Bottom Middle */}
                 <div className="col-span-5 row-span-2 col-start-5 row-start-5">
                     <Card className="border border-gray-200 shadow-sm h-full">
                         <CardHeader className="border-b border-gray-200">
-                            <CardTitle className="text-lg font-bold text-gray-900">
-                                Additional Information
+                            <CardTitle className="text-lg font-bold text-gray-900 flex items-center gap-2">
+                                <Bell className="text-orange-600" size={20} />
+                                Reminders & Alerts
                             </CardTitle>
                         </CardHeader>
-                        <CardContent className="pt-6">
-                            <div className="text-center text-gray-500">
-                                <Activity size={32} className="mx-auto mb-2 opacity-50" />
-                                <p>Reserved for future enhancements</p>
+                        <CardContent className="pt-6 space-y-3">
+                            {/* Pending Check-ins Alert */}
+                            {dashboardMetrics.pendingCheckIns > 0 && (
+                                <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg flex items-start gap-3">
+                                    <UserCheck className="text-blue-600 mt-0.5" size={18} />
+                                    <div className="flex-1">
+                                        <p className="text-sm font-medium text-blue-900">
+                                            {dashboardMetrics.pendingCheckIns} patient
+                                            {dashboardMetrics.pendingCheckIns > 1 ? 's' : ''}{' '}
+                                            waiting for check-in
+                                        </p>
+                                        <p className="text-xs text-blue-700 mt-1">
+                                            Review today's appointments and check in patients
+                                        </p>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Critical Allergies Alert */}
+                            {dashboardMetrics.criticalAllergies > 0 && (
+                                <div className="p-3 bg-red-50 border border-red-200 rounded-lg flex items-start gap-3">
+                                    <AlertCircle className="text-red-600 mt-0.5" size={18} />
+                                    <div className="flex-1">
+                                        <p className="text-sm font-medium text-red-900">
+                                            {dashboardMetrics.criticalAllergies} patient
+                                            {dashboardMetrics.criticalAllergies > 1 ? 's' : ''} with
+                                            critical allergies
+                                        </p>
+                                        <p className="text-xs text-red-700 mt-1">
+                                            Review before administering any medications
+                                        </p>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Measurements Needed Alert */}
+                            {dashboardMetrics.patientsNeedingMeasurements > 0 && (
+                                <div className="p-3 bg-orange-50 border border-orange-200 rounded-lg flex items-start gap-3">
+                                    <ClipboardCheck className="text-orange-600 mt-0.5" size={18} />
+                                    <div className="flex-1">
+                                        <p className="text-sm font-medium text-orange-900">
+                                            {dashboardMetrics.patientsNeedingMeasurements} patient
+                                            {dashboardMetrics.patientsNeedingMeasurements > 1
+                                                ? 's'
+                                                : ''}{' '}
+                                            need measurements
+                                        </p>
+                                        <p className="text-xs text-orange-700 mt-1">
+                                            No vitals recorded in the last 30 days
+                                        </p>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Measurements Today Summary */}
+                            <div className="p-3 bg-green-50 border border-green-200 rounded-lg flex items-start gap-3">
+                                <CheckCircle className="text-green-600 mt-0.5" size={18} />
+                                <div className="flex-1">
+                                    <p className="text-sm font-medium text-green-900">
+                                        {dashboardMetrics.measurementsToday} measurement
+                                        {dashboardMetrics.measurementsToday !== 1 ? 's' : ''}{' '}
+                                        recorded today
+                                    </p>
+                                    <p className="text-xs text-green-700 mt-1">
+                                        Keep up the excellent work!
+                                    </p>
+                                </div>
                             </div>
+
+                            {/* No alerts state */}
+                            {dashboardMetrics.pendingCheckIns === 0 &&
+                                dashboardMetrics.criticalAllergies === 0 &&
+                                dashboardMetrics.patientsNeedingMeasurements === 0 &&
+                                dashboardMetrics.measurementsToday === 0 && (
+                                    <div className="text-center text-gray-500 py-4">
+                                        <CheckCircle
+                                            size={32}
+                                            className="mx-auto mb-2 opacity-50 text-green-500"
+                                        />
+                                        <p className="text-sm">All tasks up to date!</p>
+                                    </div>
+                                )}
                         </CardContent>
                     </Card>
                 </div>
             </div>
+
+            {/* Schedule Appointment Modal */}
+            <Dialog
+                open={showScheduleAppointmentModal}
+                onOpenChange={setShowScheduleAppointmentModal}
+            >
+                <Suspense
+                    fallback={
+                        <div className="flex items-center justify-center p-8">
+                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                        </div>
+                    }
+                >
+                    <ScheduleAppointmentModal
+                        onSuccess={() => setShowScheduleAppointmentModal(false)}
+                    />
+                </Suspense>
+            </Dialog>
         </div>
     )
 }

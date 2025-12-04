@@ -1,9 +1,9 @@
 import React, { useEffect, useMemo, useCallback, useState, lazy, Suspense } from 'react'
 import { useAuth } from '@/context/auth'
 import { useNavigate } from 'react-router-dom'
-import { useFacilitiesRealtime, supabase } from '@/hook/useSupabaseRealtime'
+import { useFacilitiesRealtime } from '@/hook/useSupabaseRealtime'
 import { showToast } from '@/util/alertHelper'
-import { updateFacility, deactivateFacility } from '@/api/admin/facility'
+import { getFacilities, updateFacility, deactivateFacility } from '@/api/admin/facility'
 
 // UI Components
 import FacilityRegistryHeader from '@/components/System Administrator/sysAdmin_facilities/FacilityRegistryHeader'
@@ -169,22 +169,18 @@ const FacilitiesRegistry = () => {
         onFacilityChange: handleFacilityChange,
     })
 
-    // Initial data load using Supabase directly
+    // Initial data load using Flask API
     const fetchFacilities = useCallback(async () => {
         try {
             setLoading(true)
-            const { data, error } = await supabase
-                .from('healthcare_facilities')
-                .select('*')
-                .is('deleted_at', null)
+            const response = await getFacilities({ bust_cache: false })
 
-            if (error) {
+            if (response.status === 'success' && response.data) {
+                setFacilities(response.data.map(formatFacility))
+            } else {
                 showToast('error', 'Failed to load facilities')
-                console.error('Supabase error:', error)
-                return
+                console.error('API error:', response)
             }
-
-            setFacilities(data.map(formatFacility))
         } catch (error) {
             showToast('error', 'Failed to load facilities')
             console.error('Error:', error)

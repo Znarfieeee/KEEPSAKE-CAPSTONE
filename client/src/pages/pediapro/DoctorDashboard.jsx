@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react'
+import React, { useState, useEffect, useMemo, Suspense, lazy } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
     Calendar,
@@ -16,8 +16,13 @@ import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/com
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/Button'
 import { Skeleton } from '@/components/ui/skeleton'
+import { Dialog } from '@/components/ui/dialog'
 import { getAppointmentsForMyFacility } from '@/api/doctors/appointment'
 import { getPatients } from '@/api/doctors/patient'
+
+// Lazy load modal components for better performance
+const StepperAddPatientModal = lazy(() => import('@/components/doctors/patient_records/StepperAddPatientModal'))
+const ScheduleAppointmentModal = lazy(() => import('@/components/doctors/appointments/ScheduleAppointmentModal'))
 
 const DoctorDashboard = () => {
     const navigate = useNavigate()
@@ -28,16 +33,41 @@ const DoctorDashboard = () => {
     const [loadingPatients, setLoadingPatients] = useState(true)
     const [loadingVaccinations, setLoadingVaccinations] = useState(true)
 
+    // Modal states
+    const [showAddPatientModal, setShowAddPatientModal] = useState(false)
+    const [showScheduleAppointmentModal, setShowScheduleAppointmentModal] = useState(false)
+
     // Fetch appointments, patients, and vaccinations on mount
     useEffect(() => {
         fetchAppointmentsAndPatients()
-        fetchVaccinationData()
+    }, [])
+
+    // Real-time updates listener
+    useEffect(() => {
+        const handlePatientCreated = () => {
+            fetchAppointmentsAndPatients()
+        }
+
+        const handleAppointmentUpdated = () => {
+            fetchAppointmentsAndPatients()
+        }
+
+        window.addEventListener('patient-created', handlePatientCreated)
+        window.addEventListener('appointment-updated', handleAppointmentUpdated)
+        window.addEventListener('appointment-created', handleAppointmentUpdated)
+
+        return () => {
+            window.removeEventListener('patient-created', handlePatientCreated)
+            window.removeEventListener('appointment-updated', handleAppointmentUpdated)
+            window.removeEventListener('appointment-created', handleAppointmentUpdated)
+        }
     }, [])
 
     const fetchAppointmentsAndPatients = async () => {
         try {
             setLoadingAppointments(true)
             setLoadingPatients(true)
+            setLoadingVaccinations(true)
 
             const [appointmentsRes, patientsRes] = await Promise.all([
                 getAppointmentsForMyFacility(),
@@ -63,18 +93,19 @@ const DoctorDashboard = () => {
         } finally {
             setLoadingAppointments(false)
             setLoadingPatients(false)
+            setLoadingVaccinations(false)
         }
     }
 
-    const fetchVaccinationData = async () => {
-        try {
-            setLoadingVaccinations(true)
-            // Vaccination data is fetched with patient data
-        } catch (err) {
-            console.error('Error fetching vaccination data:', err)
-        } finally {
-            setLoadingVaccinations(false)
-        }
+    // Modal handlers
+    const handleAddPatientSuccess = () => {
+        setShowAddPatientModal(false)
+        // Real-time updates will handle data refresh
+    }
+
+    const handleScheduleAppointmentSuccess = () => {
+        setShowScheduleAppointmentModal(false)
+        // Real-time updates will handle data refresh
     }
 
     // Compute dashboard metrics
@@ -108,6 +139,40 @@ const DoctorDashboard = () => {
                 ? Math.round((completedVaccinations / totalVaccinations) * 100)
                 : 0
 
+        // NEW METRIC 1: Count of PATIENTS with overdue vaccinations (not individual vaccinations)
+        const patientsWithOverdueVaccinations = patients.filter((patient) => {
+            if (!patient.related_records?.vaccinations) return false
+            return patient.related_records.vaccinations.some((vax) => {
+                if (!vax.next_dose_due) return false
+                return new Date(vax.next_dose_due) < today
+            })
+        }).length
+
+        // NEW METRIC 2: Active prescriptions (last 30 days)
+        const thirtyDaysAgo = new Date()
+        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
+
+        let activePrescriptionsCount = 0
+        patients.forEach((patient) => {
+            if (patient.related_records?.prescriptions) {
+                const recentPrescriptions = patient.related_records.prescriptions.filter((rx) => {
+                    if (!rx.prescription_date) return false
+                    const rxDate = new Date(rx.prescription_date)
+                    return rxDate >= thirtyDaysAgo
+                })
+                activePrescriptionsCount += recentPrescriptions.length
+            }
+        })
+
+        // NEW METRIC 3: Pending appointments (scheduled, confirmed, or checked_in status)
+        const pendingAppointmentsCount = appointments.filter((apt) => {
+            const isPending = ['scheduled', 'confirmed', 'checked_in'].includes(apt.status)
+            if (!apt.appointment_date) return isPending
+            const aptDate = new Date(apt.appointment_date)
+            aptDate.setHours(0, 0, 0, 0)
+            return isPending && aptDate >= today
+        }).length
+
         return {
             totalPatients: patients.length,
             todaysPatients: todaysAppointments.length,
@@ -117,6 +182,10 @@ const DoctorDashboard = () => {
             completedVaccinations,
             overdueVaccinations,
             vaccCompliancePercent,
+            // New production-ready metrics
+            patientsWithOverdueVaccinations,
+            activePrescriptionsCount,
+            pendingAppointmentsCount,
         }
     }, [appointments, patients, vaccinations])
 
@@ -369,13 +438,13 @@ const DoctorDashboard = () => {
                                     <QuickActionButton
                                         icon={Plus}
                                         label="Add Patient"
-                                        onClick={() => navigate('/pediapro/patients/new')}
+                                        onClick={() => setShowAddPatientModal(true)}
                                         variant="primary"
                                     />
                                     <QuickActionButton
                                         icon={Calendar}
                                         label="Add Appointment"
-                                        onClick={() => navigate('/pediapro/appointments/new')}
+                                        onClick={() => setShowScheduleAppointmentModal(true)}
                                         variant="primary"
                                     />
                                     <QuickActionButton
@@ -464,38 +533,66 @@ const DoctorDashboard = () => {
 
                     {/* Health Metrics - Row 3-10, Col 10-12 */}
                     <div className="col-span-3 row-span-8 col-start-10 row-start-3 space-y-4">
-                        {/* Average Weight */}
+                        {/* Overdue Vaccinations */}
                         <PediatricHealthCard
-                            title="Average Weight"
-                            metric="Latest measurements"
-                            value="18.5"
-                            unit="kg"
-                            icon={TrendingUp}
-                            color="green"
-                        />
-
-                        {/* Average Height */}
-                        <PediatricHealthCard
-                            title="Average Height"
-                            metric="Latest measurements"
-                            value="92"
-                            unit="cm"
-                            icon={TrendingUp}
-                            color="blue"
-                        />
-
-                        {/* Health Alerts */}
-                        <PediatricHealthCard
-                            title="Health Alerts"
-                            metric="Requires attention"
-                            value={patients.filter((p) => p.health_status === 'at-risk').length}
+                            title="Overdue Vaccinations"
+                            metric="Patients requiring follow-up"
+                            value={dashboardMetrics.patientsWithOverdueVaccinations}
                             unit="patients"
-                            icon={AlertCircle}
+                            icon={Syringe}
                             color="orange"
+                        />
+
+                        {/* Active Prescriptions */}
+                        <PediatricHealthCard
+                            title="Active Prescriptions"
+                            metric="Last 30 days"
+                            value={dashboardMetrics.activePrescriptionsCount}
+                            unit="prescriptions"
+                            icon={Activity}
+                            color="purple"
+                        />
+
+                        {/* Pending Appointments */}
+                        <PediatricHealthCard
+                            title="Pending Appointments"
+                            metric="Awaiting completion"
+                            value={dashboardMetrics.pendingAppointmentsCount}
+                            unit="appointments"
+                            icon={Clock}
+                            color="blue"
                         />
                     </div>
                 </div>
             </div>
+
+            {/* Modals */}
+            {showAddPatientModal && (
+                <Suspense fallback={
+                    <Dialog open={true}>
+                        <div className="flex items-center justify-center p-8">
+                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                        </div>
+                    </Dialog>
+                }>
+                    <StepperAddPatientModal
+                        open={showAddPatientModal}
+                        onClose={() => setShowAddPatientModal(false)}
+                    />
+                </Suspense>
+            )}
+
+            <Dialog open={showScheduleAppointmentModal} onOpenChange={setShowScheduleAppointmentModal}>
+                <Suspense fallback={
+                    <div className="flex items-center justify-center p-8">
+                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                    </div>
+                }>
+                    <ScheduleAppointmentModal
+                        onSuccess={handleScheduleAppointmentSuccess}
+                    />
+                </Suspense>
+            </Dialog>
         </>
     )
 }

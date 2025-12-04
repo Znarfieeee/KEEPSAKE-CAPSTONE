@@ -1,11 +1,11 @@
-import React, { useEffect } from "react"
-import { useNavigate } from "react-router-dom"
+import React, { useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 
 // Context
-import { useAuth } from "../context/auth"
+import { useAuth } from '../context/auth'
 
 // UI Components
-import { AiOutlineLoading3Quarters } from "react-icons/ai"
+import { AiOutlineLoading3Quarters } from 'react-icons/ai'
 
 /**
  * QR Scanner Redirect Page
@@ -29,39 +29,39 @@ const QrScanner = () => {
 
         // If not authenticated, redirect to login
         if (!isAuthenticated) {
-            navigate("/login", { replace: true })
+            navigate('/login', { replace: true })
             return
         }
 
         // Redirect to role-specific QR scanner page
         const role = user?.role
-        let targetPath = "/login" // Default fallback
+        let targetPath = '/login' // Default fallback
 
         switch (role) {
-            case "pediapro":
-            case "doctor":
-                targetPath = "/pediapro/qr-scanner"
+            case 'pediapro':
+            case 'doctor':
+                targetPath = '/pediapro/qr_scanner'
                 break
-            case "vital_custodian":
-            case "nurse":
-                targetPath = "/vital_custodian/qr-scanner"
+            case 'vital_custodian':
+            case 'nurse':
+                targetPath = '/vital_custodian/qr_scanner'
                 break
-            case "keepsaker":
-            case "parent":
-                targetPath = "/parent/qr-scanner"
+            case 'keepsaker':
+            case 'parent':
+                targetPath = '/parent/qr_scanner'
                 break
-            case "facility_admin":
-                targetPath = "/facility_admin/qr-scanner"
+            case 'facility_admin':
+                targetPath = '/facility_admin/qr_scanner'
                 break
-            case "admin":
-            case "system_admin":
+            case 'admin':
+            case 'system_admin':
                 // System admins can use the facility admin scanner
-                targetPath = "/admin"
+                targetPath = '/admin'
                 break
             default:
                 // If role is unknown, redirect to login
                 console.warn(`Unknown role for QR scanner redirect: ${role}`)
-                targetPath = "/login"
+                targetPath = '/login'
         }
 
         // Replace current history entry to prevent back button issues

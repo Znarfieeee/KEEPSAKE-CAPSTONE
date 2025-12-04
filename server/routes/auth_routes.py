@@ -19,10 +19,38 @@ ACCESS_COOKIE = "keepsake_session"      # short-lived JWT
 REFRESH_COOKIE = "keepsake_session"    # long-lived refresh token
 SESSION_PREFIX = "keepsake_session:"
 CACHE_PREFIX = "patient_cache:"
-SESSION_TIMEOUT = 1800 #30 minutes
+SESSION_TIMEOUT = 86400 * 30  # 30 days - no auto-logout for inactive sessions
 REFRESH_TOKEN_TIMEOUT = 7 * 24 * 60 * 60  # 7 days
 
 auth_bp = Blueprint('auth', __name__)
+
+def is_first_login(user_id, supabase_user):
+    """
+    Detect if this is the user's first login.
+    Checks the public.users table's last_sign_in_at field.
+    If it's NULL, the user hasn't completed their first login yet.
+    """
+    try:
+        # Fetch the user record from public.users table
+        user_record = supabase.table('users').select('last_sign_in_at').eq('user_id', user_id).execute()
+
+        if not user_record.data:
+            current_app.logger.warning(f"No user record found for user_id {user_id} in is_first_login check")
+            return False
+
+        # If last_sign_in_at is NULL/None in public.users, it's the first login
+        last_signed_in = user_record.data[0].get('last_sign_in_at')
+
+        current_app.logger.info(f"FIRST LOGIN CHECK: user_id={user_id}, last_sign_in_at={last_signed_in}, is_first_login={last_signed_in is None or last_signed_in == ''}")
+
+        if last_signed_in is None or last_signed_in == '':
+            return True
+
+        return False
+    except Exception as e:
+        # If there's an error checking, assume not first login for safety
+        current_app.logger.error(f"Error checking first login status for user {user_id}: {str(e)}")
+        return False
 oauth = OAuth()
 
 def init_google_oauth(app):
@@ -290,6 +318,9 @@ def google_callback():
         if session_id:
             existing_session = get_session_data(session_id)
             if existing_session:
+                # Check if this is first login
+                first_login = is_first_login(existing_session.get('user_id'), None)
+
                 update_session_activity(session_id)
                 user_data = {
                     'id': existing_session.get('user_id'),
@@ -300,7 +331,8 @@ def google_callback():
                     'specialty': existing_session.get('specialty'),
                     'license_number': existing_session.get('license_number'),
                     'phone_number': existing_session.get('phone_number'),
-                    'last_sign_in_at': existing_session.get('last_sign_in_at')
+                    'last_sign_in_at': existing_session.get('last_sign_in_at'),
+                    'is_first_login': first_login
                 }
 
                 current_app.logger.info(f"AUDIT: User {existing_session.get('email')} reused existing session via Google auth from IP {request.remote_addr}")
@@ -346,7 +378,10 @@ def google_callback():
                 return render_popup_error("Your account has been deactivated. Please contact your healthcare facility administrator for assistance.")
             
             last_sign_in = datetime.datetime.utcnow().isoformat()
-            
+
+            # Check if this is the user's first login (checks public.users.last_sign_in_at)
+            first_login = is_first_login(user_record['user_id'], None)
+
             # Get the user's facility_id from facility_users table
             get_facility_id = supabase.table('facility_users')\
                 .select('facility_id')\
@@ -369,6 +404,7 @@ def google_callback():
                 'phone_number': user_record.get('phone_number', ''),
                 'facility_id': facility_id,
                 'last_sign_in_at': last_sign_in,
+                'is_first_login': first_login,
                 'access_token': None,  # Google auth doesn't use Supabase tokens
                 'refresh_token': None,
                 'expires_at': (datetime.datetime.utcnow() + datetime.timedelta(seconds=SESSION_TIMEOUT)).isoformat(),
@@ -512,6 +548,9 @@ def login():
                         "message": "Your account has been deactivated. Please contact your administrator for assistance."
                     }), 401
 
+                # Check if this is first login
+                first_login = is_first_login(existing_session.get('user_id'), None)
+
                 update_session_activity(session_id)
                 user_data = {
                     'id': existing_session.get('user_id'),
@@ -523,7 +562,8 @@ def login():
                     'specialty': existing_session.get('specialty'),
                     'license_number': existing_session.get('license_number'),
                     'phone_number': existing_session.get('phone_number'),
-                    'last_sign_in_at': existing_session.get('last_sign_in_at')
+                    'last_sign_in_at': existing_session.get('last_sign_in_at'),
+                    'is_first_login': first_login
                 }
 
                 current_app.logger.info(f"AUDIT: User {existing_session.get('email')} reused existing session from IP {request.remote_addr}")
@@ -592,7 +632,10 @@ def login():
                 }), 401
 
             # Get user's last sign in time from Supabase auth
-            last_sign_in = auth_response.user.last_sign_in_at.isoformat()
+            last_sign_in = auth_response.user.last_sign_in_at.isoformat() if auth_response.user.last_sign_in_at else None
+            
+            # Check if this is the user's first login (checks public.users.last_signed_in_at)
+            first_login = is_first_login(auth_response.user.id, auth_response.user)
             
             user_data = {
                 'id': auth_response.user.id,
@@ -606,6 +649,7 @@ def login():
                 'subscription_expires': user_metadata.get('subscription_expires', ''),
                 'phone_number': user_metadata.get('phone_number', ''),
                 'last_sign_in_at': last_sign_in,
+                'is_first_login': first_login,
             }
             
             supabase_tokens = {
@@ -623,9 +667,9 @@ def login():
             }
             
             store_session_data(session_id, session_data)
-            
-            current_app.logger.info(f"AUDIT: User {email} logged in successfully from IP {request.remote_addr} - Session: {session_id}")
-            
+
+            current_app.logger.info(f"AUDIT: User {email} logged in successfully from IP {request.remote_addr} - Session: {session_id} - is_first_login: {first_login}")
+
             response = jsonify({
                 "status": "success",
                 "message": "Login successful!",
@@ -671,6 +715,8 @@ def login():
                 user_message = "Please enter a valid email address."
             elif "user not found" in error_message or "account not found" in error_message:
                 user_message = "No account found with this email address. Please contact your administrator if you believe this is an error."
+            elif "banned" in error_message or "user is banned" in error_message:
+                user_message = "Your account has been suspended or deactivated. Please contact your administrator for assistance."
             elif "account is inactive" in error_message or "user is inactive" in error_message:
                 user_message = "Your account has been deactivated. Please contact your administrator for assistance."
             elif "too many attempts" in error_message or "rate limit" in error_message:
@@ -793,8 +839,11 @@ def get_session():
                 "message": "Your account has been deactivated. Please contact your administrator for assistance."
             }), 401
 
+        # Check if this is first login by verifying last_sign_in_at in public.users table
+        first_login = is_first_login(session_data.get("user_id"), None)
+
         update_session_activity(session_id)
-        
+
         # Return user data from session
         user_data = {
             "id": session_data.get("user_id"),
@@ -806,7 +855,8 @@ def get_session():
             "license_number": session_data.get("license_number"),
             "phone_number": session_data.get("phone_number"),
             "facility_id": session_data.get("facility_id"),
-            "last_sign_in_at": session_data.get("last_sign_in_at")
+            "last_sign_in_at": session_data.get("last_sign_in_at"),
+            "is_first_login": first_login
         }
 
         return jsonify({

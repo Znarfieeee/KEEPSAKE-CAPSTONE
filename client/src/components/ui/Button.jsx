@@ -14,7 +14,7 @@ export const buttonVariants = cva(
                 destructive:
                     'bg-destructive text-white shadow-xs hover:bg-destructive/90 focus-visible:ring-destructive/20 dark:focus-visible:ring-destructive/40 dark:bg-destructive/60 transition duration-300 delay-20 ease-in-out',
                 outline:
-                    'border-1 bg-gray-100 shadow-sm hover:bg-gray-300/80 hover:text-accent-foreground transition duration-300 delay-20 ease-in-out',
+                    'border-1 bg-gray-100 shadow-sm hover:bg-accent hover:text-accent-foreground transition duration-300 delay-20 ease-in-out',
                 secondary:
                     'bg-secondary text-secondary-foreground shadow-xs hover:bg-secondary/80 transition duration-300 delay-20 ease-in-out',
                 ghost: 'hover:bg-gray-200 hover:text-accent-foreground transition duration-300 delay-20 ease-in-out',

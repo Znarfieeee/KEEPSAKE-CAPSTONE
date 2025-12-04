@@ -43,26 +43,50 @@ const Login = () => {
         let mounted = true
         const checkSessionAndRedirect = async () => {
             try {
-                const hasSession = await checkExistingSession()
-                if (!mounted) return
-                if (hasSession || isAuthenticated) {
-                    const role = user?.role
+                // If already authenticated, redirect immediately
+                if (isAuthenticated && user?.role) {
+                    if (!mounted) return
+                    const role = user.role
                     switch (role) {
                         case 'admin':
-                            return navigate('/admin')
+                            return navigate('/admin', { replace: true })
                         case 'doctor':
-                            return navigate('/pediapro')
+                            return navigate('/pediapro', { replace: true })
                         case 'parent':
-                            return navigate('/parent')
+                            return navigate('/parent', { replace: true })
                         case 'vital_custodian':
-                            return navigate('/vital_custodian')
+                        case 'nurse':
+                            return navigate('/nurse', { replace: true })
                         case 'facility_admin':
-                            return navigate('/facility_admin')
+                            return navigate('/facility_admin', { replace: true })
                         default:
-                            return navigate('/')
+                            return navigate('/', { replace: true })
                     }
                 }
-            } catch {
+
+                // Otherwise, check for an existing session
+                const hasSession = await checkExistingSession()
+                if (!mounted) return
+
+                if (hasSession && user?.role) {
+                    const role = user.role
+                    switch (role) {
+                        case 'admin':
+                            return navigate('/admin', { replace: true })
+                        case 'doctor':
+                            return navigate('/pediapro', { replace: true })
+                        case 'parent':
+                            return navigate('/parent', { replace: true })
+                        case 'vital_custodian':
+                        case 'nurse':
+                            return navigate('/nurse', { replace: true })
+                        case 'facility_admin':
+                            return navigate('/facility_admin', { replace: true })
+                        default:
+                            return navigate('/', { replace: true })
+                    }
+                }
+            } catch (error) {
                 // silent fail - don't block the login screen
             }
         }

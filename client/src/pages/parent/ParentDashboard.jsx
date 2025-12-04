@@ -4,13 +4,37 @@ import { getParentChildren, getChildAppointments, getChildDetails } from '@/api/
 import { getMeasurements } from '@/api/doctors/measurements'
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/Button'
+import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert'
+import { Separator } from '@/components/ui/separator'
+import { ScrollArea } from '@/components/ui/scroll-area'
 import Loader from '@/components/ui/Loader'
 import { Skeleton } from '@/components/ui/skeleton'
-import { TbHeartbeat, TbVaccine, TbRuler } from 'react-icons/tb'
-import { BiCalendar } from 'react-icons/bi'
-import { Users } from 'lucide-react'
-import { ParentTodaySchedule } from '@/components/parent/appointments'
-import { cn, getStatusBadgeColor } from '@/util/utils'
+import {
+    TbHeartbeat,
+    TbVaccine,
+    TbRuler,
+    TbWeight,
+    TbAlertCircle,
+    TbBell,
+    TbCalendarEvent,
+} from 'react-icons/tb'
+import { BiCalendar, BiPhone } from 'react-icons/bi'
+import {
+    Users,
+    Activity,
+    FileText,
+    Calendar,
+    Bell,
+    AlertTriangle,
+    Clock,
+    ChevronRight,
+    TrendingUp,
+    ScanQrCode,
+    QrCode,
+} from 'lucide-react'
+import { cn } from '@/util/utils'
+import { TooltipHelper } from '@/util/TooltipHelper'
 import {
     LineChart,
     Line,
@@ -21,6 +45,7 @@ import {
     ResponsiveContainer,
     CartesianGrid,
 } from 'recharts'
+// Enhanced Appointment Card with better mobile support
 function AppointmentOverviewCard({
     appointments = [],
     childColors = {},
@@ -35,12 +60,37 @@ function AppointmentOverviewCard({
         .filter((a) => a.__date >= new Date(new Date().setHours(0, 0, 0, 0)))
         .sort((a, b) => a.__date - b.__date)
 
+    const today = upcoming.filter((a) => {
+        const aptDate = new Date(a.__date)
+        const now = new Date()
+        return aptDate.toDateString() === now.toDateString()
+    })
+
     return (
-        <Card>
-            <CardHeader>
-                <div className="flex items-center justify-between w-full">
-                    <CardTitle>Upcoming Appointments</CardTitle>
+        <Card className="shadow-sm hover:shadow-md transition-shadow">
+            <CardHeader className="pb-3">
+                <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                        <Calendar className="w-5 h-5 text-blue-600" />
+                        <CardTitle className="text-lg md:text-xl">Upcoming Appointments</CardTitle>
+                    </div>
+                    <Link to="/parent/appointments">
+                        <Button variant="ghost" size="sm" className="text-blue-600">
+                            View All
+                            <ChevronRight className="w-4 h-4" />
+                        </Button>
+                    </Link>
                 </div>
+                {today.length > 0 && (
+                    <Alert className="mt-3 bg-blue-50 border-blue-200">
+                        <Clock className="w-4 h-4 text-blue-600" />
+                        <AlertTitle className="text-blue-900">Today's Appointments</AlertTitle>
+                        <AlertDescription className="text-blue-700">
+                            You have {today.length} appointment{today.length > 1 ? 's' : ''}{' '}
+                            scheduled for today
+                        </AlertDescription>
+                    </Alert>
+                )}
             </CardHeader>
             <CardContent>
                 {loading ? (
@@ -48,50 +98,247 @@ function AppointmentOverviewCard({
                         <Loader />
                     </div>
                 ) : upcoming.length === 0 ? (
-                    <div className="text-center py-8 text-sm text-gray-600">
-                        No upcoming appointments
+                    <div className="text-center py-12">
+                        <Calendar className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+                        <p className="text-gray-600 font-medium">No upcoming appointments</p>
+                        <p className="text-sm text-gray-500 mt-1">
+                            Schedule a checkup with your healthcare provider
+                        </p>
                     </div>
                 ) : (
-                    <div className="space-y-3 max-h-60 overflow-y-auto">
-                        {upcoming.slice(0, 6).map((apt) => (
-                            <div
-                                key={apt.id || apt.appointment_id}
-                                className="flex items-center justify-between"
-                            >
-                                <div className="flex items-center gap-3">
+                    <ScrollArea className="h-[320px] pr-4">
+                        <div className="space-y-3">
+                            {upcoming.slice(0, 8).map((apt) => {
+                                const isToday =
+                                    new Date(apt.__date).toDateString() ===
+                                    new Date().toDateString()
+                                return (
                                     <div
-                                        className={`w-8 h-8 rounded-full flex items-center justify-center text-white ${
-                                            childColors[apt.patient_id] || 'bg-gray-400'
-                                        }`}
-                                    >
-                                        {getChildName(apt.patient_id)?.charAt(0) || 'C'}
-                                    </div>
-                                    <div>
-                                        <div className="font-medium text-sm">
-                                            {getChildName(apt.patient_id)}
-                                        </div>
-                                        <div className="text-xs text-gray-500">
-                                            {new Date(apt.__date).toLocaleString()}
-                                        </div>
-                                    </div>
-                                </div>
-                                <div className="flex items-center gap-2">
-                                    <div className="text-right text-xs text-gray-500 mr-2 hidden sm:block">
-                                        {apt.healthcare_facilities?.facility_name}
-                                    </div>
-                                    <span
+                                        key={apt.id || apt.appointment_id}
                                         className={cn(
-                                            'inline-flex px-2 py-1 text-xs font-medium rounded-full',
-                                            getStatusBadgeColor(apt.status)
+                                            'p-3 rounded-lg border transition-all hover:shadow-sm',
+                                            isToday
+                                                ? 'bg-blue-50 border-blue-200'
+                                                : 'bg-white border-gray-200'
                                         )}
                                     >
-                                        {apt.status || 'Scheduled'}
-                                    </span>
-                                </div>
-                            </div>
-                        ))}
-                    </div>
+                                        <div className="flex items-start gap-3">
+                                            <div
+                                                className={`w-10 h-10 rounded-full flex items-center justify-center text-white font-semibold text-sm flex-shrink-0 ${
+                                                    childColors[apt.patient_id] || 'bg-gray-400'
+                                                }`}
+                                            >
+                                                {getChildName(apt.patient_id)?.charAt(0) || 'C'}
+                                            </div>
+                                            <div className="flex-1 min-w-0">
+                                                <div className="flex items-start justify-between gap-2">
+                                                    <div className="flex-1 min-w-0">
+                                                        <p className="font-semibold text-sm text-gray-900 truncate">
+                                                            {getChildName(apt.patient_id)}
+                                                        </p>
+                                                        <div className="flex items-center gap-2 mt-1 text-xs text-gray-600">
+                                                            <Clock className="w-3 h-3" />
+                                                            <span>
+                                                                {new Date(
+                                                                    apt.__date
+                                                                ).toLocaleString('en-US', {
+                                                                    month: 'short',
+                                                                    day: 'numeric',
+                                                                    hour: '2-digit',
+                                                                    minute: '2-digit',
+                                                                })}
+                                                            </span>
+                                                        </div>
+                                                    </div>
+                                                    <Badge
+                                                        variant={
+                                                            apt.status === 'scheduled'
+                                                                ? 'default'
+                                                                : 'secondary'
+                                                        }
+                                                        className="capitalize text-xs flex-shrink-0"
+                                                    >
+                                                        {apt.status || 'Scheduled'}
+                                                    </Badge>
+                                                </div>
+                                                {apt.healthcare_facilities?.facility_name && (
+                                                    <p className="text-xs text-gray-500 mt-2 truncate">
+                                                        {apt.healthcare_facilities.facility_name}
+                                                    </p>
+                                                )}
+                                            </div>
+                                        </div>
+                                    </div>
+                                )
+                            })}
+                        </div>
+                    </ScrollArea>
                 )}
+            </CardContent>
+        </Card>
+    )
+}
+
+// Health Reminders Component
+function HealthRemindersCard({ vaccinations = [], appointments = [], measurements = [] }) {
+    const reminders = useMemo(() => {
+        const alerts = []
+
+        // Check for overdue vaccinations
+        vaccinations.forEach((v) => {
+            if (v.next_dose_due && new Date(v.next_dose_due) < new Date()) {
+                alerts.push({
+                    id: `vax-${v.vax_id}`,
+                    type: 'vaccination',
+                    severity: 'high',
+                    title: 'Overdue Vaccination',
+                    message: `${v.vaccine_name} - Dose ${v.dose_number || 'N/A'} is overdue`,
+                    date: v.next_dose_due,
+                    icon: TbVaccine,
+                })
+            } else if (v.next_dose_due) {
+                const daysUntil = Math.ceil(
+                    (new Date(v.next_dose_due) - new Date()) / (1000 * 60 * 60 * 24)
+                )
+                if (daysUntil <= 7 && daysUntil > 0) {
+                    alerts.push({
+                        id: `vax-upcoming-${v.vax_id}`,
+                        type: 'vaccination',
+                        severity: 'medium',
+                        title: 'Upcoming Vaccination',
+                        message: `${v.vaccine_name} - Dose ${
+                            v.dose_number || 'N/A'
+                        } due in ${daysUntil} day${daysUntil > 1 ? 's' : ''}`,
+                        date: v.next_dose_due,
+                        icon: Bell,
+                    })
+                }
+            }
+        })
+
+        // Check for upcoming appointments (within 24 hours)
+        appointments.forEach((apt) => {
+            const aptDate = new Date(`${apt.appointment_date} ${apt.appointment_time || '00:00'}`)
+            const hoursUntil = (aptDate - new Date()) / (1000 * 60 * 60)
+            if (hoursUntil > 0 && hoursUntil <= 24) {
+                alerts.push({
+                    id: `apt-${apt.appointment_id}`,
+                    type: 'appointment',
+                    severity: 'high',
+                    title: 'Appointment Reminder',
+                    message: `Appointment scheduled ${
+                        hoursUntil < 1
+                            ? 'in less than an hour'
+                            : `in ${Math.floor(hoursUntil)} hour${
+                                  Math.floor(hoursUntil) > 1 ? 's' : ''
+                              }`
+                    }`,
+                    date: aptDate,
+                    icon: TbCalendarEvent,
+                })
+            }
+        })
+
+        // Check for measurement tracking (if no recent measurement in 3 months)
+        if (measurements.length > 0) {
+            const latestMeasurement = new Date(measurements[0].date)
+            const monthsSince = (new Date() - latestMeasurement) / (1000 * 60 * 60 * 24 * 30)
+            if (monthsSince > 3) {
+                alerts.push({
+                    id: 'measurement-reminder',
+                    type: 'measurement',
+                    severity: 'low',
+                    title: 'Growth Tracking Due',
+                    message: `Last measurement was ${Math.floor(monthsSince)} months ago`,
+                    date: latestMeasurement,
+                    icon: TbRuler,
+                })
+            }
+        }
+
+        return alerts.sort((a, b) => {
+            const severityOrder = { high: 0, medium: 1, low: 2 }
+            return severityOrder[a.severity] - severityOrder[b.severity]
+        })
+    }, [vaccinations, appointments, measurements])
+
+    if (reminders.length === 0) {
+        return (
+            <Card className="shadow-sm">
+                <CardHeader className="pb-3">
+                    <div className="flex items-center gap-2">
+                        <Bell className="w-5 h-5 text-green-600" />
+                        <CardTitle className="text-lg md:text-xl">Health Reminders</CardTitle>
+                    </div>
+                </CardHeader>
+                <CardContent>
+                    <div className="text-center py-8">
+                        <div className="w-12 h-12 rounded-full bg-green-100 flex items-center justify-center mx-auto mb-3">
+                            <TbHeartbeat className="w-6 h-6 text-green-600" />
+                        </div>
+                        <p className="text-gray-600 font-medium">All caught up!</p>
+                        <p className="text-sm text-gray-500 mt-1">No pending health reminders</p>
+                    </div>
+                </CardContent>
+            </Card>
+        )
+    }
+
+    return (
+        <Card className="shadow-sm border-l-4 border-l-yellow-500">
+            <CardHeader className="pb-3">
+                <div className="flex items-center gap-2">
+                    <Bell className="w-5 h-5 text-yellow-600" />
+                    <CardTitle className="text-lg md:text-xl">Health Reminders</CardTitle>
+                    <Badge variant="secondary" className="ml-auto">
+                        {reminders.length}
+                    </Badge>
+                </div>
+            </CardHeader>
+            <CardContent>
+                <ScrollArea className="h-[280px] pr-4">
+                    <div className="space-y-3">
+                        {reminders.map((reminder) => {
+                            const Icon = reminder.icon
+                            const bgColor =
+                                reminder.severity === 'high'
+                                    ? 'bg-red-50'
+                                    : reminder.severity === 'medium'
+                                    ? 'bg-yellow-50'
+                                    : 'bg-blue-50'
+                            const borderColor =
+                                reminder.severity === 'high'
+                                    ? 'border-red-200'
+                                    : reminder.severity === 'medium'
+                                    ? 'border-yellow-200'
+                                    : 'border-blue-200'
+                            const textColor =
+                                reminder.severity === 'high'
+                                    ? 'text-red-700'
+                                    : reminder.severity === 'medium'
+                                    ? 'text-yellow-700'
+                                    : 'text-blue-700'
+                            const iconColor =
+                                reminder.severity === 'high'
+                                    ? 'text-red-600'
+                                    : reminder.severity === 'medium'
+                                    ? 'text-yellow-600'
+                                    : 'text-blue-600'
+
+                            return (
+                                <Alert key={reminder.id} className={cn(bgColor, borderColor)}>
+                                    <Icon className={cn('w-4 h-4', iconColor)} />
+                                    <AlertTitle className="text-sm font-semibold">
+                                        {reminder.title}
+                                    </AlertTitle>
+                                    <AlertDescription className={cn('text-xs', textColor)}>
+                                        {reminder.message}
+                                    </AlertDescription>
+                                </Alert>
+                            )
+                        })}
+                    </div>
+                </ScrollArea>
             </CardContent>
         </Card>
     )
@@ -272,56 +519,77 @@ function ParentDashboard() {
     }
 
     return (
-        <div className="space-y-6">
-            {/* Header */}
-            <div>
-                {/* <p className="text-gray-600 mt-2">
-                    Welcome! View and manage your children's health information.
-                </p> */}
-                <Link to="appointments" class>
-                    View Appointments
-                </Link>
-                <Link to="/parent/children" class>
-                    View Records
-                </Link>
-            </div>
+        <div className="space-y-6 p-4 md:p-6 lg:p-8">
+            {/* Header with Quick Actions */}
+            {/* <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                <div>
+                    <h1 className="text-2xl md:text-3xl font-bold text-gray-900">
+                        My Family Health
+                    </h1>
+                    <p className="text-sm md:text-base text-gray-600 mt-1">
+                        Track and manage your children's healthcare
+                    </p>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                    <Link to="/parent/appointments">
+                        <Button variant="outline" size="sm" className="text-xs md:text-sm">
+                            <Calendar className="w-4 h-4" />
+                            Appointments
+                        </Button>
+                    </Link>
+                    <Link to="/parent/children">
+                        <Button variant="outline" size="sm" className="text-xs md:text-sm">
+                            <FileText className="w-4 h-4" />
+                            Records
+                        </Button>
+                    </Link>
+                </div>
+            </div> */}
 
-            {/* Quick Stats */}
-            <div className="grid grid-cols-2 md:grid-cols-4 `-  `gap-6">
-                <Card className="h-36 flex items-center justify-center">
+            {/* Quick Stats - Enhanced and Mobile Responsive */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
+                {/* My Children Card */}
+                <Card className="shadow-sm hover:shadow-md transition-shadow">
                     <CardContent className="pt-6">
-                        <div className="flex items-center space-x-4">
-                            <div className="p-3 bg-blue-100 rounded-full">
-                                <Users className="w-6 h-6 text-blue-600" />
-                            </div>
-                            <div className="text-center w-full">
-                                <p className="text-sm text-gray-600">My Children</p>
+                        <div className="flex items-center justify-between">
+                            <div className="flex-1">
+                                <p className="text-xs md:text-sm text-gray-600 font-medium mb-1">
+                                    My Children
+                                </p>
                                 {loading ? (
-                                    <div className="mt-2">
-                                        <Skeleton className="h-8 w-16 mx-auto" />
-                                    </div>
+                                    <Skeleton className="h-8 w-16" />
                                 ) : (
-                                    <p className="text-2xl font-bold text-gray-900">
+                                    <p className="text-2xl md:text-3xl font-bold text-gray-900">
                                         {children.length}
                                     </p>
                                 )}
+                                <Link
+                                    to="/parent/children"
+                                    className="text-xs text-blue-600 hover:underline mt-2 inline-flex items-center gap-1"
+                                >
+                                    View All
+                                    <ChevronRight className="w-3 h-3" />
+                                </Link>
+                            </div>
+                            <div className="p-3 bg-blue-100 rounded-full">
+                                <Users className="w-6 h-6 text-blue-600" />
                             </div>
                         </div>
                     </CardContent>
                 </Card>
 
-                <Card className="h-36">
-                    <CardContent className="pt-4">
+                {/* Upcoming Appointments Card */}
+                <Card className="shadow-sm hover:shadow-md transition-shadow">
+                    <CardContent className="pt-6">
                         <div className="flex items-center justify-between">
-                            <div className="p-3 bg-blue-100 rounded-full">
-                                <BiCalendar className="w-6 h-6 text-blue-600" />
-                            </div>
-                            <div>
-                                <p className="text-sm text-gray-600">Upcoming Appointments</p>
+                            <div className="flex-1">
+                                <p className="text-xs md:text-sm text-gray-600 font-medium mb-1">
+                                    Upcoming
+                                </p>
                                 {loading ? (
                                     <Skeleton className="h-8 w-12" />
                                 ) : (
-                                    <p className="text-2xl font-bold text-gray-900">
+                                    <p className="text-2xl md:text-3xl font-bold text-gray-900">
                                         {
                                             appointments.filter((a) => {
                                                 const d = new Date(a.appointment_date)
@@ -333,23 +601,38 @@ function ParentDashboard() {
                                         }
                                     </p>
                                 )}
+                                <p className="text-xs text-gray-500 mt-1">Appointments</p>
+                            </div>
+                            <div className="p-3 bg-purple-100 rounded-full">
+                                <Calendar className="w-6 h-6 text-purple-600" />
                             </div>
                         </div>
                     </CardContent>
                 </Card>
 
-                <Card className="h-36">
-                    <CardContent className="pt-4">
+                {/* Vaccinations Card */}
+                <Card className="shadow-sm hover:shadow-md transition-shadow">
+                    <CardContent className="pt-6">
                         <div className="flex items-center justify-between">
-                            <div className="p-3 bg-yellow-100 rounded-full">
-                                <TbVaccine className="w-6 h-6 text-yellow-600" />
-                            </div>
-                            <div>
-                                <p className="text-sm text-gray-600">Overdue Vaccinations</p>
+                            <div className="flex-1">
+                                <p className="text-xs md:text-sm text-gray-600 font-medium mb-1">
+                                    Overdue Vaccines
+                                </p>
                                 {loading ? (
                                     <Skeleton className="h-8 w-12" />
                                 ) : (
-                                    <p className="text-2xl font-bold text-gray-900">
+                                    <p
+                                        className={cn(
+                                            'text-2xl md:text-3xl font-bold',
+                                            vaccinations.filter(
+                                                (v) =>
+                                                    v.next_dose_due &&
+                                                    new Date(v.next_dose_due) < new Date()
+                                            ).length > 0
+                                                ? 'text-red-600'
+                                                : 'text-green-600'
+                                        )}
+                                    >
                                         {
                                             vaccinations.filter(
                                                 (v) =>
@@ -359,123 +642,211 @@ function ParentDashboard() {
                                         }
                                     </p>
                                 )}
+                                <p className="text-xs text-gray-500 mt-1">
+                                    {vaccinations.filter(
+                                        (v) =>
+                                            v.next_dose_due &&
+                                            new Date(v.next_dose_due) < new Date()
+                                    ).length === 0
+                                        ? 'All up to date!'
+                                        : 'Need attention'}
+                                </p>
+                            </div>
+                            <div className="p-3 bg-yellow-100 rounded-full">
+                                <TbVaccine className="w-6 h-6 text-yellow-600" />
                             </div>
                         </div>
                     </CardContent>
                 </Card>
 
-                <Card className="h-36">
-                    <CardContent className="pt-4">
-                        <div className="flex items-center justify-between">
-                            <div className="p-3 bg-green-100 rounded-full">
-                                <TbRuler className="w-6 h-6 text-green-600" />
-                            </div>
-                            <div>
-                                <p className="text-sm text-gray-600">Latest Measurement</p>
-                                {loading || loadingMeasurements ? (
-                                    <Skeleton className="h-8 w-28" />
-                                ) : measurements.length > 0 ? (
-                                    <>
-                                        <p className="text-2xl font-bold text-gray-900">
-                                            {measurements[0].weight
-                                                ? `${measurements[0].weight} kg`
-                                                : '—'}{' '}
-                                            /{' '}
-                                            {measurements[0].height
-                                                ? `${measurements[0].height} cm`
-                                                : '—'}
-                                        </p>
-                                        <p className="text-xs text-gray-500">
-                                            {measurements[0].date
-                                                ? new Date(
-                                                      measurements[0].date
-                                                  ).toLocaleDateString()
-                                                : ''}
-                                        </p>
-                                    </>
-                                ) : (
-                                    <p className="text-2xl font-bold text-gray-900">—</p>
-                                )}
-                            </div>
+                {/* Quick Access Card - Desktop only */}
+                <Card className="shadow-sm hover:shadow-md transition-shadow hidden lg:flex">
+                    <CardContent className="pt-6 w-full">
+                        <div className="grid grid-cols-2 gap-3">
+                            <Link to="/parent/qr_scanner">
+                                <Button
+                                    variant="ghost"
+                                    className="w-full h-auto py-4 px-3 flex flex-col gap-2 hover:border-blue-400 hover:bg-blue-50 rounded-lg"
+                                >
+                                    <TooltipHelper content="Scan QR Code" side="top">
+                                        <ScanQrCode className="w-6 h-6 text-blue-600" />
+                                    </TooltipHelper>
+                                    <span className="text-xs font-medium text-gray-700">
+                                        Scan QR
+                                    </span>
+                                </Button>
+                            </Link>
+                            <Link to="/parent/share-qr">
+                                <Button
+                                    variant="ghost"
+                                    className="w-full h-auto py-4 px-3 flex flex-col gap-2 hover:border-green-400 hover:bg-green-50 rounded-lg"
+                                >
+                                    <TooltipHelper content="Share QR Code" side="top">
+                                        <QrCode className="w-6 h-6 text-green-600" />
+                                    </TooltipHelper>
+                                    <span className="text-xs font-medium text-gray-700">
+                                        Share QR
+                                    </span>
+                                </Button>
+                            </Link>
+                            <Link to="/parent/children">
+                                <Button
+                                    variant="ghost"
+                                    className="w-full h-auto py-4 px-3 flex flex-col gap-2 hover:border-purple-400 hover:bg-purple-50 rounded-lg"
+                                >
+                                    <FileText className="w-6 h-6 text-purple-600" />
+                                    <span className="text-xs font-medium text-gray-700">
+                                        Records
+                                    </span>
+                                </Button>
+                            </Link>
+                            <Link to="/parent/appointments">
+                                <Button
+                                    variant="ghost"
+                                    className="w-full h-auto py-4 px-3 flex flex-col gap-2 hover:border-orange-400 hover:bg-orange-50 rounded-lg"
+                                >
+                                    <Calendar className="w-6 h-6 text-orange-600" />
+                                    <span className="text-xs font-medium text-gray-700">
+                                        Appointments
+                                    </span>
+                                </Button>
+                            </Link>
                         </div>
                     </CardContent>
                 </Card>
             </div>
 
-            {/* Main Grid: Schedule + Overview */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <div className="lg:col-span-2 space-y-6">
-                    <AppointmentOverviewCard
-                        appointments={appointments}
-                        childrenList={children}
-                        childColors={childColors}
-                        getChildName={getChildName}
-                        loading={loadingAppointments}
-                    />
-                </div>
+            {/* Health Reminders - Priority Section */}
+            <HealthRemindersCard
+                vaccinations={vaccinations}
+                appointments={appointments}
+                measurements={measurements}
+            />
 
-                <div className="space-y-6">
-                    {/* Growth Chart Card */}
-                    <Card>
-                        <CardHeader>
-                            <div className="flex items-center justify-between w-full">
-                                <CardTitle>Growth Milestones</CardTitle>
-                                <div className="w-40">
-                                    <select
-                                        value={selectedChildId}
-                                        onChange={(e) => setSelectedChildId(e.target.value)}
-                                        className="w-full rounded-md border px-2 py-1 text-sm"
-                                    >
-                                        <option value="all">All Children</option>
-                                        {children.map((c) => {
-                                            const id = c.patient_id || c.patient?.patient_id || c.id
-                                            return (
-                                                <option key={id} value={id}>
-                                                    {c.firstname} {c.lastname}
-                                                </option>
-                                            )
-                                        })}
-                                    </select>
-                                </div>
+            {/* Main Grid: Appointments + Growth Charts */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
+                {/* Appointments Section */}
+                <AppointmentOverviewCard
+                    appointments={appointments}
+                    childrenList={children}
+                    childColors={childColors}
+                    getChildName={getChildName}
+                    loading={loadingAppointments}
+                />
+
+                {/* Growth Chart Card */}
+                <Card className="shadow-sm hover:shadow-md transition-shadow">
+                    <CardHeader className="pb-3">
+                        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                            <div className="flex items-center gap-2">
+                                <TrendingUp className="w-5 h-5 text-green-600" />
+                                <CardTitle className="text-lg md:text-xl">
+                                    Growth Tracking
+                                </CardTitle>
                             </div>
-                        </CardHeader>
-                        <CardContent>
-                            {loadingMeasurements ? (
-                                <div className="h-64 flex items-center justify-center">
-                                    <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
+                            <select
+                                value={selectedChildId}
+                                onChange={(e) => setSelectedChildId(e.target.value)}
+                                className="w-full sm:w-40 rounded-md border border-gray-300 px-3 py-1.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                            >
+                                <option value="all">Select Child</option>
+                                {children.map((c) => {
+                                    const id = c.patient_id || c.patient?.patient_id || c.id
+                                    return (
+                                        <option key={id} value={id}>
+                                            {c.firstname} {c.lastname}
+                                        </option>
+                                    )
+                                })}
+                            </select>
+                        </div>
+                    </CardHeader>
+                    <CardContent>
+                        {loadingMeasurements ? (
+                            <div className="h-64 flex items-center justify-center">
+                                <Loader />
+                            </div>
+                        ) : measurements.length === 0 ? (
+                            <div className="text-center py-12">
+                                <Activity className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+                                <p className="text-gray-600 font-medium">
+                                    No growth measurements available
+                                </p>
+                                <p className="text-sm text-gray-500 mt-1">
+                                    Select a child to view their growth chart
+                                </p>
+                            </div>
+                        ) : (
+                            <div className="space-y-4">
+                                <div className="grid grid-cols-2 gap-3">
+                                    <div className="p-3 bg-blue-50 rounded-lg border border-blue-200">
+                                        <div className="flex items-center gap-2 mb-1">
+                                            <TbWeight className="w-4 h-4 text-blue-600" />
+                                            <span className="text-xs font-medium text-blue-900">
+                                                Weight
+                                            </span>
+                                        </div>
+                                        <p className="text-xl font-bold text-blue-700">
+                                            {measurements[0]?.weight
+                                                ? `${measurements[0].weight} kg`
+                                                : '—'}
+                                        </p>
+                                    </div>
+                                    <div className="p-3 bg-green-50 rounded-lg border border-green-200">
+                                        <div className="flex items-center gap-2 mb-1">
+                                            <TbRuler className="w-4 h-4 text-green-600" />
+                                            <span className="text-xs font-medium text-green-900">
+                                                Height
+                                            </span>
+                                        </div>
+                                        <p className="text-xl font-bold text-green-700">
+                                            {measurements[0]?.height
+                                                ? `${measurements[0].height} cm`
+                                                : '—'}
+                                        </p>
+                                    </div>
                                 </div>
-                            ) : measurements.length === 0 ? (
-                                <div className="text-center py-12">
-                                    <TbHeartbeat className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-                                    <p className="text-gray-600">
-                                        No growth measurements available
-                                    </p>
-                                    <p className="text-sm text-gray-500">
-                                        Open a child profile to view detailed measurements.
-                                    </p>
-                                </div>
-                            ) : (
-                                <div style={{ height: 280 }}>
+                                <div style={{ height: 240 }}>
                                     <ResponsiveContainer width="100%" height="100%">
                                         <LineChart
                                             data={measurements}
-                                            margin={{ top: 10, right: 20, left: 0, bottom: 0 }}
+                                            margin={{ top: 5, right: 10, left: -10, bottom: 5 }}
                                         >
-                                            <CartesianGrid strokeDasharray="3 3" />
+                                            <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
                                             <XAxis
                                                 dataKey="date"
                                                 tickFormatter={(d) =>
-                                                    new Date(d).toLocaleDateString()
+                                                    new Date(d).toLocaleDateString('en-US', {
+                                                        month: 'short',
+                                                        day: 'numeric',
+                                                    })
                                                 }
+                                                style={{ fontSize: '11px' }}
                                             />
-                                            <YAxis yAxisId="left" orientation="left" />
-                                            <YAxis yAxisId="right" orientation="right" />
+                                            <YAxis
+                                                yAxisId="left"
+                                                orientation="left"
+                                                style={{ fontSize: '11px' }}
+                                            />
+                                            <YAxis
+                                                yAxisId="right"
+                                                orientation="right"
+                                                style={{ fontSize: '11px' }}
+                                            />
                                             <Tooltip
                                                 labelFormatter={(lbl) =>
-                                                    new Date(lbl).toLocaleDateString()
+                                                    new Date(lbl).toLocaleDateString('en-US', {
+                                                        month: 'long',
+                                                        day: 'numeric',
+                                                        year: 'numeric',
+                                                    })
                                                 }
+                                                contentStyle={{
+                                                    fontSize: '12px',
+                                                    borderRadius: '8px',
+                                                }}
                                             />
-                                            <Legend />
+                                            <Legend wrapperStyle={{ fontSize: '12px' }} />
                                             <Line
                                                 yAxisId="left"
                                                 type="monotone"
@@ -483,7 +854,8 @@ function ParentDashboard() {
                                                 stroke="#2563eb"
                                                 name="Weight (kg)"
                                                 strokeWidth={2}
-                                                dot={{ r: 3 }}
+                                                dot={{ r: 4, fill: '#2563eb' }}
+                                                activeDot={{ r: 6 }}
                                             />
                                             <Line
                                                 yAxisId="right"
@@ -492,169 +864,258 @@ function ParentDashboard() {
                                                 stroke="#10b981"
                                                 name="Height (cm)"
                                                 strokeWidth={2}
-                                                dot={{ r: 3 }}
+                                                dot={{ r: 4, fill: '#10b981' }}
+                                                activeDot={{ r: 6 }}
                                             />
                                         </LineChart>
                                     </ResponsiveContainer>
                                 </div>
-                            )}
-                        </CardContent>
-                    </Card>
-
-                    {/* Vaccination Summary Card */}
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>Vaccination Summary</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            {vaccinations.length === 0 ? (
-                                <div className="text-center py-8">
-                                    <p className="text-gray-600">
-                                        No vaccination records available
-                                    </p>
-                                    <p className="text-sm text-gray-500">
-                                        Select a child to view immunizations.
-                                    </p>
-                                </div>
-                            ) : (
-                                <div className="space-y-3">
-                                    {vaccinations.slice(0, 6).map((v) => {
-                                        const nextDue = v.next_dose_due
-                                            ? new Date(v.next_dose_due)
-                                            : null
-                                        const isOverdue = nextDue && nextDue < new Date()
-                                        return (
-                                            <div
-                                                key={v.vax_id || v.id}
-                                                className="flex items-center justify-between"
-                                            >
-                                                <div>
-                                                    <p className="font-medium">{v.vaccine_name}</p>
-                                                    <p className="text-sm text-gray-500">
-                                                        {v.dose_number
-                                                            ? `Dose ${v.dose_number}`
-                                                            : ''}
-                                                    </p>
-                                                </div>
-                                                <div>
-                                                    {v.administered_date ? (
-                                                        <Badge variant="outline">
-                                                            {new Date(
-                                                                v.administered_date
-                                                            ).toLocaleDateString()}
-                                                        </Badge>
-                                                    ) : nextDue ? (
-                                                        <Badge
-                                                            variant={
-                                                                isOverdue
-                                                                    ? 'destructive'
-                                                                    : 'default'
-                                                            }
-                                                        >
-                                                            {isOverdue
-                                                                ? 'Overdue'
-                                                                : `Due ${nextDue.toLocaleDateString()}`}
-                                                        </Badge>
-                                                    ) : (
-                                                        <Badge variant="secondary">Planned</Badge>
-                                                    )}
-                                                </div>
-                                            </div>
-                                        )
-                                    })}
-                                </div>
-                            )}
-                        </CardContent>
-                    </Card>
-                </div>
+                            </div>
+                        )}
+                    </CardContent>
+                </Card>
             </div>
 
-            {/* Children List */}
+            {/* Vaccination Summary - Full Width */}
+            <Card className="shadow-sm hover:shadow-md transition-shadow">
+                <CardHeader className="pb-3">
+                    <div className="flex items-center gap-2">
+                        <TbVaccine className="w-5 h-5 text-yellow-600" />
+                        <CardTitle className="text-lg md:text-xl">Vaccination Timeline</CardTitle>
+                        {selectedChildId !== 'all' && (
+                            <Badge variant="outline" className="ml-auto">
+                                {children.find(
+                                    (c) =>
+                                        (c.patient_id || c.patient?.patient_id) === selectedChildId
+                                )?.firstname || 'Child'}
+                            </Badge>
+                        )}
+                    </div>
+                </CardHeader>
+                <CardContent>
+                    {vaccinations.length === 0 ? (
+                        <div className="text-center py-12">
+                            <TbVaccine className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+                            <p className="text-gray-600 font-medium">
+                                No vaccination records available
+                            </p>
+                            <p className="text-sm text-gray-500 mt-1">
+                                Select a child to view their immunization history
+                            </p>
+                        </div>
+                    ) : (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                            {vaccinations.slice(0, 9).map((v) => {
+                                const nextDue = v.next_dose_due ? new Date(v.next_dose_due) : null
+                                const isOverdue = nextDue && nextDue < new Date()
+                                const isUpcoming =
+                                    nextDue &&
+                                    !isOverdue &&
+                                    (nextDue - new Date()) / (1000 * 60 * 60 * 24) <= 30
+
+                                return (
+                                    <div
+                                        key={v.vax_id || v.id}
+                                        className={cn(
+                                            'p-3 rounded-lg border transition-all',
+                                            isOverdue
+                                                ? 'bg-red-50 border-red-200'
+                                                : isUpcoming
+                                                ? 'bg-yellow-50 border-yellow-200'
+                                                : 'bg-white border-gray-200'
+                                        )}
+                                    >
+                                        <div className="flex items-start justify-between gap-2 mb-2">
+                                            <p className="font-semibold text-sm text-gray-900 flex-1">
+                                                {v.vaccine_name}
+                                            </p>
+                                            {v.dose_number && (
+                                                <Badge
+                                                    variant="outline"
+                                                    className="text-xs flex-shrink-0"
+                                                >
+                                                    Dose {v.dose_number}
+                                                </Badge>
+                                            )}
+                                        </div>
+                                        <div className="flex items-center justify-between">
+                                            <div className="text-xs text-gray-600">
+                                                {v.administered_date ? (
+                                                    <span className="flex items-center gap-1">
+                                                        <span className="w-1.5 h-1.5 rounded-full bg-green-500"></span>
+                                                        {new Date(
+                                                            v.administered_date
+                                                        ).toLocaleDateString('en-US', {
+                                                            month: 'short',
+                                                            day: 'numeric',
+                                                            year: 'numeric',
+                                                        })}
+                                                    </span>
+                                                ) : nextDue ? (
+                                                    <span
+                                                        className={cn(
+                                                            'flex items-center gap-1',
+                                                            isOverdue
+                                                                ? 'text-red-600 font-medium'
+                                                                : isUpcoming
+                                                                ? 'text-yellow-600 font-medium'
+                                                                : ''
+                                                        )}
+                                                    >
+                                                        <span
+                                                            className={cn(
+                                                                'w-1.5 h-1.5 rounded-full',
+                                                                isOverdue
+                                                                    ? 'bg-red-500'
+                                                                    : isUpcoming
+                                                                    ? 'bg-yellow-500'
+                                                                    : 'bg-blue-500'
+                                                            )}
+                                                        ></span>
+                                                        {isOverdue
+                                                            ? 'Overdue'
+                                                            : `Due ${nextDue.toLocaleDateString(
+                                                                  'en-US',
+                                                                  { month: 'short', day: 'numeric' }
+                                                              )}`}
+                                                    </span>
+                                                ) : (
+                                                    <span className="text-gray-400">Planned</span>
+                                                )}
+                                            </div>
+                                        </div>
+                                    </div>
+                                )
+                            })}
+                        </div>
+                    )}
+                </CardContent>
+            </Card>
+
+            {/* Children List - Enhanced */}
             <div>
-                <h2 className="text-2xl font-bold text-gray-900 mb-4">My Children</h2>
+                <div className="flex items-center justify-between mb-4">
+                    <h2 className="text-xl md:text-2xl font-bold text-gray-900">My Children</h2>
+                    {children.length > 0 && (
+                        <Badge variant="secondary" className="text-xs">
+                            {children.length} {children.length === 1 ? 'child' : 'children'}
+                        </Badge>
+                    )}
+                </div>
 
                 {children.length === 0 ? (
-                    <Card>
+                    <Card className="shadow-sm">
                         <CardContent className="pt-6">
-                            <div className="text-center py-8">
-                                <TbHeartbeat className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-                                <p className="text-gray-600 text-lg mb-2">No children registered</p>
-                                <p className="text-gray-500 text-sm">
+                            <div className="text-center py-12">
+                                <div className="w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center mx-auto mb-4">
+                                    <Users className="w-8 h-8 text-gray-400" />
+                                </div>
+                                <p className="text-gray-900 font-semibold text-lg mb-2">
+                                    No children registered
+                                </p>
+                                <p className="text-gray-500 text-sm max-w-md mx-auto">
                                     Contact your healthcare provider to link your child's medical
-                                    records.
+                                    records to your account.
                                 </p>
                             </div>
                         </CardContent>
                     </Card>
                 ) : (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
                         {children.map((child) => {
                             const patient = child.patient
+                            const childId = patient.patient_id
+                            const colorClass = childColors[childId] || 'bg-gray-400'
+
                             return (
                                 <Link
                                     key={patient.patient_id}
                                     to={`/parent/child/${patient.patient_id}`}
+                                    className="group"
                                 >
-                                    <Card className="hover:shadow-lg transition-all duration-200 cursor-pointer h-full">
-                                        <CardHeader>
-                                            <div className="flex items-start justify-between">
-                                                <div>
-                                                    <CardTitle className="text-lg">
+                                    <Card className="h-full hover:shadow-lg transition-all duration-200 cursor-pointer border-2 hover:border-blue-300">
+                                        <CardHeader className="pb-3">
+                                            <div className="flex items-start gap-3">
+                                                <div
+                                                    className={cn(
+                                                        'w-12 h-12 rounded-full flex items-center justify-center text-white font-bold text-lg flex-shrink-0',
+                                                        colorClass
+                                                    )}
+                                                >
+                                                    {patient.firstname?.charAt(0)}
+                                                    {patient.lastname?.charAt(0)}
+                                                </div>
+                                                <div className="flex-1 min-w-0">
+                                                    <CardTitle className="text-base md:text-lg truncate">
                                                         {patient.firstname}{' '}
                                                         {patient.middlename
                                                             ? `${patient.middlename} `
                                                             : ''}
                                                         {patient.lastname}
                                                     </CardTitle>
-                                                    <CardDescription className="mt-1">
-                                                        {patient.age || 'Age not calculated'}
-                                                    </CardDescription>
+                                                    <div className="flex items-center gap-2 mt-1">
+                                                        <CardDescription className="text-xs md:text-sm">
+                                                            {patient.age || 'Age unknown'}
+                                                        </CardDescription>
+                                                        <Badge
+                                                            variant={
+                                                                patient.sex === 'male'
+                                                                    ? 'default'
+                                                                    : 'secondary'
+                                                            }
+                                                            className="text-xs"
+                                                        >
+                                                            {patient.sex === 'male' ? 'M' : 'F'}
+                                                        </Badge>
+                                                    </div>
                                                 </div>
-                                                <Badge
-                                                    variant={
-                                                        patient.sex === 'male'
-                                                            ? 'default'
-                                                            : 'secondary'
-                                                    }
-                                                >
-                                                    {patient.sex === 'male' ? 'Male' : 'Female'}
-                                                </Badge>
                                             </div>
                                         </CardHeader>
-                                        <CardContent>
-                                            <div className="space-y-2 text-sm">
-                                                <div className="flex justify-between">
-                                                    <span className="text-gray-600">
-                                                        Relationship:
-                                                    </span>
-                                                    <span className="font-medium capitalize">
-                                                        {child.relationship}
-                                                    </span>
-                                                </div>
-                                                <div className="flex justify-between">
-                                                    <span className="text-gray-600">
-                                                        Date of Birth:
-                                                    </span>
-                                                    <span className="font-medium">
-                                                        {new Date(
-                                                            patient.date_of_birth
-                                                        ).toLocaleDateString()}
-                                                    </span>
-                                                </div>
-                                                {patient.bloodtype && (
-                                                    <div className="flex justify-between">
-                                                        <span className="text-gray-600">
-                                                            Blood Type:
-                                                        </span>
-                                                        <span className="font-medium">
-                                                            {patient.bloodtype}
-                                                        </span>
-                                                    </div>
-                                                )}
+                                        <CardContent className="space-y-2 text-xs md:text-sm">
+                                            <Separator className="mb-3" />
+                                            <div className="flex items-center justify-between">
+                                                <span className="text-gray-600 flex items-center gap-1">
+                                                    <Users className="w-3 h-3" />
+                                                    Relationship
+                                                </span>
+                                                <span className="font-semibold capitalize text-gray-900">
+                                                    {child.relationship}
+                                                </span>
                                             </div>
-                                            <div className="mt-4 pt-4 border-t">
-                                                <span className="text-blue-600 text-sm font-medium hover:text-blue-700">
-                                                    View Details →
+                                            <div className="flex items-center justify-between">
+                                                <span className="text-gray-600 flex items-center gap-1">
+                                                    <Calendar className="w-3 h-3" />
+                                                    Birth Date
+                                                </span>
+                                                <span className="font-semibold text-gray-900">
+                                                    {new Date(
+                                                        patient.date_of_birth
+                                                    ).toLocaleDateString('en-US', {
+                                                        month: 'short',
+                                                        day: 'numeric',
+                                                        year: 'numeric',
+                                                    })}
+                                                </span>
+                                            </div>
+                                            {patient.bloodtype && (
+                                                <div className="flex items-center justify-between">
+                                                    <span className="text-gray-600 flex items-center gap-1">
+                                                        <Activity className="w-3 h-3" />
+                                                        Blood Type
+                                                    </span>
+                                                    <Badge
+                                                        variant="outline"
+                                                        className="font-semibold"
+                                                    >
+                                                        {patient.bloodtype}
+                                                    </Badge>
+                                                </div>
+                                            )}
+                                            <Separator className="my-3" />
+                                            <div className="flex items-center justify-center pt-2">
+                                                <span className="text-blue-600 text-xs md:text-sm font-semibold group-hover:text-blue-700 flex items-center gap-1">
+                                                    View Full Profile
+                                                    <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
                                                 </span>
                                             </div>
                                         </CardContent>
@@ -667,22 +1128,50 @@ function ParentDashboard() {
             </div>
 
             {/* Important Notice */}
-            <Card className="border-blue-200 bg-blue-50">
-                <CardContent className="pt-6">
-                    <div className="flex items-start space-x-3">
-                        <div className="p-2 bg-blue-100 rounded-full">
-                            <TbHeartbeat className="w-5 h-5 text-blue-600" />
-                        </div>
-                        <div>
-                            <p className="font-medium text-blue-900">Read-Only Access</p>
-                            <p className="text-sm text-blue-700 mt-1">
-                                You have view-only access to your children's medical records. For
-                                any updates or changes, please contact your healthcare provider.
-                            </p>
-                        </div>
-                    </div>
-                </CardContent>
-            </Card>
+            <Alert className="border-blue-200 bg-blue-50 mb-20 lg:mb-0">
+                <TbHeartbeat className="w-5 h-5 text-blue-600" />
+                <AlertTitle className="text-blue-900 font-semibold">Read-Only Access</AlertTitle>
+                <AlertDescription className="text-blue-700">
+                    You have view-only access to your children's medical records. For any updates or
+                    changes, please contact your healthcare provider.
+                </AlertDescription>
+            </Alert>
+
+            {/* Mobile Bottom Navigation Overlay - Quick Actions */}
+            <div className="fixed bottom-0 left-0 right-0 z-50 lg:hidden bg-white border-t border-gray-200 shadow-2xl">
+                <div className="grid grid-cols-4 gap-0 px-2 py-3 safe-area-inset-bottom">
+                    <Link
+                        to="/parent/scan-qr"
+                        className="flex flex-col items-center gap-1 py-2 px-1 rounded-lg active:bg-blue-100 transition-colors"
+                    >
+                        <TooltipHelper content="Scan QR Code" side="top">
+                            <ScanQrCode className="w-6 h-6 text-blue-600" />
+                        </TooltipHelper>
+                    </Link>
+                    <Link
+                        to="/parent/share-qr"
+                        className="flex flex-col items-center gap-1 py-2 px-1 rounded-lg active:bg-green-100 transition-colors"
+                    >
+                        <TooltipHelper content="Share QR Code" side="top">
+                            <QrCode className="w-6 h-6 text-green-600" />
+                        </TooltipHelper>
+                    </Link>
+                    <Link
+                        to="/parent/children"
+                        className="flex flex-col items-center gap-1 py-2 px-1 rounded-lg active:bg-purple-100 transition-colors"
+                    >
+                        <FileText className="w-6 h-6 text-purple-600" />
+                        <span className="text-[10px] font-medium text-gray-700">Records</span>
+                    </Link>
+                    <Link
+                        to="/parent/appointments"
+                        className="flex flex-col items-center gap-1 py-2 px-1 rounded-lg active:bg-orange-100 transition-colors"
+                    >
+                        <Calendar className="w-6 h-6 text-orange-600" />
+                        <span className="text-[10px] font-medium text-gray-700">Appointments</span>
+                    </Link>
+                </div>
+            </div>
         </div>
     )
 }
