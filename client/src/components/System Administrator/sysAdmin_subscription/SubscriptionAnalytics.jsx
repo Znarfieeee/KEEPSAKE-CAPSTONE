@@ -20,7 +20,7 @@ const COLORS = ['#3b82f6', '#8b5cf6', '#f59e0b', '#10b981']
 const SubscriptionAnalytics = ({ data, filters, detailed = false }) => {
     if (!data) {
         return (
-            <div className="bg-white rounded-xl shadow-sm border p-6">
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
                 <div className="animate-pulse space-y-4">
                     <div className="h-8 bg-gray-200 rounded w-1/4" />
                     <div className="h-64 bg-gray-200 rounded" />
@@ -36,27 +36,23 @@ const SubscriptionAnalytics = ({ data, filters, detailed = false }) => {
     }))
 
     // Status distribution chart data
-    const statusData = Object.entries(data.status_distribution || {}).map(
-        ([status, count]) => ({
-            name: status.charAt(0).toUpperCase() + status.slice(1),
-            value: count,
-        })
-    )
+    const statusData = Object.entries(data.status_distribution || {}).map(([status, count]) => ({
+        name: status.charAt(0).toUpperCase() + status.slice(1),
+        value: count,
+    }))
 
     // Revenue by plan
-    const revenueByPlanData = Object.entries(data.revenue_by_plan || {}).map(
-        ([plan, revenue]) => ({
-            plan: plan.charAt(0).toUpperCase() + plan.slice(1),
-            revenue,
-        })
-    )
+    const revenueByPlanData = Object.entries(data.revenue_by_plan || {}).map(([plan, revenue]) => ({
+        plan: plan.charAt(0).toUpperCase() + plan.slice(1),
+        revenue,
+    }))
 
     return (
         <div className="space-y-6">
             {/* Charts Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {/* Monthly Revenue Trend */}
-                <div className="bg-white rounded-xl shadow-sm border p-6">
+                <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
                     <h3 className="text-lg font-semibold text-gray-900 mb-4">
                         Monthly Revenue Trend
                     </h3>
@@ -65,9 +61,7 @@ const SubscriptionAnalytics = ({ data, filters, detailed = false }) => {
                             <CartesianGrid strokeDasharray="3 3" />
                             <XAxis dataKey="month" />
                             <YAxis />
-                            <Tooltip
-                                formatter={(value) => `₱${value.toLocaleString('en-PH')}`}
-                            />
+                            <Tooltip formatter={(value) => `₱${value.toLocaleString('en-PH')}`} />
                             <Legend />
                             <Line
                                 type="monotone"
@@ -81,10 +75,8 @@ const SubscriptionAnalytics = ({ data, filters, detailed = false }) => {
                 </div>
 
                 {/* Plan Distribution */}
-                <div className="bg-white rounded-xl shadow-sm border p-6">
-                    <h3 className="text-lg font-semibold text-gray-900 mb-4">
-                        Plan Distribution
-                    </h3>
+                <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                    <h3 className="text-lg font-semibold text-gray-900 mb-4">Plan Distribution</h3>
                     <ResponsiveContainer width="100%" height={300}>
                         <PieChart>
                             <Pie
@@ -114,10 +106,8 @@ const SubscriptionAnalytics = ({ data, filters, detailed = false }) => {
                 </div>
 
                 {/* Revenue by Plan */}
-                <div className="bg-white rounded-xl shadow-sm border p-6">
-                    <h3 className="text-lg font-semibold text-gray-900 mb-4">
-                        Revenue by Plan
-                    </h3>
+                <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                    <h3 className="text-lg font-semibold text-gray-900 mb-4">Revenue by Plan</h3>
                     <ResponsiveContainer width="100%" height={300}>
                         <PieChart>
                             <Pie
@@ -138,19 +128,29 @@ const SubscriptionAnalytics = ({ data, filters, detailed = false }) => {
                                 ))}
                             </Pie>
                             <Tooltip
-                                formatter={(value) => `₱${value.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+                                formatter={(value) =>
+                                    `₱${value.toLocaleString('en-PH', {
+                                        minimumFractionDigits: 2,
+                                        maximumFractionDigits: 2,
+                                    })}`
+                                }
                             />
                             <Legend
                                 verticalAlign="bottom"
                                 height={36}
-                                formatter={(value, entry) => `${value}: ₱${entry.payload.revenue.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+                                formatter={(value, entry) =>
+                                    `${value}: ₱${entry.payload.revenue.toLocaleString('en-PH', {
+                                        minimumFractionDigits: 2,
+                                        maximumFractionDigits: 2,
+                                    })}`
+                                }
                             />
                         </PieChart>
                     </ResponsiveContainer>
                 </div>
 
                 {/* Status Distribution */}
-                <div className="bg-white rounded-xl shadow-sm border p-6">
+                <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
                     <h3 className="text-lg font-semibold text-gray-900 mb-4">
                         Subscription Status
                     </h3>
@@ -185,7 +185,7 @@ const SubscriptionAnalytics = ({ data, filters, detailed = false }) => {
 
             {/* Expiring Soon List */}
             {data.expiring_soon && data.expiring_soon.length > 0 && (
-                <div className="bg-white rounded-xl shadow-sm border p-6">
+                <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
                     <h3 className="text-lg font-semibold text-gray-900 mb-4">
                         Subscriptions Expiring Soon
                     </h3>
@@ -193,7 +193,7 @@ const SubscriptionAnalytics = ({ data, filters, detailed = false }) => {
                         {data.expiring_soon.map((facility) => (
                             <div
                                 key={facility.facility_id}
-                                className="flex items-center justify-between p-3 border rounded-lg hover:bg-gray-50 transition-colors"
+                                className="flex items-center justify-between p-3 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
                             >
                                 <div>
                                     <p className="font-medium text-gray-900">
@@ -212,8 +212,7 @@ const SubscriptionAnalytics = ({ data, filters, detailed = false }) => {
                                     </p>
                                     <p className="text-xs text-gray-500">
                                         {Math.ceil(
-                                            (new Date(facility.subscription_expires) -
-                                                new Date()) /
+                                            (new Date(facility.subscription_expires) - new Date()) /
                                                 (1000 * 60 * 60 * 24)
                                         )}{' '}
                                         days left

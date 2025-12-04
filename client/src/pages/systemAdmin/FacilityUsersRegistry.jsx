@@ -2,7 +2,7 @@ import React, { useEffect, useState, useCallback, useMemo } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuth } from '@/context/auth'
 import { getAllFacilityUsers } from '@/api/admin/facility'
-import { useFacilityUsersRealtime, supabase } from '@/hook/useSupabaseRealtime'
+import { useFacilityUsersRealtime } from '@/hook/useSupabaseRealtime'
 
 // UI Components
 import FacilityUsersTable from '@/components/System Administrator/sysAdmin_facilities/FacilityUsersTable'
@@ -67,80 +67,27 @@ const FacilityUsersRegistry = () => {
 
         switch (type) {
             case 'INSERT':
-                // Fetch full user details when new assignment is created
-                supabase
-                    .table('facility_users')
-                    .select(
-                        `facility_id, user_id, role, department, start_date, end_date,
-                            users!facility_users_user_id_fkey(email, firstname, lastname, phone_number, is_active, specialty, license_number),
-                            healthcare_facilities!facility_users_facility_id_fkey(facility_name, subscription_status)`
-                    )
-                    .eq('user_id', facilityUser.user_id)
-                    .eq('facility_id', facilityUser.facility_id)
-                    .single()
-                    .then(({ data, error }) => {
-                        if (!error && data) {
-                            const userData = data.users || {}
-                            const facilityData = data.healthcare_facilities || {}
-
-                            const newUser = {
-                                facility_id: data.facility_id,
-                                user_id: data.user_id,
-                                role: data.role,
-                                department: data.department,
-                                start_date: data.start_date,
-                                end_date: data.end_date,
-                                email: userData.email,
-                                firstname: userData.firstname,
-                                lastname: userData.lastname,
-                                phone_number: userData.phone_number,
-                                is_active: userData.is_active,
-                                specialty: userData.specialty,
-                                license_number: userData.license_number,
-                                facility_name: facilityData.facility_name,
-                                facility_status: facilityData.subscription_status,
-                            }
-
-                            setFacilityUsers((prev) => [newUser, ...prev])
-                            showToast(
-                                'success',
-                                `${userData.firstname} ${userData.lastname} assigned to ${facilityData.facility_name}`
-                            )
-                        }
-                    })
+                // Refetch data to get complete user details with proper joins
+                fetchFacilityUsers()
+                showToast('success', 'New user assigned to facility')
                 break
 
             case 'UPDATE':
-                // Update existing facility user
-                setFacilityUsers((prev) =>
-                    prev.map((fu) =>
-                        fu.user_id === facilityUser.user_id &&
-                        fu.facility_id === facilityUser.facility_id
-                            ? { ...fu, ...facilityUser }
-                            : fu
-                    )
-                )
+                // Refetch data to ensure consistency
+                fetchFacilityUsers()
                 showToast('info', 'Facility user assignment updated')
                 break
 
             case 'DELETE':
-                // Remove facility user
-                setFacilityUsers((prev) =>
-                    prev.filter(
-                        (fu) =>
-                            !(
-                                fu.user_id === facilityUser.user_id &&
-                                fu.facility_id === facilityUser.facility_id
-                            )
-                    )
-                )
+                // Refetch data to update the list
+                fetchFacilityUsers()
                 showToast('warning', 'User removed from facility')
                 break
 
             default:
                 console.warn('Unknown real-time event type:', type)
         }
-    }, [])
+    }, [fetchFacilityUsers])
 
     // Set up real-time subscription
     useFacilityUsersRealtime({
@@ -215,19 +162,9 @@ const FacilityUsersRegistry = () => {
 
     const handleDelete = async (user) => {
         try {
-            // Remove user from facility via Supabase directly
-            const { error } = await supabase
-                .table('facility_users')
-                .delete()
-                .eq('user_id', user.user_id)
-                .eq('facility_id', user.facility_id)
-
-            if (error) {
-                showToast('error', 'Failed to remove user from facility')
-                console.error('Error removing user:', error)
-            } else {
-                showToast('success', 'User removed from facility successfully')
-            }
+            showToast('info', 'Remove user feature coming soon')
+            // TODO: Implement API endpoint for removing users from facilities
+            // This should call: DELETE /admin/facilities/${user.facility_id}/users/${user.user_id}
         } catch (error) {
             console.error('Error removing user from facility:', error)
             showToast('error', 'Failed to remove user from facility')

@@ -30,9 +30,13 @@ from routes.qr_routes import qr_bp
 from routes.notification_routes import notification_bp
 from routes.parent.parent_routes import parent_bp
 from routes.parent.parent_reports import parent_reports_bp
+from routes.parent.parent_subscription import parent_subscription_bp
 from routes.medical_documents.document_routes import documents_bp
 from routes.parent_consent_routes import parent_consent_bp
 from routes.feedback_routes import feedback_bp
+from routes.facility_contact import facility_contact_bp
+from routes.admin.admin_parent_subscription import admin_parent_subscription_bp
+from routes.public_routes import public_bp
 
 app = Flask("keepsake")
 
@@ -53,6 +57,7 @@ except Exception as e:
 # Blueprints
 app.register_blueprint(settings_bp)
 app.register_blueprint(auth_bp)
+app.register_blueprint(public_bp)
 app.register_blueprint(admin_bp)
 app.register_blueprint(facility_bp)
 app.register_blueprint(users_bp)
@@ -72,8 +77,11 @@ app.register_blueprint(qr_bp)
 app.register_blueprint(notification_bp)
 app.register_blueprint(parent_bp)
 app.register_blueprint(parent_reports_bp)
+app.register_blueprint(parent_subscription_bp)
 app.register_blueprint(parent_consent_bp)
 app.register_blueprint(feedback_bp)
+app.register_blueprint(facility_contact_bp)
+app.register_blueprint(admin_parent_subscription_bp)
 
 # Redis session configuration with enhanced error handling
 def setup_redis_session():

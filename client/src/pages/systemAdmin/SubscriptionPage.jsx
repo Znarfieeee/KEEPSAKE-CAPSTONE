@@ -23,6 +23,9 @@ const SubscriptionAnalytics = lazy(() =>
 const EmailNotifications = lazy(() =>
     import('@/components/System Administrator/sysAdmin_subscription/EmailNotifications')
 )
+const ParentSubscriptionsManagement = lazy(() =>
+    import('@/components/System Administrator/sysAdmin_subscription/ParentSubscriptionsManagement')
+)
 
 const SubscriptionPage = () => {
     const { user } = useAuth()
@@ -69,9 +72,7 @@ const SubscriptionPage = () => {
             {/* Header */}
             <div className="flex items-center justify-between">
                 <div>
-                    <h1 className="text-3xl font-bold text-gray-900">
-                        Subscription & Billing
-                    </h1>
+                    <h1 className="text-3xl font-bold text-gray-900">Subscription & Billing</h1>
                     <p className="text-gray-600 mt-1">
                         Manage facility subscriptions, invoices, and payments
                     </p>
@@ -79,7 +80,7 @@ const SubscriptionPage = () => {
                 <button
                     onClick={() => fetchAnalytics(true)}
                     disabled={loading}
-                    className="px-4 py-2 bg-white border rounded-lg hover:bg-gray-50 inline-flex items-center gap-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="px-4 py-2 bg-white rounded-lg hover:bg-gray-50 inline-flex items-center gap-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                     <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
                     Refresh
@@ -117,10 +118,11 @@ const SubscriptionPage = () => {
 
             {/* Tabs */}
             <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-                <TabsList className="bg-white border">
+                <TabsList className="bg-white border border-gray-200">
                     <TabsTrigger value="overview">Overview</TabsTrigger>
                     <TabsTrigger value="invoices">Invoices</TabsTrigger>
                     <TabsTrigger value="payments">Payment History</TabsTrigger>
+                    <TabsTrigger value="parent-subscriptions">Parent Subscriptions</TabsTrigger>
                     <TabsTrigger value="analytics">Analytics</TabsTrigger>
                     <TabsTrigger value="notifications">Notifications</TabsTrigger>
                 </TabsList>
@@ -145,6 +147,10 @@ const SubscriptionPage = () => {
 
                     <TabsContent value="payments">
                         <PaymentHistory filters={{ dateRange, statusFilter }} />
+                    </TabsContent>
+
+                    <TabsContent value="parent-subscriptions">
+                        <ParentSubscriptionsManagement />
                     </TabsContent>
 
                     <TabsContent value="analytics">

@@ -18,10 +18,7 @@ const SubscriptionFilters = ({
     onPlanChange,
 }) => {
     const hasActiveFilters =
-        statusFilter !== 'all' ||
-        planFilter !== 'all' ||
-        dateRange.start ||
-        dateRange.end
+        statusFilter !== 'all' || planFilter !== 'all' || dateRange.start || dateRange.end
 
     const clearFilters = () => {
         onStatusChange('all')
@@ -30,8 +27,8 @@ const SubscriptionFilters = ({
     }
 
     return (
-        <div className="bg-white rounded-xl shadow-sm border">
-            <div className="p-4 border-b bg-gray-50 rounded-t-xl">
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200">
+            <div className="p-4 border-b border-gray-200 bg-gray-50 rounded-t-xl">
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
                         <Filter className="h-5 w-5 text-gray-600" />
@@ -76,9 +73,7 @@ const SubscriptionFilters = ({
                     </div>
 
                     <div>
-                        <label className="text-sm font-medium text-gray-700 mb-2 block">
-                            Plan
-                        </label>
+                        <label className="text-sm font-medium text-gray-700 mb-2 block">Plan</label>
                         <Select value={planFilter} onValueChange={onPlanChange}>
                             <SelectTrigger className="w-full">
                                 <SelectValue placeholder="All Plans" />
@@ -86,12 +81,8 @@ const SubscriptionFilters = ({
                             <SelectContent>
                                 <SelectGroup>
                                     <SelectItem value="all">All Plans</SelectItem>
-                                    <SelectItem value="standard">
-                                        Standard (₱5,544/mo)
-                                    </SelectItem>
-                                    <SelectItem value="premium">
-                                        Premium (₱11,144/mo)
-                                    </SelectItem>
+                                    <SelectItem value="standard">Standard (₱5,544/mo)</SelectItem>
+                                    <SelectItem value="premium">Premium (₱11,144/mo)</SelectItem>
                                     <SelectItem value="enterprise">
                                         Enterprise (₱22,344/mo)
                                     </SelectItem>

@@ -6,6 +6,10 @@ import { QrScannerProvider } from './context/QrScannerContext'
 
 // Pages
 import Landing_page from '@/pages/Landing_page'
+import PricingPage from '@/pages/PricingPage'
+import ServicesPage from '@/pages/ServicesPage'
+import AboutPage from '@/pages/AboutPage'
+import ClinicsPage from '@/pages/ClinicsPage'
 import Login from '@/pages/Login'
 import FirstLogin from '@/pages/FirstLogin'
 import NotFound from '@/pages/NotFound'
@@ -70,6 +74,7 @@ import FacilityAdminLayout from '@/layout/FacilityAdminLayout'
 import PediaproLayout from '@/layout/PediaproLayout'
 import ParentLayout from '@/layout/ParentLayout'
 import NurseLayout from '@/layout/NurseLayout'
+import LandingLayout from '@/layout/LandingLayout'
 import NurseDashboard from './pages/vital_custodian/NurseDashboard'
 import NurseReports from './pages/vital_custodian/NurseReports'
 import ParentReports from './pages/parent/ParentReports'
@@ -88,8 +93,29 @@ function App() {
             element: <AuthWrapper />, // Provides auth to all child routes within router context
             children: [
                 {
-                    path: '/',
-                    element: <Landing_page />,
+                    element: <LandingLayout />, // Landing page layout with navbar
+                    children: [
+                        {
+                            path: '/',
+                            element: <Landing_page />,
+                        },
+                        {
+                            path: '/pricing',
+                            element: <PricingPage />,
+                        },
+                        {
+                            path: '/services',
+                            element: <ServicesPage />,
+                        },
+                        {
+                            path: '/about',
+                            element: <AboutPage />,
+                        },
+                        {
+                            path: '/clinics',
+                            element: <ClinicsPage />,
+                        },
+                    ],
                 },
                 {
                     path: '/qr_scanner',

@@ -20,3 +20,6 @@ gunicorn  # For production deployment
 
 # Notification scheduler
 schedule>=1.2.0  # For periodic notification checks
+
+# Payment processing
+stripe>=7.0.0  # Stripe SDK for parent subscription payments

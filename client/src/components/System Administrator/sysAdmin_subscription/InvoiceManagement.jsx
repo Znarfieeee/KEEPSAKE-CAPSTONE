@@ -19,7 +19,9 @@ const StatusBadge = ({ status }) => {
     return (
         <Badge
             variant="outline"
-            className={`capitalize px-2 py-0.5 border ${styles[status] || styles.pending}`}
+            className={`capitalize px-2 py-0.5 border border-gray-200 ${
+                styles[status] || styles.pending
+            }`}
         >
             {status}
         </Badge>
@@ -93,13 +95,13 @@ const InvoiceManagement = ({ filters }) => {
     const totalPages = Math.ceil(filteredInvoices.length / itemsPerPage) || 1
 
     return (
-        <div className="bg-white rounded-xl shadow-sm border p-6 space-y-4">
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 space-y-4">
             {/* Header */}
             <div className="flex items-center justify-between">
                 <h2 className="text-xl font-semibold text-gray-900">Invoice Management</h2>
                 <button
                     onClick={() => setShowGenerate(true)}
-                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 inline-flex items-center gap-2 transition-colors"
+                    className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-accent inline-flex items-center gap-2 transition-colors"
                 >
                     <Plus className="h-4 w-4" />
                     Generate Invoice
@@ -114,14 +116,14 @@ const InvoiceManagement = ({ filters }) => {
                     placeholder="Search by invoice number or facility..."
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
-                    className="w-full pl-10 pr-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
             </div>
 
             {/* Table */}
             <div className="overflow-x-auto">
                 <table className="w-full text-sm">
-                    <thead className="border-b text-xs uppercase text-gray-600">
+                    <thead className="border-gray-200 border-b text-xs uppercase text-gray-600">
                         <tr className="text-left">
                             <th className="py-3 px-2">Invoice #</th>
                             <th className="py-3 px-2">Facility</th>
@@ -135,7 +137,7 @@ const InvoiceManagement = ({ filters }) => {
                     <tbody>
                         {loading ? (
                             Array.from({ length: itemsPerPage }).map((_, idx) => (
-                                <tr key={idx} className="border-b animate-pulse">
+                                <tr key={idx} className="border-b border-gray-200 animate-pulse">
                                     {Array.from({ length: 7 }).map((__, cIdx) => (
                                         <td key={cIdx} className="p-2">
                                             <div className="h-4 bg-gray-300 rounded w-full" />
@@ -151,10 +153,11 @@ const InvoiceManagement = ({ filters }) => {
                             </tr>
                         ) : (
                             currentData.map((invoice) => (
-                                <tr key={invoice.invoice_id} className="border-b hover:bg-gray-50">
-                                    <td className="p-2 font-medium">
-                                        {invoice.invoice_number}
-                                    </td>
+                                <tr
+                                    key={invoice.invoice_id}
+                                    className="border-gray-200 border-b hover:bg-gray-50"
+                                >
+                                    <td className="p-2 font-medium">{invoice.invoice_number}</td>
                                     <td className="p-2">
                                         {invoice.healthcare_facilities?.facility_name || '—'}
                                     </td>
@@ -165,7 +168,11 @@ const InvoiceManagement = ({ filters }) => {
                                         {new Date(invoice.due_date).toLocaleDateString()}
                                     </td>
                                     <td className="p-2 font-semibold">
-                                        ₱{invoice.total_amount?.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                        ₱
+                                        {invoice.total_amount?.toLocaleString('en-PH', {
+                                            minimumFractionDigits: 2,
+                                            maximumFractionDigits: 2,
+                                        })}
                                     </td>
                                     <td className="p-2">
                                         <StatusBadge status={invoice.status} />
@@ -214,7 +221,7 @@ const InvoiceManagement = ({ filters }) => {
                             setItemsPerPage(Number(e.target.value))
                             setPage(1)
                         }}
-                        className="border rounded px-2 py-1"
+                        className=" border-gray-200 rounded px-2 py-1"
                     >
                         <option value={10}>10</option>
                         <option value={25}>25</option>
@@ -223,21 +230,22 @@ const InvoiceManagement = ({ filters }) => {
                     </select>
                 </div>
                 <span className="text-gray-600">
-                    Showing {startIdx + 1}-{Math.min(startIdx + itemsPerPage, filteredInvoices.length)}{' '}
-                    of {filteredInvoices.length}
+                    Showing {startIdx + 1}-
+                    {Math.min(startIdx + itemsPerPage, filteredInvoices.length)} of{' '}
+                    {filteredInvoices.length}
                 </span>
                 <div className="flex gap-2">
                     <button
                         onClick={() => setPage((p) => Math.max(1, p - 1))}
                         disabled={page === 1}
-                        className="px-3 py-1 border rounded hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="px-3 py-1 border border-gray-200 rounded hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                         Previous
                     </button>
                     <button
                         onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
                         disabled={page === totalPages}
-                        className="px-3 py-1 border rounded hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="px-3 py-1 border border-gray-200 rounded hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                         Next
                     </button>
