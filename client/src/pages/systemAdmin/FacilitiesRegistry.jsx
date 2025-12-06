@@ -73,8 +73,6 @@ const FacilitiesRegistry = () => {
 
     const handleFacilityChange = useCallback(
         ({ type, facility, raw }) => {
-            console.log(`Real-time ${type} received:`, { facility, raw })
-
             try {
                 // Format the facility data consistently - prioritize raw data if available
                 let formattedFacility
@@ -93,13 +91,11 @@ const FacilitiesRegistry = () => {
                         formattedFacility = facility
                     }
                 } else {
-                    console.error('No facility data received in real-time update')
                     return
                 }
 
                 // Ensure facility has required properties
                 if (!formattedFacility.id && !formattedFacility.facility_id) {
-                    console.error('Invalid facility data - missing ID:', formattedFacility)
                     return
                 }
 
@@ -110,8 +106,6 @@ const FacilitiesRegistry = () => {
                         setFacilities((prev) => {
                             const exists = prev.some((f) => f.id === facilityId)
                             if (exists) return prev
-
-                            console.log(`Adding new facility: ${formattedFacility.name}`)
                             return [formattedFacility, ...prev]
                         })
                         break
@@ -122,7 +116,6 @@ const FacilitiesRegistry = () => {
                             const updated = prev.map((f) =>
                                 f.id === facilityId ? { ...f, ...formattedFacility } : f
                             )
-                            console.log(`Updated facility: ${formattedFacility.name}`)
                             return updated
                         })
 
@@ -140,7 +133,6 @@ const FacilitiesRegistry = () => {
                     case 'DELETE':
                         setFacilities((prev) => {
                             const filtered = prev.filter((f) => f.id !== facilityId)
-                            console.log(`Removed facility: ${formattedFacility.name}`)
                             return filtered
                         })
 
@@ -156,10 +148,10 @@ const FacilitiesRegistry = () => {
                         break
 
                     default:
-                        console.warn('Unknown real-time event type: ', type)
+                        break
                 }
-            } catch (error) {
-                console.error('Error handling real-time facility change:', error)
+            } catch {
+                // Silent fail for real-time updates
             }
         },
         [formatFacility, showDetail, detailFacility, showEdit, editingFacility]
@@ -175,15 +167,14 @@ const FacilitiesRegistry = () => {
             setLoading(true)
             const response = await getFacilities({ bust_cache: false })
 
-            if (response.status === 'success' && response.data) {
-                setFacilities(response.data.map(formatFacility))
+            if (response && response.status === 'success' && response.data) {
+                const formattedFacilities = response.data.map(formatFacility)
+                setFacilities(formattedFacilities)
             } else {
                 showToast('error', 'Failed to load facilities')
-                console.error('API error:', response)
             }
-        } catch (error) {
+        } catch {
             showToast('error', 'Failed to load facilities')
-            console.error('Error:', error)
         } finally {
             setLoading(false)
         }
@@ -267,8 +258,6 @@ const FacilitiesRegistry = () => {
         try {
             const response = await updateFacility(facility)
 
-            console.log('Update response: ', response)
-
             if (!response || response.error) {
                 showToast('error', response?.error || 'Failed to update facility. Try again.')
                 return
@@ -279,8 +268,7 @@ const FacilitiesRegistry = () => {
 
             // Refresh facilities list to ensure consistency
             await fetchFacilities()
-        } catch (error) {
-            console.error('Error updating facility:', error)
+        } catch {
             showToast('error', 'Failed to update facility. Please try again.')
         }
     }
@@ -305,7 +293,6 @@ const FacilitiesRegistry = () => {
                 throw new Error(response?.message || 'Failed to delete facility')
             }
         } catch (error) {
-            console.error('Error deleting facility:', error)
             showToast('error', error.message || 'Failed to delete facility. Please try again.')
             throw error // Re-throw to let FacilityTable handle loading states
         }

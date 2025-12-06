@@ -321,3 +321,56 @@ export const deactivateAccount = async (password, confirmation) => {
         throw error
     }
 }
+
+/**
+ * Get current user's font size preference
+ */
+export const getFontSize = async () => {
+    try {
+        const response = await fetch(`${API_BASE_URL}/settings/font-size`, {
+            method: 'GET',
+            credentials: 'include',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+        })
+
+        const data = await response.json()
+
+        if (!response.ok) {
+            throw new Error(data.message || 'Failed to fetch font size')
+        }
+
+        return data
+    } catch (error) {
+        console.error('Get font size error:', error)
+        throw error
+    }
+}
+
+/**
+ * Update user's font size preference
+ */
+export const updateFontSize = async (fontSize) => {
+    try {
+        const response = await fetch(`${API_BASE_URL}/settings/font-size`, {
+            method: 'PUT',
+            credentials: 'include',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ font_size: fontSize }),
+        })
+
+        const data = await response.json()
+
+        if (!response.ok) {
+            throw new Error(data.message || 'Failed to update font size')
+        }
+
+        return data
+    } catch (error) {
+        console.error('Update font size error:', error)
+        throw error
+    }
+}

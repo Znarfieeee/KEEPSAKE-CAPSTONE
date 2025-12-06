@@ -5,7 +5,7 @@ import { useSearchParams } from 'react-router-dom'
 // UI Components
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { User, Lock, Mail, Phone, Shield, AlertTriangle, Bell, Share2 } from 'lucide-react'
+import { User, Lock, Mail, Phone, Shield, AlertTriangle, Bell, Share2, Type } from 'lucide-react'
 import ProfileSettings from '@/components/settings/ProfileSettings'
 import PasswordSettings from '@/components/settings/PasswordSettings'
 import EmailSettings from '@/components/settings/EmailSettings'
@@ -14,6 +14,7 @@ import TwoFactorSettings from '@/components/settings/TwoFactorSettings'
 import AccountDeactivation from '@/components/settings/AccountDeactivation'
 import NotificationSettings from '@/components/notifications/NotificationSettings'
 import ParentConsentManagement from '@/components/settings/ParentConsentManagement'
+import FontSizeSettings from '@/components/settings/FontSizeSettings'
 
 const Settings = () => {
     const { user } = useAuth()
@@ -95,6 +96,14 @@ const Settings = () => {
                             >
                                 <Bell className="h-5 w-5" />
                                 <span className="font-medium">Notifications</span>
+                            </TabsTrigger>
+
+                            <TabsTrigger
+                                value="font-size"
+                                className="w-full justify-start gap-3 px-4 py-3 rounded-md data-[state=active]:bg-primary data-[state=active]:text-white hover:bg-gray-50 transition-colors"
+                            >
+                                <Type className="h-5 w-5" />
+                                <span className="font-medium">Font Size</span>
                             </TabsTrigger>
 
                             {user?.role === 'parent' && (
@@ -216,6 +225,24 @@ const Settings = () => {
                                     </CardHeader>
                                     <CardContent className="p-0">
                                         <NotificationSettings />
+                                    </CardContent>
+                                </Card>
+                            </TabsContent>
+
+                            {/* Font Size Tab */}
+                            <TabsContent value="font-size" className="mt-0 w-full h-full">
+                                <Card className="shadow-sm h-full">
+                                    <CardHeader className="border-b bg-gray-50/50">
+                                        <CardTitle className="text-xl flex items-center gap-2">
+                                            <Type className="h-5 w-5 text-blue-600" />
+                                            Font Size Preferences
+                                        </CardTitle>
+                                        <CardDescription>
+                                            Customize the text size for better readability
+                                        </CardDescription>
+                                    </CardHeader>
+                                    <CardContent className="p-6">
+                                        <FontSizeSettings />
                                     </CardContent>
                                 </Card>
                             </TabsContent>

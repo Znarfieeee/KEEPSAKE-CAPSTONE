@@ -61,12 +61,6 @@ export const AuthProvider = ({ children }) => {
         try {
             const data = await getSession()
             if (data.status === 'success' && data.user) {
-                console.log('[AUTH] checkExistingSession - found session:', {
-                    email: data.user?.email,
-                    is_first_login: data.user?.is_first_login,
-                    last_sign_in_at: data.user?.last_sign_in_at
-                })
-
                 setUser(data.user)
                 setIsAuthenticated(true)
                 lastActivityRef.current = Date.now()
@@ -75,7 +69,6 @@ export const AuthProvider = ({ children }) => {
 
                 // Check if this is first login and redirect to first-login page
                 if (data.user?.is_first_login) {
-                    console.log('[AUTH] checkExistingSession - redirecting to /first-login')
                     navigate('/first-login', { replace: true })
                 }
 
@@ -152,13 +145,6 @@ export const AuthProvider = ({ children }) => {
                 const response = await login(email, password)
 
                 if (response.status === 'success') {
-                    console.log('[AUTH] Login response received:', {
-                        email: response.user?.email,
-                        role: response.user?.role,
-                        is_first_login: response.user?.is_first_login,
-                        last_sign_in_at: response.user?.last_sign_in_at
-                    })
-
                     showToast('success', 'Login successful')
                     setUser(response.user)
                     setIsAuthenticated(true)
@@ -167,11 +153,9 @@ export const AuthProvider = ({ children }) => {
 
                     // Check if this is first login
                     if (response.user?.is_first_login) {
-                        console.log('[AUTH] First login detected - redirecting to /first-login')
                         // Redirect to first login page instead of dashboard
                         navigate('/first-login', { replace: true })
                     } else {
-                        console.log('[AUTH] Not first login - navigating to dashboard for role:', response.user.role)
                         navigateOnLogin(response.user.role)
                     }
                     return response
@@ -223,10 +207,12 @@ export const AuthProvider = ({ children }) => {
                 setIsAuthenticated(false)
                 setSessionStatus('expired')
                 refreshPromiseRef.current = null
+                // Reset font size to default on logout
+                document.documentElement.style.setProperty('--base-font-size', '16px')
                 navigate('/login')
             }
         },
-        [clearAllTimers]
+        [clearAllTimers, navigate]
     )
 
     const handleActivity = useCallback(() => {
@@ -350,6 +336,15 @@ export const AuthProvider = ({ children }) => {
             ...updatedUserData,
         }))
     }, [])
+
+    // Apply font size to DOM when user font_size changes
+    useEffect(() => {
+        if (user?.font_size) {
+            document.documentElement.style.setProperty('--base-font-size', `${user.font_size}px`)
+        } else {
+            document.documentElement.style.setProperty('--base-font-size', '16px')
+        }
+    }, [user?.font_size])
 
     const contextValue = {
         // Core auth state

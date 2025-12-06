@@ -239,6 +239,17 @@ def handle_startup_errors():
 def landing_page():
     return jsonify({"message": "Success", "status": "success"}), 200
 
+@app.route("/test-cookies")
+def test_cookies():
+    """Test endpoint to verify cookies are working"""
+    cookies_received = dict(request.cookies)
+    return jsonify({
+        "status": "success",
+        "cookies_received": cookies_received,
+        "cookie_count": len(cookies_received),
+        "headers": dict(request.headers)
+    }), 200
+
 # Health check endpoint
 @app.route("/health")
 def health_check():

@@ -1,14 +1,23 @@
 import React, { useEffect, useState, useCallback, useMemo } from 'react'
-import { useNavigate, useSearchParams } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuth } from '@/context/auth'
-import { getAllFacilityUsers } from '@/api/admin/facility'
-import { useFacilityUsersRealtime } from '@/hook/useSupabaseRealtime'
+import { getAllFacilityUsers, getFacilityUsers } from '@/api/admin/facility'
+import { updateUserStatus, removeUserFromFacility, updateFacilityUser } from '@/api/admin/users'
 
 // UI Components
 import FacilityUsersTable from '@/components/System Administrator/sysAdmin_facilities/FacilityUsersTable'
+import FacilityUserDetailModal from '@/components/System Administrator/sysAdmin_facilities/FacilityUserDetailModal'
+import EditFacilityUserModal from '@/components/System Administrator/sysAdmin_facilities/EditFacilityUserModal'
 import Unauthorized from '@/components/Unauthorized'
 import { Button } from '@/components/ui/Button'
-import { RefreshCw, Download, ArrowLeft } from 'lucide-react'
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@/components/ui/select'
+import { Download, ChevronLeft } from 'lucide-react'
 
 // Helper
 import { showToast } from '@/util/alertHelper'
@@ -24,75 +33,48 @@ const FacilityUsersRegistry = () => {
     // UI state
     const [search, setSearch] = useState('')
     const [statusFilter, setStatusFilter] = useState('all')
-    const [facilityFilter, setFacilityFilter] = useState('all')
+    const [roleFilter, setRoleFilter] = useState('all')
     const [page, setPage] = useState(1)
     const [itemsPerPage, setItemsPerPage] = useState(10)
+
+    // Modal state
+    const [showUserDetail, setShowUserDetail] = useState(false)
+    const [selectedUser, setSelectedUser] = useState(null)
+    const [showEditUser, setShowEditUser] = useState(false)
+    const [editingUser, setEditingUser] = useState(null)
 
     // Get facility from URL query params
     const facilityIdFromUrl = searchParams.get('facility')
 
-    // Fetch facility users
+    // Fetch facility users with caching for faster loads
     const fetchFacilityUsers = useCallback(async () => {
         try {
             setLoading(true)
-            const response = await getAllFacilityUsers({ bust_cache: false })
+
+            // Use specific endpoint if facility ID is provided, otherwise get all
+            // bust_cache: false uses cached data for faster loading (5-minute TTL on backend)
+            const response = facilityIdFromUrl
+                ? await getFacilityUsers(facilityIdFromUrl, { bust_cache: false })
+                : await getAllFacilityUsers({ bust_cache: false })
 
             if (response.status === 'success') {
-                setFacilityUsers(response.data)
+                // For specific facility endpoint, data is in response.users
+                // For all facilities endpoint, data is in response.data
+                const users = facilityIdFromUrl ? response.users : response.data
+                setFacilityUsers(users || [])
             } else {
                 showToast('error', response.message || 'Failed to load facility users')
             }
-        } catch (error) {
-            console.error('Error fetching facility users:', error)
+        } catch {
             showToast('error', 'Failed to load facility users')
         } finally {
             setLoading(false)
         }
-    }, [])
+    }, [facilityIdFromUrl])
 
     useEffect(() => {
         fetchFacilityUsers()
     }, [fetchFacilityUsers])
-
-    // Set facility filter from URL when component mounts or URL changes
-    useEffect(() => {
-        if (facilityIdFromUrl) {
-            setFacilityFilter(facilityIdFromUrl)
-        }
-    }, [facilityIdFromUrl])
-
-    // Handle real-time updates for facility_users table
-    const handleFacilityUserChange = useCallback(({ type, facilityUser }) => {
-        console.log(`Facility user ${type}:`, facilityUser)
-
-        switch (type) {
-            case 'INSERT':
-                // Refetch data to get complete user details with proper joins
-                fetchFacilityUsers()
-                showToast('success', 'New user assigned to facility')
-                break
-
-            case 'UPDATE':
-                // Refetch data to ensure consistency
-                fetchFacilityUsers()
-                showToast('info', 'Facility user assignment updated')
-                break
-
-            case 'DELETE':
-                // Refetch data to update the list
-                fetchFacilityUsers()
-                showToast('warning', 'User removed from facility')
-                break
-
-            default:
-                console.warn('Unknown real-time event type:', type)
-        }
-    }, [fetchFacilityUsers])
-
-    // Set up real-time subscription
-    useFacilityUsersRealtime({
-        onFacilityUserChange: handleFacilityUserChange,
-    })
 
     // Filter facility users
     const filteredUsers = useMemo(() => {
@@ -113,32 +95,29 @@ const FacilityUsersRegistry = () => {
                     ? fu.is_active === (statusFilter === 'active')
                     : true
 
-            const matchesFacility =
-                facilityFilter && facilityFilter !== 'all'
-                    ? fu.facility_id === facilityFilter
+            const matchesRole =
+                roleFilter && roleFilter !== 'all'
+                    ? fu.role.toLowerCase() === roleFilter.toLowerCase()
                     : true
 
-            return matchesSearch && matchesStatus && matchesFacility
+            return matchesSearch && matchesStatus && matchesRole
         })
-    }, [facilityUsers, search, statusFilter, facilityFilter])
+    }, [facilityUsers, search, statusFilter, roleFilter])
 
-    // Get unique facilities for filter
-    const uniqueFacilities = useMemo(() => {
-        const facilities = new Map()
+    // Get unique roles for filter
+    const uniqueRoles = useMemo(() => {
+        const roles = new Set()
         facilityUsers.forEach((fu) => {
-            if (!facilities.has(fu.facility_id)) {
-                facilities.set(fu.facility_id, fu.facility_name)
-            }
+            if (fu.role) roles.add(fu.role)
         })
-        return Array.from(facilities, ([id, name]) => ({ id, name }))
+        return Array.from(roles).sort()
     }, [facilityUsers])
 
-    // Get selected facility name for display
-    const selectedFacilityName = useMemo(() => {
-        if (facilityFilter === 'all') return null
-        const facility = uniqueFacilities.find((f) => f.id === facilityFilter)
-        return facility?.name
-    }, [facilityFilter, uniqueFacilities])
+    // Get facility name for display
+    const facilityName = useMemo(() => {
+        if (!facilityIdFromUrl || facilityUsers.length === 0) return null
+        return facilityUsers[0]?.facility_name
+    }, [facilityIdFromUrl, facilityUsers])
 
     // Role-based guard
     if (user.role !== 'admin') {
@@ -146,27 +125,61 @@ const FacilityUsersRegistry = () => {
     }
 
     const handleView = (user) => {
-        console.log('View user:', user)
-        showToast('info', 'User detail modal coming soon')
+        setSelectedUser(user)
+        setShowUserDetail(true)
     }
 
     const handleGoto = (facilityId) => {
-        // Navigate to the facility's detail page or dashboard
-        navigate(`/system-admin/facilities/${facilityId}`)
+        navigate(`/admin/facilities?highlight=${facilityId}`)
     }
 
     const handleEdit = (user) => {
-        console.log('Edit user:', user)
-        showToast('info', 'Edit user assignment modal coming soon')
+        setEditingUser(user)
+        setShowEditUser(true)
+    }
+
+    const handleSaveEdit = async (facilityId, userId, userData) => {
+        try {
+            const response = await updateFacilityUser(facilityId, userId, userData)
+
+            if (response.status === 'success') {
+                showToast('success', 'User updated successfully')
+                await fetchFacilityUsers()
+            } else {
+                showToast('error', response.message || 'Failed to update user')
+            }
+        } catch {
+            showToast('error', 'Failed to update user')
+        }
+    }
+
+    const handleActivateDeactivate = async (user) => {
+        try {
+            const action = user.is_active ? 'deactivated' : 'activated'
+            const response = await updateUserStatus(user.user_id)
+
+            if (response.status === 'success') {
+                showToast('success', `User ${action} successfully`)
+                await fetchFacilityUsers()
+            } else {
+                showToast('error', response.message || 'Failed to update user status')
+            }
+        } catch {
+            showToast('error', 'Failed to update user status')
+        }
     }
 
     const handleDelete = async (user) => {
         try {
-            showToast('info', 'Remove user feature coming soon')
-            // TODO: Implement API endpoint for removing users from facilities
-            // This should call: DELETE /admin/facilities/${user.facility_id}/users/${user.user_id}
-        } catch (error) {
-            console.error('Error removing user from facility:', error)
+            const response = await removeUserFromFacility(user.facility_id, user.user_id)
+
+            if (response.status === 'success') {
+                showToast('success', 'User removed from facility successfully')
+                await fetchFacilityUsers()
+            } else {
+                showToast('error', response.message || 'Failed to remove user from facility')
+            }
+        } catch {
             showToast('error', 'Failed to remove user from facility')
         }
     }
@@ -211,48 +224,36 @@ const FacilityUsersRegistry = () => {
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <div>
                     <div className="flex items-center gap-3">
-                        {facilityIdFromUrl && (
-                            <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => navigate('/admin/facilities')}
-                                className="hover:bg-gray-100"
-                            >
-                                <ArrowLeft className="size-4" />
-                            </Button>
-                        )}
+                        <Link to={-1} className="hover:text-primary">
+                            <ChevronLeft />
+                        </Link>
                         <div>
                             <h1 className="text-3xl font-bold">
-                                {selectedFacilityName
-                                    ? `${selectedFacilityName} - Users`
+                                {facilityName
+                                    ? `${facilityName} - Users`
                                     : 'Facility Users Registry'}
                             </h1>
-                            <p className="text-muted-foreground">
-                                {selectedFacilityName
-                                    ? `View and manage users assigned to ${selectedFacilityName}`
-                                    : 'View and manage user assignments across all facilities'}
-                            </p>
                         </div>
                     </div>
                 </div>
                 <div className="flex gap-2">
-                    <Button variant="outline" size="sm" onClick={handleExportCSV}>
+                    <Button onClick={handleExportCSV}>
                         <Download className="size-4 mr-2" />
                         Export CSV
                     </Button>
-                    <Button variant="outline" size="sm" onClick={fetchFacilityUsers}>
+                    {/* <Button variant="outline" size="sm" onClick={fetchFacilityUsers}>
                         <RefreshCw className="size-4 mr-2" />
                         Refresh
-                    </Button>
+                    </Button> */}
                 </div>
             </div>
 
             {/* Filters */}
-            <div className="flex flex-col sm:flex-row gap-4">
-                <div className="flex-1">
+            <div className="flex flex-col sm:flex-row sm:justify-between gap-4">
+                <div className="flex-1 max-w-md">
                     <input
                         type="text"
-                        placeholder="Search by name, email, facility, department..."
+                        placeholder="Search by name, email, department, specialty..."
                         value={search}
                         onChange={(e) => {
                             setSearch(e.target.value)
@@ -261,33 +262,43 @@ const FacilityUsersRegistry = () => {
                         className="w-full px-4 py-2 border rounded-md dark:bg-input/30 dark:border-input"
                     />
                 </div>
-                <select
-                    value={facilityFilter}
-                    onChange={(e) => {
-                        setFacilityFilter(e.target.value)
-                        setPage(1)
-                    }}
-                    className="px-4 py-2 border rounded-md dark:bg-input/30 dark:border-input"
-                >
-                    <option value="all">All Facilities</option>
-                    {uniqueFacilities.map((facility) => (
-                        <option key={facility.id} value={facility.id}>
-                            {facility.name}
-                        </option>
-                    ))}
-                </select>
-                <select
-                    value={statusFilter}
-                    onChange={(e) => {
-                        setStatusFilter(e.target.value)
-                        setPage(1)
-                    }}
-                    className="px-4 py-2 border rounded-md dark:bg-input/30 dark:border-input"
-                >
-                    <option value="all">All Status</option>
-                    <option value="active">Active</option>
-                    <option value="inactive">Inactive</option>
-                </select>
+                <div className="flex flex-col sm:flex-row gap-2">
+                    <Select
+                        value={roleFilter}
+                        onValueChange={(value) => {
+                            setRoleFilter(value)
+                            setPage(1)
+                        }}
+                    >
+                        <SelectTrigger className="w-[180px]">
+                            <SelectValue placeholder="All Roles" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="all">All Roles</SelectItem>
+                            {uniqueRoles.map((role) => (
+                                <SelectItem key={role} value={role}>
+                                    {displayRoles(role)}
+                                </SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+                    <Select
+                        value={statusFilter}
+                        onValueChange={(value) => {
+                            setStatusFilter(value)
+                            setPage(1)
+                        }}
+                    >
+                        <SelectTrigger className="w-[180px]">
+                            <SelectValue placeholder="All Status" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="all">All Status</SelectItem>
+                            <SelectItem value="active">Active</SelectItem>
+                            <SelectItem value="inactive">Inactive</SelectItem>
+                        </SelectContent>
+                    </Select>
+                </div>
             </div>
 
             {/* Table */}
@@ -301,17 +312,42 @@ const FacilityUsersRegistry = () => {
                 onView={handleView}
                 onGoto={handleGoto}
                 onEdit={handleEdit}
+                onActivateDeactivate={handleActivateDeactivate}
                 onDelete={handleDelete}
             />
 
             {/* Summary */}
             <div className="flex items-center justify-between text-sm text-muted-foreground">
                 <span>
-                    Showing {filteredUsers.length} of {facilityUsers.length} facility user
-                    assignments
+                    Showing {filteredUsers.length} of {facilityUsers.length} user{' '}
+                    {facilityUsers.length === 1 ? 'assignment' : 'assignments'}
+                    {facilityName && ` in ${facilityName}`}
                 </span>
-                <span>{uniqueFacilities.length} facilities with assigned users</span>
+                {!facilityIdFromUrl && (
+                    <span>{uniqueRoles.length} unique roles across facilities</span>
+                )}
             </div>
+
+            {/* User Detail Modal */}
+            <FacilityUserDetailModal
+                open={showUserDetail}
+                user={selectedUser}
+                onClose={() => {
+                    setShowUserDetail(false)
+                    setSelectedUser(null)
+                }}
+            />
+
+            {/* Edit User Modal */}
+            <EditFacilityUserModal
+                open={showEditUser}
+                user={editingUser}
+                onClose={() => {
+                    setShowEditUser(false)
+                    setEditingUser(null)
+                }}
+                onSave={handleSaveEdit}
+            />
         </div>
     )
 }
