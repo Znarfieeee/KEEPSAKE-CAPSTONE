@@ -855,3 +855,104 @@ def disable_2fa():
             "status": "error",
             "message": "Failed to disable 2FA"
         }), 500
+
+@settings_bp.route('/settings/font-size', methods=['GET'])
+@require_auth
+def get_font_size():
+    """Get current user's font size preference"""
+    try:
+        user_id = request.current_user.get('id')
+
+        # Fetch font_size from users table
+        user_response = supabase.table('users')\
+            .select('font_size')\
+            .eq('user_id', user_id)\
+            .execute()
+
+        if not user_response.data:
+            return jsonify({
+                "status": "error",
+                "message": "User not found"
+            }), 404
+
+        font_size = user_response.data[0].get('font_size', 16)
+
+        current_app.logger.info(f"AUDIT: User {user_id} retrieved font size from IP {request.remote_addr}")
+
+        return jsonify({
+            "status": "success",
+            "data": {"font_size": font_size}
+        }), 200
+
+    except Exception as e:
+        current_app.logger.error(f"Error fetching font size: {str(e)}")
+        return jsonify({
+            "status": "error",
+            "message": "Failed to fetch font size"
+        }), 500
+
+@settings_bp.route('/settings/font-size', methods=['PUT'])
+@require_auth
+def update_font_size():
+    """Update user's font size preference"""
+    try:
+        user_id = request.current_user.get('id')
+        data = request.json or {}
+        font_size = data.get('font_size')
+
+        # Validation
+        if font_size is None:
+            return jsonify({"status": "error", "message": "Font size is required"}), 400
+
+        if not isinstance(font_size, int):
+            return jsonify({"status": "error", "message": "Font size must be an integer"}), 400
+
+        # Range validation (12-20px)
+        if font_size < 12 or font_size > 20:
+            return jsonify({
+                "status": "error",
+                "message": "Font size must be between 12 and 20 pixels"
+            }), 400
+
+        # Update using RPC function (maintains consistency)
+        result = supabase.rpc('update_auth_user_metadata', {
+            'p_user_id': user_id,
+            'p_metadata': {"font_size": font_size}
+        }).execute()
+        
+        update_response = supabase.table('users').update({
+            'font_size': font_size,
+            'updated_at': datetime.utcnow().isoformat()
+        }).eq('user_id', user_id).execute()
+
+        if not result.data:
+            raise Exception("Failed to update font size")
+
+        if not update_response:
+            raise Exception("Failed to update font size")
+
+        # Update Redis session
+        session_id = request.cookies.get('session_id')
+        if session_id:
+            try:
+                session_data = get_session_data(session_id)
+                if session_data:
+                    session_data['font_size'] = font_size
+                    session_data['last_activity'] = datetime.utcnow().isoformat()
+                    session_json = json.dumps(session_data, ensure_ascii=False, separators=(',', ':'))
+                    redis_client.setex(f"{SESSION_PREFIX}{session_id}", SESSION_TIMEOUT, session_json)
+                    current_app.logger.info(f"Redis session updated with font size for user {user_id}")
+            except Exception as session_error:
+                current_app.logger.warning(f"Failed to update Redis session: {str(session_error)}")
+
+        current_app.logger.info(f"AUDIT: User {user_id} updated font size to {font_size}px from IP {request.remote_addr}")
+
+        return jsonify({
+            "status": "success",
+            "message": "Font size updated successfully",
+            "user": {"id": user_id, "font_size": font_size}
+        }), 200
+
+    except Exception as e:
+        current_app.logger.error(f"Error updating font size: {str(e)}")
+        return jsonify({"status": "error", "message": "Failed to update font size"}), 500

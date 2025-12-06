@@ -2,6 +2,12 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 
+@layer base {
+    html {
+        font-size: var(--base-font-size, 16px);
+    }
+}
+
 :root {
     --black: #3f3f3f;
     --background: oklch(0.9889 0.0053 17.2475);
@@ -55,6 +61,9 @@
     --shadow-2xl: 0 1px 3px 0px hsl(0 0% 0% / 0.25);
     --tracking-normal: 0em;
     --spacing: 0.25rem;
+
+    /* Font size - user customizable */
+    --base-font-size: 16px;
 }
 
 @theme inline {

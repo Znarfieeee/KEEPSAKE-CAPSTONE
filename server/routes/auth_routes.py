@@ -563,7 +563,8 @@ def login():
                     'license_number': existing_session.get('license_number'),
                     'phone_number': existing_session.get('phone_number'),
                     'last_sign_in_at': existing_session.get('last_sign_in_at'),
-                    'is_first_login': first_login
+                    'is_first_login': first_login,
+                    'font_size': existing_session.get('font_size', 16)
                 }
 
                 current_app.logger.info(f"AUDIT: User {existing_session.get('email')} reused existing session from IP {request.remote_addr}")
@@ -618,13 +619,13 @@ def login():
 
             facility_id = get_facility_id.data[0]['facility_id'] if get_facility_id.data else None
 
-            # Check if user account is active in users table
-            user_status = supabase.table('users')\
-                .select('is_active')\
+            # Check if user account is active in users table and get font_size
+            user_info = supabase.table('users')\
+                .select('is_active, font_size')\
                 .eq('user_id', auth_response.user.id)\
                 .execute()
 
-            if user_status.data and not user_status.data[0].get('is_active', True):
+            if user_info.data and not user_info.data[0].get('is_active', True):
                 current_app.logger.warning(f"AUDIT: Login attempted for deactivated account {email} from IP {request.remote_addr}")
                 return jsonify({
                     "status": "error",
@@ -633,14 +634,17 @@ def login():
 
             # Get user's last sign in time from Supabase auth
             last_sign_in = auth_response.user.last_sign_in_at.isoformat() if auth_response.user.last_sign_in_at else None
-            
+
             # Check if this is the user's first login (checks public.users.last_signed_in_at)
             first_login = is_first_login(auth_response.user.id, auth_response.user)
-            
+
+            # Get font_size from public.users table
+            font_size = user_info.data[0].get('font_size', 16) if user_info.data else 16
+
             user_data = {
                 'id': auth_response.user.id,
                 'email': auth_response.user.email,
-                'facility_id': facility_id, 
+                'facility_id': facility_id,
                 'role': user_metadata.get('role'),
                 'firstname': user_metadata.get('firstname', ''),
                 'lastname': user_metadata.get('lastname', ''),
@@ -650,6 +654,7 @@ def login():
                 'phone_number': user_metadata.get('phone_number', ''),
                 'last_sign_in_at': last_sign_in,
                 'is_first_login': first_login,
+                'font_size': font_size,
             }
             
             supabase_tokens = {
@@ -680,6 +685,8 @@ def login():
 
             # Set cookies
             secure_cookie = request.is_secure
+            # Use 'None' for cross-origin requests (frontend on different port)
+            # This requires secure=True in production but not in development
             cookie_samesite = "None" if secure_cookie else "Lax"
 
             response.set_cookie(
@@ -690,6 +697,7 @@ def login():
                 samesite=cookie_samesite,
                 max_age=SESSION_TIMEOUT,
                 path="/",
+                domain=None,  # Let browser determine domain (allows localhost:5000 and 127.0.0.1:5000)
             )
 
             response.set_cookie(
@@ -700,6 +708,7 @@ def login():
                 samesite=cookie_samesite,
                 max_age=REFRESH_TOKEN_TIMEOUT,
                 path="/",
+                domain=None,  # Let browser determine domain
             )
 
             return response, 200
@@ -856,7 +865,8 @@ def get_session():
             "phone_number": session_data.get("phone_number"),
             "facility_id": session_data.get("facility_id"),
             "last_sign_in_at": session_data.get("last_sign_in_at"),
-            "is_first_login": first_login
+            "is_first_login": first_login,
+            "font_size": session_data.get("font_size", 16)
         }
 
         return jsonify({

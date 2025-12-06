@@ -207,10 +207,12 @@ export const AuthProvider = ({ children }) => {
                 setIsAuthenticated(false)
                 setSessionStatus('expired')
                 refreshPromiseRef.current = null
+                // Reset font size to default on logout
+                document.documentElement.style.setProperty('--base-font-size', '16px')
                 navigate('/login')
             }
         },
-        [clearAllTimers]
+        [clearAllTimers, navigate]
     )
 
     const handleActivity = useCallback(() => {
@@ -334,6 +336,15 @@ export const AuthProvider = ({ children }) => {
             ...updatedUserData,
         }))
     }, [])
+
+    // Apply font size to DOM when user font_size changes
+    useEffect(() => {
+        if (user?.font_size) {
+            document.documentElement.style.setProperty('--base-font-size', `${user.font_size}px`)
+        } else {
+            document.documentElement.style.setProperty('--base-font-size', '16px')
+        }
+    }, [user?.font_size])
 
     const contextValue = {
         // Core auth state
