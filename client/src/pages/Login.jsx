@@ -160,7 +160,7 @@ const Login = () => {
                     className="flex items-center gap-2 text-black  hover:text-primary transition duration-300 ease-in-out"
                 >
                     <IoMdArrowBack className="text-2xl" />
-                    <span className="text-sm ">Go back</span>
+                    <span className="text-sm ">Home</span>
                 </Link>
             </div>
             <div
