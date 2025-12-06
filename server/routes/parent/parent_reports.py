@@ -1,5 +1,5 @@
 from flask import Blueprint, jsonify, request, current_app
-from utils.access_control import require_auth, require_role
+from utils.access_control import require_auth, require_role, require_premium_subscription
 from config.settings import get_authenticated_client
 from datetime import datetime, timedelta
 from utils.redis_client import get_redis_client
@@ -137,6 +137,7 @@ def get_parent_children_reports():
 @parent_reports_bp.route('/parent/reports/child/<patient_id>', methods=['GET'])
 @require_auth
 @require_role('parent')
+@require_premium_subscription
 def get_child_report(patient_id):
     """
     Get comprehensive report data for a specific child

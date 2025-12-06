@@ -2,12 +2,17 @@ import React, { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Check, X, ArrowRight, Mail, Phone, Building2, User } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
+import { useAuth } from '@/context/auth'
+import PaymentModal from '@/components/payment/PaymentModal'
+import { showToast } from '@/util/alertHelper'
 
 const PricingPage = () => {
     const navigate = useNavigate()
+    const { isAuthenticated, user } = useAuth()
     const [selectedTab, setSelectedTab] = useState('parents')
     const [contactFormOpen, setContactFormOpen] = useState(false)
     const [selectedFacilityPlan, setSelectedFacilityPlan] = useState(null)
+    const [paymentModalOpen, setPaymentModalOpen] = useState(false)
 
     // Parent Plans Configuration
     const parentPlans = [
@@ -50,7 +55,15 @@ const PricingPage = () => {
             limitations: [],
             cta: 'Upgrade to Premium',
             popular: true,
-            action: () => navigate('/login?upgrade=premium'),
+            action: () => {
+                if (isAuthenticated && user?.role === 'parent') {
+                    setPaymentModalOpen(true)
+                } else if (!isAuthenticated) {
+                    navigate('/login?upgrade=premium')
+                } else {
+                    showToast('error', 'Premium plan is for parents only')
+                }
+            },
         },
     ]
 
@@ -132,7 +145,7 @@ const PricingPage = () => {
                         onClick={() => setSelectedTab('parents')}
                         className={`px-8 py-3 rounded-lg font-medium transition-all ${
                             selectedTab === 'parents'
-                                ? 'bg-white text-blue-600 shadow-md'
+                                ? 'bg-white text-primary shadow-md'
                                 : 'text-gray-600 hover:text-gray-900'
                         }`}
                     >
@@ -142,7 +155,7 @@ const PricingPage = () => {
                         onClick={() => setSelectedTab('facilities')}
                         className={`px-8 py-3 rounded-lg font-medium transition-all ${
                             selectedTab === 'facilities'
-                                ? 'bg-white text-blue-600 shadow-md'
+                                ? 'bg-white text-primary shadow-md'
                                 : 'text-gray-600 hover:text-gray-900'
                         }`}
                     >
@@ -159,11 +172,11 @@ const PricingPage = () => {
                             <div
                                 key={index}
                                 className={`bg-white rounded-2xl shadow-lg overflow-hidden transition-all hover:shadow-2xl ${
-                                    plan.popular ? 'ring-2 ring-blue-500 relative scale-105' : ''
+                                    plan.popular ? 'ring-2 ring-primary relative scale-105' : ''
                                 }`}
                             >
                                 {plan.popular && (
-                                    <div className="bg-gradient-to-r from-blue-500 to-blue-600 text-white text-sm font-semibold py-2 px-4 text-center">
+                                    <div className="bg-gradient-to-r from-primary to-secondary text-white text-sm font-semibold py-2 px-4 text-center">
                                         ⭐ MOST POPULAR
                                     </div>
                                 )}
@@ -205,7 +218,7 @@ const PricingPage = () => {
                                         onClick={plan.action}
                                         className={`w-full py-3 px-6 rounded-lg font-semibold flex items-center justify-center gap-2 transition-colors ${
                                             plan.popular
-                                                ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-lg'
+                                                ? 'bg-primary hover:bg-accent text-white shadow-lg'
                                                 : 'bg-gray-800 hover:bg-gray-900 text-white'
                                         }`}
                                     >
@@ -252,11 +265,11 @@ const PricingPage = () => {
                             <div
                                 key={index}
                                 className={`bg-white rounded-2xl shadow-lg overflow-hidden transition-all hover:shadow-2xl ${
-                                    plan.popular ? 'ring-2 ring-blue-500 md:scale-105' : ''
+                                    plan.popular ? 'ring-2 ring-primary md:scale-105' : ''
                                 }`}
                             >
                                 {plan.popular && (
-                                    <div className="bg-gradient-to-r from-blue-500 to-blue-600 text-white text-sm font-semibold py-2 px-4 text-center">
+                                    <div className="bg-gradient-to-r from-primary to-secondary text-white text-sm font-semibold py-2 px-4 text-center">
                                         ⭐ RECOMMENDED
                                     </div>
                                 )}
@@ -292,7 +305,7 @@ const PricingPage = () => {
                                             setSelectedFacilityPlan(plan.name.toLowerCase())
                                             setContactFormOpen(true)
                                         }}
-                                        className="w-full py-3 px-6 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold flex items-center justify-center gap-2 transition-colors shadow-lg"
+                                        className="w-full py-3 px-6 bg-primary hover:bg-accent text-white rounded-lg font-semibold flex items-center justify-center gap-2 transition-colors shadow-lg"
                                     >
                                         Contact Sales
                                         <ArrowRight className="h-5 w-5" />
@@ -304,7 +317,7 @@ const PricingPage = () => {
 
                     {/* Custom Enterprise CTA */}
                     <div className="mt-16 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-2xl p-12 text-center border border-blue-100">
-                        <Building2 className="h-16 w-16 text-blue-600 mx-auto mb-4" />
+                        <Building2 className="h-16 w-16 text-primary mx-auto mb-4" />
                         <h3 className="text-3xl font-bold text-gray-900 mb-4">
                             Need a Custom Solution?
                         </h3>
@@ -337,6 +350,16 @@ const PricingPage = () => {
                         setSelectedFacilityPlan(null)
                     }}
                     selectedPlan={selectedFacilityPlan}
+                />
+            )}
+
+            {/* Payment Modal */}
+            {paymentModalOpen && (
+                <PaymentModal
+                    isOpen={paymentModalOpen}
+                    onClose={() => setPaymentModalOpen(false)}
+                    planType="premium"
+                    amount={299}
                 />
             )}
         </div>

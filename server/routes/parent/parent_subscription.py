@@ -15,6 +15,15 @@ import uuid
 parent_subscription_bp = Blueprint('parent_subscription', __name__)
 stripe = get_stripe_client()
 
+# Validate Stripe configuration on module load
+if not stripe.api_key:
+    import logging
+    logging.warning("STRIPE_SECRET_KEY not configured! Payment features will not work. Please set STRIPE_SECRET_KEY in server/.env")
+
+if not STRIPE_WEBHOOK_SECRET:
+    import logging
+    logging.warning("STRIPE_WEBHOOK_SECRET not configured! Webhook processing will fail. Please set STRIPE_WEBHOOK_SECRET in server/.env")
+
 # ============================================
 # PARENT SUBSCRIPTION ENDPOINTS
 # ============================================
@@ -24,7 +33,7 @@ stripe = get_stripe_client()
 @require_role('parent')
 def get_my_subscription():
     """
-    Get current user's subscription information
+    Get current user's subscription information from users table
 
     Returns:
         200: Subscription data
@@ -34,29 +43,46 @@ def get_my_subscription():
         current_user = getattr(request, 'current_user', {})
         user_id = current_user.get('id')
 
-        # Get subscription from database
-        resp = sr_client.table('parent_subscriptions')\
-            .select('*')\
+        # Get subscription from users table
+        resp = sr_client.table('users')\
+            .select('user_id, is_subscribed, subscription_expires')\
             .eq('user_id', user_id)\
             .execute()
 
         if resp.data and len(resp.data) > 0:
-            subscription = resp.data[0]
-            return jsonify({
-                "status": "success",
-                "data": subscription
-            }), 200
-        else:
-            # No subscription record yet, return default free plan
+            user = resp.data[0]
+            is_subscribed = user.get('is_subscribed', False)
+            subscription_expires = user.get('subscription_expires')
+
+            # Check if subscription is still active
+            if is_subscribed and subscription_expires:
+                from datetime import datetime
+                try:
+                    expiry_date = datetime.strptime(subscription_expires, '%Y-%m-%d').date()
+                    is_active = expiry_date >= datetime.now().date()
+                except:
+                    is_active = False
+            else:
+                is_active = False
+
+            plan_type = 'premium' if is_active else 'free'
+            status = 'active' if is_active else 'inactive'
+
             return jsonify({
                 "status": "success",
                 "data": {
-                    "plan_type": "free",
-                    "status": "active",
-                    "user_id": user_id,
-                    "message": "Default free plan (no subscription record)"
+                    "plan_type": plan_type,
+                    "status": status,
+                    "subscription_expires": subscription_expires,
+                    "user_id": user_id
                 }
             }), 200
+        else:
+            # No user record found
+            return jsonify({
+                "status": "error",
+                "message": "User not found"
+            }), 404
 
     except Exception as e:
         current_app.logger.error(f"Error fetching subscription: {str(e)}")
@@ -71,89 +97,116 @@ def get_my_subscription():
 @require_role('parent')
 def create_checkout_session():
     """
-    Create Stripe checkout session for Premium subscription upgrade
+    Mock payment session for testing (bypasses Stripe)
+    Returns mock session data for frontend testing
 
     Returns:
-        200: Checkout session URL
-        400: Already subscribed or invalid request
+        200: Mock session created
+        400: Already subscribed
         500: Server error
     """
     try:
         current_user = getattr(request, 'current_user', {})
         user_id = current_user.get('id')
-        user_email = current_user.get('email')
-        user_name = f"{current_user.get('first_name', '')} {current_user.get('last_name', '')}".strip()
 
-        # Check if already has premium subscription
-        existing_resp = sr_client.table('parent_subscriptions')\
-            .select('*')\
+        # Check if already has active premium subscription in users table
+        user_resp = sr_client.table('users')\
+            .select('is_subscribed, subscription_expires')\
             .eq('user_id', user_id)\
             .execute()
 
-        existing = existing_resp.data[0] if existing_resp.data and len(existing_resp.data) > 0 else None
+        if user_resp.data and len(user_resp.data) > 0:
+            user = user_resp.data[0]
+            is_subscribed = user.get('is_subscribed', False)
+            subscription_expires = user.get('subscription_expires')
 
-        if existing and existing.get('plan_type') == 'premium' and existing.get('status') == 'active':
-            return jsonify({
-                "status": "error",
-                "message": "Already subscribed to Premium plan"
-            }), 400
+            if is_subscribed and subscription_expires:
+                from datetime import datetime
+                try:
+                    expiry_date = datetime.strptime(subscription_expires, '%Y-%m-%d').date()
+                    if expiry_date >= datetime.now().date():
+                        return jsonify({
+                            "status": "error",
+                            "message": "Already subscribed to Premium plan"
+                        }), 400
+                except:
+                    pass
 
-        # Create or get Stripe customer
-        stripe_customer_id = None
-        if existing and existing.get('stripe_customer_id'):
-            stripe_customer_id = existing['stripe_customer_id']
-        else:
-            customer = stripe.Customer.create(
-                email=user_email,
-                name=user_name,
-                metadata={'user_id': user_id}
-            )
-            stripe_customer_id = customer.id
-
-        # Get Stripe Price ID for premium plan
-        premium_price_id = get_stripe_price_id('premium')
-
-        # Create Stripe Checkout Session
-        checkout_session = stripe.checkout.Session.create(
-            customer=stripe_customer_id,
-            payment_method_types=['card'],
-            line_items=[{
-                'price': premium_price_id,
-                'quantity': 1,
-            }],
-            mode='subscription',
-            success_url=f"{request.host_url}parent?subscription=success",
-            cancel_url=f"{request.host_url}pricing?subscription=cancelled",
-            metadata={
-                'user_id': user_id,
-                'plan_type': 'premium'
-            },
-            allow_promotion_codes=True,  # Enable promo codes
-            billing_address_collection='required'
-        )
-
-        # Log action
-        log_action(
-            user_id=user_id,
-            action_type='CREATE',
-            table_name='parent_subscriptions',
-            record_id=None,
-            new_values={'action': 'checkout_session_created', 'session_id': checkout_session.id}
-        )
-
+        # Return mock session for testing
         return jsonify({
             "status": "success",
-            "data": {
-                "checkout_url": checkout_session.url,
-                "session_id": checkout_session.id
-            }
+            "mock_payment": True,
+            "amount": 299,
+            "currency": "PHP"
         }), 200
 
     except Exception as e:
         current_app.logger.error(f"Error creating checkout session: {str(e)}")
         return jsonify({
             "status": "error",
-            "message": f"Failed to create checkout session: {str(e)}"
+            "message": f"Failed to create checkout session"
+        }), 500
+
+
+@parent_subscription_bp.route('/parent/subscription/mock-payment', methods=['POST'])
+@require_auth
+@require_role('parent')
+def process_mock_payment():
+    """
+    Process mock payment for testing (bypasses Stripe)
+    Activates premium subscription immediately
+
+    Returns:
+        200: Payment successful, subscription activated
+        500: Server error
+    """
+    try:
+        current_user = getattr(request, 'current_user', {})
+        user_id = current_user.get('id')
+
+        # Calculate subscription expiry (30 days from now)
+        from datetime import datetime, timedelta
+        expiry_date = (datetime.now() + timedelta(days=30)).date()
+
+        # Update user subscription in users table
+        sr_client.table('users')\
+            .update({
+                'is_subscribed': True,
+                'subscription_expires': expiry_date.isoformat()
+            })\
+            .eq('user_id', user_id)\
+            .execute()
+
+        current_app.logger.info(f"Mock payment: Premium subscription activated for user {user_id} until {expiry_date}")
+
+        # Log action
+        log_action(
+            user_id=user_id,
+            action_type='UPDATE',
+            table_name='users',
+            record_id=user_id,
+            new_values={
+                'action': 'premium_subscription_activated_mock',
+                'amount': 299,
+                'expires': expiry_date.isoformat()
+            }
+        )
+
+        return jsonify({
+            "status": "success",
+            "message": "Payment successful! Premium subscription activated.",
+            "subscription": {
+                "plan_type": "premium",
+                "status": "active",
+                "subscription_expires": expiry_date.isoformat()
+            }
+        }), 200
+
+    except Exception as e:
+        current_app.logger.error(f"Error processing mock payment: {str(e)}")
+        return jsonify({
+            "status": "error",
+            "message": "Failed to process payment"
         }), 500
 
 
@@ -162,7 +215,7 @@ def create_checkout_session():
 @require_role('parent')
 def cancel_subscription():
     """
-    Cancel Premium subscription (remains active until period end)
+    Cancel Premium subscription by setting expiry to today
 
     Returns:
         200: Cancellation successful
@@ -173,38 +226,24 @@ def cancel_subscription():
         current_user = getattr(request, 'current_user', {})
         user_id = current_user.get('id')
 
-        # Get subscription
-        sub_resp = sr_client.table('parent_subscriptions')\
-            .select('*')\
+        # Get user subscription status
+        user_resp = sr_client.table('users')\
+            .select('is_subscribed')\
             .eq('user_id', user_id)\
             .execute()
 
-        if not sub_resp.data or len(sub_resp.data) == 0:
+        if not user_resp.data or not user_resp.data[0].get('is_subscribed'):
             return jsonify({
                 "status": "error",
-                "message": "No subscription found"
+                "message": "No active subscription found"
             }), 404
 
-        subscription = sub_resp.data[0]
-
-        if subscription.get('plan_type') == 'free':
-            return jsonify({
-                "status": "error",
-                "message": "Cannot cancel free plan"
-            }), 400
-
-        # Cancel in Stripe (at period end)
-        if subscription.get('stripe_subscription_id'):
-            stripe.Subscription.modify(
-                subscription['stripe_subscription_id'],
-                cancel_at_period_end=True
-            )
-
-        # Update database
-        sr_client.table('parent_subscriptions')\
+        # Cancel subscription by setting is_subscribed to False
+        from datetime import datetime
+        sr_client.table('users')\
             .update({
-                'cancel_at_period_end': True,
-                'cancelled_at': datetime.now(timezone.utc).isoformat()
+                'is_subscribed': False,
+                'subscription_expires': datetime.now().date().isoformat()
             })\
             .eq('user_id', user_id)\
             .execute()
@@ -213,14 +252,14 @@ def cancel_subscription():
         log_action(
             user_id=user_id,
             action_type='UPDATE',
-            table_name='parent_subscriptions',
-            record_id=subscription['subscription_id'],
+            table_name='users',
+            record_id=user_id,
             new_values={'action': 'subscription_cancelled'}
         )
 
         return jsonify({
             "status": "success",
-            "message": "Subscription will be cancelled at the end of your billing period"
+            "message": "Subscription has been cancelled"
         }), 200
 
     except Exception as e:
@@ -231,41 +270,6 @@ def cancel_subscription():
         }), 500
 
 
-@parent_subscription_bp.route('/parent/subscription/payment-history', methods=['GET'])
-@require_auth
-@require_role('parent')
-def get_payment_history():
-    """
-    Get user's payment transaction history
-
-    Returns:
-        200: List of payment transactions
-        500: Server error
-    """
-    try:
-        current_user = getattr(request, 'current_user', {})
-        user_id = current_user.get('id')
-
-        # Get payment history
-        resp = sr_client.table('parent_payments')\
-            .select('*')\
-            .eq('user_id', user_id)\
-            .order('created_at', desc=True)\
-            .execute()
-
-        return jsonify({
-            "status": "success",
-            "data": resp.data or []
-        }), 200
-
-    except Exception as e:
-        current_app.logger.error(f"Error fetching payment history: {str(e)}")
-        return jsonify({
-            "status": "error",
-            "message": "Failed to fetch payment history"
-        }), 500
-
-
 # ============================================
 # STRIPE WEBHOOK HANDLER
 # ============================================
@@ -273,13 +277,10 @@ def get_payment_history():
 @parent_subscription_bp.route('/webhooks/stripe', methods=['POST'])
 def stripe_webhook():
     """
-    Handle Stripe webhook events for subscription lifecycle
+    Handle Stripe webhook events for payment processing
 
     Events handled:
-    - checkout.session.completed: Create subscription after successful checkout
-    - invoice.payment_succeeded: Record successful payment
-    - invoice.payment_failed: Update subscription status to past_due
-    - customer.subscription.deleted: Mark subscription as cancelled
+    - payment_intent.succeeded: Activate premium subscription for 30 days
 
     Returns:
         200: Event processed successfully
@@ -305,14 +306,8 @@ def stripe_webhook():
         event_type = event['type']
         current_app.logger.info(f"Processing Stripe webhook: {event_type}")
 
-        if event_type == 'checkout.session.completed':
-            handle_checkout_completed(event['data']['object'])
-        elif event_type == 'invoice.payment_succeeded':
+        if event_type == 'payment_intent.succeeded':
             handle_payment_succeeded(event['data']['object'])
-        elif event_type == 'invoice.payment_failed':
-            handle_payment_failed(event['data']['object'])
-        elif event_type == 'customer.subscription.deleted':
-            handle_subscription_deleted(event['data']['object'])
         else:
             current_app.logger.info(f"Unhandled event type: {event_type}")
 
@@ -323,163 +318,49 @@ def stripe_webhook():
         return jsonify({"error": str(e)}), 500
 
 
-def handle_checkout_completed(session):
+def handle_payment_succeeded(payment_intent):
     """
-    Handle successful checkout session completion
+    Handle successful payment and activate premium subscription
 
     Args:
-        session: Stripe checkout session object
+        payment_intent: Stripe PaymentIntent object
     """
     try:
-        user_id = session['metadata']['user_id']
-        stripe_customer_id = session['customer']
-        stripe_subscription_id = session['subscription']
+        metadata = payment_intent.get('metadata', {})
+        user_id = metadata.get('user_id')
 
-        # Get subscription details from Stripe
-        subscription = stripe.Subscription.retrieve(stripe_subscription_id)
+        if not user_id:
+            current_app.logger.warning("No user_id in payment_intent metadata")
+            return
 
-        # Create or update subscription in database
-        sub_data = {
-            'user_id': user_id,
-            'plan_type': 'premium',
-            'stripe_customer_id': stripe_customer_id,
-            'stripe_subscription_id': stripe_subscription_id,
-            'status': 'active',
-            'current_period_start': datetime.fromtimestamp(subscription.current_period_start, tz=timezone.utc).isoformat(),
-            'current_period_end': datetime.fromtimestamp(subscription.current_period_end, tz=timezone.utc).isoformat(),
-            'cancel_at_period_end': False
-        }
+        # Calculate subscription expiry (30 days from now for monthly)
+        from datetime import datetime, timedelta
+        expiry_date = (datetime.now() + timedelta(days=30)).date()
 
-        # Upsert subscription (insert or update if exists)
-        sr_client.table('parent_subscriptions')\
-            .upsert(sub_data, on_conflict='user_id')\
+        # Update user subscription in users table
+        sr_client.table('users')\
+            .update({
+                'is_subscribed': True,
+                'subscription_expires': expiry_date.isoformat()
+            })\
+            .eq('user_id', user_id)\
             .execute()
 
-        current_app.logger.info(f"Subscription created for user {user_id}")
+        current_app.logger.info(f"Premium subscription activated for user {user_id} until {expiry_date}")
 
         # Log action
         log_action(
             user_id=user_id,
-            action_type='CREATE',
-            table_name='parent_subscriptions',
-            record_id=stripe_subscription_id,
-            new_values={'action': 'subscription_activated', 'plan': 'premium'}
+            action_type='UPDATE',
+            table_name='users',
+            record_id=user_id,
+            new_values={
+                'action': 'premium_subscription_activated',
+                'amount': payment_intent.get('amount') / 100,
+                'expires': expiry_date.isoformat()
+            }
         )
 
     except Exception as e:
-        current_app.logger.error(f"Error handling checkout completed: {str(e)}")
-        raise
-
-
-def handle_payment_succeeded(invoice):
-    """
-    Handle successful payment for subscription invoice
-
-    Args:
-        invoice: Stripe invoice object
-    """
-    try:
-        subscription_id = invoice.get('subscription')
-        if not subscription_id:
-            return  # Not a subscription invoice
-
-        # Get subscription from database
-        sub_resp = sr_client.table('parent_subscriptions')\
-            .select('*')\
-            .eq('stripe_subscription_id', subscription_id)\
-            .execute()
-
-        if not sub_resp.data or len(sub_resp.data) == 0:
-            current_app.logger.warning(f"Subscription not found for invoice: {invoice['id']}")
-            return
-
-        subscription = sub_resp.data[0]
-
-        # Record payment in database
-        payment_data = {
-            'payment_id': str(uuid.uuid4()),
-            'subscription_id': subscription['subscription_id'],
-            'user_id': subscription['user_id'],
-            'stripe_payment_intent_id': invoice.get('payment_intent'),
-            'stripe_invoice_id': invoice['id'],
-            'amount': invoice['amount_paid'] / 100,  # Convert from cents to pesos
-            'currency': invoice['currency'].upper(),
-            'status': 'succeeded',
-            'payment_method': 'card',
-            'billing_period_start': datetime.fromtimestamp(invoice['period_start']).date().isoformat(),
-            'billing_period_end': datetime.fromtimestamp(invoice['period_end']).date().isoformat(),
-            'paid_at': datetime.now(timezone.utc).isoformat(),
-            'metadata': {
-                'invoice_number': invoice.get('number'),
-                'hosted_invoice_url': invoice.get('hosted_invoice_url')
-            }
-        }
-
-        sr_client.table('parent_payments')\
-            .insert(payment_data)\
-            .execute()
-
-        # Update subscription status if it was past_due
-        if subscription.get('status') == 'past_due':
-            sr_client.table('parent_subscriptions')\
-                .update({'status': 'active'})\
-                .eq('subscription_id', subscription['subscription_id'])\
-                .execute()
-
-        current_app.logger.info(f"Payment recorded for subscription {subscription_id}")
-
-    except Exception as e:
         current_app.logger.error(f"Error handling payment succeeded: {str(e)}")
-        raise
-
-
-def handle_payment_failed(invoice):
-    """
-    Handle failed payment attempt
-
-    Args:
-        invoice: Stripe invoice object
-    """
-    try:
-        subscription_id = invoice.get('subscription')
-        if not subscription_id:
-            return
-
-        # Update subscription status to past_due
-        update_resp = sr_client.table('parent_subscriptions')\
-            .update({'status': 'past_due'})\
-            .eq('stripe_subscription_id', subscription_id)\
-            .execute()
-
-        if update_resp.data:
-            current_app.logger.warning(f"Subscription {subscription_id} marked as past_due")
-
-    except Exception as e:
-        current_app.logger.error(f"Error handling payment failed: {str(e)}")
-        raise
-
-
-def handle_subscription_deleted(subscription):
-    """
-    Handle subscription deletion/cancellation
-
-    Args:
-        subscription: Stripe subscription object
-    """
-    try:
-        stripe_subscription_id = subscription['id']
-
-        # Update subscription to cancelled and revert to free plan
-        sr_client.table('parent_subscriptions')\
-            .update({
-                'status': 'cancelled',
-                'plan_type': 'free'
-            })\
-            .eq('stripe_subscription_id', stripe_subscription_id)\
-            .execute()
-
-        current_app.logger.info(f"Subscription {stripe_subscription_id} marked as cancelled")
-
-    except Exception as e:
-        current_app.logger.error(f"Error handling subscription deleted: {str(e)}")
         raise

@@ -43,6 +43,24 @@ export const createCheckoutSession = async () => {
 }
 
 /**
+ * Process mock payment for testing (bypasses Stripe)
+ * @returns {Promise<Object>} Payment result with subscription data
+ */
+export const processMockPayment = async () => {
+    try {
+        const response = await axios.post(
+            `${backendConnection()}/parent/subscription/mock-payment`,
+            {},
+            axiosConfig
+        )
+        return response.data
+    } catch (error) {
+        console.error('Error processing mock payment:', error)
+        throw error
+    }
+}
+
+/**
  * Cancel Premium subscription (remains active until period end)
  * @returns {Promise<Object>} Cancellation confirmation
  */
@@ -80,6 +98,7 @@ export const getPaymentHistory = async () => {
 export default {
     getMySubscription,
     createCheckoutSession,
+    processMockPayment,
     cancelSubscription,
     getPaymentHistory
 }

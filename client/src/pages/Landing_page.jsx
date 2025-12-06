@@ -1,4 +1,5 @@
 import React from 'react'
+import { useNavigate } from 'react-router-dom'
 
 // images
 import hero1 from '../assets/hero1.png'
@@ -21,6 +22,15 @@ import { PiDevicesLight } from 'react-icons/pi'
 import Footer4Col from '../components/mvpblocks/footer-4col'
 
 function Landing_page() {
+    const navigate = useNavigate()
+
+    const scrollToFeatures = () => {
+        const featuresSection = document.getElementById('features-section')
+        if (featuresSection) {
+            featuresSection.scrollIntoView({ behavior: 'smooth', block: 'start' })
+        }
+    }
+
     const steps = [
         {
             icon: <PhoneIcon className="size-8  text-blue-600" />,
@@ -103,14 +113,14 @@ function Landing_page() {
                                 <Button
                                     variant="default"
                                     className="px-6 py-4 text-base lg:px-8 lg:py-6 lg:text-lg transition hover:scale-120 duration-300 delay-30"
-                                    I
+                                    onClick={() => navigate('/login')}
                                 >
                                     Get Started
                                 </Button>
                                 <Button
                                     variant="outline"
                                     className="px-6 py-4 text-base lg:px-8 lg:py-6 lg:text-lg transition hover:scale-120 duration-300 delay-30"
-                                    I
+                                    onClick={scrollToFeatures}
                                 >
                                     Learn More
                                 </Button>
@@ -178,7 +188,7 @@ function Landing_page() {
                         </div>
                     </section>
                     {/* What makes us more special  */}
-                    <section className="screen-three w-screen mt-10">
+                    <section id="features-section" className="screen-three w-screen mt-10">
                         <div className="lg:mx-40">
                             <header className="mx-10">
                                 <h1 className="font-semibold text-3xl mb-6">

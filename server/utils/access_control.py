@@ -92,7 +92,93 @@ def require_role(*required_roles: str):
 
         return decorated
 
-    return decorator 
+    return decorator
+
+
+# ---------------------------------------------------------------------------
+# Premium subscription decorator
+# ---------------------------------------------------------------------------
+
+def require_premium_subscription(f):
+    """Decorator that ensures the parent user has an active premium subscription.
+
+    This decorator should be used AFTER @require_auth and @require_role('parent').
+    It checks if the user has an active premium subscription by querying the users table.
+
+    Usage::
+
+        @app.route("/premium-feature")
+        @require_auth
+        @require_role("parent")
+        @require_premium_subscription
+        def premium_route():
+            ...
+    """
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        user_id = getattr(request, "current_user", {}).get("id")
+
+        if not user_id:
+            current_app.logger.warning("No user_id found in require_premium_subscription")
+            return jsonify({"message": "Authentication required", "status": "error"}), 401
+
+        try:
+            from config.settings import get_authenticated_client
+            from datetime import datetime
+            supabase = get_authenticated_client()
+
+            # Check if user has an active premium subscription in users table
+            user_response = supabase.table('users')\
+                .select('user_id, is_subscribed, subscription_expires')\
+                .eq('user_id', user_id)\
+                .execute()
+
+            if not user_response.data or len(user_response.data) == 0:
+                current_app.logger.warning(f"User {user_id} not found in database")
+                return jsonify({
+                    "message": "User not found",
+                    "status": "error"
+                }), 404
+
+            user = user_response.data[0]
+            is_subscribed = user.get('is_subscribed', False)
+            subscription_expires = user.get('subscription_expires')
+
+            # Check if subscription is active and not expired
+            is_active = False
+            if is_subscribed and subscription_expires:
+                try:
+                    expiry_date = datetime.strptime(subscription_expires, '%Y-%m-%d').date()
+                    is_active = expiry_date >= datetime.now().date()
+                except:
+                    is_active = False
+
+            if not is_active:
+                current_app.logger.warning(
+                    f"AUDIT: Parent {user_id} attempted to access premium feature without active subscription from IP {request.remote_addr}"
+                )
+                return jsonify({
+                    "message": "This feature requires an active Premium subscription",
+                    "status": "error",
+                    "premium_required": True
+                }), 403
+
+            # Attach subscription info to request for downstream use
+            request.subscription = {
+                "is_subscribed": is_subscribed,
+                "subscription_expires": subscription_expires
+            }  # type: ignore[attr-defined]
+
+            return f(*args, **kwargs)
+
+        except Exception as e:
+            current_app.logger.error(f"Error checking premium subscription: {str(e)}")
+            return jsonify({
+                "message": "Error verifying subscription status",
+                "status": "error"
+            }), 500
+
+    return decorated
 
 
 # ---------------------------------------------------------------------------
@@ -112,30 +198,23 @@ def require_auth(f):
     @wraps(f)
     def decorated(*args, **kwargs):
         # 1. Extract session identifier from the cookie
-        current_app.logger.info(f"DEBUG - All cookies: {dict(request.cookies)}")
-        current_app.logger.info(f"DEBUG - Request headers: {dict(request.headers)}")
-
         session_id = request.cookies.get("session_id")
         if not session_id:
-            current_app.logger.warning(f"No session_id cookie found. Available cookies: {list(request.cookies.keys())}")
+            current_app.logger.warning(f"No session_id cookie found")
             return jsonify({"error": "Authentication required"}), 401
 
         # 2. Retrieve the session payload from Redis
         session_data = get_session_data(session_id)
-        current_app.logger.info(f"DEBUG - Session data found: {bool(session_data)}")
         if not session_data:
             current_app.logger.warning(f"No session data found for session_id: {session_id}")
             return jsonify({"error": "Invalid or expired session"}), 401
 
         access_token = session_data.get("access_token")
-        current_app.logger.info(f"DEBUG - Access token found: {bool(access_token)}")
 
         if access_token:
             try:
                 # 3. Validate the JWT locally (no network trip)
-                current_app.logger.info(f"DEBUG - Attempting to verify JWT...")
                 verify_supabase_jwt(access_token)
-                current_app.logger.info(f"DEBUG - JWT verification successful")
 
                 # 4. Touch the session so it does not expire due to inactivity
                 update_session_activity(session_id)
@@ -160,9 +239,8 @@ def require_auth(f):
 
             except SupabaseJWTError as jwt_err:
                 # 6. Token expired – attempt a silent refresh
-                current_app.logger.warning(f"DEBUG - JWT verification failed: {str(jwt_err)}")
+                current_app.logger.warning(f"JWT verification failed: {str(jwt_err)}")
                 refresh_token = session_data.get("refresh_token")
-                current_app.logger.info(f"DEBUG - Attempting token refresh, has refresh_token: {bool(refresh_token)}")
                 if refresh_token:
                     try:
                         refreshed = supabase.auth.refresh_session(refresh_token)
@@ -202,15 +280,15 @@ def require_auth(f):
 
                     except Exception as refresh_err:
                         # Refresh failed – clean up and require re-login
-                        current_app.logger.error(f"DEBUG - Token refresh failed: {str(refresh_err)}")
+                        current_app.logger.error(f"Token refresh failed: {str(refresh_err)}")
                         redis_client.delete(f"{SESSION_PREFIX}{session_id}")
                         return jsonify({"error": "Session expired, please login again"}), 401
                 else:
-                    current_app.logger.warning(f"DEBUG - No refresh token available for expired JWT")
+                    current_app.logger.warning("No refresh token available for expired JWT")
                     return jsonify({"error": "Session expired, please login again"}), 401
 
         # Fallback – no valid access token present
-        current_app.logger.warning(f"DEBUG - No access token in session data")
+        current_app.logger.warning("No access token in session data")
         return jsonify({"error": "Invalid session"}), 401
 
     return decorated
