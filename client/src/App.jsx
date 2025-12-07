@@ -19,6 +19,7 @@ import QrScanner from '@/pages/QrScanner'
 import PrescriptionViewPage from '@/pages/PrescriptionViewPage'
 import QrCodeGeneratorTest from '@/pages/QrCodeGeneratorTest'
 import ForgotPassword from '@/pages/ForgotPassword'
+import ResetPassword from '@/pages/ResetPassword'
 import Settings from '@/pages/Settings'
 import Notifications from '@/pages/Notifications'
 import PaymentSuccess from '@/pages/PaymentSuccess'
@@ -147,6 +148,10 @@ function App() {
                 {
                     path: '/forgot-password',
                     element: <ForgotPassword />,
+                },
+                {
+                    path: '/reset-password',
+                    element: <ResetPassword />,
                 },
                 {
                     path: '/auth/success',
