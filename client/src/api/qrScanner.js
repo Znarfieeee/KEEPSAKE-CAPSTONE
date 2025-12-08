@@ -1,4 +1,4 @@
-import api from "./axios"
+import api from './axiosConfig'
 
 /**
  * Get patient information by QR code data
@@ -19,13 +19,13 @@ export const getPatientByQrCode = async (qrData) => {
         }
 
         if (!patientId) {
-            throw new Error("Invalid QR code format: No patient ID found")
+            throw new Error('Invalid QR code format: No patient ID found')
         }
 
         const response = await api.get(`/api/patients/${patientId}/qr-lookup`)
         return response.data
     } catch (error) {
-        console.error("Error fetching patient by QR code:", error)
+        console.error('Error fetching patient by QR code:', error)
         throw error
     }
 }
@@ -38,13 +38,13 @@ export const getPatientByQrCode = async (qrData) => {
  */
 export const verifyQrCodeAccess = async (qrData, userId) => {
     try {
-        const response = await api.post("/api/qr-scanner/verify", {
+        const response = await api.post('/api/qr-scanner/verify', {
             qrData,
-            userId
+            userId,
         })
         return response.data
     } catch (error) {
-        console.error("Error verifying QR code access:", error)
+        console.error('Error verifying QR code access:', error)
         throw error
     }
 }
@@ -56,10 +56,10 @@ export const verifyQrCodeAccess = async (qrData, userId) => {
  */
 export const logQrScanEvent = async (scanData) => {
     try {
-        const response = await api.post("/api/qr-scanner/log", scanData)
+        const response = await api.post('/api/qr-scanner/log', scanData)
         return response.data
     } catch (error) {
-        console.error("Error logging QR scan event:", error)
+        console.error('Error logging QR scan event:', error)
         // Don't throw - logging failures shouldn't block functionality
         return null
     }
@@ -74,11 +74,11 @@ export const logQrScanEvent = async (scanData) => {
 export const getPatientDetailsByRole = async (patientId, role) => {
     try {
         const response = await api.get(`/api/patients/${patientId}/details`, {
-            params: { role }
+            params: { role },
         })
         return response.data
     } catch (error) {
-        console.error("Error fetching patient details:", error)
+        console.error('Error fetching patient details:', error)
         throw error
     }
 }
@@ -87,5 +87,5 @@ export default {
     getPatientByQrCode,
     verifyQrCodeAccess,
     logQrScanEvent,
-    getPatientDetailsByRole
+    getPatientDetailsByRole,
 }
