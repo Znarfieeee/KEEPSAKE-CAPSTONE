@@ -6,7 +6,7 @@ import { useAuth } from '@/context/auth'
 import { X, UserPlus, Search, AlertCircle, CheckCircle, Copy, Check, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Label } from '@/components/ui/label'
-import { Input } from '@/components/ui/input'
+import { Input } from '@/components/ui/Input'
 import {
     Select,
     SelectContent,

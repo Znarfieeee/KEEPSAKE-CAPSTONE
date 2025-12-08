@@ -8,7 +8,7 @@ import {
     DialogTitle,
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/Button'
-import { Input } from '@/components/ui/input'
+import { Input } from '@/components/ui/Input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Checkbox } from '@/components/ui/checkbox'
@@ -35,7 +35,13 @@ import { createVaccination } from '@/api/doctor/vaccinations'
 import { showToast } from '@/util/alertHelper'
 import { cn } from '@/lib/utils'
 
-const AddImmunizationDialog = ({ open, onOpenChange, patient, existingVaccinations = [], onSuccess }) => {
+const AddImmunizationDialog = ({
+    open,
+    onOpenChange,
+    patient,
+    existingVaccinations = [],
+    onSuccess,
+}) => {
     const [loading, setLoading] = useState(false)
     const [selectedVaccine, setSelectedVaccine] = useState('')
     const [vaccineInfo, setVaccineInfo] = useState(null)
@@ -68,10 +74,7 @@ const AddImmunizationDialog = ({ open, onOpenChange, patient, existingVaccinatio
     const vaccineOptions = getVaccineOptions()
 
     // Get manufacturers for selected vaccine
-    const manufacturers = useMemo(
-        () => getManufacturers(selectedVaccine),
-        [selectedVaccine]
-    )
+    const manufacturers = useMemo(() => getManufacturers(selectedVaccine), [selectedVaccine])
 
     // Auto-detect next dose number when vaccine is selected
     useEffect(() => {
@@ -231,7 +234,9 @@ const AddImmunizationDialog = ({ open, onOpenChange, patient, existingVaccinatio
                 notes: formData.notes || null,
                 // Adverse reaction
                 adverse_reaction: formData.adverse_reaction,
-                adverse_reaction_details: formData.adverse_reaction ? formData.adverse_reaction_details : null,
+                adverse_reaction_details: formData.adverse_reaction
+                    ? formData.adverse_reaction_details
+                    : null,
             }
 
             const response = await createVaccination(patient.patient_id, vaccinationData)
@@ -317,8 +322,8 @@ const AddImmunizationDialog = ({ open, onOpenChange, patient, existingVaccinatio
                                         {vaccineInfo.description}
                                         <br />
                                         <span className="text-xs">
-                                            Schedule: {vaccineInfo.recommendedAge} |
-                                            Total doses: {vaccineInfo.totalDoses || 'Annual'}
+                                            Schedule: {vaccineInfo.recommendedAge} | Total doses:{' '}
+                                            {vaccineInfo.totalDoses || 'Annual'}
                                         </span>
                                     </span>
                                 </p>
@@ -367,14 +372,21 @@ const AddImmunizationDialog = ({ open, onOpenChange, patient, existingVaccinatio
                                     id="administered_date"
                                     type="date"
                                     value={formData.administered_date}
-                                    onChange={(e) => handleChange('administered_date', e.target.value)}
+                                    onChange={(e) =>
+                                        handleChange('administered_date', e.target.value)
+                                    }
                                     max={new Date().toISOString().split('T')[0]}
-                                    className={cn('pl-10', errors.administered_date && 'border-red-500')}
+                                    className={cn(
+                                        'pl-10',
+                                        errors.administered_date && 'border-red-500'
+                                    )}
                                     required
                                 />
                             </div>
                             {errors.administered_date && (
-                                <p className="text-sm text-red-600 mt-1">{errors.administered_date}</p>
+                                <p className="text-sm text-red-600 mt-1">
+                                    {errors.administered_date}
+                                </p>
                             )}
                         </div>
                     </div>
@@ -391,7 +403,9 @@ const AddImmunizationDialog = ({ open, onOpenChange, patient, existingVaccinatio
                             >
                                 <SelectTrigger
                                     id="route_of_administration"
-                                    className={errors.route_of_administration ? 'border-red-500' : ''}
+                                    className={
+                                        errors.route_of_administration ? 'border-red-500' : ''
+                                    }
                                 >
                                     <SelectValue placeholder="Select route" />
                                 </SelectTrigger>
@@ -480,8 +494,13 @@ const AddImmunizationDialog = ({ open, onOpenChange, patient, existingVaccinatio
                                     id="vaccine_expiration_date"
                                     type="date"
                                     value={formData.vaccine_expiration_date}
-                                    onChange={(e) => handleChange('vaccine_expiration_date', e.target.value)}
-                                    className={cn('pl-10', errors.vaccine_expiration_date && 'border-red-500')}
+                                    onChange={(e) =>
+                                        handleChange('vaccine_expiration_date', e.target.value)
+                                    }
+                                    className={cn(
+                                        'pl-10',
+                                        errors.vaccine_expiration_date && 'border-red-500'
+                                    )}
                                 />
                             </div>
                             {errors.vaccine_expiration_date && (
@@ -497,7 +516,9 @@ const AddImmunizationDialog = ({ open, onOpenChange, patient, existingVaccinatio
                                 id="administration_site"
                                 placeholder="e.g., City Health Center"
                                 value={formData.administration_site}
-                                onChange={(e) => handleChange('administration_site', e.target.value)}
+                                onChange={(e) =>
+                                    handleChange('administration_site', e.target.value)
+                                }
                             />
                             <p className="text-xs text-gray-500 mt-1">
                                 Health facility where vaccine was given
@@ -515,7 +536,9 @@ const AddImmunizationDialog = ({ open, onOpenChange, patient, existingVaccinatio
                                     id="vis_publication_date"
                                     type="date"
                                     value={formData.vis_publication_date}
-                                    onChange={(e) => handleChange('vis_publication_date', e.target.value)}
+                                    onChange={(e) =>
+                                        handleChange('vis_publication_date', e.target.value)
+                                    }
                                     className="pl-10"
                                 />
                             </div>
@@ -591,9 +614,13 @@ const AddImmunizationDialog = ({ open, onOpenChange, patient, existingVaccinatio
                                     id="adverse_reaction_details"
                                     placeholder="Describe the adverse reaction, symptoms, timing, and any treatment provided..."
                                     value={formData.adverse_reaction_details}
-                                    onChange={(e) => handleChange('adverse_reaction_details', e.target.value)}
+                                    onChange={(e) =>
+                                        handleChange('adverse_reaction_details', e.target.value)
+                                    }
                                     rows={3}
-                                    className={errors.adverse_reaction_details ? 'border-red-500' : ''}
+                                    className={
+                                        errors.adverse_reaction_details ? 'border-red-500' : ''
+                                    }
                                 />
                                 {errors.adverse_reaction_details && (
                                     <p className="text-sm text-red-600 mt-1">

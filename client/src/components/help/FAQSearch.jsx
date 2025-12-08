@@ -4,8 +4,8 @@
  */
 
 import React, { useState, useCallback, useEffect } from 'react'
-import { Input } from "@/components/ui/input"
-import { Button } from "@/components/ui/Button"
+import { Input } from '@/components/ui/Input'
+import { Button } from '@/components/ui/Button'
 import { Search, X } from 'lucide-react'
 
 /**
@@ -14,11 +14,7 @@ import { Search, X } from 'lucide-react'
  * @param {string} placeholder - Placeholder text for search input
  * @param {number} debounceMs - Debounce delay in milliseconds
  */
-const FAQSearch = ({
-    onSearch,
-    placeholder = "Search for help topics...",
-    debounceMs = 300
-}) => {
+const FAQSearch = ({ onSearch, placeholder = 'Search for help topics...', debounceMs = 300 }) => {
     const [searchTerm, setSearchTerm] = useState('')
     const [debouncedTerm, setDebouncedTerm] = useState('')
 
@@ -50,19 +46,19 @@ const FAQSearch = ({
         }
     }, [onSearch])
 
-    const handleKeyDown = useCallback((e) => {
-        if (e.key === 'Escape') {
-            handleClear()
-        }
-    }, [handleClear])
+    const handleKeyDown = useCallback(
+        (e) => {
+            if (e.key === 'Escape') {
+                handleClear()
+            }
+        },
+        [handleClear]
+    )
 
     return (
         <div className="w-full">
             {/* Search Label for accessibility */}
-            <label
-                htmlFor="faq-search"
-                className="block text-lg font-medium text-gray-700 mb-2"
-            >
+            <label htmlFor="faq-search" className="block text-lg font-medium text-gray-700 mb-2">
                 Search Help Topics
             </label>
 
@@ -110,7 +106,9 @@ const FAQSearch = ({
             {searchTerm && (
                 <div className="mt-3 text-base text-gray-600" role="status" aria-live="polite">
                     {debouncedTerm ? (
-                        <span>Showing results for: <strong>"{debouncedTerm}"</strong></span>
+                        <span>
+                            Showing results for: <strong>"{debouncedTerm}"</strong>
+                        </span>
                     ) : (
                         <span>Searching...</span>
                     )}

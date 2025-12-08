@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useAuth } from '../../context/auth'
 import { requestEmailChange, verifyEmailChange } from '../../api/settings'
 import { showToast } from '../../util/alertHelper'
-import { Input } from '../ui/input'
+import { Input } from '../ui/Input'
 import { Label } from '../ui/label'
 import { Button } from '../ui/Button'
 import { Loader2, Mail, AlertCircle, ShieldCheck } from 'lucide-react'
@@ -72,7 +72,10 @@ const EmailSettings = () => {
             const response = await verifyEmailChange(verificationCode)
 
             if (response.status === 'success') {
-                showToast('success', 'Email updated successfully. Please log in again with your new email.')
+                showToast(
+                    'success',
+                    'Email updated successfully. Please log in again with your new email.'
+                )
                 setShowVerificationDialog(false)
                 setNewEmail('')
                 setVerificationCode('')
@@ -103,10 +106,13 @@ const EmailSettings = () => {
                 <div className="flex items-start gap-3">
                     <ShieldCheck className="h-5 w-5 text-blue-600 mt-0.5" />
                     <div className="flex-1">
-                        <p className="text-sm font-medium text-blue-900">Email Verification Required</p>
+                        <p className="text-sm font-medium text-blue-900">
+                            Email Verification Required
+                        </p>
                         <p className="text-sm text-blue-700 mt-1">
-                            For security, we'll send a verification code to your current email address
-                            before changing it. Make sure you have access to your current email.
+                            For security, we'll send a verification code to your current email
+                            address before changing it. Make sure you have access to your current
+                            email.
                         </p>
                     </div>
                 </div>
@@ -207,8 +213,8 @@ const EmailSettings = () => {
                                 <div className="flex items-start gap-2">
                                     <AlertCircle className="h-4 w-4 text-yellow-600 mt-0.5" />
                                     <p className="text-sm text-yellow-700">
-                                        You will be logged out after successfully changing your email.
-                                        Please log in again with your new email address.
+                                        You will be logged out after successfully changing your
+                                        email. Please log in again with your new email address.
                                     </p>
                                 </div>
                             </div>
