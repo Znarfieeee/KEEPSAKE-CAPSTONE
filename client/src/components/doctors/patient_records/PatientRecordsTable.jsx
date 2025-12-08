@@ -2,7 +2,7 @@ import React, { useState } from 'react'
 import { useAuth } from '@/context/auth'
 
 // UI Components
-import { Button } from '@/components/ui/button'
+import { Button } from '@/components/ui/Button'
 import ConfirmationDialog from '@/components/ui/ConfirmationDialog'
 import {
     Eye,

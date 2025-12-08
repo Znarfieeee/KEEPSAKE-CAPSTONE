@@ -4,7 +4,7 @@ import { useParams, useNavigate, useLocation, Link } from 'react-router-dom'
 // UI Components
 import { IoMdArrowBack } from 'react-icons/io'
 import { AlertCircle, RefreshCw, QrCode } from 'lucide-react'
-import { Button } from '@/components/ui/button'
+import { Button } from '@/components/ui/Button'
 
 import PatientRecordsTabs from '@/components/doctors/patient_records/PatientRecordsTabs'
 import { getChildDetails } from '@/api/parent/children'

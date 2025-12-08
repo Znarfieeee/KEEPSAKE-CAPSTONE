@@ -10,7 +10,7 @@ import CalendarGrid from '@/components/doctors/appointments/CalendarGrid'
 import AllAppointments from '@/components/doctors/appointments/AllAppointments'
 import AppointmentLoadingSkeleton from '@/components/doctors/appointments/AppointmentLoadingSkeleton'
 import { showToast } from '@/util/alertHelper'
-import { Button } from '@/components/ui/button'
+import { Button } from '@/components/ui/Button'
 import { Dialog, DialogTrigger } from '@/components/ui/dialog'
 import { PlusCircle, Building2 } from 'lucide-react'
 
@@ -69,14 +69,20 @@ const NurseAppointments = () => {
                             appointment.patient_name || 'Unknown Patient'
                         )
                     } else {
-                        console.log('Appointment already exists, skipping duplicate:', appointmentId)
+                        console.log(
+                            'Appointment already exists, skipping duplicate:',
+                            appointmentId
+                        )
                     }
                     break
                 case 'UPDATE':
                     updatedAppointments = prevAppointments.map((app) => {
                         const currentId = app.appointment_id || app.id
                         if (currentId === appointmentId) {
-                            console.log('Appointment updated:', appointment.patient_name || 'Unknown Patient')
+                            console.log(
+                                'Appointment updated:',
+                                appointment.patient_name || 'Unknown Patient'
+                            )
                             return {
                                 ...app,
                                 ...appointment,
@@ -98,7 +104,10 @@ const NurseAppointments = () => {
                     })
                     // Also remove from recently added
                     recentlyAddedRef.current.delete(appointmentId)
-                    console.log('Appointment deleted:', appointment.patient_name || 'Unknown Patient')
+                    console.log(
+                        'Appointment deleted:',
+                        appointment.patient_name || 'Unknown Patient'
+                    )
                     break
                 default:
                     console.warn('Unknown appointment change type:', type)
@@ -125,76 +134,81 @@ const NurseAppointments = () => {
      * Handles loading states and error management
      * Merges recently added appointments to prevent stale data from overwriting them
      */
-    const fetchAppointments = useCallback(async (bustCache = false) => {
-        if (!user?.id) {
-            setError('User not authenticated')
-            setLoading(false)
-            return
-        }
-
-        try {
-            // Only show loading on initial fetch
-            if (!initialFetchDoneRef.current) {
-                setLoading(true)
+    const fetchAppointments = useCallback(
+        async (bustCache = false) => {
+            if (!user?.id) {
+                setError('User not authenticated')
+                setLoading(false)
+                return
             }
-            setError(null)
 
-            console.log('Fetching appointments for nurse facility')
-            const response = await getAppointmentsForMyFacility(bustCache)
-
-            if (response.status === 'success' && response.data) {
-                // Store facility info
-                if (response.facility_id) {
-                    setFacilityInfo({
-                        id: response.facility_id,
-                        name: response.facility_name || 'Unknown Facility'
-                    })
+            try {
+                // Only show loading on initial fetch
+                if (!initialFetchDoneRef.current) {
+                    setLoading(true)
                 }
+                setError(null)
 
-                // Get recently added appointments that might not be in the API response yet
-                const recentlyAdded = Array.from(recentlyAddedRef.current.values())
-                    .filter((entry) => Date.now() - entry.timestamp < 10000) // Only keep entries less than 10 seconds old
-                    .map((entry) => entry.appointment)
+                console.log('Fetching appointments for nurse facility')
+                const response = await getAppointmentsForMyFacility(bustCache)
 
-                // Create a set of IDs from the API response for quick lookup
-                const apiAppointmentIds = new Set(
-                    response.data.map((app) => app.appointment_id || app.id)
-                )
+                if (response.status === 'success' && response.data) {
+                    // Store facility info
+                    if (response.facility_id) {
+                        setFacilityInfo({
+                            id: response.facility_id,
+                            name: response.facility_name || 'Unknown Facility',
+                        })
+                    }
 
-                // Find recently added appointments that are NOT in the API response
-                const missingAppointments = recentlyAdded.filter((app) => {
-                    const id = app.appointment_id || app.id
-                    return !apiAppointmentIds.has(id)
-                })
+                    // Get recently added appointments that might not be in the API response yet
+                    const recentlyAdded = Array.from(recentlyAddedRef.current.values())
+                        .filter((entry) => Date.now() - entry.timestamp < 10000) // Only keep entries less than 10 seconds old
+                        .map((entry) => entry.appointment)
 
-                // Merge API data with missing recently added appointments
-                const mergedAppointments = [...response.data, ...missingAppointments]
+                    // Create a set of IDs from the API response for quick lookup
+                    const apiAppointmentIds = new Set(
+                        response.data.map((app) => app.appointment_id || app.id)
+                    )
 
-                // Sort appointments by date and time
-                const sortedAppointments = mergedAppointments.sort(
-                    (a, b) =>
-                        new Date(`${a.appointment_date} ${a.appointment_time || '00:00'}`) -
-                        new Date(`${b.appointment_date} ${b.appointment_time || '00:00'}`)
-                )
+                    // Find recently added appointments that are NOT in the API response
+                    const missingAppointments = recentlyAdded.filter((app) => {
+                        const id = app.appointment_id || app.id
+                        return !apiAppointmentIds.has(id)
+                    })
 
-                console.log(`Loaded ${response.data.length} appointments from API, merged with ${missingAppointments.length} recently added`)
-                setAppointments(sortedAppointments)
-                initialFetchDoneRef.current = true
-            } else {
-                throw new Error(response.message || 'Failed to fetch appointments')
+                    // Merge API data with missing recently added appointments
+                    const mergedAppointments = [...response.data, ...missingAppointments]
+
+                    // Sort appointments by date and time
+                    const sortedAppointments = mergedAppointments.sort(
+                        (a, b) =>
+                            new Date(`${a.appointment_date} ${a.appointment_time || '00:00'}`) -
+                            new Date(`${b.appointment_date} ${b.appointment_time || '00:00'}`)
+                    )
+
+                    console.log(
+                        `Loaded ${response.data.length} appointments from API, merged with ${missingAppointments.length} recently added`
+                    )
+                    setAppointments(sortedAppointments)
+                    initialFetchDoneRef.current = true
+                } else {
+                    throw new Error(response.message || 'Failed to fetch appointments')
+                }
+            } catch (err) {
+                console.error('Error fetching appointments:', err)
+                const errorMessage =
+                    err.response?.data?.message ||
+                    err.message ||
+                    'Error loading appointments. Please try again later.'
+                setError(errorMessage)
+                showToast('error', errorMessage)
+            } finally {
+                setLoading(false)
             }
-        } catch (err) {
-            console.error('Error fetching appointments:', err)
-            const errorMessage =
-                err.response?.data?.message ||
-                err.message ||
-                'Error loading appointments. Please try again later.'
-            setError(errorMessage)
-            showToast('error', errorMessage)
-        } finally {
-            setLoading(false)
-        }
-    }, [user?.id])
+        },
+        [user?.id]
+    )
 
     // Fetch appointments on component mount and when user changes
     useEffect(() => {
@@ -234,52 +248,64 @@ const NurseAppointments = () => {
     /**
      * Handle appointment actions (check-in, cancel, etc.)
      */
-    const handleAppointmentAction = useCallback(async (action, appointment, response) => {
-        try {
-            // Update the local state with the new appointment data
-            if (response && response.status === 'success' && response.data) {
-                setAppointments((prevAppointments) => {
-                    return prevAppointments.map((app) => {
-                        const appointmentId = app.appointment_id || app.id
-                        const targetId = appointment.appointment_id || appointment.id
+    const handleAppointmentAction = useCallback(
+        async (action, appointment, response) => {
+            try {
+                // Update the local state with the new appointment data
+                if (response && response.status === 'success' && response.data) {
+                    setAppointments((prevAppointments) => {
+                        return prevAppointments.map((app) => {
+                            const appointmentId = app.appointment_id || app.id
+                            const targetId = appointment.appointment_id || appointment.id
 
-                        if (appointmentId === targetId) {
-                            // For cancelled appointments, mark them as cancelled instead of removing
-                            if (action === 'cancel') {
-                                return { ...app, status: 'cancelled', updated_at: new Date().toISOString() }
+                            if (appointmentId === targetId) {
+                                // For cancelled appointments, mark them as cancelled instead of removing
+                                if (action === 'cancel') {
+                                    return {
+                                        ...app,
+                                        status: 'cancelled',
+                                        updated_at: new Date().toISOString(),
+                                    }
+                                }
+                                // For other actions, update with response data, preserving existing related data
+                                return {
+                                    ...app,
+                                    ...response.data,
+                                    // Preserve joined data that might not be in the response
+                                    patients: app.patients || response.data.patients,
+                                    doctor: app.doctor || response.data.doctor,
+                                    facility: app.facility || response.data.facility,
+                                    updated_at: new Date().toISOString(),
+                                }
                             }
-                            // For other actions, update with response data, preserving existing related data
-                            return {
-                                ...app,
-                                ...response.data,
-                                // Preserve joined data that might not be in the response
-                                patients: app.patients || response.data.patients,
-                                doctor: app.doctor || response.data.doctor,
-                                facility: app.facility || response.data.facility,
-                                updated_at: new Date().toISOString()
-                            }
-                        }
-                        return app
+                            return app
+                        })
                     })
-                })
+                }
+
+                // Log the action for debugging
+                const patientName =
+                    appointment.patient_name ||
+                    appointment.patients?.firstname + ' ' + appointment.patients?.lastname ||
+                    appointment.patient?.full_name ||
+                    'Patient'
+
+                console.log(
+                    `${action.toUpperCase()} completed for appointment:`,
+                    appointment.appointment_id || appointment.id
+                )
+                console.log(
+                    `Patient: ${patientName}, Status: ${response?.data?.status || 'unknown'}`
+                )
+            } catch (error) {
+                console.error('Error handling appointment action:', error)
+                showToast('error', 'Failed to update appointment locally. Refreshing data...')
+                // Refresh appointments to ensure data consistency
+                fetchAppointments()
             }
-
-            // Log the action for debugging
-            const patientName = appointment.patient_name ||
-                               appointment.patients?.firstname + ' ' + appointment.patients?.lastname ||
-                               appointment.patient?.full_name ||
-                               'Patient'
-
-            console.log(`${action.toUpperCase()} completed for appointment:`, appointment.appointment_id || appointment.id)
-            console.log(`Patient: ${patientName}, Status: ${response?.data?.status || 'unknown'}`)
-
-        } catch (error) {
-            console.error('Error handling appointment action:', error)
-            showToast('error', 'Failed to update appointment locally. Refreshing data...')
-            // Refresh appointments to ensure data consistency
-            fetchAppointments()
-        }
-    }, [fetchAppointments])
+        },
+        [fetchAppointments]
+    )
 
     // Show loading skeleton while fetching data
     if (loading) {

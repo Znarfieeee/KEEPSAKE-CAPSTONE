@@ -3,7 +3,7 @@ import { Calendar } from '@/components/ui/calendar'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Input } from '@/components/ui/input'
-import { Button } from '@/components/ui/button'
+import { Button } from '@/components/ui/Button'
 import { Switch } from '@/components/ui/switch'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { cn } from '@/lib/utils'
@@ -107,28 +107,36 @@ const ScreeningSection = ({ form, updateForm }) => {
         })
     }, [form.ens_date, form.nhs_date, form.pos_date, form.ror_date])
 
-    const handleDateChange = useCallback((field, date) => {
-        setDates((prev) => ({ ...prev, [field]: date }))
-        if (date) {
-            // Create a date string in local timezone to avoid timezone conversion issues
-            const year = date.getFullYear()
-            const month = String(date.getMonth() + 1).padStart(2, '0')
-            const day = String(date.getDate()).padStart(2, '0')
-            const dateString = `${year}-${month}-${day}`
-            updateForm(field, dateString)
-        } else {
-            updateForm(field, '')
-        }
-    }, [updateForm])
+    const handleDateChange = useCallback(
+        (field, date) => {
+            setDates((prev) => ({ ...prev, [field]: date }))
+            if (date) {
+                // Create a date string in local timezone to avoid timezone conversion issues
+                const year = date.getFullYear()
+                const month = String(date.getMonth() + 1).padStart(2, '0')
+                const day = String(date.getDate()).padStart(2, '0')
+                const dateString = `${year}-${month}-${day}`
+                updateForm(field, dateString)
+            } else {
+                updateForm(field, '')
+            }
+        },
+        [updateForm]
+    )
 
-    const handleSwitchChange = useCallback((field, value) => {
-        updateForm(field, value)
-    }, [updateForm])
+    const handleSwitchChange = useCallback(
+        (field, value) => {
+            updateForm(field, value)
+        },
+        [updateForm]
+    )
 
-    const handleTextChange = useCallback((field, value) => {
-        updateForm(field, value)
-    }, [updateForm])
-
+    const handleTextChange = useCallback(
+        (field, value) => {
+            updateForm(field, value)
+        },
+        [updateForm]
+    )
 
     return (
         <div className="space-y-6">
@@ -220,7 +228,9 @@ const ScreeningSection = ({ form, updateForm }) => {
                         onDateChange={handleDateChange}
                     />
                     <div className="space-y-2">
-                        <Label className="text-sm font-medium text-gray-700">Test Results/Comments</Label>
+                        <Label className="text-sm font-medium text-gray-700">
+                            Test Results/Comments
+                        </Label>
                         <Textarea
                             className="min-h-[120px] resize-none border-gray-300 focus:border-blue-500 focus:ring-blue-500 bg-white"
                             placeholder="Enter test results, observations, and remarks (e.g., Normal bilateral red reflex, Absent reflex in left eye, etc.)"

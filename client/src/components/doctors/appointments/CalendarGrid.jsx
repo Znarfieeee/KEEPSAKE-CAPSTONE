@@ -2,7 +2,7 @@ import React, { useState, useMemo } from 'react'
 
 import { ChevronLeft, ChevronRight, Calendar, Clock, User, AlertCircle, Info } from 'lucide-react'
 import { cn, getStatusBadgeColor } from '@/util/utils'
-import { Button } from '@/components/ui/button'
+import { Button } from '@/components/ui/Button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/Dialog'
 import { Badge } from '@/components/ui/badge'
 import { TooltipHelper } from '@/util/TooltipHelper'

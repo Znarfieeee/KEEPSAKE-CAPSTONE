@@ -7,7 +7,7 @@ import {
     DialogDescription,
     DialogFooter,
 } from '@/components/ui/dialog'
-import { Button } from '@/components/ui/button'
+import { Button } from '@/components/ui/Button'
 import { Progress } from '@/components/ui/progress'
 import { showToast } from '@/util/alertHelper'
 import { cn } from '@/lib/utils'

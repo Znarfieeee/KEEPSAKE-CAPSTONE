@@ -13,7 +13,7 @@ import {
     CalendarX,
 } from 'lucide-react'
 import { cn, getStatusBadgeColor } from '@/util/utils'
-import { Button } from '@/components/ui/button'
+import { Button } from '@/components/ui/Button'
 import { Dialog, DialogTrigger } from '@/components/ui/dialog'
 import ConfirmationDialog from '@/components/ui/ConfirmationDialog'
 import { showToast } from '@/util/alertHelper'

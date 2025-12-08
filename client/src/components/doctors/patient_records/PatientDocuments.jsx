@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react'
 import { Download, FileText, Trash2, Filter, RefreshCw, Upload, Eye } from 'lucide-react'
-import { Button } from '@/components/ui/button'
+import { Button } from '@/components/ui/Button'
 import { showToast } from '@/util/alertHelper'
 import { formatDistanceToNow } from 'date-fns'
 import { getPatientDocuments, getDocument, deleteDocument } from '@/api/doctors/documents'

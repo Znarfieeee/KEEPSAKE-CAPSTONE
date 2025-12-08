@@ -1,11 +1,6 @@
 import React, { useState } from 'react'
-import {
-    DialogContent,
-    DialogFooter,
-    DialogHeader,
-    DialogTitle,
-} from '@/components/ui/dialog'
-import { Button } from '@/components/ui/button'
+import { DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import {
@@ -51,7 +46,9 @@ export function UploadDocumentModal({ patientId, onUploadSuccess, onClose }) {
         if (fileSizeMB > MAX_FILE_SIZE_MB) {
             showToast(
                 'error',
-                `File size must be less than ${MAX_FILE_SIZE_MB}MB. Current size: ${fileSizeMB.toFixed(2)}MB`
+                `File size must be less than ${MAX_FILE_SIZE_MB}MB. Current size: ${fileSizeMB.toFixed(
+                    2
+                )}MB`
             )
             return
         }
@@ -267,7 +264,12 @@ export function UploadDocumentModal({ patientId, onUploadSuccess, onClose }) {
                 </div>
 
                 <DialogFooter className="gap-2">
-                    <Button type="button" variant="outline" onClick={handleClose} disabled={uploading}>
+                    <Button
+                        type="button"
+                        variant="outline"
+                        onClick={handleClose}
+                        disabled={uploading}
+                    >
                         Cancel
                     </Button>
                     <Button type="submit" disabled={uploading || !file || !documentType}>

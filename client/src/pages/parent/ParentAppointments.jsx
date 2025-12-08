@@ -5,7 +5,7 @@ import { getParentChildren, getChildAppointments } from '@/api/parent/children'
 import { showToast } from '@/util/alertHelper'
 
 // UI Components
-import { Button } from '@/components/ui/button'
+import { Button } from '@/components/ui/Button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Card, CardContent } from '@/components/ui/card'
 import { AlertCircle } from 'lucide-react'
@@ -325,7 +325,9 @@ const ParentAppointments = () => {
                         <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-1 sm:mb-2">
                             Calendar View
                         </h3>
-                        <p className="text-xs sm:text-sm text-gray-500">Monthly appointment overview</p>
+                        <p className="text-xs sm:text-sm text-gray-500">
+                            Monthly appointment overview
+                        </p>
                     </div>
                     <ParentCalendarGrid
                         appointments={childFilteredAppointments}

@@ -7,7 +7,7 @@ import {
     DialogTitle,
     DialogFooter,
 } from '@/components/ui/dialog'
-import { Button } from '@/components/ui/button'
+import { Button } from '@/components/ui/Button'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area'
 import { showToast } from '@/util/alertHelper'
@@ -94,15 +94,21 @@ const EditPatientModal = ({ onClose, patient, onSuccess }) => {
     const hasFormChanged = (currentForm, originalForm) => {
         if (!currentForm || !originalForm) return hasFormData(currentForm)
 
-        const currentKeys = Object.keys(currentForm).filter(k => !k.endsWith('_id'))
+        const currentKeys = Object.keys(currentForm).filter((k) => !k.endsWith('_id'))
 
         for (const key of currentKeys) {
             const currentVal = currentForm[key]
             const originalVal = originalForm[key]
 
             // Normalize values for comparison
-            const normalizedCurrent = currentVal === '' || currentVal === null || currentVal === undefined ? '' : String(currentVal)
-            const normalizedOriginal = originalVal === '' || originalVal === null || originalVal === undefined ? '' : String(originalVal)
+            const normalizedCurrent =
+                currentVal === '' || currentVal === null || currentVal === undefined
+                    ? ''
+                    : String(currentVal)
+            const normalizedOriginal =
+                originalVal === '' || originalVal === null || originalVal === undefined
+                    ? ''
+                    : String(originalVal)
 
             if (normalizedCurrent !== normalizedOriginal) {
                 return true
@@ -182,9 +188,8 @@ const EditPatientModal = ({ onClose, patient, onSuccess }) => {
 
             // Allergy data - handle array properly
             const allergiesArray = related.allergies || []
-            const firstAllergy = Array.isArray(allergiesArray) && allergiesArray.length > 0
-                ? allergiesArray[0]
-                : {}
+            const firstAllergy =
+                Array.isArray(allergiesArray) && allergiesArray.length > 0 ? allergiesArray[0] : {}
 
             const allergyData = {
                 allergy_id: firstAllergy.allergy_id || '',
@@ -199,9 +204,12 @@ const EditPatientModal = ({ onClose, patient, onSuccess }) => {
 
             // Anthropometric data - handle both key names and array
             const anthroArray = related.anthropometric_measurements || related.anthropometric || []
-            const latestMeasurement = Array.isArray(anthroArray) && anthroArray.length > 0
-                ? anthroArray[anthroArray.length - 1]
-                : (typeof anthroArray === 'object' ? anthroArray : {})
+            const latestMeasurement =
+                Array.isArray(anthroArray) && anthroArray.length > 0
+                    ? anthroArray[anthroArray.length - 1]
+                    : typeof anthroArray === 'object'
+                    ? anthroArray
+                    : {}
 
             const anthroData = {
                 am_id: latestMeasurement.am_id || '',
@@ -236,11 +244,16 @@ const EditPatientModal = ({ onClose, patient, onSuccess }) => {
         if (missing.length > 0) {
             const fieldNames = missing.map((field) => {
                 switch (field) {
-                    case 'firstname': return 'First Name'
-                    case 'lastname': return 'Last Name'
-                    case 'date_of_birth': return 'Date of Birth'
-                    case 'sex': return 'Sex'
-                    default: return field
+                    case 'firstname':
+                        return 'First Name'
+                    case 'lastname':
+                        return 'Last Name'
+                    case 'date_of_birth':
+                        return 'Date of Birth'
+                    case 'sex':
+                        return 'Sex'
+                    default:
+                        return field
                 }
             })
             showToast('error', `Please fill in required fields: ${fieldNames.join(', ')}`)
@@ -278,10 +291,17 @@ const EditPatientModal = ({ onClose, patient, onSuccess }) => {
 
             // Check which sections actually changed
             const basicChanged = hasFormChanged(patientForm, originalData.current.patient)
-            const deliveryChanged = dirtyFields.delivery && hasFormChanged(deliveryForm, originalData.current.delivery)
-            const screeningChanged = dirtyFields.screening && hasFormChanged(screeningForm, originalData.current.screening)
-            const allergiesChanged = dirtyFields.allergies && hasFormChanged(allergiesForm, originalData.current.allergies)
-            const anthroChanged = dirtyFields.anthropometric && hasFormChanged(anthroForm, originalData.current.anthro)
+            const deliveryChanged =
+                dirtyFields.delivery && hasFormChanged(deliveryForm, originalData.current.delivery)
+            const screeningChanged =
+                dirtyFields.screening &&
+                hasFormChanged(screeningForm, originalData.current.screening)
+            const allergiesChanged =
+                dirtyFields.allergies &&
+                hasFormChanged(allergiesForm, originalData.current.allergies)
+            const anthroChanged =
+                dirtyFields.anthropometric &&
+                hasFormChanged(anthroForm, originalData.current.anthro)
 
             // Update main patient record if changed
             if (basicChanged) {
@@ -301,16 +321,30 @@ const EditPatientModal = ({ onClose, patient, onSuccess }) => {
             if (deliveryChanged && hasFormData(deliveryForm)) {
                 promises.push(
                     updateDeliveryRecord(patientId, sanitizeObject(deliveryForm))
-                        .then(() => { updatedSections.push('delivery'); return { section: 'delivery', success: true } })
-                        .catch((error) => { failedSections.push('delivery'); console.error('Delivery update failed:', error); return { section: 'delivery', error } })
+                        .then(() => {
+                            updatedSections.push('delivery')
+                            return { section: 'delivery', success: true }
+                        })
+                        .catch((error) => {
+                            failedSections.push('delivery')
+                            console.error('Delivery update failed:', error)
+                            return { section: 'delivery', error }
+                        })
                 )
             }
 
             if (screeningChanged && hasFormData(screeningForm)) {
                 promises.push(
                     updateScreeningRecord(patientId, sanitizeObject(screeningForm))
-                        .then(() => { updatedSections.push('screening'); return { section: 'screening', success: true } })
-                        .catch((error) => { failedSections.push('screening'); console.error('Screening update failed:', error); return { section: 'screening', error } })
+                        .then(() => {
+                            updatedSections.push('screening')
+                            return { section: 'screening', success: true }
+                        })
+                        .catch((error) => {
+                            failedSections.push('screening')
+                            console.error('Screening update failed:', error)
+                            return { section: 'screening', error }
+                        })
                 )
             }
 
@@ -318,8 +352,15 @@ const EditPatientModal = ({ onClose, patient, onSuccess }) => {
                 const sanitizedAnthro = sanitizeObject(anthroForm)
                 promises.push(
                     updateAnthropometricRecord(patientId, sanitizedAnthro)
-                        .then(() => { updatedSections.push('anthropometric'); return { section: 'anthropometric', success: true } })
-                        .catch((error) => { failedSections.push('anthropometric'); console.error('Anthropometric update failed:', error); return { section: 'anthropometric', error } })
+                        .then(() => {
+                            updatedSections.push('anthropometric')
+                            return { section: 'anthropometric', success: true }
+                        })
+                        .catch((error) => {
+                            failedSections.push('anthropometric')
+                            console.error('Anthropometric update failed:', error)
+                            return { section: 'anthropometric', error }
+                        })
                 )
             }
 
@@ -327,8 +368,15 @@ const EditPatientModal = ({ onClose, patient, onSuccess }) => {
                 const sanitizedAllergy = sanitizeObject(allergiesForm)
                 promises.push(
                     updateAllergyRecord(patientId, sanitizedAllergy)
-                        .then(() => { updatedSections.push('allergies'); return { section: 'allergies', success: true } })
-                        .catch((error) => { failedSections.push('allergies'); console.error('Allergy update failed:', error); return { section: 'allergies', error } })
+                        .then(() => {
+                            updatedSections.push('allergies')
+                            return { section: 'allergies', success: true }
+                        })
+                        .catch((error) => {
+                            failedSections.push('allergies')
+                            console.error('Allergy update failed:', error)
+                            return { section: 'allergies', error }
+                        })
                 )
             }
 
@@ -337,7 +385,10 @@ const EditPatientModal = ({ onClose, patient, onSuccess }) => {
                 await Promise.allSettled(promises)
 
                 if (failedSections.length > 0) {
-                    showToast('warning', `Patient updated, but failed to update: ${failedSections.join(', ')}`)
+                    showToast(
+                        'warning',
+                        `Patient updated, but failed to update: ${failedSections.join(', ')}`
+                    )
                 } else {
                     showToast('success', 'Patient and related data updated successfully')
                 }
@@ -370,16 +421,17 @@ const EditPatientModal = ({ onClose, patient, onSuccess }) => {
                     }
 
                     // Get existing measurements (handle both key names)
-                    const existingMeasurements = patient.related_records?.anthropometric_measurements
-                        || patient.related_records?.anthropometric
-                        || []
+                    const existingMeasurements =
+                        patient.related_records?.anthropometric_measurements ||
+                        patient.related_records?.anthropometric ||
+                        []
 
                     // Update the measurement array
                     if (Array.isArray(existingMeasurements) && existingMeasurements.length > 0) {
                         // Update the last measurement
                         updatedRelatedRecords.anthropometric_measurements = [
                             ...existingMeasurements.slice(0, -1),
-                            newMeasurement
+                            newMeasurement,
                         ]
                     } else {
                         updatedRelatedRecords.anthropometric_measurements = [newMeasurement]
@@ -392,7 +444,7 @@ const EditPatientModal = ({ onClose, patient, onSuccess }) => {
 
                     if (allergiesForm.allergy_id && Array.isArray(existingAllergies)) {
                         // Update existing allergy
-                        updatedRelatedRecords.allergies = existingAllergies.map(allergy =>
+                        updatedRelatedRecords.allergies = existingAllergies.map((allergy) =>
                             allergy.allergy_id === allergiesForm.allergy_id
                                 ? { ...allergy, ...sanitizedAllergy }
                                 : allergy
@@ -427,10 +479,10 @@ const EditPatientModal = ({ onClose, patient, onSuccess }) => {
             setTimeout(() => {
                 onClose()
             }, 500)
-
         } catch (error) {
             console.error('Error in patient update process:', error)
-            const errorMessage = error.message || error.response?.data?.message || 'Failed to update patient record'
+            const errorMessage =
+                error.message || error.response?.data?.message || 'Failed to update patient record'
             showToast('error', errorMessage)
         } finally {
             setLoading(false)
@@ -525,8 +577,8 @@ const EditPatientModal = ({ onClose, patient, onSuccess }) => {
                         Edit Patient: {patient.firstname} {patient.lastname}
                     </DialogTitle>
                     <DialogDescription>
-                        Update patient information using the tabs below. Blue dots indicate sections with data.
-                        Orange dots indicate unsaved changes.
+                        Update patient information using the tabs below. Blue dots indicate sections
+                        with data. Orange dots indicate unsaved changes.
                     </DialogDescription>
                 </DialogHeader>
 

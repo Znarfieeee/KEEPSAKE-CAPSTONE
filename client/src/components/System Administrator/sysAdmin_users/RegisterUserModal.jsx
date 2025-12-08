@@ -7,7 +7,7 @@ import {
     DialogDescription,
     DialogFooter,
 } from '@/components/ui/dialog'
-import { Button } from '@/components/ui/button'
+import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { PhoneNumberInput } from '@/components/ui/phone-number'
@@ -21,14 +21,7 @@ import {
 import { Progress } from '@/components/ui/progress'
 import { showToast } from '@/util/alertHelper'
 import { cn } from '@/lib/utils'
-import {
-    User,
-    Briefcase,
-    Building2,
-    Check,
-    ChevronLeft,
-    ChevronRight,
-} from 'lucide-react'
+import { User, Briefcase, Building2, Check, ChevronLeft, ChevronRight } from 'lucide-react'
 
 // Import API functions
 import { createUser, assignUserToFacility } from '@/api/admin/users'
@@ -363,10 +356,7 @@ const BasicInfoSection = ({ form, updateForm }) => (
                 <Label htmlFor="role">
                     Role <span className="text-red-500">*</span>
                 </Label>
-                <Select
-                    value={form.role}
-                    onValueChange={(value) => updateForm('role', value)}
-                >
+                <Select value={form.role} onValueChange={(value) => updateForm('role', value)}>
                     <SelectTrigger>
                         <SelectValue placeholder="Select a role" />
                     </SelectTrigger>
@@ -398,13 +388,18 @@ const ProfessionalSection = ({ form, updateForm, basicRole }) => (
             {basicRole === 'parent' && (
                 <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
                     <p className="text-sm text-blue-800">
-                        <strong>Parent/Guardian Account:</strong> Please fill in emergency contact and relationship information.
+                        <strong>Parent/Guardian Account:</strong> Please fill in emergency contact
+                        and relationship information.
                     </p>
                 </div>
             )}
 
             {/* Fields for Medical Staff (Doctor, Nurse) */}
-            {(basicRole === 'doctor' || basicRole === 'nurse' || basicRole === 'staff' || basicRole === 'facility_admin' || basicRole === 'admin') && (
+            {(basicRole === 'doctor' ||
+                basicRole === 'nurse' ||
+                basicRole === 'staff' ||
+                basicRole === 'facility_admin' ||
+                basicRole === 'admin') && (
                 <>
                     <div>
                         <Label htmlFor="employee_id_number">Employee ID Number</Label>
@@ -443,7 +438,11 @@ const ProfessionalSection = ({ form, updateForm, basicRole }) => (
                         id="specialty"
                         value={form.specialty}
                         onChange={(e) => updateForm('specialty', e.target.value)}
-                        placeholder={basicRole === 'doctor' ? 'e.g., Pediatrician, Cardiologist' : 'e.g., Pediatric Nurse, ICU Nurse'}
+                        placeholder={
+                            basicRole === 'doctor'
+                                ? 'e.g., Pediatrician, Cardiologist'
+                                : 'e.g., Pediatric Nurse, ICU Nurse'
+                        }
                     />
                     <p className="text-xs text-muted-foreground mt-1">
                         Required for medical professionals
@@ -810,7 +809,10 @@ const ReviewStep = ({ basicForm, professionalForm, facilityForm, includedSteps, 
                         {/* Medical professional fields */}
                         {(basicForm.role === 'doctor' || basicForm.role === 'nurse') && (
                             <>
-                                <FieldDisplay label="Specialty" value={professionalForm.specialty} />
+                                <FieldDisplay
+                                    label="Specialty"
+                                    value={professionalForm.specialty}
+                                />
                                 <FieldDisplay
                                     label="License Number"
                                     value={professionalForm.license_number}
@@ -819,7 +821,10 @@ const ReviewStep = ({ basicForm, professionalForm, facilityForm, includedSteps, 
                                     label="Years of Experience"
                                     value={professionalForm.years_of_experience}
                                 />
-                                <FieldDisplay label="Education" value={professionalForm.education} />
+                                <FieldDisplay
+                                    label="Education"
+                                    value={professionalForm.education}
+                                />
                             </>
                         )}
 
@@ -1143,7 +1148,10 @@ const RegisterUserModal = ({ open, onClose }) => {
                 const facilityRes = await assignUserToFacility(userId, facilityPayload)
 
                 if (facilityRes.status !== 'success') {
-                    console.warn('User created but facility assignment failed:', facilityRes.message)
+                    console.warn(
+                        'User created but facility assignment failed:',
+                        facilityRes.message
+                    )
                     showToast(
                         'warning',
                         'User created successfully, but facility assignment failed. Please assign manually.'

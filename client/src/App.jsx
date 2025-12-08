@@ -32,7 +32,6 @@ import FacilitiesRegistry from '@/pages/systemAdmin/FacilitiesRegistry'
 import FacilityUsersRegistry from '@/pages/systemAdmin/FacilityUsersRegistry'
 import UsersRegistry from '@/pages/systemAdmin/UsersRegistry'
 import SubscriptionPage from '@/pages/systemAdmin/SubscriptionPage'
-import TokenInvitations from '@/pages/systemAdmin/TokenInvitations'
 import AuditLogsPage from '@/pages/systemAdmin/AuditLogsPage'
 import DataReports from '@/pages/systemAdmin/DataReports'
 import SystemConfigPage from '@/pages/systemAdmin/SystemConfigPage'
@@ -220,10 +219,6 @@ function App() {
                         {
                             path: 'sub_billing',
                             element: <SubscriptionPage />,
-                        },
-                        {
-                            path: 'tokinv_system',
-                            element: <TokenInvitations />,
                         },
                         {
                             path: 'audit_logs',
