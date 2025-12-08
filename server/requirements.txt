@@ -3,6 +3,7 @@ Flask>=3.0.0
 flask-cors>=4.0.0
 python-dotenv>=1.0.0
 Werkzeug>=3.0.0
+authlib>= 1.6.5
 
 # Database and Authentication
 supabase>=2.0.0
