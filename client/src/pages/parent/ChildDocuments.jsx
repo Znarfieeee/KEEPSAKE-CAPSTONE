@@ -1,7 +1,7 @@
 import React, { useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { ArrowLeft, Upload, FolderOpen } from 'lucide-react'
-import { Button } from '@/components/ui/button'
+import { Button } from '@/components/ui/Button'
 import { Dialog } from '@/components/ui/dialog'
 import { PatientDocuments } from '@/components/doctors/patient_records/PatientDocuments'
 import { UploadDocumentModal } from '@/components/doctors/patient_records/UploadDocumentModal'
@@ -25,11 +25,7 @@ export default function ChildDocuments() {
             <div className="max-w-6xl mx-auto">
                 {/* Header */}
                 <div className="mb-6">
-                    <Button
-                        variant="ghost"
-                        onClick={handleBack}
-                        className="mb-4"
-                    >
+                    <Button variant="ghost" onClick={handleBack} className="mb-4">
                         <ArrowLeft className="w-4 h-4 mr-2" />
                         Back to Children
                     </Button>

@@ -7,7 +7,7 @@ import {
     DialogTitle,
     DialogFooter,
 } from '@/components/ui/dialog'
-import { Button } from '@/components/ui/button'
+import { Button } from '@/components/ui/Button'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area'
 import { Input } from '@/components/ui/input'

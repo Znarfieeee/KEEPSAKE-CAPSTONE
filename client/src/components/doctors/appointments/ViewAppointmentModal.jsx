@@ -9,7 +9,7 @@ import {
     DialogFooter,
     DialogClose,
 } from '@/components/ui/dialog'
-import { Button } from '@/components/ui/button'
+import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
 import { Calendar, User, FileText, Phone, MapPin, UserCheck } from 'lucide-react'

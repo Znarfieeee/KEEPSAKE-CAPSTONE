@@ -13,7 +13,7 @@ import { RangeCalendar } from '@/components/ui/calendar-rac'
 import { parseDate, CalendarDate } from '@internationalized/date'
 import { Input } from '@/components/ui/input'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
-import { Button } from '@/components/ui/button'
+import { Button } from '@/components/ui/Button'
 
 // Helper
 import { TooltipHelper } from '@/util/TooltipHelper'

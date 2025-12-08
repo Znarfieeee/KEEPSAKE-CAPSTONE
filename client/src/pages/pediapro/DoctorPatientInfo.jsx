@@ -5,7 +5,7 @@ import { useAuth } from '@/context/auth'
 // UI Components
 import { IoMdArrowBack } from 'react-icons/io'
 import { Dialog } from '@/components/ui/dialog'
-import { Button } from '@/components/ui/button'
+import { Button } from '@/components/ui/Button'
 import { Edit, Trash2 } from 'lucide-react'
 import { TooltipHelper } from '@/util/TooltipHelper'
 import ConfirmationDialog from '@/components/ui/ConfirmationDialog'

@@ -13,7 +13,7 @@ import {
 } from 'lucide-react'
 import { cn, formatTime, getStatusBadgeColor } from '@/util/utils'
 import { Dialog, DialogTrigger } from '@/components/ui/dialog'
-import { Button } from '@/components/ui/button'
+import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
 import { ScrollArea } from '@/components/ui/scroll-area'

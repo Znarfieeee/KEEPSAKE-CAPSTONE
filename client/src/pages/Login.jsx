@@ -13,7 +13,7 @@ import { FiEye, FiEyeOff } from 'react-icons/fi'
 import { Mail, Shield } from 'lucide-react'
 import GoogleButton from '../components/ui/GoogleButton'
 import LoadingButton from '../components/ui/LoadingButton'
-import { TooltipProvider, Tooltip, TooltipTrigger, TooltipContent } from '../components/ui/Tooltip'
+import TooltipHelper from '../util/TooltipHelper'
 import { OTPInput } from 'input-otp'
 
 // OTP Slot Component
@@ -130,7 +130,7 @@ const Login = () => {
                             return navigate('/', { replace: true })
                     }
                 }
-            } catch (error) {
+            } catch {
                 // silent fail - don't block the login screen
             }
         }
@@ -556,17 +556,12 @@ const Login = () => {
                             <GoogleButton className="w-[90%] mx-auto mt-6 bg-gray-100 border border-gray-300 hover:bg-gray-200" />
                             <p className="text-sm mt-4 text-center">
                                 Manual self-registration is disabled.&nbsp;
-                                <TooltipProvider>
-                                    <Tooltip>
-                                        <TooltipTrigger asChild>
-                                            <span className="underline text-primary">Why?</span>
-                                        </TooltipTrigger>
-                                        <TooltipContent>
-                                            Consult the nearest available clinic with KEEPSAKE to
-                                            have an account.
-                                        </TooltipContent>
-                                    </Tooltip>
-                                </TooltipProvider>
+                                <TooltipHelper
+                                    content="Consult the nearest available clinic with KEEPSAKE to
+                                            have an account."
+                                >
+                                    <span className="underline text-primary">Why?</span>
+                                </TooltipHelper>
                             </p>
                         </>
                     )}

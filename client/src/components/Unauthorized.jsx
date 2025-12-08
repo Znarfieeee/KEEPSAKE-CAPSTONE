@@ -1,11 +1,11 @@
-import React from "react"
-import { useNavigate } from "react-router-dom"
+import React from 'react'
+import { useNavigate } from 'react-router-dom'
 
 // Import hero image from assets folder (adjust path if needed)
-import heroImg from "../assets/hero1.png"
+import heroImg from '../assets/hero1.png'
 
 // Reuse existing Button component for consistent styling
-import { Button } from "./ui/Button.jsx"
+import { Button } from './ui/Button.jsx'
 
 function Unauthorized() {
     const navigate = useNavigate()
@@ -21,8 +21,7 @@ function Unauthorized() {
                 You are not authorized to view this page
             </h1>
             <p className="text-gray-600 mb-6">
-                Please contact your administrator if you believe this is an
-                error.
+                Please contact your administrator if you believe this is an error.
             </p>
             <Button onClick={() => navigate(-1)} size="lg">
                 Go Back

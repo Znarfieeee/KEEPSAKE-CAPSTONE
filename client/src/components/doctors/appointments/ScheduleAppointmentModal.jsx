@@ -24,7 +24,7 @@ import {
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Calendar } from '@/components/ui/calendar'
-import { Button } from '@/components/ui/button'
+import { Button } from '@/components/ui/Button'
 import LoadingButton from '@/components/ui/LoadingButton'
 import { Textarea } from '@/components/ui/textarea'
 import { ScrollArea } from '@/components/ui/scroll-area'

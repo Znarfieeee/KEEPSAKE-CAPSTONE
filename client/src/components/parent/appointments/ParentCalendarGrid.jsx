@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react'
 import { ChevronLeft, ChevronRight, Calendar, Clock, User, Info } from 'lucide-react'
 import { cn, getStatusBadgeColor, formatTime } from '@/util/utils'
-import { Button } from '@/components/ui/button'
+import { Button } from '@/components/ui/Button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/Dialog'
 import { Badge } from '@/components/ui/badge'
 import { TooltipHelper } from '@/util/TooltipHelper'
@@ -85,7 +85,7 @@ const ParentCalendarGrid = ({ appointments = [], children = [], childColors = {}
      * Get child name by patient ID
      */
     const getChildName = (patientId) => {
-        const child = children.find(c => (c.patient_id || c.id) === patientId)
+        const child = children.find((c) => (c.patient_id || c.id) === patientId)
         if (child) {
             return child.firstname && child.lastname
                 ? `${child.firstname} ${child.lastname}`
@@ -145,13 +145,23 @@ const ParentCalendarGrid = ({ appointments = [], children = [], childColors = {}
      * Get unique child colors for a day's appointments
      */
     const getChildColorsForDay = (dayAppointments) => {
-        const uniqueChildren = [...new Set(dayAppointments.map(apt => apt.patient_id))]
-        return uniqueChildren.slice(0, 3).map(childId => childColors[childId] || 'bg-blue-500')
+        const uniqueChildren = [...new Set(dayAppointments.map((apt) => apt.patient_id))]
+        return uniqueChildren.slice(0, 3).map((childId) => childColors[childId] || 'bg-blue-500')
     }
 
     const monthNames = [
-        'January', 'February', 'March', 'April', 'May', 'June',
-        'July', 'August', 'September', 'October', 'November', 'December',
+        'January',
+        'February',
+        'March',
+        'April',
+        'May',
+        'June',
+        'July',
+        'August',
+        'September',
+        'October',
+        'November',
+        'December',
     ]
 
     const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
@@ -231,7 +241,9 @@ const ParentCalendarGrid = ({ appointments = [], children = [], childColors = {}
                             onClick={() => dayData.isCurrentMonth && handleDayClick(dayData)}
                             title={
                                 appointmentCount > 0
-                                    ? `${appointmentCount} appointment${appointmentCount > 1 ? 's' : ''} - Click to view`
+                                    ? `${appointmentCount} appointment${
+                                          appointmentCount > 1 ? 's' : ''
+                                      } - Click to view`
                                     : dayData.isCurrentMonth
                                     ? 'Click to view day details'
                                     : ''
@@ -278,12 +290,21 @@ const ParentCalendarGrid = ({ appointments = [], children = [], childColors = {}
                                 <div className="space-y-2">
                                     {children.map((child) => {
                                         const childId = child.patient_id || child.id
-                                        const childName = child.firstname && child.lastname
-                                            ? `${child.firstname} ${child.lastname}`
-                                            : child.full_name || 'Unknown'
+                                        const childName =
+                                            child.firstname && child.lastname
+                                                ? `${child.firstname} ${child.lastname}`
+                                                : child.full_name || 'Unknown'
                                         return (
-                                            <div key={childId} className="flex items-center gap-2 text-sm">
-                                                <div className={cn('w-3 h-3 rounded-full', childColors[childId] || 'bg-blue-500')} />
+                                            <div
+                                                key={childId}
+                                                className="flex items-center gap-2 text-sm"
+                                            >
+                                                <div
+                                                    className={cn(
+                                                        'w-3 h-3 rounded-full',
+                                                        childColors[childId] || 'bg-blue-500'
+                                                    )}
+                                                />
                                                 <span>{childName}</span>
                                             </div>
                                         )
@@ -361,18 +382,32 @@ const ParentCalendarGrid = ({ appointments = [], children = [], childColors = {}
                                                     className="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-sm transition-shadow"
                                                 >
                                                     <div className="flex items-start gap-3">
-                                                        <div className={cn('w-1 h-full min-h-[60px] rounded-full', childColor)} />
+                                                        <div
+                                                            className={cn(
+                                                                'w-1 h-full min-h-[60px] rounded-full',
+                                                                childColor
+                                                            )}
+                                                        />
                                                         <div className="flex-1">
                                                             <div className="flex items-center justify-between mb-2">
                                                                 <div className="flex items-center gap-2">
-                                                                    <div className={cn('w-3 h-3 rounded-full', childColor)} />
-                                                                    <span className="font-semibold text-gray-900">{childName}</span>
+                                                                    <div
+                                                                        className={cn(
+                                                                            'w-3 h-3 rounded-full',
+                                                                            childColor
+                                                                        )}
+                                                                    />
+                                                                    <span className="font-semibold text-gray-900">
+                                                                        {childName}
+                                                                    </span>
                                                                 </div>
                                                                 {appointment.status && (
                                                                     <Badge
                                                                         className={cn(
                                                                             'text-xs font-medium',
-                                                                            getStatusBadgeColor(appointment.status)
+                                                                            getStatusBadgeColor(
+                                                                                appointment.status
+                                                                            )
                                                                         )}
                                                                     >
                                                                         {appointment.status}
@@ -383,22 +418,29 @@ const ParentCalendarGrid = ({ appointments = [], children = [], childColors = {}
                                                             <div className="flex items-center gap-2 mb-2">
                                                                 <Clock className="w-4 h-4 text-gray-500" />
                                                                 <span className="font-medium text-gray-900">
-                                                                    {formatTime(appointment.appointment_time) || 'Time TBD'}
+                                                                    {formatTime(
+                                                                        appointment.appointment_time
+                                                                    ) || 'Time TBD'}
                                                                 </span>
                                                             </div>
 
                                                             <div className="flex items-center gap-2 mb-2">
                                                                 <User className="w-4 h-4 text-gray-500" />
                                                                 <span className="text-gray-700">
-                                                                    {appointment.users?.firstname && appointment.users?.lastname
+                                                                    {appointment.users?.firstname &&
+                                                                    appointment.users?.lastname
                                                                         ? `Dr. ${appointment.users.firstname} ${appointment.users.lastname}`
-                                                                        : appointment.doctor_name || 'Any Available Doctor'}
+                                                                        : appointment.doctor_name ||
+                                                                          'Any Available Doctor'}
                                                                 </span>
                                                             </div>
 
                                                             {appointment.reason && (
                                                                 <p className="text-sm text-gray-600">
-                                                                    <span className="font-medium">Reason:</span> {appointment.reason}
+                                                                    <span className="font-medium">
+                                                                        Reason:
+                                                                    </span>{' '}
+                                                                    {appointment.reason}
                                                                 </p>
                                                             )}
                                                         </div>
