@@ -367,6 +367,6 @@ def add_security_headers(response):
 
 if __name__ == "__main__":
     handle_startup_errors()
-    app.run(debug=True, 
+    app.run(debug=False, 
             # host='192.168.1.8'
             )

@@ -703,16 +703,13 @@ const StepperAddPatientModal = ({ open, onClose }) => {
 
     // Handle form submission
     const handleSubmit = async () => {
-        console.log('Starting patient creation process...')
         try {
             setLoading(true)
 
             // Create patient record first
             const patientPayload = sanitizeObject(patientForm)
-            console.log('Creating patient with payload:', patientPayload)
 
             const patientResponse = await addPatientRecord(patientPayload)
-            console.log('Patient creation response:', patientResponse)
 
             // Check if response indicates success
             if (patientResponse?.status !== 'success') {
@@ -728,15 +725,12 @@ const StepperAddPatientModal = ({ open, onClose }) => {
                 throw new Error('Patient created but ID not returned from server')
             }
 
-            console.log('Patient created successfully with ID:', patientId)
-            console.log('Included steps for additional records:', includedSteps)
             const promises = []
             const failedSections = []
 
             // Add optional sections based on inclusion
             if (includedSteps.includes('delivery')) {
                 const deliveryPayload = sanitizeObject(deliveryForm)
-                console.log('Processing delivery payload:', deliveryPayload)
 
                 // Check if there's meaningful data (not just empty/null values)
                 const hasData = Object.entries(deliveryPayload).some(([key, val]) => {
@@ -752,7 +746,6 @@ const StepperAddPatientModal = ({ open, onClose }) => {
                 })
 
                 if (hasData) {
-                    console.log('Adding delivery record to promises')
                     promises.push(
                         addDeliveryRecord(patientId, deliveryPayload)
                             .then((result) => ({ section: 'delivery', result }))
@@ -762,13 +755,10 @@ const StepperAddPatientModal = ({ open, onClose }) => {
                                 return Promise.reject({ section: 'delivery', error })
                             })
                     )
-                } else {
-                    console.log('Delivery section included but no meaningful data found, skipping')
                 }
             }
             if (includedSteps.includes('screening')) {
                 const screeningPayload = sanitizeObject(screeningForm)
-                console.log('Processing screening payload:', screeningPayload)
 
                 // Check if there's meaningful data (allowing boolean values)
                 const hasData = Object.entries(screeningPayload).some(([key, val]) => {
@@ -796,8 +786,6 @@ const StepperAddPatientModal = ({ open, onClose }) => {
             }
             if (includedSteps.includes('anthropometric')) {
                 const anthroPayload = sanitizeObject(anthroForm)
-                console.log('DEBUG: Anthropometric form data (add):', anthroForm)
-                console.log('DEBUG: Sanitized anthropometric data (add):', anthroPayload)
 
                 // Check if there's meaningful data
                 const hasData = Object.entries(anthroPayload).some(([key, val]) => {
@@ -829,7 +817,6 @@ const StepperAddPatientModal = ({ open, onClose }) => {
             }
             if (includedSteps.includes('allergies')) {
                 const allergyPayload = sanitizeObject(allergiesForm)
-                console.log('Processing allergy payload:', allergyPayload)
 
                 // Check if there's meaningful data
                 const hasData = Object.entries(allergyPayload).some(([key, val]) => {
@@ -858,7 +845,6 @@ const StepperAddPatientModal = ({ open, onClose }) => {
 
             // Execute all promises with detailed error handling
             if (promises.length > 0) {
-                console.log(`Processing ${promises.length} additional sections...`)
                 const results = await Promise.allSettled(promises)
                 const failedResults = results.filter((result) => result.status === 'rejected')
 
@@ -866,17 +852,14 @@ const StepperAddPatientModal = ({ open, onClose }) => {
                     const failedSectionNames = failedResults
                         .map((result) => result.reason?.section || 'unknown')
                         .join(', ')
-                    console.warn('Some optional records failed to save:', failedResults)
                     showToast(
                         'warning',
                         `Patient created successfully, but failed to save: ${failedSectionNames}`
                     )
                 } else {
-                    console.log('All sections saved successfully')
                     showToast('success', 'Patient record created successfully with all data')
                 }
             } else {
-                console.log('Patient created with no additional sections')
                 showToast('success', 'Patient record created successfully')
             }
 
@@ -888,11 +871,9 @@ const StepperAddPatientModal = ({ open, onClose }) => {
                     sections_added: includedSteps,
                     timestamp: new Date().toISOString(),
                 }
-                console.log('Dispatching patient-created event:', eventDetail)
                 window.dispatchEvent(new CustomEvent('patient-created', { detail: eventDetail }))
             }
 
-            console.log('Patient creation process completed successfully')
             resetForm()
             onClose()
         } catch (error) {

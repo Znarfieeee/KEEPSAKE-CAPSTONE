@@ -232,7 +232,6 @@ const QrScannerBase = ({ roleTitle = 'User', roleColor = 'primary' }) => {
 
             // Handle prescription QR codes - open Flask backend HTML view in new tab
             if (extracted.type === 'prescription') {
-                console.log('Prescription QR detected, opening Flask prescription view in new tab...')
                 const backendUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000'
                 window.open(`${backendUrl}/qr/prescription/public?token=${extracted.value}`, '_blank')
                 return
@@ -290,7 +289,6 @@ const QrScannerBase = ({ roleTitle = 'User', roleColor = 'primary' }) => {
                 setLoading(false)
             }
         } catch (err) {
-            console.error('Error handling scan:', err)
             setError(err.message || 'Failed to process scanned QR code')
             setLoading(false)
         }
@@ -349,7 +347,6 @@ const QrScannerBase = ({ roleTitle = 'User', roleColor = 'primary' }) => {
                         })
 
                         if (code) {
-                            console.log('QR Code found in uploaded image:', code.data)
                             setProcessingUpload(false)
                             await processScannedData(code.data)
                         } else {
@@ -359,7 +356,6 @@ const QrScannerBase = ({ roleTitle = 'User', roleColor = 'primary' }) => {
                             )
                         }
                     } catch (err) {
-                        console.error('Error decoding QR:', err)
                         setProcessingUpload(false)
                         setError('Failed to decode QR code from image.')
                     }
@@ -372,7 +368,6 @@ const QrScannerBase = ({ roleTitle = 'User', roleColor = 'primary' }) => {
 
                 img.src = imageUrl
             } catch (err) {
-                console.error('Error processing upload:', err)
                 setProcessingUpload(false)
                 setError('Failed to process uploaded image.')
             }

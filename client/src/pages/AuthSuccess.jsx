@@ -5,13 +5,7 @@ import { Navigate } from "react-router-dom"
 const AuthSuccess = () => {
     const { isAuthenticated, loading, user } = useAuth()
 
-    useEffect(() => {
-        console.log("AuthSuccess page mounted", {
-            isAuthenticated,
-            loading,
-            user,
-        })
-    }, [isAuthenticated, loading, user])
+    // Auth state is monitored without console logging
 
     // Show loading while auth context is processing
     if (loading) {
@@ -32,7 +26,6 @@ const AuthSuccess = () => {
 
     // Once loading is complete, redirect based on auth state
     if (!isAuthenticated) {
-        console.log("User not authenticated, redirecting to login")
         return <Navigate to="/login" replace />
     }
 

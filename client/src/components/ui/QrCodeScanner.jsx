@@ -80,7 +80,6 @@ const QrCodeScanner = ({
                 config,
                 (decodedText, decodedResult) => {
                     // Successfully scanned - stop scanning to prevent multiple reads
-                    console.log("QR Code scanned:", decodedText)
                     stopScanning()
                     if (onScanSuccess) {
                         onScanSuccess(decodedText, decodedResult)

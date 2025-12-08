@@ -1,25 +1,31 @@
-# Existing dependencies
-flask
-flask-cors
-supabase
-python-dotenv
-gotrue
+# Core Flask dependencies
+Flask>=3.0.0
+flask-cors>=4.0.0
+python-dotenv>=1.0.0
+Werkzeug>=3.0.0
+authlib>= 1.6.5
 
-# Redis session management
-redis>=4.0.0
-flask-session
+# Database and Authentication
+supabase>=2.0.0
+gotrue>=2.0.0
+PyJWT>=2.8.0
+cryptography>=41.0.0
 
-# JWT token verification (already in your utils)
-PyJWT>=2.0.0
-cryptography
-requests
+# Session Management
+redis>=5.0.0
+flask-session>=0.5.0
 
-# Additional security and logging
-werkzeug>=2.0.0
-gunicorn  # For production deployment
+# HTTP and API
+requests>=2.31.0
 
-# Notification scheduler
-schedule>=1.2.0  # For periodic notification checks
+# Production Server
+gunicorn>=21.2.0
 
-# Payment processing
-stripe>=7.0.0  # Stripe SDK for parent subscription payments
+# Scheduling
+schedule>=1.2.0
+
+# Payment Processing
+stripe>=7.0.0
+
+# Date and Time
+python-dateutil>=2.8.2

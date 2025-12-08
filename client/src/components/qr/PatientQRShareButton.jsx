@@ -105,7 +105,7 @@ const PatientQRShareButton = ({
                                 shareType={shareType}
                                 defaultScope={defaultScope}
                                 onGenerate={(response) => {
-                                    console.log("QR Generated:", response)
+                                    // QR code generated successfully
                                 }}
                                 onError={(error) => {
                                     console.error("QR Generation Error:", error)
