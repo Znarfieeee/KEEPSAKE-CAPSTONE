@@ -1,5 +1,5 @@
 import { Label } from '@/components/ui/label'
-import { Input } from '@/components/ui/input'
+import { Input } from '@/components/ui/Input'
 import { format } from 'date-fns'
 import { cn } from '@/lib/utils'
 import { Textarea } from '@/components/ui/textarea'

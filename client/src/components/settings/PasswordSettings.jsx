@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { changePassword } from '../../api/settings'
 import { showToast } from '../../util/alertHelper'
-import { Input } from '../ui/input'
+import { Input } from '../ui/Input'
 import { Label } from '../ui/label'
 import { Button } from '../ui/Button'
 import { Loader2, Eye, EyeOff, CheckCircle2, XCircle } from 'lucide-react'

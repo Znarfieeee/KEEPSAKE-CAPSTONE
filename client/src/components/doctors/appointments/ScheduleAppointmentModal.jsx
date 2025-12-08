@@ -21,7 +21,7 @@ import {
     SelectGroup,
     SelectItem,
 } from '@/components/ui/select'
-import { Input } from '@/components/ui/input'
+import { Input } from '@/components/ui/Input'
 import { Label } from '@/components/ui/label'
 import { Calendar } from '@/components/ui/calendar'
 import { Button } from '@/components/ui/Button'

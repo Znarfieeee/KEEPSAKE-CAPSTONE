@@ -3,7 +3,7 @@ import { useAuth } from '@/context/auth'
 
 // UI Components
 import { updateProfile } from '@/api/settings'
-import { Input } from '@/components/ui/input'
+import { Input } from '@/components/ui/Input'
 import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/Button'
 import { Loader2 } from 'lucide-react'

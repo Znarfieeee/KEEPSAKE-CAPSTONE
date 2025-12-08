@@ -9,7 +9,7 @@ import {
     DialogFooter,
     DialogClose,
 } from '@/components/ui/dialog'
-import { Input } from '@/components/ui/input'
+import { Input } from '@/components/ui/Input'
 import { Label } from '@/components/ui/label'
 import { Calendar } from '@/components/ui/calendar'
 import { Button } from '@/components/ui/Button'

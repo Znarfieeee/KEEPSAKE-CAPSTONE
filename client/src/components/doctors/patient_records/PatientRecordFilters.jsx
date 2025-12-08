@@ -11,7 +11,7 @@ import {
 } from '@/components/ui/select'
 import { RangeCalendar } from '@/components/ui/calendar-rac'
 import { parseDate, CalendarDate } from '@internationalized/date'
-import { Input } from '@/components/ui/input'
+import { Input } from '@/components/ui/Input'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Button } from '@/components/ui/Button'
 

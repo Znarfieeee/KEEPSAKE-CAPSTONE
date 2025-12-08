@@ -6,7 +6,7 @@ import { sanitizeObject } from '@/util/sanitize'
 import { showToast } from '@/util/alertHelper'
 import { Button } from '@/components/ui/Button'
 import LoadingButton from '@/components/ui/LoadingButton'
-import { Input } from '@/components/ui/input'
+import { Input } from '@/components/ui/Input'
 import { Label } from '@/components/ui/label'
 import {
     Select,

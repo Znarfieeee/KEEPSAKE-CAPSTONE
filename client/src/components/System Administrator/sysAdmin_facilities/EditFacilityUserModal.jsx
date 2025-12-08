@@ -4,7 +4,7 @@ import React, { useState, memo, useCallback, useEffect } from 'react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/Dialog'
 import { Button } from '@/components/ui/Button'
 import { Label } from '@/components/ui/label'
-import { Input } from '@/components/ui/input'
+import { Input } from '@/components/ui/Input'
 import {
     Select,
     SelectContent,
@@ -334,9 +334,7 @@ const EditFacilityUserModal = memo(({ open, user, onClose, onSave }) => {
                                 <Input
                                     id="license_number"
                                     value={formData.license_number}
-                                    onChange={(e) =>
-                                        handleChange('license_number', e.target.value)
-                                    }
+                                    onChange={(e) => handleChange('license_number', e.target.value)}
                                     placeholder="Enter professional license number"
                                     maxLength={50}
                                 />

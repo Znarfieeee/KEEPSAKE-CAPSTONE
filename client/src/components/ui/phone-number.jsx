@@ -5,7 +5,7 @@ import flags from 'react-phone-number-input/flags'
 import 'react-phone-number-input/style.css'
 
 import { cn } from '@/lib/utils'
-import { Input } from '@/components/ui/input'
+import { Input } from '@/components/ui/Input'
 import {
     Select,
     SelectContent,

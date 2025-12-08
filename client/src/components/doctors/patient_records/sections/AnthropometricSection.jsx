@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Label } from '@/components/ui/label'
-import { Input } from '@/components/ui/input'
+import { Input } from '@/components/ui/Input'
 import { cn } from '@/lib/utils'
 import { format } from 'date-fns'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
