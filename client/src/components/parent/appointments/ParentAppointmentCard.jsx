@@ -3,7 +3,7 @@ import { Calendar, Clock, User, MapPin, Stethoscope } from 'lucide-react'
 import { cn, formatTime, getStatusBadgeColor } from '@/util/utils'
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
-import { Card, CardContent } from '@/components/ui/card'
+import { Card, CardContent } from '@/components/ui/Card'
 
 /**
  * ParentAppointmentCard Component

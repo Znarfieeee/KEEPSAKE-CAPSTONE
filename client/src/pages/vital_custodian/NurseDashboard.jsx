@@ -16,7 +16,7 @@ import {
     ScanQrCodeIcon,
     ClockPlusIcon,
 } from 'lucide-react'
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
+import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/Button'
 import { Skeleton } from '@/components/ui/skeleton'

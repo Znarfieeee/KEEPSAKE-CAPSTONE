@@ -24,7 +24,7 @@ import {
     RefreshCw,
     FileText,
 } from 'lucide-react'
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
+import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { getParentChildren, getChildReport } from '@/api/parent/reports'
 import { getMySubscription } from '@/api/parent/subscription'

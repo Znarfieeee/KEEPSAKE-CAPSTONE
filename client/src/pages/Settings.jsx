@@ -4,7 +4,7 @@ import { useSearchParams } from 'react-router-dom'
 
 // UI Components
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/Card'
 import { User, Lock, Mail, Phone, Shield, AlertTriangle, Bell, Share2, Type } from 'lucide-react'
 import ProfileSettings from '@/components/settings/ProfileSettings'
 import PasswordSettings from '@/components/settings/PasswordSettings'
@@ -257,7 +257,8 @@ const Settings = () => {
                                                 Sharing & Consent Management
                                             </CardTitle>
                                             <CardDescription>
-                                                Manage QR code shares, view access history, and understand your rights
+                                                Manage QR code shares, view access history, and
+                                                understand your rights
                                             </CardDescription>
                                         </CardHeader>
                                         <CardContent className="p-0">

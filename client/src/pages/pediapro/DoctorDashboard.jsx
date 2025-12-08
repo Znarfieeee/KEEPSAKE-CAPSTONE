@@ -12,7 +12,7 @@ import {
     TrendingUp,
     Syringe,
 } from 'lucide-react'
-import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card'
+import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/Button'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -21,8 +21,12 @@ import { getAppointmentsForMyFacility } from '@/api/doctors/appointment'
 import { getPatients } from '@/api/doctors/patient'
 
 // Lazy load modal components for better performance
-const StepperAddPatientModal = lazy(() => import('@/components/doctors/patient_records/StepperAddPatientModal'))
-const ScheduleAppointmentModal = lazy(() => import('@/components/doctors/appointments/ScheduleAppointmentModal'))
+const StepperAddPatientModal = lazy(() =>
+    import('@/components/doctors/patient_records/StepperAddPatientModal')
+)
+const ScheduleAppointmentModal = lazy(() =>
+    import('@/components/doctors/appointments/ScheduleAppointmentModal')
+)
 
 const DoctorDashboard = () => {
     const navigate = useNavigate()
@@ -568,13 +572,15 @@ const DoctorDashboard = () => {
 
             {/* Modals */}
             {showAddPatientModal && (
-                <Suspense fallback={
-                    <Dialog open={true}>
-                        <div className="flex items-center justify-center p-8">
-                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-                        </div>
-                    </Dialog>
-                }>
+                <Suspense
+                    fallback={
+                        <Dialog open={true}>
+                            <div className="flex items-center justify-center p-8">
+                                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                            </div>
+                        </Dialog>
+                    }
+                >
                     <StepperAddPatientModal
                         open={showAddPatientModal}
                         onClose={() => setShowAddPatientModal(false)}
@@ -582,15 +588,18 @@ const DoctorDashboard = () => {
                 </Suspense>
             )}
 
-            <Dialog open={showScheduleAppointmentModal} onOpenChange={setShowScheduleAppointmentModal}>
-                <Suspense fallback={
-                    <div className="flex items-center justify-center p-8">
-                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-                    </div>
-                }>
-                    <ScheduleAppointmentModal
-                        onSuccess={handleScheduleAppointmentSuccess}
-                    />
+            <Dialog
+                open={showScheduleAppointmentModal}
+                onOpenChange={setShowScheduleAppointmentModal}
+            >
+                <Suspense
+                    fallback={
+                        <div className="flex items-center justify-center p-8">
+                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                        </div>
+                    }
+                >
+                    <ScheduleAppointmentModal onSuccess={handleScheduleAppointmentSuccess} />
                 </Suspense>
             </Dialog>
         </>

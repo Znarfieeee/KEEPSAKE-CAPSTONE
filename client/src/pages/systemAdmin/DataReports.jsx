@@ -28,7 +28,7 @@ import {
     Eye,
     AlertCircle,
 } from 'lucide-react'
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
+import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/Button'
 import { showToast } from '@/util/alertHelper'
@@ -62,7 +62,9 @@ const ServiceHealthBar = ({ label, value, color }) => {
             </div>
             <div className="w-full bg-gray-200 rounded-full h-2">
                 <div
-                    className={`h-2 rounded-full transition-all duration-300 ${getHealthColor(value)}`}
+                    className={`h-2 rounded-full transition-all duration-300 ${getHealthColor(
+                        value
+                    )}`}
                     style={{ width: `${Math.min(100, Math.max(0, value))}%` }}
                 />
             </div>
@@ -533,9 +535,14 @@ const DataReports = () => {
                             {/* Overall Health Score */}
                             <div className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg p-3 border border-blue-200">
                                 <div className="flex items-center justify-between">
-                                    <span className="text-sm font-medium text-gray-700">Overall Health</span>
+                                    <span className="text-sm font-medium text-gray-700">
+                                        Overall Health
+                                    </span>
                                     <span className="text-2xl font-bold text-blue-600">
-                                        {summaryMetrics?.infrastructureHealth?.overall?.toFixed(1) || '0.0'}%
+                                        {summaryMetrics?.infrastructureHealth?.overall?.toFixed(
+                                            1
+                                        ) || '0.0'}
+                                        %
                                     </span>
                                 </div>
                             </div>
@@ -564,7 +571,9 @@ const DataReports = () => {
                                 />
                                 <ServiceHealthBar
                                     label="Edge Functions"
-                                    value={summaryMetrics?.infrastructureHealth?.edge_functions || 0}
+                                    value={
+                                        summaryMetrics?.infrastructureHealth?.edge_functions || 0
+                                    }
                                     color="indigo"
                                 />
                             </div>
@@ -572,13 +581,17 @@ const DataReports = () => {
                             {/* Issues Display */}
                             {summaryMetrics?.infrastructureHealth?.issues?.length > 0 && (
                                 <div className="mt-3 p-2 bg-red-50 border border-red-200 rounded-lg">
-                                    <p className="text-xs font-semibold text-red-700 mb-1">Active Issues:</p>
+                                    <p className="text-xs font-semibold text-red-700 mb-1">
+                                        Active Issues:
+                                    </p>
                                     <div className="space-y-1">
-                                        {summaryMetrics.infrastructureHealth.issues.map((issue, idx) => (
-                                            <p key={idx} className="text-xs text-red-600">
-                                                • {issue.service}: {issue.message}
-                                            </p>
-                                        ))}
+                                        {summaryMetrics.infrastructureHealth.issues.map(
+                                            (issue, idx) => (
+                                                <p key={idx} className="text-xs text-red-600">
+                                                    • {issue.service}: {issue.message}
+                                                </p>
+                                            )
+                                        )}
                                     </div>
                                 </div>
                             )}
@@ -633,7 +646,9 @@ const DataReports = () => {
                         <div className="space-y-4">
                             <div className="bg-gradient-to-r from-green-50 to-blue-50 rounded-lg p-4 border border-green-200">
                                 <div className="text-center">
-                                    <p className="text-sm font-medium text-gray-600 mb-2">Overall System Health</p>
+                                    <p className="text-sm font-medium text-gray-600 mb-2">
+                                        Overall System Health
+                                    </p>
                                     <p className="text-4xl font-bold text-green-600">
                                         {summaryMetrics?.systemHealth?.toFixed(1) || '0.0'}%
                                     </p>
@@ -643,16 +658,24 @@ const DataReports = () => {
                             <div className="space-y-3">
                                 <div className="flex items-center justify-between p-3 bg-blue-50 rounded-lg border border-blue-200">
                                     <div>
-                                        <p className="text-xs font-medium text-gray-600">Business Metrics</p>
-                                        <p className="text-sm text-gray-700 mt-1">Users & Facilities</p>
+                                        <p className="text-xs font-medium text-gray-600">
+                                            Business Metrics
+                                        </p>
+                                        <p className="text-sm text-gray-700 mt-1">
+                                            Users & Facilities
+                                        </p>
                                     </div>
                                     <p className="text-lg font-bold text-blue-600">40%</p>
                                 </div>
 
                                 <div className="flex items-center justify-between p-3 bg-purple-50 rounded-lg border border-purple-200">
                                     <div>
-                                        <p className="text-xs font-medium text-gray-600">Infrastructure</p>
-                                        <p className="text-sm text-gray-700 mt-1">Database, Auth, Storage</p>
+                                        <p className="text-xs font-medium text-gray-600">
+                                            Infrastructure
+                                        </p>
+                                        <p className="text-sm text-gray-700 mt-1">
+                                            Database, Auth, Storage
+                                        </p>
                                     </div>
                                     <p className="text-lg font-bold text-purple-600">60%</p>
                                 </div>
@@ -660,7 +683,8 @@ const DataReports = () => {
 
                             <div className="mt-4 p-3 bg-gray-50 rounded-lg border border-gray-200">
                                 <p className="text-xs text-gray-600">
-                                    <strong>Formula:</strong> System Health = (Active Users × 20%) + (Active Facilities × 20%) + (Infrastructure × 60%)
+                                    <strong>Formula:</strong> System Health = (Active Users × 20%) +
+                                    (Active Facilities × 20%) + (Infrastructure × 60%)
                                 </p>
                             </div>
                         </div>
@@ -682,7 +706,9 @@ const DataReports = () => {
                     <CardContent className="pt-6">
                         {loading ? (
                             <div className="flex items-center justify-center h-[300px]">
-                                <div className="animate-pulse text-gray-400">Loading chart data...</div>
+                                <div className="animate-pulse text-gray-400">
+                                    Loading chart data...
+                                </div>
                             </div>
                         ) : (
                             <>
@@ -728,23 +754,27 @@ const DataReports = () => {
                                     filteredData.facilityStats.length > 0 && (
                                         <ResponsiveContainer width="100%" height={300}>
                                             <BarChart data={filteredData.facilityStats}>
-                                        <CartesianGrid strokeDasharray="3 3" />
-                                        <XAxis
-                                            dataKey="facility"
-                                            angle={-45}
-                                            textAnchor="end"
-                                            height={80}
-                                        />
-                                        <YAxis />
-                                        <Tooltip />
-                                        <Legend />
-                                        <Bar dataKey="patients" fill="#3B82F6" name="Patients" />
-                                        <Bar
-                                            dataKey="appointments"
-                                            fill="#10B981"
-                                            name="Appointments"
-                                        />
-                                        <Bar dataKey="staff" fill="#F59E0B" name="Staff" />
+                                                <CartesianGrid strokeDasharray="3 3" />
+                                                <XAxis
+                                                    dataKey="facility"
+                                                    angle={-45}
+                                                    textAnchor="end"
+                                                    height={80}
+                                                />
+                                                <YAxis />
+                                                <Tooltip />
+                                                <Legend />
+                                                <Bar
+                                                    dataKey="patients"
+                                                    fill="#3B82F6"
+                                                    name="Patients"
+                                                />
+                                                <Bar
+                                                    dataKey="appointments"
+                                                    fill="#10B981"
+                                                    name="Appointments"
+                                                />
+                                                <Bar dataKey="staff" fill="#F59E0B" name="Staff" />
                                             </BarChart>
                                         </ResponsiveContainer>
                                     )}
@@ -797,34 +827,56 @@ const DataReports = () => {
                         <div className="space-y-4">
                             <div className="grid grid-cols-2 gap-3">
                                 <div className="bg-blue-50 p-3 rounded-lg border border-blue-200">
-                                    <p className="text-xs font-medium text-gray-600 mb-1">Connection Status</p>
+                                    <p className="text-xs font-medium text-gray-600 mb-1">
+                                        Connection Status
+                                    </p>
                                     <p className="text-xl font-bold text-blue-600">
-                                        {summaryMetrics?.infrastructureHealth?.database >= 100 ? 'Healthy' :
-                                         summaryMetrics?.infrastructureHealth?.database >= 50 ? 'Degraded' : 'Down'}
+                                        {summaryMetrics?.infrastructureHealth?.database >= 100
+                                            ? 'Healthy'
+                                            : summaryMetrics?.infrastructureHealth?.database >= 50
+                                            ? 'Degraded'
+                                            : 'Down'}
                                     </p>
                                 </div>
                                 <div className="bg-green-50 p-3 rounded-lg border border-green-200">
-                                    <p className="text-xs font-medium text-gray-600 mb-1">Auth Service</p>
+                                    <p className="text-xs font-medium text-gray-600 mb-1">
+                                        Auth Service
+                                    </p>
                                     <p className="text-xl font-bold text-green-600">
-                                        {summaryMetrics?.infrastructureHealth?.auth >= 100 ? 'Healthy' :
-                                         summaryMetrics?.infrastructureHealth?.auth >= 50 ? 'Degraded' : 'Down'}
+                                        {summaryMetrics?.infrastructureHealth?.auth >= 100
+                                            ? 'Healthy'
+                                            : summaryMetrics?.infrastructureHealth?.auth >= 50
+                                            ? 'Degraded'
+                                            : 'Down'}
                                     </p>
                                 </div>
                             </div>
 
                             <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
-                                <p className="text-sm font-medium text-gray-700 mb-3">Service Availability</p>
+                                <p className="text-sm font-medium text-gray-700 mb-3">
+                                    Service Availability
+                                </p>
                                 <div className="space-y-2">
                                     <div className="flex justify-between items-center">
-                                        <span className="text-xs text-gray-600">Uptime (Last 24h)</span>
-                                        <span className="text-sm font-semibold text-green-600">99.9%</span>
+                                        <span className="text-xs text-gray-600">
+                                            Uptime (Last 24h)
+                                        </span>
+                                        <span className="text-sm font-semibold text-green-600">
+                                            99.9%
+                                        </span>
                                     </div>
                                     <div className="flex justify-between items-center">
-                                        <span className="text-xs text-gray-600">Avg Response Time</span>
-                                        <span className="text-sm font-semibold text-blue-600">&lt;100ms</span>
+                                        <span className="text-xs text-gray-600">
+                                            Avg Response Time
+                                        </span>
+                                        <span className="text-sm font-semibold text-blue-600">
+                                            &lt;100ms
+                                        </span>
                                     </div>
                                     <div className="flex justify-between items-center">
-                                        <span className="text-xs text-gray-600">Active Connections</span>
+                                        <span className="text-xs text-gray-600">
+                                            Active Connections
+                                        </span>
                                         <span className="text-sm font-semibold text-purple-600">
                                             {summaryMetrics?.totalUsers || 0}
                                         </span>

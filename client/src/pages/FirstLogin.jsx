@@ -7,7 +7,7 @@ import { showToast } from '@/util/alertHelper'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import LoadingButton from '@/components/ui/LoadingButton'
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
+import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card'
 import { Eye, EyeOff, CheckCircle2, XCircle, Lock, Shield, KeyRound, Info } from 'lucide-react'
 
 const FirstLogin = () => {
@@ -122,7 +122,10 @@ const FirstLogin = () => {
                         navigate(redirectPath, { replace: true })
                     }, 1500)
                 } else {
-                    showToast('warning', 'Password changed, but there was an issue completing setup')
+                    showToast(
+                        'warning',
+                        'Password changed, but there was an issue completing setup'
+                    )
                 }
             }
         } catch (error) {
@@ -153,11 +156,14 @@ const FirstLogin = () => {
                         <div className="p-2 bg-primary-foreground/10 rounded-lg">
                             <Shield className="h-7 w-7" />
                         </div>
-                        <CardTitle className="text-2xl font-semibold">First Login - Change Password</CardTitle>
+                        <CardTitle className="text-2xl font-semibold">
+                            First Login - Change Password
+                        </CardTitle>
                     </div>
                     <p className="text-primary-foreground/90 text-sm leading-relaxed">
-                        For security purposes, you must change your initial password before accessing the system.
-                        This ensures your account remains secure and protected.
+                        For security purposes, you must change your initial password before
+                        accessing the system. This ensures your account remains secure and
+                        protected.
                     </p>
                 </CardHeader>
 
@@ -165,7 +171,10 @@ const FirstLogin = () => {
                     <form onSubmit={handleSubmit} className="space-y-6">
                         {/* Current Password */}
                         <div className="space-y-2">
-                            <Label htmlFor="current_password" className="text-foreground font-medium">
+                            <Label
+                                htmlFor="current_password"
+                                className="text-foreground font-medium"
+                            >
                                 Current Password <span className="text-destructive">*</span>
                             </Label>
                             <div className="relative">
@@ -257,7 +266,10 @@ const FirstLogin = () => {
 
                         {/* Confirm Password */}
                         <div className="space-y-2">
-                            <Label htmlFor="confirm_password" className="text-foreground font-medium">
+                            <Label
+                                htmlFor="confirm_password"
+                                className="text-foreground font-medium"
+                            >
                                 Confirm New Password <span className="text-destructive">*</span>
                             </Label>
                             <div className="relative">
@@ -311,10 +323,13 @@ const FirstLogin = () => {
                             <div className="flex items-start gap-3">
                                 <Info className="h-5 w-5 text-primary mt-0.5 flex-shrink-0" />
                                 <div className="space-y-1">
-                                    <p className="text-sm font-semibold text-foreground">Why this step?</p>
+                                    <p className="text-sm font-semibold text-foreground">
+                                        Why this step?
+                                    </p>
                                     <p className="text-sm text-muted-foreground leading-relaxed">
-                                        For security purposes, you must change your initial password before accessing the system.
-                                        Your password is unique to you and should never be shared with anyone.
+                                        For security purposes, you must change your initial password
+                                        before accessing the system. Your password is unique to you
+                                        and should never be shared with anyone.
                                     </p>
                                 </div>
                             </div>
