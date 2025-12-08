@@ -292,6 +292,122 @@ class EmailService:
             notification_type='password_reset_blocked'
         )
 
+    @staticmethod
+    def send_2fa_setup_code(recipient_email, code, user_name=None):
+        """
+        Send 2FA setup verification code email
+
+        Args:
+            recipient_email (str): Recipient email address
+            code (str): 6-digit verification code
+            user_name (str, optional): User's name for personalization
+
+        Returns:
+            tuple: (success: bool, message: str)
+        """
+        from utils.email_templates import EmailTemplates
+
+        subject = "Your KEEPSAKE 2FA Verification Code"
+        body_html = EmailTemplates.twofa_setup_code(
+            code=code,
+            recipient_email=recipient_email,
+            user_name=user_name
+        )
+
+        return EmailService.send_email(
+            recipient_email=recipient_email,
+            subject=subject,
+            body_html=body_html,
+            notification_type='2fa_setup_code',
+            metadata={'code_length': len(code)}
+        )
+
+    @staticmethod
+    def send_2fa_login_code(recipient_email, code, user_name=None, ip_address=None):
+        """
+        Send 2FA login verification code email
+
+        Args:
+            recipient_email (str): Recipient email address
+            code (str): 6-digit verification code
+            user_name (str, optional): User's name for personalization
+            ip_address (str, optional): Login IP address
+
+        Returns:
+            tuple: (success: bool, message: str)
+        """
+        from utils.email_templates import EmailTemplates
+
+        subject = "Your KEEPSAKE Login Verification Code"
+        body_html = EmailTemplates.twofa_login_code(
+            code=code,
+            recipient_email=recipient_email,
+            user_name=user_name,
+            ip_address=ip_address
+        )
+
+        return EmailService.send_email(
+            recipient_email=recipient_email,
+            subject=subject,
+            body_html=body_html,
+            notification_type='2fa_login_code',
+            metadata={'code_length': len(code), 'ip_address': ip_address}
+        )
+
+    @staticmethod
+    def send_2fa_enabled_notification(recipient_email, user_name=None):
+        """
+        Send notification confirming 2FA has been enabled
+
+        Args:
+            recipient_email (str): Recipient email address
+            user_name (str, optional): User's name for personalization
+
+        Returns:
+            tuple: (success: bool, message: str)
+        """
+        from utils.email_templates import EmailTemplates
+
+        subject = "Two-Factor Authentication Enabled - KEEPSAKE"
+        body_html = EmailTemplates.twofa_enabled(
+            recipient_email=recipient_email,
+            user_name=user_name
+        )
+
+        return EmailService.send_email(
+            recipient_email=recipient_email,
+            subject=subject,
+            body_html=body_html,
+            notification_type='2fa_enabled'
+        )
+
+    @staticmethod
+    def send_2fa_disabled_notification(recipient_email, user_name=None):
+        """
+        Send notification confirming 2FA has been disabled
+
+        Args:
+            recipient_email (str): Recipient email address
+            user_name (str, optional): User's name for personalization
+
+        Returns:
+            tuple: (success: bool, message: str)
+        """
+        from utils.email_templates import EmailTemplates
+
+        subject = "Two-Factor Authentication Disabled - KEEPSAKE"
+        body_html = EmailTemplates.twofa_disabled(
+            recipient_email=recipient_email,
+            user_name=user_name
+        )
+
+        return EmailService.send_email(
+            recipient_email=recipient_email,
+            subject=subject,
+            body_html=body_html,
+            notification_type='2fa_disabled'
+        )
+
 
 # Utility function for testing email service
 def test_email_service():

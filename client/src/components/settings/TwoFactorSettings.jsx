@@ -7,9 +7,23 @@ import { Input } from '@/components/ui/Input'
 import { Label } from '@/components/ui/Label'
 import { Shield, CheckCircle, XCircle, AlertCircle, Mail } from 'lucide-react'
 import TwoFactorSettingsSkeleton from '@/components/settings/TwoFactorSettingsSkeleton'
+import { OTPInput } from 'input-otp'
 
 // Helper
 import { showToast } from '@/util/alertHelper'
+
+// OTP Slot Component
+const Slot = (props) => {
+    return (
+        <div
+            className={`relative flex size-10 items-center justify-center border border-gray-300 bg-white font-medium text-gray-900 shadow-sm transition-all first:rounded-l-md last:rounded-r-md ${
+                props.isActive ? 'z-10 border-primary ring-2 ring-primary/50' : ''
+            }`}
+        >
+            {props.char !== null && <div>{props.char}</div>}
+        </div>
+    )
+}
 
 const TwoFactorSettings = () => {
     const [loading, setLoading] = useState(false)
@@ -52,10 +66,6 @@ const TwoFactorSettings = () => {
                 setCodeSent(true)
                 setShowVerification(true)
                 showToast('success', response.message || 'Verification code sent to your email')
-                // For testing - remove in production
-                if (response.code) {
-                    console.log('2FA Verification Code:', response.code)
-                }
             }
         } catch (error) {
             showToast('error', error.message || 'Failed to send verification code')
@@ -191,24 +201,31 @@ const TwoFactorSettings = () => {
                         <Mail className="h-6 w-6 text-blue-600" />
                         <h4 className="text-lg font-semibold text-gray-900">Verify Your Email</h4>
                     </div>
-                    <p className="text-sm text-gray-600 mb-4">
+                    <p className="text-sm text-gray-600 mb-6">
                         We've sent a 6-digit verification code to your email. Please enter it below
-                        to enable 2FA.
+                        to enable 2FA. The code will expire in 10 minutes.
                     </p>
-                    <div className="space-y-4">
+                    <div className="space-y-6">
                         <div>
-                            <Label htmlFor="verification-code">Verification Code</Label>
-                            <Input
-                                id="verification-code"
-                                type="text"
-                                placeholder="000000"
-                                maxLength={6}
-                                value={verificationCode}
-                                onChange={(e) =>
-                                    setVerificationCode(e.target.value.replace(/\D/g, ''))
-                                }
-                                className="mt-1"
-                            />
+                            <Label htmlFor="verification-code" className="block mb-3">
+                                Verification Code
+                            </Label>
+                            <div className="flex justify-center">
+                                <OTPInput
+                                    id="verification-code"
+                                    containerClassName="flex items-center gap-2"
+                                    maxLength={6}
+                                    value={verificationCode}
+                                    onChange={(value) => setVerificationCode(value)}
+                                    render={({ slots }) => (
+                                        <div className="flex gap-2">
+                                            {slots.map((slot, idx) => (
+                                                <Slot key={idx} {...slot} />
+                                            ))}
+                                        </div>
+                                    )}
+                                />
+                            </div>
                         </div>
                         <div className="flex gap-3 justify-end">
                             <Button
@@ -218,7 +235,10 @@ const TwoFactorSettings = () => {
                             >
                                 Cancel
                             </Button>
-                            <Button onClick={handleVerifyCode} disabled={loading}>
+                            <Button
+                                onClick={handleVerifyCode}
+                                disabled={loading || verificationCode.length !== 6}
+                            >
                                 {loading ? 'Verifying...' : 'Verify & Enable'}
                             </Button>
                         </div>

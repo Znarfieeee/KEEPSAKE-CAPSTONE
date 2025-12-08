@@ -25,7 +25,7 @@ class EmailConfig:
 
     # Sender information
     SMTP_FROM_EMAIL = os.environ.get('SMTP_FROM_EMAIL', SMTP_EMAIL)
-    SMTP_FROM_NAME = os.environ.get('SMTP_FROM_NAME', 'KEEPSAKE Healthcare')
+    SMTP_FROM_NAME = os.environ.get('SMTP_FROM_NAME', 'KEEPSAKE')
 
     # Email configuration
     SMTP_TIMEOUT = 10  # Connection timeout in seconds

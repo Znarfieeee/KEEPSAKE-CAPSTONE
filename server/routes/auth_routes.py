@@ -542,7 +542,7 @@ def login():
                 if user_status.data and not user_status.data[0].get('is_active', True):
                     # Clear the invalid session
                     redis_client.delete(f"{SESSION_PREFIX}{session_id}")
-                    current_app.logger.warning(f"AUDIT: Session reuse attempted for deactivated account {existing_session.get('email')} from IP {request.remote_addr}")
+                    current_app.logger.warning(f"AUDIT: Session reuse attempted for deactivating account {existing_session.get('email')} from IP {request.remote_addr}")
                     return jsonify({
                         "status": "error",
                         "message": "Your account has been deactivated. Please contact your administrator for assistance."
@@ -631,6 +631,66 @@ def login():
                     "status": "error",
                     "message": "Your account has been deactivated. Please contact your administrator for assistance."
                 }), 401
+
+            # Check if user has 2FA enabled
+            twofa_settings = supabase.table('user_2fa_settings')\
+                .select('is_enabled, method')\
+                .eq('user_id', auth_response.user.id)\
+                .execute()
+
+            if twofa_settings.data and twofa_settings.data[0].get('is_enabled', False):
+                # 2FA is enabled - generate verification code and send email
+                try:
+                    # Generate 2FA login code
+                    code_result = supabase.rpc('generate_2fa_login_code', {
+                        'p_user_id': auth_response.user.id,
+                        'p_ip_address': request.remote_addr,
+                        'p_user_agent': request.headers.get('User-Agent', 'Unknown')
+                    }).execute()
+
+                    if not code_result.data:
+                        raise Exception("Failed to generate 2FA code")
+
+                    code_data = code_result.data
+                    code = code_data.get('code')
+
+                    # Get user's name for email personalization
+                    user_name = f"{user_metadata.get('firstname', '')} {user_metadata.get('lastname', '')}".strip()
+
+                    # Send verification email via SMTP
+                    from utils.email_service import EmailService
+
+                    success, email_msg = EmailService.send_2fa_login_code(
+                        recipient_email=email,
+                        code=code,
+                        user_name=user_name if user_name else None,
+                        ip_address=request.remote_addr
+                    )
+
+                    if not success:
+                        current_app.logger.error(f"Failed to send 2FA login email to {email}: {email_msg}")
+                        return jsonify({
+                            "status": "error",
+                            "message": "Failed to send verification code. Please try again."
+                        }), 500
+
+                    current_app.logger.info(f"AUDIT: 2FA login code sent to {email} from IP {request.remote_addr}")
+
+                    # Return 2FA required response
+                    return jsonify({
+                        "status": "2fa_required",
+                        "message": "2FA verification required. Please check your email for verification code.",
+                        "user_id": auth_response.user.id,
+                        "email": email,
+                        "requires_2fa": True
+                    }), 200
+
+                except Exception as twofa_error:
+                    current_app.logger.error(f"Error during 2FA login flow: {str(twofa_error)}")
+                    return jsonify({
+                        "status": "error",
+                        "message": "An error occurred during 2FA verification. Please try again."
+                    }), 500
 
             # Get user's last sign in time from Supabase auth
             last_sign_in = auth_response.user.last_sign_in_at.isoformat() if auth_response.user.last_sign_in_at else None
@@ -750,6 +810,204 @@ def login():
         return jsonify({
             "status": "error",
             "message": "An unexpected error occurred. Please try again."
+        }), 500
+
+@auth_bp.route('/verify-2fa-login', methods=['POST'])
+def verify_2fa_login():
+    """Verify 2FA code during login and complete authentication"""
+    try:
+        data = request.json or {}
+        user_id = data.get('user_id')
+        code = data.get('code')
+
+        if not user_id or not code:
+            return jsonify({
+                "status": "error",
+                "message": "User ID and verification code are required"
+            }), 400
+
+        # Verify the 2FA login code
+        try:
+            result = supabase.rpc('verify_2fa_login_code', {
+                'p_user_id': user_id,
+                'p_code': code
+            }).execute()
+
+            if not result.data:
+                return jsonify({
+                    "status": "error",
+                    "message": "Invalid verification code"
+                }), 400
+
+        except Exception as verify_error:
+            error_msg = str(verify_error)
+            current_app.logger.error(f"2FA login verification failed: {error_msg}")
+
+            # Return user-friendly error messages
+            if "expired" in error_msg.lower():
+                return jsonify({
+                    "status": "error",
+                    "message": "Verification code has expired. Please login again."
+                }), 400
+            elif "invalid" in error_msg.lower():
+                return jsonify({
+                    "status": "error",
+                    "message": "Invalid verification code. Please try again."
+                }), 400
+            else:
+                return jsonify({
+                    "status": "error",
+                    "message": "Failed to verify code"
+                }), 500
+
+        # Code verified successfully - now complete the login
+        # Get user data from Supabase
+        user_response = supabase.table('users')\
+            .select('*')\
+            .eq('user_id', user_id)\
+            .execute()
+
+        if not user_response.data:
+            return jsonify({
+                "status": "error",
+                "message": "User not found"
+            }), 404
+
+        user_record = user_response.data[0]
+
+        # Get user from auth.users
+        auth_user_response = supabase.auth.admin.get_user_by_id(user_id)
+        auth_user = auth_user_response.user
+
+        # Create new Supabase session programmatically
+        # We need to sign the user in again (they already entered correct password during initial login)
+        # However, we can't sign them in again without password, so we'll create a session directly
+
+        # Get facility_id
+        get_facility_id = supabase.table('facility_users')\
+            .select('facility_id')\
+            .eq('user_id', user_id)\
+            .execute()
+
+        facility_id = get_facility_id.data[0]['facility_id'] if get_facility_id.data else None
+
+        # Check if this is the user's first login
+        first_login = is_first_login(user_id, auth_user)
+
+        # Get user metadata
+        user_metadata = auth_user.user_metadata or {}
+
+        # Get last sign in time
+        last_sign_in = auth_user.last_sign_in_at.isoformat() if auth_user.last_sign_in_at else None
+
+        user_data = {
+            'id': user_id,
+            'email': auth_user.email,
+            'facility_id': facility_id,
+            'role': user_metadata.get('role'),
+            'firstname': user_metadata.get('firstname', ''),
+            'lastname': user_metadata.get('lastname', ''),
+            'specialty': user_metadata.get('specialty', ''),
+            'license_number': user_metadata.get('license_number', ''),
+            'subscription_expires': user_metadata.get('subscription_expires', ''),
+            'phone_number': user_metadata.get('phone_number', ''),
+            'last_sign_in_at': last_sign_in,
+            'is_first_login': first_login,
+            'font_size': user_record.get('font_size', 16),
+        }
+
+        # Create a new Supabase auth session for the user
+        # We'll use the service role to create a session since they've already authenticated
+        from config.settings import supabase_service_role_client
+        supabase_admin = supabase_service_role_client()
+
+        # Create session tokens
+        import time
+        import jwt
+        from datetime import datetime, timedelta
+
+        # Generate JWT tokens (matching Supabase format)
+        secret = os.environ.get('SUPABASE_JWT_SECRET')
+
+        # Access token (short-lived)
+        access_payload = {
+            'aud': 'authenticated',
+            'exp': int(time.time()) + 3600,  # 1 hour
+            'sub': user_id,
+            'email': auth_user.email,
+            'role': 'authenticated',
+            'user_metadata': user_metadata
+        }
+        access_token = jwt.encode(access_payload, secret, algorithm='HS256')
+
+        # Refresh token (long-lived)
+        refresh_payload = {
+            'exp': int(time.time()) + (60 * 60 * 24 * 7),  # 7 days
+            'sub': user_id
+        }
+        refresh_token = jwt.encode(refresh_payload, secret, algorithm='HS256')
+
+        expires_at = int(time.time()) + 3600
+
+        supabase_tokens = {
+            'access_token': access_token,
+            'refresh_token': refresh_token,
+            'expires_at': expires_at,
+        }
+
+        # Create session in Redis
+        session_id = create_session_id()
+        session_data = {
+            "user_id": user_id,
+            **user_data,
+            **supabase_tokens
+        }
+
+        store_session_data(session_id, session_data)
+
+        current_app.logger.info(f"AUDIT: User {auth_user.email} completed 2FA login from IP {request.remote_addr} - Session: {session_id}")
+
+        response = jsonify({
+            "status": "success",
+            "message": "2FA verification successful!",
+            "user": user_data,
+            "expires_at": expires_at,
+            "session_id": session_id,
+        })
+
+        # Set cookies
+        secure_cookie = request.is_secure
+        cookie_samesite = "None" if secure_cookie else "Lax"
+
+        response.set_cookie(
+            'session_id',
+            session_id,
+            httponly=True,
+            secure=secure_cookie,
+            samesite=cookie_samesite,
+            max_age=SESSION_TIMEOUT,
+            path="/",
+            domain=None,
+        )
+
+        response.set_cookie(
+            REFRESH_COOKIE,
+            refresh_token,
+            httponly=True,
+            secure=secure_cookie,
+            samesite=cookie_samesite,
+            max_age=REFRESH_TOKEN_TIMEOUT,
+            path="/",
+            domain=None,
+        )
+
+        return response, 200
+
+    except Exception as e:
+        current_app.logger.error(f"Error verifying 2FA login: {str(e)}")
+        return jsonify({
+            "status": "error",
+            "message": "An error occurred during verification. Please try again."
         }), 500
 
 @auth_bp.route('/logout', methods=['POST'])

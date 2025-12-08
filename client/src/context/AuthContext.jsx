@@ -144,6 +144,13 @@ export const AuthProvider = ({ children }) => {
 
                 const response = await login(email, password)
 
+                // Check if 2FA is required
+                if (response.status === '2fa_required' || response.requires_2fa) {
+                    // Return the response without setting auth state
+                    // Login.jsx will handle the 2FA flow
+                    return response
+                }
+
                 if (response.status === 'success') {
                     showToast('success', 'Login successful')
                     setUser(response.user)

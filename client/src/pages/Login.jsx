@@ -2,6 +2,7 @@ import React, { useRef, useState, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/auth'
 import { sanitizeInput } from '../util/sanitize'
+import { verify2FALogin } from '../api/auth'
 
 // Images
 import LOGO from '../assets/logo1.png'
@@ -9,9 +10,24 @@ import LOGO from '../assets/logo1.png'
 // UI Components
 import { IoMdArrowBack } from 'react-icons/io'
 import { FiEye, FiEyeOff } from 'react-icons/fi'
+import { Mail, Shield } from 'lucide-react'
 import GoogleButton from '../components/ui/GoogleButton'
 import LoadingButton from '../components/ui/LoadingButton'
 import { TooltipProvider, Tooltip, TooltipTrigger, TooltipContent } from '../components/ui/Tooltip'
+import { OTPInput } from 'input-otp'
+
+// OTP Slot Component
+const Slot = (props) => {
+    return (
+        <div
+            className={`relative flex size-12 items-center justify-center border border-gray-300 bg-white font-medium text-gray-900 shadow-sm transition-all first:rounded-l-md last:rounded-r-md ${
+                props.isActive ? 'z-10 border-primary ring-2 ring-primary/50' : ''
+            }`}
+        >
+            {props.char !== null && <div className="text-xl">{props.char}</div>}
+        </div>
+    )
+}
 
 const Login = () => {
     const emailRef = useRef()
@@ -22,6 +38,12 @@ const Login = () => {
     const [formError, setFormError] = useState(null)
     const [showPassword, setShowPassword] = useState(false)
     const [capsLockOn, setCapsLockOn] = useState(false)
+
+    // 2FA state
+    const [show2FA, setShow2FA] = useState(false)
+    const [twoFACode, setTwoFACode] = useState('')
+    const [twoFAUserId, setTwoFAUserId] = useState(null)
+    const [twoFAEmail, setTwoFAEmail] = useState('')
 
     // Handle capslock detection
     const handleCapsLock = (e) => {
@@ -107,7 +129,17 @@ const Login = () => {
         const password = sanitizeInput(passwordRef.current.value)
 
         try {
-            await signIn(email, password)
+            const response = await signIn(email, password)
+
+            // Check if 2FA is required
+            if (response?.status === '2fa_required' || response?.requires_2fa) {
+                setShow2FA(true)
+                setTwoFAUserId(response.user_id)
+                setTwoFAEmail(response.email)
+                setFormError(null)
+                setIsLoading(false)
+                return
+            }
         } catch (err) {
             const errorMessage = (err?.message || '').toLowerCase()
 
@@ -152,6 +184,35 @@ const Login = () => {
         }
     }
 
+    async function handle2FAVerify() {
+        if (twoFACode.length !== 6) {
+            setFormError('Please enter a valid 6-digit code')
+            return
+        }
+
+        setIsLoading(true)
+        setFormError(null)
+
+        try {
+            await verify2FALogin(twoFAUserId, twoFACode)
+            // On success, signIn will handle the session and redirect
+            // We need to check the session and redirect manually
+            window.location.reload() // Force reload to refresh auth context
+        } catch (err) {
+            setFormError(err?.message || 'Invalid verification code. Please try again.')
+        } finally {
+            setIsLoading(false)
+        }
+    }
+
+    function handleBack2FA() {
+        setShow2FA(false)
+        setTwoFACode('')
+        setTwoFAUserId(null)
+        setTwoFAEmail('')
+        setFormError(null)
+    }
+
     return (
         <>
             <div className="absolute top-8 left-8 z-10">
@@ -168,81 +229,143 @@ const Login = () => {
                 className="login-bg text-black flex justify-center items-center"
             >
                 <form
-                    onSubmit={handleSubmit}
+                    onSubmit={show2FA ? (e) => { e.preventDefault(); handle2FAVerify(); } : handleSubmit}
                     className="flex flex-col justify-center items-center shadow p-6 border-1 border-gray-200 bg-white w-md rounded-lg"
                 >
                     <div id="header-container" className="p-4 mb-6 space-y-2">
                         <img src={LOGO} alt="KEEPSAKE Logo" className="h-20 w-auto mx-auto" />
                         <span className="text-center">
-                            <h1 className="text-2xl font-bold">Welcome back!</h1>
-                            <p className="text-sm">Please enter your details to login</p>
+                            {show2FA ? (
+                                <>
+                                    <h1 className="text-2xl font-bold">Two-Factor Authentication</h1>
+                                    <p className="text-sm">Enter the code sent to your email</p>
+                                </>
+                            ) : (
+                                <>
+                                    <h1 className="text-2xl font-bold">Welcome back!</h1>
+                                    <p className="text-sm">Please enter your details to login</p>
+                                </>
+                            )}
                         </span>
                     </div>
                     <hr className="mt-6 pb-4" />
                     <div id="input-container" className="w-full">
-                        <div className="flex flex-col form-control">
-                            <label htmlFor="email">Email</label>
-                            <input
-                                type="email"
-                                name="email"
-                                id="email"
-                                placeholder="juan@keepsake.com"
-                                ref={emailRef}
-                                required
-                                autoComplete="email"
-                            />
-                        </div>
-                        <div className="flex flex-col form-control mt-4">
-                            <div className="flex flex-row justify-between items-center">
-                                <label htmlFor="password">Password</label>
-                                <Link
-                                    to="/forgot-password"
-                                    className="text-primary hover:text-secondary text-sm transition duration-300 ease-in-out"
-                                    tabIndex="-1"
-                                >
-                                    Forget password?
-                                </Link>
-                            </div>
-                            <div className="relative">
-                                <input
-                                    type={showPassword ? 'text' : 'password'}
-                                    name="password"
-                                    id="password"
-                                    placeholder="********"
-                                    ref={passwordRef}
-                                    required
-                                />
+                        {show2FA ? (
+                            /* 2FA Verification Form */
+                            <div className="space-y-6">
+                                <div className="flex items-center gap-3 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                                    <Mail className="h-5 w-5 text-blue-600" />
+                                    <div className="flex-1">
+                                        <p className="text-sm font-medium text-blue-900">
+                                            Code sent to {twoFAEmail}
+                                        </p>
+                                        <p className="text-xs text-blue-700 mt-1">
+                                            Please check your email for the verification code
+                                        </p>
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <label htmlFor="2fa-code" className="block text-sm font-medium text-gray-700 mb-3">
+                                        Verification Code
+                                    </label>
+                                    <div className="flex justify-center">
+                                        <OTPInput
+                                            id="2fa-code"
+                                            containerClassName="flex items-center gap-2"
+                                            maxLength={6}
+                                            value={twoFACode}
+                                            onChange={(value) => setTwoFACode(value)}
+                                            render={({ slots }) => (
+                                                <div className="flex gap-2">
+                                                    {slots.map((slot, idx) => (
+                                                        <Slot key={idx} {...slot} />
+                                                    ))}
+                                                </div>
+                                            )}
+                                        />
+                                    </div>
+                                    <p className="text-xs text-gray-500 text-center mt-3">
+                                        Code expires in 10 minutes
+                                    </p>
+                                </div>
+
                                 <button
                                     type="button"
-                                    onClick={() => setShowPassword(!showPassword)}
-                                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700"
-                                    tabIndex="-1"
+                                    onClick={handleBack2FA}
+                                    className="text-sm text-primary hover:text-secondary transition duration-300 ease-in-out"
                                 >
-                                    {showPassword ? (
-                                        <FiEyeOff className="size-4" />
-                                    ) : (
-                                        <FiEye className="size-4" />
-                                    )}
+                                    ← Back to login
                                 </button>
                             </div>
-                            {capsLockOn && (
-                                <p className="text-amber-600 text-xs mt-1 flex items-center">
-                                    <svg
-                                        xmlns="http://www.w3.org/2000/svg"
-                                        className="h-4 w-4 mr-1"
-                                        viewBox="0 0 20 20"
-                                        fill="currentColor"
-                                    >
-                                        <path
-                                            fillRule="evenodd"
-                                            d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z"
-                                            clipRule="evenodd"
+                        ) : (
+                            /* Login Form */
+                            <>
+                                <div className="flex flex-col form-control">
+                                    <label htmlFor="email">Email</label>
+                                    <input
+                                        type="email"
+                                        name="email"
+                                        id="email"
+                                        placeholder="juan@keepsake.com"
+                                        ref={emailRef}
+                                        required
+                                        autoComplete="email"
+                                    />
+                                </div>
+                                <div className="flex flex-col form-control mt-4">
+                                    <div className="flex flex-row justify-between items-center">
+                                        <label htmlFor="password">Password</label>
+                                        <Link
+                                            to="/forgot-password"
+                                            className="text-primary hover:text-secondary text-sm transition duration-300 ease-in-out"
+                                            tabIndex="-1"
+                                        >
+                                            Forget password?
+                                        </Link>
+                                    </div>
+                                    <div className="relative">
+                                        <input
+                                            type={showPassword ? 'text' : 'password'}
+                                            name="password"
+                                            id="password"
+                                            placeholder="********"
+                                            ref={passwordRef}
+                                            required
                                         />
-                                    </svg>
-                                    Caps Lock is on
-                                </p>
-                            )}
-                        </div>
+                                        <button
+                                            type="button"
+                                            onClick={() => setShowPassword(!showPassword)}
+                                            className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                                            tabIndex="-1"
+                                        >
+                                            {showPassword ? (
+                                                <FiEyeOff className="size-4" />
+                                            ) : (
+                                                <FiEye className="size-4" />
+                                            )}
+                                        </button>
+                                    </div>
+                                    {capsLockOn && (
+                                        <p className="text-amber-600 text-xs mt-1 flex items-center">
+                                            <svg
+                                                xmlns="http://www.w3.org/2000/svg"
+                                                className="h-4 w-4 mr-1"
+                                                viewBox="0 0 20 20"
+                                                fill="currentColor"
+                                            >
+                                                <path
+                                                    fillRule="evenodd"
+                                                    d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z"
+                                                    clipRule="evenodd"
+                                                />
+                                            </svg>
+                                            Caps Lock is on
+                                        </p>
+                                    )}
+                                </div>
+                            </>
+                        )}
 
                         {/* Error display - Best practice: Right above the submit button */}
                         {formError && (
@@ -272,34 +395,40 @@ const Login = () => {
                         <div id="btn" className="flex justify-center items-center">
                             <LoadingButton
                                 isLoading={isLoading}
-                                onClick={handleSubmit}
+                                onClick={show2FA ? handle2FAVerify : handleSubmit}
                                 className="w-[90%] mt-6 bg-primary text-white"
-                                loadingText="Signing in..."
+                                loadingText={show2FA ? "Verifying..." : "Signing in..."}
                                 type="submit"
-                                children="Sign in"
+                                disabled={show2FA && twoFACode.length !== 6}
+                                children={show2FA ? "Verify Code" : "Sign in"}
                             />
                         </div>
                     </div>
-                    <div className="flex items-center w-full mt-6">
-                        {/* <Separator className="flex-grow" /> */}
-                        <span className="text-xs text-muted-foreground mx-auto">OR</span>
-                        {/* <Separator className="flex-grow" /> */}
-                    </div>
-                    <GoogleButton className="w-[90%] mx-auto mt-6 bg-gray-100 border border-gray-300 hover:bg-gray-200" />
-                    <p className="text-sm mt-4 text-center">
-                        Manual self-registration is disabled.&nbsp;
-                        <TooltipProvider>
-                            <Tooltip>
-                                <TooltipTrigger asChild>
-                                    <span className="underline text-primary">Why?</span>
-                                </TooltipTrigger>
-                                <TooltipContent>
-                                    Consult the nearest available clinic with KEEPSAKE to have an
-                                    account.
-                                </TooltipContent>
-                            </Tooltip>
-                        </TooltipProvider>
-                    </p>
+
+                    {!show2FA && (
+                        <>
+                            <div className="flex items-center w-full mt-6">
+                                {/* <Separator className="flex-grow" /> */}
+                                <span className="text-xs text-muted-foreground mx-auto">OR</span>
+                                {/* <Separator className="flex-grow" /> */}
+                            </div>
+                            <GoogleButton className="w-[90%] mx-auto mt-6 bg-gray-100 border border-gray-300 hover:bg-gray-200" />
+                            <p className="text-sm mt-4 text-center">
+                                Manual self-registration is disabled.&nbsp;
+                                <TooltipProvider>
+                                    <Tooltip>
+                                        <TooltipTrigger asChild>
+                                            <span className="underline text-primary">Why?</span>
+                                        </TooltipTrigger>
+                                        <TooltipContent>
+                                            Consult the nearest available clinic with KEEPSAKE to have an
+                                            account.
+                                        </TooltipContent>
+                                    </Tooltip>
+                                </TooltipProvider>
+                            </p>
+                        </>
+                    )}
                 </form>
             </div>
         </>
