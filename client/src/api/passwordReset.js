@@ -6,7 +6,7 @@ import axios from 'axios'
 
 // Get backend connection from environment or default
 const backendConnection = () => {
-    return import.meta.env.VITE_BACKEND_CONNECTION || 'http://localhost:5000'
+    return import.meta.env.VITE_API_URL
 }
 
 // Axios configuration
@@ -36,7 +36,10 @@ export const requestPasswordReset = async (email) => {
     } catch (error) {
         // Handle rate limiting (429)
         if (error.response?.status === 429) {
-            throw new Error(error.response.data.message || 'Too many password reset attempts. Please try again later.')
+            throw new Error(
+                error.response.data.message ||
+                    'Too many password reset attempts. Please try again later.'
+            )
         }
 
         // Handle validation errors (400)
@@ -50,7 +53,10 @@ export const requestPasswordReset = async (email) => {
         }
 
         // Network or other errors
-        throw new Error(error.response?.data?.message || 'Failed to request password reset. Please check your connection.')
+        throw new Error(
+            error.response?.data?.message ||
+                'Failed to request password reset. Please check your connection.'
+        )
     }
 }
 
@@ -133,7 +139,9 @@ export const resetPassword = async (token, newPassword, confirmPassword) => {
                 throw new Error('Passwords do not match')
             }
             if (message.includes('expired') || message.includes('invalid')) {
-                throw new Error('This reset link has expired or is invalid. Please request a new one.')
+                throw new Error(
+                    'This reset link has expired or is invalid. Please request a new one.'
+                )
             }
             if (message.includes('already been used')) {
                 throw new Error('This reset link has already been used. Please request a new one.')
@@ -149,7 +157,9 @@ export const resetPassword = async (token, newPassword, confirmPassword) => {
         }
 
         // Network or other errors
-        throw new Error(error.response?.data?.message || 'Failed to reset password. Please try again.')
+        throw new Error(
+            error.response?.data?.message || 'Failed to reset password. Please try again.'
+        )
     }
 }
 
