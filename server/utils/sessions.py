@@ -76,13 +76,11 @@ def get_session_data(session_id: str) -> Optional[Dict[str, Any]]:
         # Fetch the payload from Redis
         session_data = redis_client.get(redis_key)
         if not session_data:
-            logger.debug(f"No session found for session_id: {session_id}")
             return None
-        
+
         # Parse JSON data with error handling
         try:
             parsed_data = json.loads(session_data)
-            logger.debug(f"Session retrieved successfully for session_id: {session_id}")
             return parsed_data
         except json.JSONDecodeError as e:
             logger.error(f"Invalid JSON in session {session_id}: {e}")

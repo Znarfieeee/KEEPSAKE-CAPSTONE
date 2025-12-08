@@ -226,10 +226,10 @@ const AboutPage = () => {
                             </div>
                             <h3 className="text-lg font-semibold text-white mb-2">Email</h3>
                             <a
-                                href="mailto:info@keepsake.ph"
+                                href="mailto:hello@keepsake.com"
                                 className="text-gray-300 hover:text-green-400 transition-colors"
                             >
-                                info@keepsake.ph
+                                hello@keepsake.com
                             </a>
                         </div>
 
@@ -238,7 +238,7 @@ const AboutPage = () => {
                                 <MapPin className="h-8 w-8 text-white" />
                             </div>
                             <h3 className="text-lg font-semibold text-white mb-2">Location</h3>
-                            <p className="text-gray-300">Manila, Philippines</p>
+                            <p className="text-gray-300">Cebu City, Cebu, Philippines</p>
                         </div>
                     </div>
                 </div>

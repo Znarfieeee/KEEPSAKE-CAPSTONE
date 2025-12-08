@@ -109,3 +109,38 @@ export const checkSession = async () => {
         return { status: "error", message: "No active session" }
     }
 }
+
+/**
+ * Verify 2FA login code
+ */
+export const verify2FALogin = async (userId, code) => {
+    try {
+        const response = await axios.post(
+            `${backendConnection()}/verify-2fa-login`,
+            { user_id: userId, code },
+            axiosConfig
+        )
+        return response.data
+    } catch (error) {
+        if (error.response) {
+            const errorMessage =
+                error.response.data?.message || "Failed to verify 2FA code"
+
+            if (error.response.status === 400) {
+                throw new Error(errorMessage)
+            } else if (error.response.status === 404) {
+                throw new Error("User not found. Please login again.")
+            } else if (error.response.status === 500) {
+                throw new Error("Verification failed. Please try again.")
+            }
+
+            throw new Error(errorMessage)
+        } else if (error.request) {
+            throw new Error(
+                "Unable to connect to the server. Please check your internet connection and try again."
+            )
+        } else {
+            throw new Error("An unexpected error occurred. Please try again.")
+        }
+    }
+}

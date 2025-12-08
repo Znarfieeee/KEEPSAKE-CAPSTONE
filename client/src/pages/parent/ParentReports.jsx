@@ -27,9 +27,13 @@ import {
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/Button'
 import { getParentChildren, getChildReport } from '@/api/parent/reports'
+import { getMySubscription } from '@/api/parent/subscription'
 import { showToast } from '@/util/alertHelper'
+import { useAuth } from '@/context/auth'
+import PremiumOverlay from '@/components/premium/PremiumOverlay'
 
 const ParentReports = () => {
+    const { user } = useAuth()
     const [children, setChildren] = useState([])
     const [selectedChild, setSelectedChild] = useState(null)
     const [reportType, setReportType] = useState('')
@@ -45,11 +49,39 @@ const ParentReports = () => {
     const [error, setError] = useState(null)
     const [reportData, setReportData] = useState(null)
     const [cacheInfo, setCacheInfo] = useState({ cached: false, cache_expires_in: 0 })
+    const [hasPremium, setHasPremium] = useState(false)
+    const [checkingSubscription, setCheckingSubscription] = useState(true)
+
+    // Check subscription status on mount
+    useEffect(() => {
+        checkSubscription()
+    }, [])
 
     // Fetch children list on mount
     useEffect(() => {
         fetchChildren()
     }, [])
+
+    const checkSubscription = async () => {
+        setCheckingSubscription(true)
+        try {
+            const response = await getMySubscription()
+            const subscription = response.data
+
+            // Check if user has active premium subscription
+            const isPremium =
+                subscription &&
+                subscription.status === 'active' &&
+                subscription.plan_type === 'premium'
+
+            setHasPremium(isPremium)
+        } catch (error) {
+            console.error('Error checking subscription:', error)
+            setHasPremium(false)
+        } finally {
+            setCheckingSubscription(false)
+        }
+    }
 
     const fetchChildren = async () => {
         setLoading(true)
@@ -105,8 +137,15 @@ const ParentReports = () => {
                 })
             } catch (error) {
                 console.error('Error fetching child report:', error)
-                setError(error.message || 'Failed to load report data')
-                showToast('error', 'Failed to load report data')
+
+                // Handle premium subscription error (403)
+                if (error.response?.status === 403 || error.response?.data?.premium_required) {
+                    setHasPremium(false)
+                    showToast('error', 'Premium subscription required to view reports')
+                } else {
+                    setError(error.message || 'Failed to load report data')
+                    showToast('error', 'Failed to load report data')
+                }
             } finally {
                 setReportLoading(false)
             }
@@ -578,10 +617,10 @@ const ParentReports = () => {
                                     >
                                         <option value="">Choose report type...</option>
                                         <option value="growth">📊 Growth Trends</option>
+                                        <option value="immunization">💉 Immunizations</option>
                                         <option value="vitals" disabled>
                                             ❤️ Vital Signs (Coming Soon)
                                         </option>
-                                        <option value="immunization">💉 Immunizations</option>
                                     </select>
                                     <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-green-600">
                                         <svg
@@ -1052,6 +1091,9 @@ const ParentReports = () => {
                     )}
                 </>
             )}
+
+            {/* Premium Overlay - Shows when user doesn't have premium */}
+            {!checkingSubscription && !hasPremium && <PremiumOverlay />}
         </div>
     )
 }

@@ -68,6 +68,9 @@ const AccountPlaceholder = () => {
                                         case 'doctor':
                                             navigate('/pediapro/settings')
                                             break
+                                        case 'nurse':
+                                            navigate('/nurse/settings')
+                                            break
                                         case 'parent':
                                             navigate('/parent/settings')
                                             break

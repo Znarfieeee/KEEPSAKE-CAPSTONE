@@ -19,8 +19,12 @@ import QrScanner from '@/pages/QrScanner'
 import PrescriptionViewPage from '@/pages/PrescriptionViewPage'
 import QrCodeGeneratorTest from '@/pages/QrCodeGeneratorTest'
 import ForgotPassword from '@/pages/ForgotPassword'
+import ResetPassword from '@/pages/ResetPassword'
 import Settings from '@/pages/Settings'
 import Notifications from '@/pages/Notifications'
+import PaymentSuccess from '@/pages/PaymentSuccess'
+import PaymentCancel from '@/pages/PaymentCancel'
+import CheckoutPage from '@/pages/CheckoutPage'
 
 // Admin
 import AdminDashboard from '@/pages/systemAdmin/AdminDashboard'
@@ -146,6 +150,10 @@ function App() {
                     element: <ForgotPassword />,
                 },
                 {
+                    path: '/reset-password',
+                    element: <ResetPassword />,
+                },
+                {
                     path: '/auth/success',
                     element: <AuthSuccess />,
                 },
@@ -158,6 +166,30 @@ function App() {
                     element: (
                         <ProtectedRoute>
                             <Notifications />
+                        </ProtectedRoute>
+                    ),
+                },
+                {
+                    path: '/checkout',
+                    element: (
+                        <ProtectedRoute>
+                            <CheckoutPage />
+                        </ProtectedRoute>
+                    ),
+                },
+                {
+                    path: '/payment/success',
+                    element: (
+                        <ProtectedRoute>
+                            <PaymentSuccess />
+                        </ProtectedRoute>
+                    ),
+                },
+                {
+                    path: '/payment/cancel',
+                    element: (
+                        <ProtectedRoute>
+                            <PaymentCancel />
                         </ProtectedRoute>
                     ),
                 },

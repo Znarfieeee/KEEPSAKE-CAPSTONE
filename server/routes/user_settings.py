@@ -696,33 +696,38 @@ def enable_2fa():
             raise Exception("Failed to initiate 2FA verification")
 
         verification_data = result.data
+        code = verification_data.get('code')
 
-        # Send verification email using Supabase Auth
-        # Supabase will send the email using their email template system
-        try:
-            # Use Supabase's email sending capability
-            # Since we're using a custom code, we'll use the user's email to send a magic link style email
-            # But we need to send a custom email with the code
+        # Get user's name for email personalization
+        user_response = supabase.table('users').select('firstname, lastname').eq('user_id', user_id).execute()
+        user_name = None
+        if user_response.data:
+            user = user_response.data[0]
+            user_name = f"{user.get('firstname', '')} {user.get('lastname', '')}"  .strip()
 
-            # For now, we'll use a simpler approach: return the code in response for testing
-            # In production, you should configure Supabase email templates or use a service like SendGrid
+        # Send verification email via SMTP
+        from utils.email_service import EmailService
 
-            current_app.logger.info(f"AUDIT: 2FA verification code generated for user {email} from IP {request.remote_addr}")
-            current_app.logger.info(f"2FA Code for {email}: {verification_data.get('code')}")
+        success, email_msg = EmailService.send_2fa_setup_code(
+            recipient_email=email,
+            code=code,
+            user_name=user_name if user_name else None
+        )
 
-            return jsonify({
-                "status": "success",
-                "message": f"Verification code sent to {email}. Please check your email.",
-                "code": verification_data.get('code'),  # Remove this in production
-                "expires_in": "10 minutes"
-            }), 200
-
-        except Exception as email_error:
-            current_app.logger.error(f"Failed to send 2FA email: {str(email_error)}")
+        if not success:
+            current_app.logger.error(f"Failed to send 2FA setup email to {email}: {email_msg}")
             return jsonify({
                 "status": "error",
-                "message": "Failed to send verification email"
+                "message": "Failed to send verification email. Please try again."
             }), 500
+
+        current_app.logger.info(f"AUDIT: 2FA verification code sent to {email} from IP {request.remote_addr}")
+
+        return jsonify({
+            "status": "success",
+            "message": f"Verification code sent to {email}. Please check your email.",
+            "expires_in": "10 minutes"
+        }), 200
 
     except Exception as e:
         current_app.logger.error(f"Error enabling 2FA: {str(e)}")
@@ -756,6 +761,20 @@ def verify_2fa():
 
             if result.data:
                 current_app.logger.info(f"AUDIT: User {user_id} enabled 2FA from IP {request.remote_addr}")
+
+                # Send confirmation email
+                email = request.current_user.get('email')
+                user_response = supabase.table('users').select('firstname, lastname').eq('user_id', user_id).execute()
+                user_name = None
+                if user_response.data:
+                    user = user_response.data[0]
+                    user_name = f"{user.get('firstname', '')} {user.get('lastname', '')}".strip()
+
+                from utils.email_service import EmailService
+                EmailService.send_2fa_enabled_notification(
+                    recipient_email=email,
+                    user_name=user_name if user_name else None
+                )
 
                 return jsonify({
                     "status": "success",
@@ -838,6 +857,19 @@ def disable_2fa():
 
         if result.data:
             current_app.logger.info(f"AUDIT: User {user_id} disabled 2FA from IP {request.remote_addr}")
+
+            # Send confirmation email
+            user_response = supabase.table('users').select('firstname, lastname').eq('user_id', user_id).execute()
+            user_name = None
+            if user_response.data:
+                user = user_response.data[0]
+                user_name = f"{user.get('firstname', '')} {user.get('lastname', '')}".strip()
+
+            from utils.email_service import EmailService
+            EmailService.send_2fa_disabled_notification(
+                recipient_email=email,
+                user_name=user_name if user_name else None
+            )
 
             return jsonify({
                 "status": "success",

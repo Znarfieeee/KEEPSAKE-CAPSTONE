@@ -240,7 +240,7 @@ def get_user_by_id(user_id):
 @require_auth
 @require_role('admin')
 def update_user(user_id):
-    """Update user profile information"""
+    """Update user profile information via auth.users.raw_user_meta_data"""
     try:
         data = request.json or {}
 
@@ -262,31 +262,38 @@ def update_user(user_id):
                 "message": "No valid fields provided for update"
             }), 400
 
-        # Add update timestamp
-        update_fields['updated_at'] = datetime.utcnow().isoformat()
-
-        # Update user in database
-        response = admin_supabase.table('users').update(update_fields).eq('user_id', user_id).execute()
-
-        if getattr(response, 'error', None):
-            current_app.logger.error(f"Failed to update user: {response.error}")
-            return jsonify({
-                "status": "error",
-                "message": "Failed to update user"
-            }), 500
-
-        if not response.data:
+        # Get current user metadata
+        current_user = admin_supabase.auth.admin.get_user_by_id(user_id)
+        if not current_user or not current_user.user:
             return jsonify({
                 "status": "error",
                 "message": "User not found"
             }), 404
 
+        current_metadata = current_user.user.user_metadata or {}
+
+        # Merge update fields with current metadata
+        updated_metadata = {
+            **current_metadata,
+            **update_fields,
+            'updated_at': datetime.utcnow().isoformat()
+        }
+
+        # Update auth.users.raw_user_meta_data (trigger will sync to public.users)
+        auth_response = admin_supabase.auth.admin.update_user_by_id(
+            user_id,
+            {"user_metadata": updated_metadata}
+        )
+
         invalidate_caches('users', user_id)
+
+        # Get updated user data from public.users (after trigger sync)
+        response = admin_supabase.table('users').select('*').eq('user_id', user_id).execute()
 
         return jsonify({
             "status": "success",
             "message": "User updated successfully",
-            "data": response.data[0]
+            "data": response.data[0] if response.data else None
         }), 200
 
     except Exception as e:
@@ -300,30 +307,54 @@ def update_user(user_id):
 @require_auth
 @require_role('admin')
 def update_user_status(user_id):
-    """Update user status (active/inactive/suspended)"""
+    """Update user status (active/inactive) via auth.users.raw_user_meta_data and sync ban status"""
     try:
         data = request.json or {}
         is_active = data.get('is_active')
-        
+
         if is_active is None:
             return jsonify({
                 "status": "error",
                 "message": "is_active field is required"
             }), 400
 
-        response = admin_supabase.table('users').update({
+        # Get current user metadata
+        current_user = admin_supabase.auth.admin.get_user_by_id(user_id)
+        current_metadata = current_user.user.user_metadata or {}
+
+        # Update auth.users.raw_user_meta_data (trigger will sync to public.users)
+        updated_metadata = {
+            **current_metadata,
             'is_active': is_active,
             'updated_at': datetime.utcnow().isoformat()
-        }).eq('user_id', user_id).execute()
+        }
 
-        if getattr(response, 'error', None):
-            current_app.logger.error(f"Failed to update user status: {response.error}")
-            return jsonify({
-                "status": "error",
-                "message": "Failed to update user status"
-            }), 500
+        # Update user metadata and ban status in a single call
+        if is_active:
+            # Unban user and update metadata
+            auth_response = admin_supabase.auth.admin.update_user_by_id(
+                user_id,
+                {
+                    "user_metadata": updated_metadata,
+                    "ban_duration": "none"
+                }
+            )
+            current_app.logger.info(f"User {user_id} activated and unbanned in Supabase Auth")
+        else:
+            # Ban user and update metadata (876000h = 100 years = effectively permanent)
+            auth_response = admin_supabase.auth.admin.update_user_by_id(
+                user_id,
+                {
+                    "user_metadata": updated_metadata,
+                    "ban_duration": "876000h"
+                }
+            )
+            current_app.logger.info(f"User {user_id} deactivated and banned in Supabase Auth")
 
         invalidate_caches('users', user_id)
+
+        # Get updated user data from public.users (after trigger sync)
+        response = admin_supabase.table('users').select('*').eq('user_id', user_id).execute()
 
         return jsonify({
             "status": "success",

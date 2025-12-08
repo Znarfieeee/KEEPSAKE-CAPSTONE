@@ -37,6 +37,7 @@ from routes.feedback_routes import feedback_bp
 from routes.facility_contact import facility_contact_bp
 from routes.admin.admin_parent_subscription import admin_parent_subscription_bp
 from routes.public_routes import public_bp
+from routes.password_reset_routes import password_reset_bp
 
 app = Flask("keepsake")
 
@@ -82,6 +83,7 @@ app.register_blueprint(parent_consent_bp)
 app.register_blueprint(feedback_bp)
 app.register_blueprint(facility_contact_bp)
 app.register_blueprint(admin_parent_subscription_bp)
+app.register_blueprint(password_reset_bp)
 
 # Redis session configuration with enhanced error handling
 def setup_redis_session():
