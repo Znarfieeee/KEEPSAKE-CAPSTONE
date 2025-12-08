@@ -147,21 +147,11 @@ app.config.update(
 # Initialize Flask-session
 Session(app)
 
-# Allow local Vite dev server
-if os.environ.get('FLASK_ENV') == 'production':
-    allowed_origins = [
-        "https://keepsake-pi.vercel.app/",
-
-    ]
-else:
-    allowed_origins = [
-        "http://localhost:5173",
-    ]
-
 CORS(
-    app,
-    resources={r"/*": {"origins": allowed_origins}},
-    supports_credentials=True,
+    app, origins=[
+        "https://keepsake-pi.vercel.app",
+        "http://localhost:5173"
+        ], supports_credentials=True,
 )
 
 # Configure logging for HIPAA audit trail
