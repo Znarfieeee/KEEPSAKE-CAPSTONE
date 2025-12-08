@@ -4,7 +4,7 @@ import { enable2FA, disable2FA, get2FAStatus, verify2FACode } from '@/api/settin
 // UI Components
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
-import { Label } from '@/components/ui/Label'
+import { Label } from '@/components/ui/label'
 import { Shield, CheckCircle, XCircle, AlertCircle, Mail } from 'lucide-react'
 import TwoFactorSettingsSkeleton from '@/components/settings/TwoFactorSettingsSkeleton'
 import { OTPInput } from 'input-otp'
