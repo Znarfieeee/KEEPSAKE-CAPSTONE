@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { useAuth } from '../context/auth'
+import { useAuth } from '@/context/auth'
 import { useNotificationsRealtime } from '../hook/useSupabaseRealtime'
 import {
     getNotifications,

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react'
-import Breadcrumbs from '../components/ui/Breadcrumbs'
+import Breadcrumbs from '@/components/ui/Breadcrumbs'
 import { Outlet, Link } from 'react-router-dom'
 
 // UI Components
@@ -10,9 +10,9 @@ import { BiHelpCircle } from 'react-icons/bi'
 import { BiCog } from 'react-icons/bi'
 import { MdQrCodeScanner } from 'react-icons/md'
 import { MessageSquarePlus } from 'lucide-react'
-import Hamburger from '../components/ui/Hamburger'
-import AccountPlaceholder from '../components/AccountPlaceholder'
-import NotificationBell from '../components/notifications/NotificationBell'
+import Hamburger from '@/components/ui/Hamburger'
+import AccountPlaceholder from '@/components/AccountPlaceholder'
+import NotificationBell from '@/components/notifications/NotificationBell'
 
 const mainSideNavLinks = [
     {

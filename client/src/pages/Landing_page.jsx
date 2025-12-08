@@ -2,11 +2,11 @@ import React from 'react'
 import { useNavigate } from 'react-router-dom'
 
 // images
-import hero1 from '../assets/hero1.png'
-import hero2 from '../assets/hero2.png'
+import hero1 from '@/assets/hero1.png'
+import hero2 from '@/assets/hero2.png'
 
 // UI Components
-import { Button } from '../components/ui/Button'
+import { Button } from '@/components/ui/Button'
 import {
     PhoneIcon,
     CalendarIcon,
@@ -19,7 +19,7 @@ import { IoShieldHalfOutline } from 'react-icons/io5'
 import { CiMobile3 } from 'react-icons/ci'
 import { TbClockCog } from 'react-icons/tb'
 import { PiDevicesLight } from 'react-icons/pi'
-import Footer4Col from '../components/mvpblocks/footer-4col'
+import Footer4Col from '@/components/mvpblocks/footer-4col'
 
 function Landing_page() {
     const navigate = useNavigate()

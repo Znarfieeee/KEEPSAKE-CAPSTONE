@@ -1,18 +1,18 @@
 import React, { useRef, useState, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { useAuth } from '../context/auth'
+import { useAuth } from '@/context/auth'
 import { sanitizeInput } from '../util/sanitize'
 import { verify2FALogin, resend2FALoginCode } from '../api/auth'
 
 // Images
-import LOGO from '../assets/logo1.png'
+import LOGO from '@/assets/logo1.png'
 
 // UI Components
 import { IoMdArrowBack } from 'react-icons/io'
 import { FiEye, FiEyeOff } from 'react-icons/fi'
 import { Mail, Shield } from 'lucide-react'
-import GoogleButton from '../components/ui/GoogleButton'
-import LoadingButton from '../components/ui/LoadingButton'
+import GoogleButton from '@/components/ui/GoogleButton'
+import LoadingButton from '@/components/ui/LoadingButton'
 import TooltipHelper from '../util/TooltipHelper'
 import { OTPInput } from 'input-otp'
 

@@ -1,7 +1,7 @@
 import { AiOutlineTool } from 'react-icons/ai'
 import { BiCog, BiHelpCircle, BiMessageSquareDetail } from 'react-icons/bi'
 import React, { useState, useEffect, useRef } from 'react'
-import Breadcrumbs from '../components/ui/Breadcrumbs'
+import Breadcrumbs from '@/components/ui/Breadcrumbs'
 import { Outlet, Link, useLocation } from 'react-router-dom'
 
 // UI Components
@@ -12,9 +12,9 @@ import { BsBuilding } from 'react-icons/bs'
 import { CgFileDocument } from 'react-icons/cg'
 import { RiDashboardLine } from 'react-icons/ri'
 import { Users, MessageSquarePlus, ChartNoAxesCombined } from 'lucide-react'
-import Hamburger from '../components/ui/Hamburger'
-import AccountPlaceholder from '../components/AccountPlaceholder'
-import NotificationBell from '../components/notifications/NotificationBell'
+import Hamburger from '@/components/ui/Hamburger'
+import AccountPlaceholder from '@/components/AccountPlaceholder'
+import NotificationBell from '@/components/notifications/NotificationBell'
 
 const mainSideNavLinks = [
     {
