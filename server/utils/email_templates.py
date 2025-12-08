@@ -458,11 +458,11 @@ class EmailTemplates:
 
 <!-- Verification Code Display -->
 <div style="margin: 30px 0; text-align: center;">
-    <div style="display: inline-block; background: linear-gradient(135deg, {EmailTemplates.PRIMARY_COLOR} 0%, {EmailTemplates.SECONDARY_COLOR} 100%); padding: 25px 40px; border-radius: 10px; box-shadow: 0 4px 12px rgba(87, 112, 196, 0.3);">
-        <p style="margin: 0 0 8px 0; color: #ffffff; font-size: 13px; font-weight: 500; letter-spacing: 1px; text-transform: uppercase;">
+    <div style="display: inline-block; padding: 25px 40px; border-radius: 10px; box-shadow: 0 4px 12px rgba(87, 112, 196, 0.3);">
+        <p style="margin: 0 0 8px 0; color: #3f3f3f; font-size: 13px; font-weight: 500; letter-spacing: 1px; text-transform: uppercase;">
             Verification Code
         </p>
-        <p style="margin: 0; color: #ffffff; font-size: 36px; font-weight: 700; letter-spacing: 8px; font-family: 'Courier New', monospace;">
+        <p style="margin: 0; color: #3f3f3f; font-size: 36px; font-weight: 700; letter-spacing: 8px; font-family: 'Courier New', monospace;">
             {code}
         </p>
     </div>

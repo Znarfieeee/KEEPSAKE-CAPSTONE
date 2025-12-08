@@ -144,3 +144,41 @@ export const verify2FALogin = async (userId, code) => {
         }
     }
 }
+
+/**
+ * Resend 2FA login verification code
+ */
+export const resend2FALoginCode = async (userId) => {
+    try {
+        const response = await axios.post(
+            `${backendConnection()}/resend-2fa-login-code`,
+            { user_id: userId },
+            axiosConfig
+        )
+        return response.data
+    } catch (error) {
+        if (error.response) {
+            const errorMessage =
+                error.response.data?.message || "Failed to resend verification code"
+
+            if (error.response.status === 429) {
+                // Rate limit error - use the specific message from backend
+                throw new Error(errorMessage)
+            } else if (error.response.status === 400) {
+                throw new Error(errorMessage)
+            } else if (error.response.status === 404) {
+                throw new Error("User not found. Please login again.")
+            } else if (error.response.status === 500) {
+                throw new Error("Failed to send code. Please try again.")
+            }
+
+            throw new Error(errorMessage)
+        } else if (error.request) {
+            throw new Error(
+                "Unable to connect to the server. Please check your internet connection and try again."
+            )
+        } else {
+            throw new Error("An unexpected error occurred. Please try again.")
+        }
+    }
+}

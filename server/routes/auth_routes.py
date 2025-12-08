@@ -1012,6 +1012,105 @@ def verify_2fa_login():
             "message": "An error occurred during verification. Please try again."
         }), 500
 
+@auth_bp.route('/resend-2fa-login-code', methods=['POST'])
+def resend_2fa_login_code():
+    """Resend 2FA verification code during login"""
+    try:
+        data = request.json or {}
+        user_id = data.get('user_id')
+
+        if not user_id:
+            return jsonify({
+                "status": "error",
+                "message": "User ID is required"
+            }), 400
+
+        # Check rate limiting - prevent abuse
+        # Get the last code generation time
+        last_code_check = supabase.table('user_2fa_verification_codes')\
+            .select('created_at')\
+            .eq('user_id', user_id)\
+            .eq('code_type', 'login')\
+            .order('created_at', desc=True)\
+            .limit(1)\
+            .execute()
+
+        if last_code_check.data:
+            from datetime import datetime, timezone
+            last_created = datetime.fromisoformat(last_code_check.data[0]['created_at'].replace('Z', '+00:00'))
+            now = datetime.now(timezone.utc)
+            time_diff = (now - last_created).total_seconds()
+
+            # Require at least 60 seconds between resend requests
+            if time_diff < 60:
+                wait_time = int(60 - time_diff)
+                return jsonify({
+                    "status": "error",
+                    "message": f"Please wait {wait_time} seconds before requesting another code"
+                }), 429
+
+        # Get user information
+        user_response = supabase.table('users')\
+            .select('*')\
+            .eq('user_id', user_id)\
+            .execute()
+
+        if not user_response.data:
+            return jsonify({
+                "status": "error",
+                "message": "User not found"
+            }), 404
+
+        user_record = user_response.data[0]
+        email = user_record.get('email')
+
+        # Generate new 2FA login code (RPC function will check if 2FA is enabled)
+        code_result = supabase.rpc('generate_2fa_login_code', {
+            'p_user_id': user_id,
+            'p_ip_address': request.remote_addr,
+            'p_user_agent': request.headers.get('User-Agent', 'Unknown')
+        }).execute()
+
+        if not code_result.data:
+            raise Exception("Failed to generate 2FA code")
+
+        code_data = code_result.data
+        code = code_data.get('code')
+
+        # Get user's name for email personalization
+        user_name = f"{user_record.get('firstname', '')} {user_record.get('lastname', '')}".strip()
+
+        # Send verification email via SMTP
+        from utils.email_service import EmailService
+
+        success, email_msg = EmailService.send_2fa_login_code(
+            recipient_email=email,
+            code=code,
+            user_name=user_name if user_name else None,
+            ip_address=request.remote_addr
+        )
+
+        if not success:
+            current_app.logger.error(f"Failed to resend 2FA login email to {email}: {email_msg}")
+            return jsonify({
+                "status": "error",
+                "message": "Failed to send verification code. Please try again."
+            }), 500
+
+        current_app.logger.info(f"AUDIT: 2FA login code resent to {email} from IP {request.remote_addr}")
+
+        return jsonify({
+            "status": "success",
+            "message": "Verification code sent successfully. Please check your email."
+        }), 200
+
+    except Exception as e:
+        current_app.logger.error(f"Error resending 2FA login code: {str(e)}")
+        return jsonify({
+            "status": "error",
+            "message": "An error occurred while sending the code. Please try again."
+        }), 500
+
 @auth_bp.route('/logout', methods=['POST'])
 @require_auth
 def logout():
