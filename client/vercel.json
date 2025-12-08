@@ -1,4 +1,0 @@
-{
-    "buildCommand": "cd client && rm -rf node_modules/lightningcss && npm install --legacy-peer-deps && npm run build",
-    "outputDirectory": "client/dist"
-}
