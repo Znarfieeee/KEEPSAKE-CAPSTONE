@@ -2,7 +2,7 @@ import React, { useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 
 // Context
-import { useAuth } from '../context/auth'
+import { useAuth } from '@/context/auth'
 
 // UI Components
 import { AiOutlineLoading3Quarters } from 'react-icons/ai'

@@ -10,7 +10,7 @@ import {
     Loader2,
     ShieldCheck,
 } from 'lucide-react'
-import LOGO from '../assets/logo1.png'
+import LOGO from '@/assets/logo1.png'
 import { verifyResetToken, resetPassword } from '../api/passwordReset'
 import { showToast } from '../util/alertHelper'
 

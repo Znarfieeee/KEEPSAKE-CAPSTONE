@@ -2,7 +2,7 @@ import React, { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { IoMdArrowBack } from 'react-icons/io'
 import { Mail, CheckCircle2, AlertCircle, Loader2 } from 'lucide-react'
-import LOGO from '../assets/logo1.png'
+import LOGO from '@/assets/logo1.png'
 import { requestPasswordReset } from '../api/passwordReset'
 
 const ForgotPassword = () => {

@@ -1,23 +1,23 @@
-import React, { useState } from "react"
-import { useNavigate } from "react-router-dom"
-import { IoMdArrowBack } from "react-icons/io"
-import { Card } from "../components/ui/Card"
-import { Button } from "../components/ui/Button"
-import QrCodeGenerator from "../components/ui/QrCodeGenerator"
+import React, { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { IoMdArrowBack } from 'react-icons/io'
+import { Card } from '@/components/ui/Card'
+import { Button } from '@/components/ui/Button'
+import QrCodeGenerator from '@/components/ui/QrCodeGenerator'
 
 const QrCodeGeneratorTest = () => {
     const navigate = useNavigate()
-    const [patientId, setPatientId] = useState("PAT-2024-001")
-    const [patientName, setPatientName] = useState("Juan Dela Cruz")
-    const [facilityId, setFacilityId] = useState("FAC-001")
+    const [patientId, setPatientId] = useState('PAT-2024-001')
+    const [patientName, setPatientName] = useState('Juan Dela Cruz')
+    const [facilityId, setFacilityId] = useState('FAC-001')
     const [showQr, setShowQr] = useState(true)
 
     // Sample patients for quick testing
     const samplePatients = [
-        { id: "PAT-2024-001", name: "Juan Dela Cruz", facilityId: "FAC-001" },
-        { id: "PAT-2024-002", name: "Maria Santos", facilityId: "FAC-001" },
-        { id: "PAT-2024-003", name: "Jose Reyes", facilityId: "FAC-002" },
-        { id: "PAT-2024-004", name: "Ana Gonzales", facilityId: "FAC-001" }
+        { id: 'PAT-2024-001', name: 'Juan Dela Cruz', facilityId: 'FAC-001' },
+        { id: 'PAT-2024-002', name: 'Maria Santos', facilityId: 'FAC-001' },
+        { id: 'PAT-2024-003', name: 'Jose Reyes', facilityId: 'FAC-002' },
+        { id: 'PAT-2024-004', name: 'Ana Gonzales', facilityId: 'FAC-001' },
     ]
 
     const handleGenerateQr = () => {
@@ -39,7 +39,8 @@ const QrCodeGeneratorTest = () => {
             <div className="absolute top-8 left-8 z-10">
                 <div
                     onClick={() => navigate(-1)}
-                    className="flex items-center gap-2 text-gray-700 hover:text-primary transition duration-300 ease-in-out cursor-pointer bg-white px-4 py-2 rounded-lg shadow-sm hover:shadow-md">
+                    className="flex items-center gap-2 text-gray-700 hover:text-primary transition duration-300 ease-in-out cursor-pointer bg-white px-4 py-2 rounded-lg shadow-sm hover:shadow-md"
+                >
                     <IoMdArrowBack className="text-2xl" />
                     <span className="text-sm font-medium">Go back</span>
                 </div>
@@ -124,7 +125,9 @@ const QrCodeGeneratorTest = () => {
                                             onClick={() => loadSamplePatient(patient)}
                                             className="w-full text-left px-3 py-2 bg-gray-50 hover:bg-gray-100 rounded-md transition text-sm"
                                         >
-                                            <p className="font-medium text-gray-800">{patient.name}</p>
+                                            <p className="font-medium text-gray-800">
+                                                {patient.name}
+                                            </p>
                                             <p className="text-xs text-gray-600">{patient.id}</p>
                                         </button>
                                     ))}
@@ -157,8 +160,8 @@ const QrCodeGeneratorTest = () => {
                             <li>Verify that patient information is displayed correctly</li>
                         </ol>
                         <p className="mt-3 text-sm text-gray-600">
-                            <strong>Note:</strong> The scanner will show different actions based on your role
-                            (Doctor, Nurse, Parent, etc.)
+                            <strong>Note:</strong> The scanner will show different actions based on
+                            your role (Doctor, Nurse, Parent, etc.)
                         </p>
                     </Card>
                 </div>

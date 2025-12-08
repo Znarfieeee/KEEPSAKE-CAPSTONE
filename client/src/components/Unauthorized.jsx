@@ -2,7 +2,7 @@ import React from 'react'
 import { useNavigate } from 'react-router-dom'
 
 // Import hero image from assets folder (adjust path if needed)
-import heroImg from '../assets/hero1.png'
+import heroImg from '@/assets/hero1.png'
 
 // Reuse existing Button component for consistent styling
 import { Button } from './ui/Button.jsx'

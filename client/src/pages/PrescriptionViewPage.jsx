@@ -6,9 +6,9 @@ import { useReactToPrint } from 'react-to-print'
 import { accessPrescriptionPublic } from '../api/qrCode'
 
 // Components
-import QRPinInputModal from '../components/qr/QRPinInputModal'
-import { Card } from '../components/ui/Card'
-import { Button } from '../components/ui/Button'
+import QRPinInputModal from '@/components/qr/QRPinInputModal'
+import { Card } from '@/components/ui/Card'
+import { Button } from '@/components/ui/Button'
 
 // Icons
 import {
