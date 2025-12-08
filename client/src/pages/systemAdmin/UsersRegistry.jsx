@@ -5,7 +5,7 @@ import { getUserById, updateUserStatus, deleteUser } from '@/api/admin/users'
 import { useUsersRealtime, useFacilityUsersRealtime, supabase } from '@/hook/useSupabaseRealtime'
 
 // UI Components
-import { Dialog } from '@/components/ui/dialog'
+import { Dialog } from '@/components/ui/Dialog'
 import { Loader2 } from 'lucide-react'
 import UserRegistryHeader from '@/components/System Administrator/sysAdmin_users/UserRegistryHeader'
 import UserFilters from '@/components/System Administrator/sysAdmin_users/UserFilters'
@@ -721,7 +721,9 @@ const UsersRegistry = () => {
                         description={
                             <div className="space-y-3">
                                 <p className="font-semibold text-destructive">
-                                    WARNING: This will permanently delete user "{confirmationUser.firstname} {confirmationUser.lastname}" and ALL associated data.
+                                    WARNING: This will permanently delete user "
+                                    {confirmationUser.firstname} {confirmationUser.lastname}" and
+                                    ALL associated data.
                                 </p>
                                 <div className="text-sm space-y-2">
                                     <p className="font-medium">This will delete:</p>
@@ -731,7 +733,9 @@ const UsersRegistry = () => {
                                         <li>User preferences and settings</li>
                                         <li>Active sessions and authentication</li>
                                     </ul>
-                                    <p className="font-medium mt-3 text-amber-600">Deletion will fail if the user has:</p>
+                                    <p className="font-medium mt-3 text-amber-600">
+                                        Deletion will fail if the user has:
+                                    </p>
                                     <ul className="list-disc list-inside space-y-1 text-muted-foreground">
                                         <li>Appointments as a doctor (medical records)</li>
                                         <li>Prescriptions as a doctor (medical records)</li>
@@ -739,7 +743,9 @@ const UsersRegistry = () => {
                                         <li>Created patient records</li>
                                     </ul>
                                     <p className="mt-3 p-2 bg-blue-50 dark:bg-blue-900/20 rounded text-muted-foreground border border-blue-200 dark:border-blue-800">
-                                        <strong>Recommendation:</strong> For users with medical records, use "Deactivate" instead to preserve data integrity while preventing login.
+                                        <strong>Recommendation:</strong> For users with medical
+                                        records, use "Deactivate" instead to preserve data integrity
+                                        while preventing login.
                                     </p>
                                 </div>
                             </div>

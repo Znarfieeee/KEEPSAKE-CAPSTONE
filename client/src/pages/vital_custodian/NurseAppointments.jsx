@@ -11,7 +11,7 @@ import AllAppointments from '@/components/doctors/appointments/AllAppointments'
 import AppointmentLoadingSkeleton from '@/components/doctors/appointments/AppointmentLoadingSkeleton'
 import { showToast } from '@/util/alertHelper'
 import { Button } from '@/components/ui/Button'
-import { Dialog, DialogTrigger } from '@/components/ui/dialog'
+import { Dialog, DialogTrigger } from '@/components/ui/Dialog'
 import { PlusCircle, Building2 } from 'lucide-react'
 
 // Lazy load the modal component

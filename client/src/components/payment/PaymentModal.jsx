@@ -7,7 +7,7 @@ import {
     DialogHeader,
     DialogTitle,
     DialogDescription,
-} from '@/components/ui/dialog'
+} from '@/components/ui/Dialog'
 import { Loader2, CreditCard, Shield } from 'lucide-react'
 import StripePaymentForm from './StripePaymentForm'
 
@@ -67,8 +67,8 @@ const PaymentModal = ({ isOpen, onClose, planType, amount }) => {
                         Upgrade to {planType === 'premium' ? 'Premium' : 'Basic'}
                     </DialogTitle>
                     <DialogDescription>
-                        Secure payment powered by Stripe. Your card information is never stored
-                        on our servers.
+                        Secure payment powered by Stripe. Your card information is never stored on
+                        our servers.
                     </DialogDescription>
                 </DialogHeader>
 
@@ -106,8 +106,8 @@ const PaymentModal = ({ isOpen, onClose, planType, amount }) => {
                                             KEEPSAKE Premium
                                         </p>
                                         <p className="text-sm text-blue-700 mt-1">
-                                            Full access to all features, unlimited storage,
-                                            priority support
+                                            Full access to all features, unlimited storage, priority
+                                            support
                                         </p>
                                         <p className="text-2xl font-bold text-blue-900 mt-3">
                                             ₱{amount}
