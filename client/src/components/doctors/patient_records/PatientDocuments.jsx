@@ -15,7 +15,7 @@ import { UploadDocumentModal } from '@/components/doctors/patient_records/Upload
 import { DocumentPreviewModal } from '@/components/doctors/patient_records/DocumentPreviewModal'
 import ConfirmationDialog from '@/components/ui/ConfirmationDialog'
 import { DocumentSkeleton } from '@/components/ui/DocumentSkeleton'
-import { Dialog } from '@/components/ui/dialog'
+import { Dialog } from '@/components/ui/Dialog'
 
 const DOCUMENT_TYPE_LABELS = {
     lab_result: 'Lab Result',

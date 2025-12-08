@@ -1,24 +1,11 @@
-import React, { useState, useEffect } from "react"
-import { getQRAuditHistory } from "../../api/qrCode"
-import {
-    Dialog,
-    DialogContent,
-    DialogHeader,
-    DialogTitle,
-    DialogDescription,
-} from "../ui/dialog"
-import { Button } from "../ui/Button"
-import { Card } from "../ui/Card"
-import {
-    FiClock,
-    FiUser,
-    FiMapPin,
-    FiShield,
-    FiAlertCircle,
-    FiRefreshCw
-} from "react-icons/fi"
-import { MdHistory } from "react-icons/md"
-import { AiOutlineLoading3Quarters } from "react-icons/ai"
+import React, { useState, useEffect } from 'react'
+import { getQRAuditHistory } from '../../api/qrCode'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '../ui/Dialog'
+import { Button } from '../ui/Button'
+import { Card } from '../ui/Card'
+import { FiClock, FiUser, FiMapPin, FiShield, FiAlertCircle, FiRefreshCw } from 'react-icons/fi'
+import { MdHistory } from 'react-icons/md'
+import { AiOutlineLoading3Quarters } from 'react-icons/ai'
 
 const QRAuditLog = ({ isOpen, qrId, onClose }) => {
     const [auditData, setAuditData] = useState(null)
@@ -35,7 +22,7 @@ const QRAuditLog = ({ isOpen, qrId, onClose }) => {
             const response = await getQRAuditHistory(qrId)
             setAuditData(response)
         } catch (err) {
-            setError(err.message || "Failed to load audit history")
+            setError(err.message || 'Failed to load audit history')
         } finally {
             setLoading(false)
         }
@@ -48,15 +35,15 @@ const QRAuditLog = ({ isOpen, qrId, onClose }) => {
     }, [isOpen, qrId])
 
     const formatDateTime = (dateString) => {
-        if (!dateString) return "N/A"
+        if (!dateString) return 'N/A'
         try {
-            return new Date(dateString).toLocaleString("en-US", {
-                year: "numeric",
-                month: "short",
-                day: "numeric",
-                hour: "2-digit",
-                minute: "2-digit",
-                second: "2-digit"
+            return new Date(dateString).toLocaleString('en-US', {
+                year: 'numeric',
+                month: 'short',
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit',
             })
         } catch {
             return dateString
@@ -65,16 +52,16 @@ const QRAuditLog = ({ isOpen, qrId, onClose }) => {
 
     const formatScope = (scope) => {
         const scopeLabels = {
-            view_only: "Basic Info",
-            allergies: "Allergies",
-            prescriptions: "Prescriptions",
-            vaccinations: "Vaccinations",
-            appointments: "Appointments",
-            vitals: "Vital Signs",
-            full_access: "Full Access"
+            view_only: 'Basic Info',
+            allergies: 'Allergies',
+            prescriptions: 'Prescriptions',
+            vaccinations: 'Vaccinations',
+            appointments: 'Appointments',
+            vitals: 'Vital Signs',
+            full_access: 'Full Access',
         }
-        if (!Array.isArray(scope)) return "N/A"
-        return scope.map(s => scopeLabels[s] || s).join(", ")
+        if (!Array.isArray(scope)) return 'N/A'
+        return scope.map((s) => scopeLabels[s] || s).join(', ')
     }
 
     return (
@@ -126,7 +113,7 @@ const QRAuditLog = ({ isOpen, qrId, onClose }) => {
                                     <div>
                                         <p className="text-xs text-blue-600">Share Type</p>
                                         <p className="font-medium text-blue-900 capitalize">
-                                            {auditData.qr_code?.share_type?.replace("_", " ")}
+                                            {auditData.qr_code?.share_type?.replace('_', ' ')}
                                         </p>
                                     </div>
                                     <div>
@@ -138,13 +125,20 @@ const QRAuditLog = ({ isOpen, qrId, onClose }) => {
                                     <div>
                                         <p className="text-xs text-blue-600">Total Uses</p>
                                         <p className="font-medium text-blue-900">
-                                            {auditData.qr_code?.use_count || 0} / {auditData.qr_code?.max_uses || "∞"}
+                                            {auditData.qr_code?.use_count || 0} /{' '}
+                                            {auditData.qr_code?.max_uses || '∞'}
                                         </p>
                                     </div>
                                     <div>
                                         <p className="text-xs text-blue-600">Status</p>
-                                        <p className={`font-medium ${auditData.qr_code?.is_active ? "text-green-700" : "text-red-700"}`}>
-                                            {auditData.qr_code?.is_active ? "Active" : "Revoked"}
+                                        <p
+                                            className={`font-medium ${
+                                                auditData.qr_code?.is_active
+                                                    ? 'text-green-700'
+                                                    : 'text-red-700'
+                                            }`}
+                                        >
+                                            {auditData.qr_code?.is_active ? 'Active' : 'Revoked'}
                                         </p>
                                     </div>
                                 </div>
@@ -166,19 +160,27 @@ const QRAuditLog = ({ isOpen, qrId, onClose }) => {
                                                         <div className="flex items-center gap-2 mb-2">
                                                             <FiUser className="text-gray-500" />
                                                             <span className="font-medium text-gray-900">
-                                                                {log.accessed_by_name || log.accessed_by || "Unknown User"}
+                                                                {log.accessed_by_name ||
+                                                                    log.accessed_by ||
+                                                                    'Unknown User'}
                                                             </span>
                                                         </div>
                                                         <div className="grid grid-cols-2 gap-2 text-xs">
                                                             <div>
-                                                                <p className="text-gray-500">Time</p>
+                                                                <p className="text-gray-500">
+                                                                    Time
+                                                                </p>
                                                                 <p className="text-gray-700">
-                                                                    {formatDateTime(log.accessed_at)}
+                                                                    {formatDateTime(
+                                                                        log.accessed_at
+                                                                    )}
                                                                 </p>
                                                             </div>
                                                             {log.facility_name && (
                                                                 <div>
-                                                                    <p className="text-gray-500">Facility</p>
+                                                                    <p className="text-gray-500">
+                                                                        Facility
+                                                                    </p>
                                                                     <p className="text-gray-700 flex items-center gap-1">
                                                                         <FiMapPin className="text-xs" />
                                                                         {log.facility_name}
@@ -187,15 +189,22 @@ const QRAuditLog = ({ isOpen, qrId, onClose }) => {
                                                             )}
                                                             {log.access_method && (
                                                                 <div>
-                                                                    <p className="text-gray-500">Method</p>
+                                                                    <p className="text-gray-500">
+                                                                        Method
+                                                                    </p>
                                                                     <p className="text-gray-700 capitalize">
-                                                                        {log.access_method.replace("_", " ")}
+                                                                        {log.access_method.replace(
+                                                                            '_',
+                                                                            ' '
+                                                                        )}
                                                                     </p>
                                                                 </div>
                                                             )}
                                                             {log.ip_address && (
                                                                 <div>
-                                                                    <p className="text-gray-500">IP Address</p>
+                                                                    <p className="text-gray-500">
+                                                                        IP Address
+                                                                    </p>
                                                                     <p className="text-gray-700 font-mono text-xs">
                                                                         {log.ip_address}
                                                                     </p>
@@ -210,7 +219,9 @@ const QRAuditLog = ({ isOpen, qrId, onClose }) => {
                                 ) : (
                                     <Card className="p-6 text-center bg-gray-50">
                                         <FiClock className="text-3xl text-gray-400 mx-auto mb-2" />
-                                        <p className="font-medium text-gray-700">No Access Records</p>
+                                        <p className="font-medium text-gray-700">
+                                            No Access Records
+                                        </p>
                                         <p className="text-sm text-gray-500 mt-1">
                                             This QR code has not been used yet
                                         </p>
@@ -222,11 +233,7 @@ const QRAuditLog = ({ isOpen, qrId, onClose }) => {
                 </div>
 
                 <div className="pt-4 border-t">
-                    <Button
-                        variant="outline"
-                        onClick={onClose}
-                        className="w-full"
-                    >
+                    <Button variant="outline" onClick={onClose} className="w-full">
                         Close
                     </Button>
                 </div>

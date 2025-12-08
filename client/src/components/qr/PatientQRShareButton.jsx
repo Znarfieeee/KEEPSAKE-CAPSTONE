@@ -1,34 +1,29 @@
-import React, { useState } from "react"
-import { Button } from "../ui/Button"
-import {
-    Dialog,
-    DialogContent,
-    DialogHeader,
-    DialogTitle,
-} from "../ui/dialog"
-import { MdQrCode2, MdShare } from "react-icons/md"
-import { FiList } from "react-icons/fi"
-import SecureQRGenerator from "./SecureQRGenerator"
-import QRCodeList from "./QRCodeList"
+import React, { useState } from 'react'
+import { Button } from '../ui/Button'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../ui/Dialog'
+import { MdQrCode2, MdShare } from 'react-icons/md'
+import { FiList } from 'react-icons/fi'
+import SecureQRGenerator from './SecureQRGenerator'
+import QRCodeList from './QRCodeList'
 
 const PatientQRShareButton = ({
     patientId,
-    patientName = "",
-    shareType = "medical_record",
-    defaultScope = ["view_only", "allergies"],
-    buttonText = "Share via QR",
-    buttonVariant = "outline",
-    buttonSize = "default",
+    patientName = '',
+    shareType = 'medical_record',
+    defaultScope = ['view_only', 'allergies'],
+    buttonText = 'Share via QR',
+    buttonVariant = 'outline',
+    buttonSize = 'default',
     showIcon = true,
     showManagement = true,
-    className = ""
+    className = '',
 }) => {
     const [showModal, setShowModal] = useState(false)
-    const [activeTab, setActiveTab] = useState("generate") // "generate" or "manage"
+    const [activeTab, setActiveTab] = useState('generate') // "generate" or "manage"
 
     const handleOpenModal = () => {
         setShowModal(true)
-        setActiveTab("generate")
+        setActiveTab('generate')
     }
 
     const handleCloseModal = () => {
@@ -69,11 +64,11 @@ const PatientQRShareButton = ({
                     {showManagement && (
                         <div className="flex border-b">
                             <button
-                                onClick={() => setActiveTab("generate")}
+                                onClick={() => setActiveTab('generate')}
                                 className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
-                                    activeTab === "generate"
-                                        ? "border-primary text-primary"
-                                        : "border-transparent text-gray-500 hover:text-gray-700"
+                                    activeTab === 'generate'
+                                        ? 'border-primary text-primary'
+                                        : 'border-transparent text-gray-500 hover:text-gray-700'
                                 }`}
                             >
                                 <span className="flex items-center gap-2">
@@ -82,11 +77,11 @@ const PatientQRShareButton = ({
                                 </span>
                             </button>
                             <button
-                                onClick={() => setActiveTab("manage")}
+                                onClick={() => setActiveTab('manage')}
                                 className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
-                                    activeTab === "manage"
-                                        ? "border-primary text-primary"
-                                        : "border-transparent text-gray-500 hover:text-gray-700"
+                                    activeTab === 'manage'
+                                        ? 'border-primary text-primary'
+                                        : 'border-transparent text-gray-500 hover:text-gray-700'
                                 }`}
                             >
                                 <span className="flex items-center gap-2">
@@ -99,7 +94,7 @@ const PatientQRShareButton = ({
 
                     {/* Tab Content */}
                     <div className="flex-1 overflow-y-auto py-4 px-1">
-                        {activeTab === "generate" ? (
+                        {activeTab === 'generate' ? (
                             <SecureQRGenerator
                                 patientId={patientId}
                                 shareType={shareType}
@@ -108,7 +103,7 @@ const PatientQRShareButton = ({
                                     // QR code generated successfully
                                 }}
                                 onError={(error) => {
-                                    console.error("QR Generation Error:", error)
+                                    console.error('QR Generation Error:', error)
                                 }}
                             />
                         ) : (

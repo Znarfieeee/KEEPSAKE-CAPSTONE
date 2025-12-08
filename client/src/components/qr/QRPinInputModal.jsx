@@ -6,7 +6,7 @@ import {
     DialogTitle,
     DialogDescription,
     DialogFooter,
-} from '../ui/dialog'
+} from '../ui/Dialog'
 import { Button } from '../ui/Button'
 import { FiLock, FiAlertCircle } from 'react-icons/fi'
 import { AiOutlineLoading3Quarters } from 'react-icons/ai'

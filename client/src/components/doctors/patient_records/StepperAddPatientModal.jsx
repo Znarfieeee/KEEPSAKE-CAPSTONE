@@ -6,7 +6,7 @@ import {
     DialogTitle,
     DialogDescription,
     DialogFooter,
-} from '@/components/ui/dialog'
+} from '@/components/ui/Dialog'
 import { Button } from '@/components/ui/Button'
 import { Progress } from '@/components/ui/progress'
 import { showToast } from '@/util/alertHelper'

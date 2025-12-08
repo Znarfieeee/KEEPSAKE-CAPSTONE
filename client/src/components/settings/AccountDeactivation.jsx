@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useAuth } from '../../context/auth'
 import { deactivateAccount } from '../../api/settings'
 import { showToast } from '../../util/alertHelper'
-import { Input } from '../ui/Input'
+import { Input } from '../ui/input'
 import { Label } from '../ui/label'
 import { Button } from '../ui/Button'
 import { Loader2, AlertTriangle, XCircle, Eye, EyeOff } from 'lucide-react'
@@ -13,7 +13,7 @@ import {
     DialogFooter,
     DialogHeader,
     DialogTitle,
-} from '../ui/dialog'
+} from '../ui/Dialog'
 
 const AccountDeactivation = () => {
     const { signOut } = useAuth()

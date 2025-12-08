@@ -12,7 +12,7 @@ import {
     DialogHeader,
     DialogFooter,
     DialogClose,
-} from '@/components/ui/dialog'
+} from '@/components/ui/Dialog'
 import {
     Select,
     SelectTrigger,
