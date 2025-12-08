@@ -875,8 +875,11 @@ def verify_2fa_login():
 
         user_record = user_response.data[0]
 
-        # Get user from auth.users
-        auth_user_response = supabase.auth.admin.get_user_by_id(user_id)
+        # Get user from auth.users using service role client
+        from config.settings import supabase_service_role_client
+        supabase_admin = supabase_service_role_client()
+
+        auth_user_response = supabase_admin.auth.admin.get_user_by_id(user_id)
         auth_user = auth_user_response.user
 
         # Create new Supabase session programmatically
@@ -918,8 +921,7 @@ def verify_2fa_login():
 
         # Create a new Supabase auth session for the user
         # We'll use the service role to create a session since they've already authenticated
-        from config.settings import supabase_service_role_client
-        supabase_admin = supabase_service_role_client()
+        # (supabase_admin already initialized above)
 
         # Create session tokens
         import time
