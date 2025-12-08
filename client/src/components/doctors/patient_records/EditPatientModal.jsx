@@ -122,8 +122,6 @@ const EditPatientModal = ({ onClose, patient, onSuccess }) => {
     // Initialize form data when patient changes
     useEffect(() => {
         if (patient) {
-            console.log('Initializing edit modal with patient data:', patient)
-
             const related = patient.related_records || {}
 
             // Basic patient information
@@ -227,8 +225,6 @@ const EditPatientModal = ({ onClose, patient, onSuccess }) => {
                 allergies: false,
                 anthropometric: false,
             })
-
-            console.log('Form data initialized successfully')
         }
     }, [patient])
 
@@ -273,14 +269,12 @@ const EditPatientModal = ({ onClose, patient, onSuccess }) => {
 
     // Handle form submission
     const handleSubmit = async () => {
-        console.log('Starting patient update process...')
         if (!validateBasicInfo()) return
 
         try {
             setLoading(true)
 
             const patientId = patient.patient_id || patient.id
-            console.log('Updating patient ID:', patientId)
 
             // Check which sections actually changed
             const basicChanged = hasFormChanged(patientForm, originalData.current.patient)
@@ -289,8 +283,6 @@ const EditPatientModal = ({ onClose, patient, onSuccess }) => {
             const allergiesChanged = dirtyFields.allergies && hasFormChanged(allergiesForm, originalData.current.allergies)
             const anthroChanged = dirtyFields.anthropometric && hasFormChanged(anthroForm, originalData.current.anthro)
 
-            console.log('Changed sections:', { basicChanged, deliveryChanged, screeningChanged, allergiesChanged, anthroChanged })
-
             // Update main patient record if changed
             if (basicChanged) {
                 const patientPayload = sanitizeObject({
@@ -298,7 +290,6 @@ const EditPatientModal = ({ onClose, patient, onSuccess }) => {
                     id: patientId,
                     patient_id: patientId,
                 })
-                console.log('Updating patient with payload:', patientPayload)
                 await onSuccess(patientPayload)
             }
 
@@ -325,7 +316,6 @@ const EditPatientModal = ({ onClose, patient, onSuccess }) => {
 
             if (anthroChanged && hasFormData(anthroForm)) {
                 const sanitizedAnthro = sanitizeObject(anthroForm)
-                console.log('Updating anthropometric data:', sanitizedAnthro)
                 promises.push(
                     updateAnthropometricRecord(patientId, sanitizedAnthro)
                         .then(() => { updatedSections.push('anthropometric'); return { section: 'anthropometric', success: true } })
@@ -335,7 +325,6 @@ const EditPatientModal = ({ onClose, patient, onSuccess }) => {
 
             if (allergiesChanged && hasFormData(allergiesForm)) {
                 const sanitizedAllergy = sanitizeObject(allergiesForm)
-                console.log('Updating allergy data:', sanitizedAllergy)
                 promises.push(
                     updateAllergyRecord(patientId, sanitizedAllergy)
                         .then(() => { updatedSections.push('allergies'); return { section: 'allergies', success: true } })
@@ -345,7 +334,6 @@ const EditPatientModal = ({ onClose, patient, onSuccess }) => {
 
             // Execute all updates
             if (promises.length > 0) {
-                console.log(`Processing ${promises.length} related record updates...`)
                 await Promise.allSettled(promises)
 
                 if (failedSections.length > 0) {
@@ -432,7 +420,6 @@ const EditPatientModal = ({ onClose, patient, onSuccess }) => {
                     original_patient: patient,
                 }
 
-                console.log('Dispatching patient-updated event:', eventDetail)
                 window.dispatchEvent(new CustomEvent('patient-updated', { detail: eventDetail }))
             }
 

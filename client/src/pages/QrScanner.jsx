@@ -60,7 +60,6 @@ const QrScanner = () => {
                 break
             default:
                 // If role is unknown, redirect to login
-                console.warn(`Unknown role for QR scanner redirect: ${role}`)
                 targetPath = '/login'
         }
 

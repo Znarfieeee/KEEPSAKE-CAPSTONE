@@ -193,7 +193,6 @@ const ParentChildInfo = () => {
                     patient.lastname || ''
                 }`.trim()}
                 onGenerate={(response) => {
-                    console.log('QR Code generated:', response)
                     showToast('success', 'QR code generated successfully')
                 }}
             />

@@ -210,7 +210,7 @@ const PrescriptionQRDialog = ({ isOpen, onClose, prescription, onGenerate = null
                             try {
                                 ctx.drawImage(imgElement, logoX, logoY, logoSize, logoSize)
                             } catch (logoErr) {
-                                console.warn('Could not draw logo:', logoErr)
+                                // Logo drawing failed, QR code still functional
                             }
                         }
 

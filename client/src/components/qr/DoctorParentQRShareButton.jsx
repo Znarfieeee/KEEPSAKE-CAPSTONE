@@ -35,7 +35,6 @@ const DoctorParentQRShareButton = ({
         : patient?.name || "Patient"
 
     if (!patientId) {
-        console.warn("DoctorParentQRShareButton: No patient ID provided")
         return null
     }
 

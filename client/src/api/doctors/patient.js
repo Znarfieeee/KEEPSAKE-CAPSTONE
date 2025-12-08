@@ -27,13 +27,11 @@ export const getPatientById = async (patientId) => {
 
 export const addPatientRecord = async (patientData) => {
   try {
-    console.log('Sending patient data:', patientData)
     const response = await axios.post(
       `${backendConnection()}/patient_records`,
       patientData,
       axiosConfig
     )
-    console.log('Patient creation response:', response.data)
     return response.data
   } catch (error) {
     console.error('Add patient record error:', error)
@@ -69,13 +67,11 @@ export const addPatientRecord = async (patientData) => {
 
 export const updatePatientRecord = async (patientData) => {
   try {
-    console.log('Updating patient record:', patientData)
     const response = await axios.put(
       `${backendConnection()}/patient_record/${patientData.id || patientData.patient_id}`,
       patientData,
       axiosConfig
     )
-    console.log('Patient update response:', response.data)
     return response.data
   } catch (error) {
     console.error('Update patient record error:', error)
@@ -109,12 +105,10 @@ export const deactivate_patient = async (patientId) => {
 
 export const deletePatientRecord = async (patientId) => {
   try {
-    console.log('Deleting patient record:', patientId)
     const response = await axios.delete(
       `${backendConnection()}/patient_record/${patientId}`,
       axiosConfig
     )
-    console.log('Patient deletion response:', response.data)
     return response.data
   } catch (error) {
     console.error('Delete patient record error:', error)
@@ -146,13 +140,11 @@ export const deletePatientRecord = async (patientId) => {
 // New API functions for related records
 export const addDeliveryRecord = async (patientId, deliveryData) => {
   try {
-    console.log('Sending delivery data for patient:', patientId, deliveryData)
     const response = await axios.post(
       `${backendConnection()}/patient_record/${patientId}/delivery`,
       deliveryData,
       axiosConfig
     )
-    console.log('Delivery record response:', response.data)
     return response.data
   } catch (error) {
     console.error('Add delivery record error:', error)
@@ -171,13 +163,11 @@ export const addDeliveryRecord = async (patientId, deliveryData) => {
 
 export const updateDeliveryRecord = async (patientId, deliveryData) => {
   try {
-    console.log('Updating delivery record for patient:', patientId, deliveryData)
     const response = await axios.put(
       `${backendConnection()}/patient_record/${patientId}/delivery`,
       deliveryData,
       axiosConfig
     )
-    console.log('Delivery update response:', response.data)
     return response.data
   } catch (error) {
     console.error('Update delivery record error:', error)
@@ -196,13 +186,11 @@ export const updateDeliveryRecord = async (patientId, deliveryData) => {
 
 export const addAnthropometricRecord = async (patientId, anthropometricData) => {
   try {
-    console.log('Sending anthropometric data for patient:', patientId, anthropometricData)
     const response = await axios.post(
       `${backendConnection()}/patient_record/${patientId}/anthropometric`,
       anthropometricData,
       axiosConfig
     )
-    console.log('Anthropometric record response:', response.data)
     return response.data
   } catch (error) {
     console.error('Add anthropometric record error:', error)
@@ -221,13 +209,11 @@ export const addAnthropometricRecord = async (patientId, anthropometricData) => 
 
 export const updateAnthropometricRecord = async (patientId, anthropometricData) => {
   try {
-    console.log('Updating anthropometric record for patient:', patientId, anthropometricData)
     const response = await axios.put(
       `${backendConnection()}/patient_record/${patientId}/anthropometric`,
       anthropometricData,
       axiosConfig
     )
-    console.log('Anthropometric update response:', response.data)
     return response.data
   } catch (error) {
     console.error('Update anthropometric record error:', error)
@@ -246,13 +232,11 @@ export const updateAnthropometricRecord = async (patientId, anthropometricData) 
 
 export const addScreeningRecord = async (patientId, screeningData) => {
   try {
-    console.log('Sending screening data for patient:', patientId, screeningData)
     const response = await axios.post(
       `${backendConnection()}/patient_record/${patientId}/screening`,
       screeningData,
       axiosConfig
     )
-    console.log('Screening record response:', response.data)
     return response.data
   } catch (error) {
     console.error('Add screening record error:', error)
@@ -271,13 +255,11 @@ export const addScreeningRecord = async (patientId, screeningData) => {
 
 export const updateScreeningRecord = async (patientId, screeningData) => {
   try {
-    console.log('Updating screening record for patient:', patientId, screeningData)
     const response = await axios.put(
       `${backendConnection()}/patient_record/${patientId}/screening`,
       screeningData,
       axiosConfig
     )
-    console.log('Screening update response:', response.data)
     return response.data
   } catch (error) {
     console.error('Update screening record error:', error)
@@ -296,13 +278,11 @@ export const updateScreeningRecord = async (patientId, screeningData) => {
 
 export const addAllergyRecord = async (patientId, allergyData) => {
   try {
-    console.log('Sending allergy data for patient:', patientId, allergyData)
     const response = await axios.post(
       `${backendConnection()}/patient_record/${patientId}/allergies`,
       allergyData,
       axiosConfig
     )
-    console.log('Allergy record response:', response.data)
     return response.data
   } catch (error) {
     console.error('Add allergy record error:', error)
@@ -321,13 +301,11 @@ export const addAllergyRecord = async (patientId, allergyData) => {
 
 export const updateAllergyRecord = async (patientId, allergyData) => {
   try {
-    console.log('Adding allergy record for patient:', patientId, allergyData)
     const response = await axios.post(
       `${backendConnection()}/patient_record/${patientId}/allergies`,
       allergyData,
       axiosConfig
     )
-    console.log('Allergy add response:', response.data)
     return response.data
   } catch (error) {
     console.error('Add allergy record error:', error)
@@ -412,13 +390,11 @@ export const getPatientParents = async (patientId) => {
  */
 export const assignExistingParent = async (patientId, data) => {
   try {
-    console.log('Assigning existing parent to patient:', patientId, data)
     const response = await axios.post(
       `${backendConnection()}/patient_record/${patientId}/assign-parent`,
       data,
       axiosConfig
     )
-    console.log('Assign parent response:', response.data)
     return response.data
   } catch (error) {
     console.error('Assign existing parent error:', error)
@@ -442,13 +418,11 @@ export const assignExistingParent = async (patientId, data) => {
  */
 export const createAndAssignParent = async (patientId, data) => {
   try {
-    console.log('Creating and assigning new parent to patient:', patientId, data)
     const response = await axios.post(
       `${backendConnection()}/patient_record/${patientId}/create-and-assign-parent`,
       data,
       axiosConfig
     )
-    console.log('Create and assign parent response:', response.data)
     return response.data
   } catch (error) {
     console.error('Create and assign parent error:', error)
@@ -475,13 +449,11 @@ export const createAndAssignParent = async (patientId, data) => {
  */
 export const updateParentRelationship = async (patientId, accessId, data) => {
   try {
-    console.log('Updating parent relationship:', patientId, accessId, data)
     const response = await axios.put(
       `${backendConnection()}/patient_record/${patientId}/parent_access/${accessId}`,
       data,
       axiosConfig
     )
-    console.log('Update parent relationship response:', response.data)
     return response.data
   } catch (error) {
     console.error('Update parent relationship error:', error)
@@ -505,12 +477,10 @@ export const updateParentRelationship = async (patientId, accessId, data) => {
  */
 export const removeParentAccess = async (patientId, accessId) => {
   try {
-    console.log('Removing parent access:', patientId, accessId)
     const response = await axios.delete(
       `${backendConnection()}/patient_record/${patientId}/remove-parent/${accessId}`,
       axiosConfig
     )
-    console.log('Remove parent access response:', response.data)
     return response.data
   } catch (error) {
     console.error('Remove parent access error:', error)

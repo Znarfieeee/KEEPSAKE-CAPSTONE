@@ -296,9 +296,6 @@ const ScheduleAppointmentModal = ({ onSuccess, facilityId, doctorId }) => {
             // Sanitize the data if sanitizeObject function is available
             const sanitizedData = sanitizeObject ? sanitizeObject(submitData) : submitData
 
-            // Debug: Log the data being sent
-            console.log('Scheduling appointment with data:', sanitizedData)
-
             const response = await scheduleAppointment(sanitizedData)
 
             if (response.status === 'success' || response.success) {

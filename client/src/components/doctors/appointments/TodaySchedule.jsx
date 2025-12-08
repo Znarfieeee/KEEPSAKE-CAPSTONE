@@ -33,11 +33,6 @@ const AppointmentCard = ({ appointment, onAction }) => {
             let response
             const appointmentId = appointment.appointment_id || appointment.id
 
-            // Debug logging
-            console.log('Appointment data:', appointment)
-            console.log('Appointment ID being used:', appointmentId)
-            console.log('Action type:', actionType)
-
             if (!appointmentId) {
                 throw new Error('Appointment ID is missing')
             }
@@ -68,7 +63,6 @@ const AppointmentCard = ({ appointment, onAction }) => {
                     showToast('success', 'Appointment cancelled successfully')
                     break
                 default:
-                    console.warn('Unknown appointment action:', actionType)
                     return
             }
 

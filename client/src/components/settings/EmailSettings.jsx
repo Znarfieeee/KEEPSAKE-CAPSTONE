@@ -53,11 +53,6 @@ const EmailSettings = () => {
                 setCodeSent(true)
                 setShowVerificationDialog(true)
                 showToast('success', response.message || 'Verification code sent to your email')
-
-                // For testing - log the code
-                if (response.code) {
-                    console.log('Email Change Verification Code:', response.code)
-                }
             }
         } catch (error) {
             showToast('error', error.message || 'Failed to send verification code')
