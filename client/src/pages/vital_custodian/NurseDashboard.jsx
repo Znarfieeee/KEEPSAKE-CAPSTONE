@@ -20,7 +20,7 @@ import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/Button'
 import { Skeleton } from '@/components/ui/skeleton'
-import { Dialog } from '@/components/ui/dialog'
+import { Dialog } from '@/components/ui/Dialog'
 import { getAppointmentsForMyFacility } from '@/api/doctors/appointment'
 import { getPatients } from '@/api/doctors/patient'
 

@@ -15,7 +15,7 @@ import PatientRecordsHeader from '@/components/doctors/patient_records/PatientRe
 import PatientRecordFilters from '@/components/doctors/patient_records/PatientRecordFilters'
 import PatientRecordsTable from '@/components/doctors/patient_records/PatientRecordsTable'
 import Unauthorized from '@/components/Unauthorized'
-import { Dialog } from '@/components/ui/dialog'
+import { Dialog } from '@/components/ui/Dialog'
 
 // Helper
 import { showToast } from '@/util/alertHelper'

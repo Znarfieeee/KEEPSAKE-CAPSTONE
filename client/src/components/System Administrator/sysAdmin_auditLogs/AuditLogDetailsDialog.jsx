@@ -7,7 +7,7 @@ import {
     DialogDescription,
     DialogHeader,
     DialogTitle,
-} from '@/components/ui/dialog'
+} from '@/components/ui/Dialog'
 
 const AuditLogDetailsDialog = ({ log, open, onOpenChange }) => {
     // Get action badge color
@@ -64,7 +64,10 @@ const AuditLogDetailsDialog = ({ log, open, onOpenChange }) => {
                         <div>
                             <Label className="font-bold">Action</Label>
                             <div className="mt-1">
-                                <Badge variant="outline" className={getActionBadgeColor(log.action_type)}>
+                                <Badge
+                                    variant="outline"
+                                    className={getActionBadgeColor(log.action_type)}
+                                >
                                     {log.action_type}
                                 </Badge>
                             </div>
