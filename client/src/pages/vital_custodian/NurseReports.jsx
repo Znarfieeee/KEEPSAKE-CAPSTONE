@@ -28,7 +28,7 @@ import {
     AlertCircle,
     RefreshCw,
 } from 'lucide-react'
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
+import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/Button'
 import { getNurseReports } from '@/api/nurse/reports'
@@ -93,10 +93,7 @@ const NurseReports = () => {
 
     // Frontend filtering
     const filteredData = useMemo(() => {
-        const { startDate, endDate } = calculateDateRange(
-            filters.datePreset,
-            filters.dateRange
-        )
+        const { startDate, endDate } = calculateDateRange(filters.datePreset, filters.dateRange)
 
         // Filter appointment data by date range
         const filteredAppointments = reportData.appointmentRateData.filter((item) => {
@@ -157,10 +154,7 @@ const NurseReports = () => {
             const worksheet = workbook.addWorksheet('Report Data')
 
             // Calculate date range for export metadata
-            const { startDate, endDate } = calculateDateRange(
-                filters.datePreset,
-                filters.dateRange
-            )
+            const { startDate, endDate } = calculateDateRange(filters.datePreset, filters.dateRange)
 
             const titleRow = worksheet.addRow([
                 `KEEPSAKE - ${selectedReport.replace(/-/g, ' ').toUpperCase()} REPORT`,
@@ -526,9 +520,7 @@ const NurseReports = () => {
                                 {selectedReport === 'record-update' &&
                                     filteredData.recordUpdateFrequencyData.length > 0 && (
                                         <ResponsiveContainer width="100%" height={300}>
-                                            <BarChart
-                                                data={filteredData.recordUpdateFrequencyData}
-                                            >
+                                            <BarChart data={filteredData.recordUpdateFrequencyData}>
                                                 <CartesianGrid strokeDasharray="3 3" />
                                                 <XAxis dataKey="category" />
                                                 <YAxis />
@@ -675,7 +667,10 @@ const NurseReports = () => {
                                             className="border-b border-gray-200 hover:bg-gray-50"
                                         >
                                             {Object.values(row).map((value, valIdx) => (
-                                                <td key={valIdx} className="px-4 py-3 text-gray-700">
+                                                <td
+                                                    key={valIdx}
+                                                    className="px-4 py-3 text-gray-700"
+                                                >
                                                     {typeof value === 'number'
                                                         ? value.toFixed(
                                                               typeof value === 'number' &&
@@ -731,7 +726,10 @@ const NurseReports = () => {
                                 tip: 'Simple format for quick reviews',
                             },
                         ].map((item) => (
-                            <div key={item.format} className="p-3 border border-gray-200 rounded-lg">
+                            <div
+                                key={item.format}
+                                className="p-3 border border-gray-200 rounded-lg"
+                            >
                                 <p className="font-semibold text-gray-900 text-sm">{item.format}</p>
                                 <p className="text-xs text-gray-600 mt-1">{item.desc}</p>
                                 <p className="text-xs text-green-600 mt-2 italic">{item.tip}</p>

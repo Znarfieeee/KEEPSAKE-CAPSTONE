@@ -1,6 +1,9 @@
 import React, { useState, useEffect } from 'react'
-import { getParentSubscriptions, getParentSubscriptionAnalytics } from '@/api/admin/parentSubscription'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import {
+    getParentSubscriptions,
+    getParentSubscriptionAnalytics,
+} from '@/api/admin/parentSubscription'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/badge'
 import { Users, TrendingUp, DollarSign, Activity, Filter, Download } from 'lucide-react'
 
@@ -12,7 +15,7 @@ const ParentSubscriptionsManagement = () => {
         status: '',
         plan_type: '',
         page: 1,
-        per_page: 50
+        per_page: 50,
     })
     const [pagination, setPagination] = useState(null)
 
@@ -27,7 +30,7 @@ const ParentSubscriptionsManagement = () => {
             // Fetch subscriptions and analytics in parallel
             const [subsResp, analyticsResp] = await Promise.all([
                 getParentSubscriptions(filters),
-                getParentSubscriptionAnalytics()
+                getParentSubscriptionAnalytics(),
             ])
 
             if (subsResp.status === 'success') {
@@ -46,15 +49,15 @@ const ParentSubscriptionsManagement = () => {
     }
 
     const handleFilterChange = (key, value) => {
-        setFilters(prev => ({
+        setFilters((prev) => ({
             ...prev,
             [key]: value,
-            page: 1 // Reset to first page when filters change
+            page: 1, // Reset to first page when filters change
         }))
     }
 
     const handlePageChange = (newPage) => {
-        setFilters(prev => ({ ...prev, page: newPage }))
+        setFilters((prev) => ({ ...prev, page: newPage }))
     }
 
     const getStatusBadge = (status) => {
@@ -63,7 +66,7 @@ const ParentSubscriptionsManagement = () => {
             cancelled: 'secondary',
             past_due: 'destructive',
             trialing: 'outline',
-            incomplete: 'outline'
+            incomplete: 'outline',
         }
         return <Badge variant={variants[status] || 'secondary'}>{status}</Badge>
     }
@@ -81,7 +84,7 @@ const ParentSubscriptionsManagement = () => {
         return new Date(dateString).toLocaleDateString('en-US', {
             year: 'numeric',
             month: 'short',
-            day: 'numeric'
+            day: 'numeric',
         })
     }
 
@@ -113,9 +116,12 @@ const ParentSubscriptionsManagement = () => {
                             <Users className="h-4 w-4 text-muted-foreground" />
                         </CardHeader>
                         <CardContent>
-                            <div className="text-2xl font-bold">{analytics.total_subscriptions}</div>
+                            <div className="text-2xl font-bold">
+                                {analytics.total_subscriptions}
+                            </div>
                             <p className="text-xs text-muted-foreground mt-1">
-                                {analytics.free_subscribers} free, {analytics.premium_subscribers} premium
+                                {analytics.free_subscribers} free, {analytics.premium_subscribers}{' '}
+                                premium
                             </p>
                         </CardContent>
                     </Card>
@@ -139,9 +145,7 @@ const ParentSubscriptionsManagement = () => {
 
                     <Card>
                         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                            <CardTitle className="text-sm font-medium">
-                                Monthly Revenue
-                            </CardTitle>
+                            <CardTitle className="text-sm font-medium">Monthly Revenue</CardTitle>
                             <DollarSign className="h-4 w-4 text-muted-foreground" />
                         </CardHeader>
                         <CardContent>
@@ -162,9 +166,12 @@ const ParentSubscriptionsManagement = () => {
                             <Activity className="h-4 w-4 text-muted-foreground" />
                         </CardHeader>
                         <CardContent>
-                            <div className="text-2xl font-bold">{analytics.active_subscriptions}</div>
+                            <div className="text-2xl font-bold">
+                                {analytics.active_subscriptions}
+                            </div>
                             <p className="text-xs text-muted-foreground mt-1">
-                                {analytics.past_due_subscriptions} past due, {analytics.expiring_soon} expiring soon
+                                {analytics.past_due_subscriptions} past due,{' '}
+                                {analytics.expiring_soon} expiring soon
                             </p>
                         </CardContent>
                     </Card>
@@ -183,9 +190,7 @@ const ParentSubscriptionsManagement = () => {
                             >
                                 Refresh
                             </button>
-                            <button
-                                className="px-3 py-1 text-sm bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors flex items-center gap-2"
-                            >
+                            <button className="px-3 py-1 text-sm bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors flex items-center gap-2">
                                 <Download className="h-4 w-4" />
                                 Export
                             </button>
@@ -224,7 +229,9 @@ const ParentSubscriptionsManagement = () => {
 
                         {(filters.status || filters.plan_type) && (
                             <button
-                                onClick={() => setFilters({ status: '', plan_type: '', page: 1, per_page: 50 })}
+                                onClick={() =>
+                                    setFilters({ status: '', plan_type: '', page: 1, per_page: 50 })
+                                }
                                 className="text-sm text-blue-600 hover:text-blue-700"
                             >
                                 Clear Filters
@@ -237,39 +244,56 @@ const ParentSubscriptionsManagement = () => {
                         <table className="w-full">
                             <thead>
                                 <tr className="border-b">
-                                    <th className="text-left p-4 font-medium text-gray-700">Parent Name</th>
-                                    <th className="text-left p-4 font-medium text-gray-700">Email</th>
-                                    <th className="text-left p-4 font-medium text-gray-700">Plan</th>
-                                    <th className="text-left p-4 font-medium text-gray-700">Status</th>
-                                    <th className="text-left p-4 font-medium text-gray-700">Current Period</th>
-                                    <th className="text-left p-4 font-medium text-gray-700">Created</th>
+                                    <th className="text-left p-4 font-medium text-gray-700">
+                                        Parent Name
+                                    </th>
+                                    <th className="text-left p-4 font-medium text-gray-700">
+                                        Email
+                                    </th>
+                                    <th className="text-left p-4 font-medium text-gray-700">
+                                        Plan
+                                    </th>
+                                    <th className="text-left p-4 font-medium text-gray-700">
+                                        Status
+                                    </th>
+                                    <th className="text-left p-4 font-medium text-gray-700">
+                                        Current Period
+                                    </th>
+                                    <th className="text-left p-4 font-medium text-gray-700">
+                                        Created
+                                    </th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {subscriptions.length > 0 ? (
                                     subscriptions.map((sub) => (
-                                        <tr key={sub.subscription_id} className="border-b hover:bg-gray-50 transition-colors">
+                                        <tr
+                                            key={sub.subscription_id}
+                                            className="border-b hover:bg-gray-50 transition-colors"
+                                        >
                                             <td className="p-4">
                                                 <div className="font-medium text-gray-900">
                                                     {sub.users?.first_name} {sub.users?.last_name}
                                                 </div>
                                             </td>
                                             <td className="p-4">
-                                                <div className="text-sm text-gray-600">{sub.users?.email}</div>
+                                                <div className="text-sm text-gray-600">
+                                                    {sub.users?.email}
+                                                </div>
                                             </td>
+                                            <td className="p-4">{getPlanBadge(sub.plan_type)}</td>
+                                            <td className="p-4">{getStatusBadge(sub.status)}</td>
                                             <td className="p-4">
-                                                {getPlanBadge(sub.plan_type)}
-                                            </td>
-                                            <td className="p-4">
-                                                {getStatusBadge(sub.status)}
-                                            </td>
-                                            <td className="p-4">
-                                                {sub.current_period_start && sub.current_period_end ? (
+                                                {sub.current_period_start &&
+                                                sub.current_period_end ? (
                                                     <div className="text-sm text-gray-600">
-                                                        {formatDate(sub.current_period_start)} - {formatDate(sub.current_period_end)}
+                                                        {formatDate(sub.current_period_start)} -{' '}
+                                                        {formatDate(sub.current_period_end)}
                                                     </div>
                                                 ) : (
-                                                    <span className="text-sm text-gray-400">N/A</span>
+                                                    <span className="text-sm text-gray-400">
+                                                        N/A
+                                                    </span>
                                                 )}
                                             </td>
                                             <td className="p-4">
@@ -294,9 +318,9 @@ const ParentSubscriptionsManagement = () => {
                     {pagination && pagination.total_pages > 1 && (
                         <div className="flex items-center justify-between mt-6 pt-4 border-t">
                             <div className="text-sm text-gray-600">
-                                Showing {((pagination.page - 1) * pagination.per_page) + 1} to{' '}
-                                {Math.min(pagination.page * pagination.per_page, pagination.total)} of{' '}
-                                {pagination.total} subscriptions
+                                Showing {(pagination.page - 1) * pagination.per_page + 1} to{' '}
+                                {Math.min(pagination.page * pagination.per_page, pagination.total)}{' '}
+                                of {pagination.total} subscriptions
                             </div>
 
                             <div className="flex items-center gap-2">

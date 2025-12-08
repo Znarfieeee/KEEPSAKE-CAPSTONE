@@ -4,14 +4,8 @@
  */
 
 import React from 'react'
-import { Card, CardContent } from "@/components/ui/card"
-import {
-    Bug,
-    Lightbulb,
-    MessageSquare,
-    HelpCircle,
-    CheckCircle
-} from 'lucide-react'
+import { Card, CardContent } from '@/components/ui/Card'
+import { Bug, Lightbulb, MessageSquare, HelpCircle, CheckCircle } from 'lucide-react'
 
 // Feedback type configurations
 const FEEDBACK_TYPES = [
@@ -24,7 +18,7 @@ const FEEDBACK_TYPES = [
         bgColor: 'bg-red-50',
         borderColor: 'border-red-200',
         selectedBg: 'bg-red-100',
-        selectedBorder: 'border-red-500'
+        selectedBorder: 'border-red-500',
     },
     {
         id: 'feature_suggestion',
@@ -35,7 +29,7 @@ const FEEDBACK_TYPES = [
         bgColor: 'bg-amber-50',
         borderColor: 'border-amber-200',
         selectedBg: 'bg-amber-100',
-        selectedBorder: 'border-amber-500'
+        selectedBorder: 'border-amber-500',
     },
     {
         id: 'general_feedback',
@@ -46,7 +40,7 @@ const FEEDBACK_TYPES = [
         bgColor: 'bg-cyan-50',
         borderColor: 'border-cyan-200',
         selectedBg: 'bg-cyan-100',
-        selectedBorder: 'border-cyan-500'
+        selectedBorder: 'border-cyan-500',
     },
     {
         id: 'question',
@@ -57,8 +51,8 @@ const FEEDBACK_TYPES = [
         bgColor: 'bg-purple-50',
         borderColor: 'border-purple-200',
         selectedBg: 'bg-purple-100',
-        selectedBorder: 'border-purple-500'
-    }
+        selectedBorder: 'border-purple-500',
+    },
 ]
 
 /**
@@ -72,9 +66,10 @@ const FeedbackTypeCard = ({ type, isSelected, onClick }) => {
             className={`
                 cursor-pointer transition-all duration-200
                 hover:shadow-md focus-within:ring-2 focus-within:ring-cyan-500
-                ${isSelected
-                    ? `${type.selectedBg} ${type.selectedBorder} border-2 shadow-md`
-                    : `${type.bgColor} ${type.borderColor} border-2 hover:border-gray-300`
+                ${
+                    isSelected
+                        ? `${type.selectedBg} ${type.selectedBorder} border-2 shadow-md`
+                        : `${type.bgColor} ${type.borderColor} border-2 hover:border-gray-300`
                 }
             `}
             onClick={() => onClick(type.id)}
@@ -102,14 +97,10 @@ const FeedbackTypeCard = ({ type, isSelected, onClick }) => {
                 </div>
 
                 {/* Label */}
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                    {type.label}
-                </h3>
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">{type.label}</h3>
 
                 {/* Description */}
-                <p className="text-sm text-gray-600 leading-relaxed">
-                    {type.description}
-                </p>
+                <p className="text-sm text-gray-600 leading-relaxed">{type.description}</p>
             </CardContent>
         </Card>
     )
@@ -120,10 +111,7 @@ const FeedbackTypeCard = ({ type, isSelected, onClick }) => {
  * @param {string} selectedType - Currently selected feedback type
  * @param {Function} onTypeChange - Callback when type changes
  */
-const FeedbackTypeSelector = ({
-    selectedType,
-    onTypeChange
-}) => {
+const FeedbackTypeSelector = ({ selectedType, onTypeChange }) => {
     return (
         <div className="w-full">
             {/* Section Label */}
@@ -131,9 +119,7 @@ const FeedbackTypeSelector = ({
                 <h2 className="text-xl font-semibold text-gray-900 mb-2">
                     What would you like to share?
                 </h2>
-                <p className="text-gray-600">
-                    Select the type of feedback you want to submit.
-                </p>
+                <p className="text-gray-600">Select the type of feedback you want to submit.</p>
             </div>
 
             {/* Type Grid */}

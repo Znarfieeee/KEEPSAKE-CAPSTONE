@@ -7,7 +7,7 @@ import { showToast } from '@/util/alertHelper'
 // UI Components
 import { Button } from '@/components/ui/Button'
 import { Skeleton } from '@/components/ui/skeleton'
-import { Card, CardContent } from '@/components/ui/card'
+import { Card, CardContent } from '@/components/ui/Card'
 import { AlertCircle } from 'lucide-react'
 
 // Parent Appointment Components

@@ -1,16 +1,17 @@
 import React from 'react'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/badge'
 import { AuditStatsCardsSkeleton } from './AuditLogsSkeleton'
 
 const AuditStatsCards = ({ stats, statsLoading }) => {
     // Use backend-calculated total if available, otherwise calculate from action_stats
-    const totalActions = stats?.total_actions !== undefined
-        ? stats.total_actions
-        : (stats?.action_stats?.create || 0) +
-          (stats?.action_stats?.update || 0) +
-          (stats?.action_stats?.delete || 0) +
-          (stats?.action_stats?.view || 0)
+    const totalActions =
+        stats?.total_actions !== undefined
+            ? stats.total_actions
+            : (stats?.action_stats?.create || 0) +
+              (stats?.action_stats?.update || 0) +
+              (stats?.action_stats?.delete || 0) +
+              (stats?.action_stats?.view || 0)
 
     // Show skeleton while loading
     if (statsLoading) {
@@ -57,9 +58,7 @@ const AuditStatsCards = ({ stats, statsLoading }) => {
                     <div className="text-2xl font-bold">
                         {(stats?.action_stats?.update || 0).toLocaleString()}
                     </div>
-                    <Badge className="mt-1 bg-blue-100 text-blue-800 border-blue-300">
-                        UPDATE
-                    </Badge>
+                    <Badge className="mt-1 bg-blue-100 text-blue-800 border-blue-300">UPDATE</Badge>
                 </CardContent>
             </Card>
 
