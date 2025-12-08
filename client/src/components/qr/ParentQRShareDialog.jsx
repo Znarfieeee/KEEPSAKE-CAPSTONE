@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react'
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '../ui/dialog'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '../ui/Dialog'
 import { Button } from '../ui/Button'
 import BrandedQRCode from './BrandedQRCode'
 import { generateQRCode } from '../../api/qrCode'

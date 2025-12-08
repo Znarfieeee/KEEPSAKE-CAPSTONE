@@ -13,7 +13,7 @@ import {
     DialogFooter,
     DialogHeader,
     DialogTitle,
-} from '../ui/dialog'
+} from '../ui/Dialog'
 
 const PhoneSettings = () => {
     const { user, updateUser } = useAuth()

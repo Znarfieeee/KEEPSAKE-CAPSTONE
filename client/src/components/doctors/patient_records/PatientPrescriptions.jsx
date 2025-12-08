@@ -5,7 +5,7 @@ import { NoResults } from '@/components/ui/no-results'
 import { TooltipHelper } from '@/util/TooltipHelper'
 import { Button } from '@/components/ui/Button'
 import { Eye, Search, PlusCircle, Share2 } from 'lucide-react'
-import { Dialog, DialogTrigger } from '@/components/ui/dialog'
+import { Dialog, DialogTrigger } from '@/components/ui/Dialog'
 import { showToast } from '../../../util/alertHelper'
 
 const AddPatientPrescriptionModal = lazy(() => import('./AddPatientPrescriptionModal'))

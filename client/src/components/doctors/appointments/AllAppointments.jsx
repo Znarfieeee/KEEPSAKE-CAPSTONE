@@ -14,7 +14,7 @@ import {
 } from 'lucide-react'
 import { cn, getStatusBadgeColor } from '@/util/utils'
 import { Button } from '@/components/ui/Button'
-import { Dialog, DialogTrigger } from '@/components/ui/dialog'
+import { Dialog, DialogTrigger } from '@/components/ui/Dialog'
 import ConfirmationDialog from '@/components/ui/ConfirmationDialog'
 import { showToast } from '@/util/alertHelper'
 import { cancelAppointment } from '@/api/doctors/appointment'

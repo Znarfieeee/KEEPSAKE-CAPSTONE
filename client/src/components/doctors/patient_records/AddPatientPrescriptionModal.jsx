@@ -13,7 +13,7 @@ import {
     DialogHeader,
     DialogTitle,
     DialogClose,
-} from '@/components/ui/dialog'
+} from '@/components/ui/Dialog'
 import {
     Select,
     SelectContent,

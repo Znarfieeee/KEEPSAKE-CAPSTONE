@@ -1,4 +1,4 @@
-import React from "react"
+import React from 'react'
 import {
     Dialog,
     DialogContent,
@@ -6,29 +6,23 @@ import {
     DialogTitle,
     DialogDescription,
     DialogFooter,
-} from "../ui/dialog"
-import { Button } from "../ui/Button"
-import { FiAlertTriangle, FiTrash2 } from "react-icons/fi"
-import { AiOutlineLoading3Quarters } from "react-icons/ai"
+} from '../ui/Dialog'
+import { Button } from '../ui/Button'
+import { FiAlertTriangle, FiTrash2 } from 'react-icons/fi'
+import { AiOutlineLoading3Quarters } from 'react-icons/ai'
 
-const QRRevokeModal = ({
-    isOpen,
-    qrCode,
-    onClose,
-    onConfirm,
-    loading = false
-}) => {
+const QRRevokeModal = ({ isOpen, qrCode, onClose, onConfirm, loading = false }) => {
     if (!qrCode) return null
 
     const formatDate = (dateString) => {
-        if (!dateString) return "N/A"
+        if (!dateString) return 'N/A'
         try {
-            return new Date(dateString).toLocaleString("en-US", {
-                year: "numeric",
-                month: "short",
-                day: "numeric",
-                hour: "2-digit",
-                minute: "2-digit"
+            return new Date(dateString).toLocaleString('en-US', {
+                year: 'numeric',
+                month: 'short',
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit',
             })
         } catch {
             return dateString
@@ -46,7 +40,8 @@ const QRRevokeModal = ({
                         <DialogTitle>Revoke QR Code</DialogTitle>
                     </div>
                     <DialogDescription>
-                        This action cannot be undone. The QR code will be immediately deactivated and can no longer be used.
+                        This action cannot be undone. The QR code will be immediately deactivated
+                        and can no longer be used.
                     </DialogDescription>
                 </DialogHeader>
 
@@ -61,13 +56,13 @@ const QRRevokeModal = ({
                             <div>
                                 <p className="text-xs font-medium text-red-600">Share Type</p>
                                 <p className="text-sm text-red-900 capitalize">
-                                    {qrCode.share_type?.replace("_", " ")}
+                                    {qrCode.share_type?.replace('_', ' ')}
                                 </p>
                             </div>
                             <div>
                                 <p className="text-xs font-medium text-red-600">Current Uses</p>
                                 <p className="text-sm text-red-900">
-                                    {qrCode.use_count || 0} / {qrCode.max_uses || "∞"}
+                                    {qrCode.use_count || 0} / {qrCode.max_uses || '∞'}
                                 </p>
                             </div>
                         </div>
@@ -89,7 +84,8 @@ const QRRevokeModal = ({
                             <div>
                                 <p className="text-sm font-medium text-amber-900">Warning</p>
                                 <p className="text-xs text-amber-700 mt-1">
-                                    Once revoked, anyone who has this QR code will no longer be able to access the patient data. This is logged in the audit trail.
+                                    Once revoked, anyone who has this QR code will no longer be able
+                                    to access the patient data. This is logged in the audit trail.
                                 </p>
                             </div>
                         </div>

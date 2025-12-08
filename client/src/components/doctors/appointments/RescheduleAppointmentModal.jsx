@@ -8,7 +8,7 @@ import {
     DialogHeader,
     DialogFooter,
     DialogClose,
-} from '@/components/ui/dialog'
+} from '@/components/ui/Dialog'
 import { Input } from '@/components/ui/Input'
 import { Label } from '@/components/ui/label'
 import { Calendar } from '@/components/ui/calendar'

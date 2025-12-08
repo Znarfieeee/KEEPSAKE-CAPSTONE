@@ -13,7 +13,7 @@ import {
     DialogFooter,
     DialogHeader,
     DialogTitle,
-} from '../ui/dialog'
+} from '../ui/Dialog'
 
 const EmailSettings = () => {
     const { user, signOut } = useAuth()

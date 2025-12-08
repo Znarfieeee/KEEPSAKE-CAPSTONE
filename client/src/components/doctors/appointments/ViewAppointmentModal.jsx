@@ -8,7 +8,7 @@ import {
     DialogHeader,
     DialogFooter,
     DialogClose,
-} from '@/components/ui/dialog'
+} from '@/components/ui/Dialog'
 import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'

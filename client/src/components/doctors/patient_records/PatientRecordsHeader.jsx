@@ -1,7 +1,7 @@
 import React from 'react'
 import { Button } from '@/components/ui/Button'
 import { PlusCircle, Download, BarChart3, UserPlus } from 'lucide-react'
-import { DialogTrigger } from '@/components/ui/dialog'
+import { DialogTrigger } from '@/components/ui/Dialog'
 
 const PatientRecordsHeader = ({ onExportCSV, onNewRecord, onInviteParent }) => {
     return (
