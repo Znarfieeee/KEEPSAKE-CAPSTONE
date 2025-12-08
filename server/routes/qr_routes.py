@@ -1,4 +1,4 @@
-from flask import Blueprint, jsonify, request, current_app
+from flask import Blueprint, jsonify, request, current_app, render_template
 from config.settings import supabase, supabase_service_role_client
 from utils.access_control import require_auth
 from utils.sanitize import sanitize_request_data
@@ -48,13 +48,53 @@ def get_patient_data_by_scope(patient_id, scope):
         # Add prescriptions if in scope
         if 'prescriptions' in scope or 'full_access' in scope:
             try:
+                # Get prescriptions with doctor and facility info
                 prescriptions = sr_client.table('prescriptions')\
-                    .select('prescription_id, patient_id, doctor_id, medication_name, dosage, frequency, duration, notes, status, created_at, updated_at')\
+                    .select('''
+                        *,
+                        doctor:users!prescriptions_doctor_id_fkey(user_id, firstname, middlename, lastname, specialty, license_number),
+                        facility:healthcare_facilities!prescriptions_facility_id_fkey(facility_id, facility_name, address, city, zip_code, contact_number)
+                    ''')\
                     .eq('patient_id', patient_id)\
-                    .order('created_at', desc=True)\
+                    .order('prescription_date', desc=True)\
                     .execute()
-                result['prescriptions'] = prescriptions.data or []
-            except Exception:
+
+                prescriptions_data = prescriptions.data or []
+
+                # Get medications for each prescription
+                if prescriptions_data:
+                    rx_ids = [rx.get('rx_id') for rx in prescriptions_data if rx.get('rx_id')]
+
+                    if rx_ids:
+                        medications = sr_client.table('prescription_medications')\
+                            .select('*')\
+                            .in_('rx_id', rx_ids)\
+                            .execute()
+
+                        # Map medications to prescriptions
+                        med_map = {}
+                        for med in (medications.data or []):
+                            rx_id = med.get('rx_id')
+                            med_map.setdefault(rx_id, []).append(med)
+
+                        # Attach medications to prescriptions
+                        for rx in prescriptions_data:
+                            rx['medications'] = med_map.get(rx.get('rx_id'), [])
+
+                            # Format doctor name
+                            if rx.get('doctor'):
+                                doctor = rx['doctor']
+                                rx['doctor_name'] = f"Dr. {doctor.get('firstname', '')} {doctor.get('lastname', '')}".strip()
+
+                            # Format facility info
+                            if rx.get('facility'):
+                                facility = rx['facility']
+                                rx['facility_name'] = facility.get('facility_name', '')
+                                rx['facility_address'] = f"{facility.get('address', '')}, {facility.get('city', '')}"
+
+                result['prescriptions'] = prescriptions_data
+            except Exception as e:
+                current_app.logger.error(f"Error fetching prescriptions: {e}")
                 result['prescriptions'] = []
 
         # Add vaccinations if in scope
@@ -243,15 +283,18 @@ def generate_token():
                     "status": 500
                 }), 500
 
-            # Get base URL from environment or use default
-            base_url = os.environ.get('FRONTEND_URL', 'http://localhost:5173')
+            # Get base URLs from environment
+            backend_url = os.environ.get('BACKEND_URL', 'http://localhost:5000')
+            frontend_url = os.environ.get('FRONTEND_URL', 'http://localhost:5173')
 
             # Use dedicated view page for specific share types
             share_type = data['share_type']
             if share_type == 'prescription':
-                access_url = f"{base_url}/prescription/view?token={token}"
+                # Prescription QR codes point to Flask HTML endpoint (no frontend needed)
+                access_url = f"{backend_url}/qr/prescription/public?token={token}"
             else:
-                access_url = f"{base_url}/qr_scanner?token={token}"
+                # Other QR codes still use frontend scanner
+                access_url = f"{frontend_url}/qr_scanner?token={token}"
 
             return jsonify({
                 "status": "success",
@@ -478,7 +521,10 @@ def access_prescription_public():
     """
     token = request.args.get('token')
     if not token:
-        return jsonify({"error": "Token is required", "status": "error"}), 400
+        return render_template('error.html',
+            error_title="Invalid Request",
+            error_message="No access token provided. Please use a valid QR code."
+        ), 400
 
     # Handle malformed URLs where PIN was appended with ? instead of &
     pin_from_token = None
@@ -503,37 +549,50 @@ def access_prescription_public():
             .execute()
 
         if not qr.data or len(qr.data) == 0:
-            return jsonify({"error": "Invalid or expired QR code", "status": "error"}), 404
+            return render_template('error.html',
+                error_title="Invalid QR Code",
+                error_message="This QR code is invalid or has been deactivated."
+            ), 404
 
         qr_data = qr.data[0]
 
         # 2. Verify this is a prescription QR code
         if qr_data['share_type'] != 'prescription':
-            return jsonify({
-                "error": "This endpoint only supports prescription QR codes",
-                "status": "error"
-            }), 400
+            return render_template('error.html',
+                error_title="Invalid QR Code Type",
+                error_message="This QR code is not for prescription access."
+            ), 400
 
         # 3. Check expiration
         expires_at = datetime.fromisoformat(qr_data['expires_at'].replace('Z', '+00:00'))
         if datetime.now(timezone.utc) > expires_at:
-            return jsonify({"error": "This prescription QR code has expired", "status": "expired"}), 403
+            return render_template('error.html',
+                error_title="QR Code Expired",
+                error_message="This prescription QR code has expired and is no longer valid."
+            ), 403
 
         # 4. Check usage limits
         if qr_data['max_uses'] and qr_data['use_count'] >= qr_data['max_uses']:
-            return jsonify({"error": "This QR code has reached its usage limit", "status": "limit_reached"}), 403
+            return render_template('error.html',
+                error_title="Usage Limit Reached",
+                error_message="This QR code has reached its maximum number of uses."
+            ), 403
 
         # 5. Check PIN if required
         if qr_data.get('pin_code'):
             provided_pin = request.args.get('pin') or pin_from_token
             if not provided_pin:
-                return jsonify({
-                    "error": "PIN required",
-                    "status": "pin_required",
-                    "requires_pin": True
-                }), 403
+                # Show PIN entry form
+                return render_template('pin_entry.html',
+                    token=token,
+                    error=None
+                ), 200
             if provided_pin != qr_data['pin_code']:
-                return jsonify({"error": "Invalid PIN", "status": "invalid_pin"}), 403
+                # Show PIN entry form with error
+                return render_template('pin_entry.html',
+                    token=token,
+                    error="Invalid PIN. Please try again."
+                ), 403
 
         # 6. Get patient data (prescription scope only)
         patient_id = qr_data['patient_id']
@@ -593,28 +652,131 @@ def access_prescription_public():
         except Exception as consent_log_error:
             current_app.logger.warning(f"Failed to log consent audit: {consent_log_error}")
 
-        # 10. Get generator info
+        # 10. Prepare data for HTML template
         generator_info = qr_data.get('users') or {}
         generated_by_name = f"{generator_info.get('firstname', '')} {generator_info.get('lastname', '')}".strip() or "Healthcare Provider"
 
-        return jsonify({
-            "status": "success",
-            "patient_data": patient_data,
-            "qr_metadata": {
-                "qr_id": qr_data['qr_id'],
-                "share_type": qr_data['share_type'],
-                "scope": scope,
-                "expires_at": qr_data['expires_at'],
-                "use_count": (qr_data.get('use_count') or 0) + 1,
-                "max_uses": qr_data.get('max_uses'),
-                "generated_by_name": generated_by_name,
-                "metadata": qr_data.get('metadata', {})
-            }
-        }), 200
+        # Get the prescription from metadata
+        metadata = qr_data.get('metadata', {})
+        prescriptions = patient_data.get('prescriptions', [])
+
+        # Find the specific prescription if prescription_id is in metadata
+        prescription = None
+        if metadata.get('prescription_id') and prescriptions:
+            prescription = next((p for p in prescriptions if p.get('rx_id') == metadata.get('prescription_id')), None)
+
+        # If not found, use the first prescription
+        if not prescription and prescriptions:
+            prescription = prescriptions[0]
+
+        if not prescription:
+            return render_template('error.html',
+                error_title="Prescription Not Found",
+                error_message="The requested prescription could not be found or has been removed."
+            ), 404
+
+        # Format dates
+        def format_date(date_str):
+            if not date_str:
+                return "N/A"
+            try:
+                dt = datetime.fromisoformat(date_str.replace('Z', '+00:00'))
+                return dt.strftime("%B %d, %Y")
+            except:
+                return date_str
+
+        # Calculate age from date of birth
+        def calculate_age(dob_str):
+            if not dob_str:
+                return "N/A"
+            try:
+                dob = datetime.fromisoformat(dob_str.replace('Z', '+00:00'))
+                today = datetime.now()
+                age = today.year - dob.year - ((today.month, today.day) < (dob.month, dob.day))
+
+                # Format age appropriately
+                if age < 1:
+                    # Calculate months for infants
+                    months = (today.year - dob.year) * 12 + today.month - dob.month
+                    if months < 1:
+                        days = (today - dob).days
+                        return f"{days} day{'s' if days != 1 else ''}"
+                    return f"{months} month{'s' if months != 1 else ''}"
+                elif age < 2:
+                    return f"{age} year old"
+                else:
+                    return f"{age} years old"
+            except:
+                return "N/A"
+
+        # Extract last segment of RX_ID
+        def get_short_rx_id(rx_id):
+            if not rx_id:
+                return "N/A"
+            try:
+                # Extract last segment after the last hyphen
+                return rx_id.split('-')[-1].upper()
+            except:
+                return rx_id
+
+        # Prepare patient info
+        patient_info = {
+            'name': f"{patient_data.get('firstname', '')} {patient_data.get('lastname', '')}".strip(),
+            'age': calculate_age(patient_data.get('date_of_birth')),
+            'sex': patient_data.get('sex', 'N/A')
+        }
+
+        # Fetch facility information from healthcare_facilities table
+        facility_data = None
+        facility_id = prescription.get('facility_id') or patient_data.get('facility_id')
+        if facility_id:
+            try:
+                facility_response = sr_client.table('healthcare_facilities').select('*').eq('facility_id', facility_id).single().execute()
+                facility_data = facility_response.data if facility_response.data else None
+            except Exception as facility_error:
+                current_app.logger.warning(f"Failed to fetch facility data: {facility_error}")
+
+        # Prepare prescription data
+        prescription_data = {
+            'rx_id': prescription.get('rx_id'),
+            'rx_id_short': get_short_rx_id(prescription.get('rx_id')),
+            'prescription_date': format_date(prescription.get('prescription_date')),
+            'doctor_name': prescription.get('doctor_name') or metadata.get('doctor_name') or 'N/A',
+            'doctor_specialty': prescription.get('doctor_specialty') or 'Physician',
+            'doctor_license': prescription.get('doctor_license') or prescription.get('license_number'),
+            'facility_name': prescription.get('facility_name') or (facility_data.get('facility_name') if facility_data else None),
+            'facility_address': prescription.get('facility_address') or (facility_data.get('address') if facility_data else None),
+            'facility_email': prescription.get('facility_email') or (facility_data.get('email') if facility_data else None),
+            'facility_contact': prescription.get('facility_contact') or prescription.get('facility_phone') or (facility_data.get('contact_number') if facility_data else None),
+            'facility_website': facility_data.get('website') if facility_data else None,
+            'medications': prescription.get('medications', []),
+            'doctor_instructions': prescription.get('doctor_instructions'),
+            'return_date': format_date(prescription.get('return_date')) if prescription.get('return_date') else None,
+            'allergies': patient_data.get('allergies', [])
+        }
+
+        # Logo URLs - use request base URL to construct absolute paths
+        logo1_url = request.url_root.rstrip('/') + '/static/logo1.png'
+        logo2_url = request.url_root.rstrip('/') + '/static/logo2.png'
+
+        # Current date
+        current_date = datetime.now().strftime("%B %d, %Y")
+
+        # Render HTML template
+        return render_template('prescription_view.html',
+            patient_info=patient_info,
+            prescription_data=prescription_data,
+            logo1_url=logo1_url,
+            logo2_url=logo2_url,
+            current_date=current_date
+        ), 200
 
     except Exception as e:
         current_app.logger.error(f"Failed to access prescription QR code: {e}")
-        return jsonify({"error": "Failed to access prescription data", "status": "error"}), 500
+        return render_template('error.html',
+            error_title="Access Error",
+            error_message="Failed to access prescription data. Please try again or contact support."
+        ), 500
 
 
 @qr_bp.route('/qr/list', methods=['GET'])

@@ -2,7 +2,7 @@ import React, { useRef, useState, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/auth'
 import { sanitizeInput } from '../util/sanitize'
-import { verify2FALogin } from '../api/auth'
+import { verify2FALogin, resend2FALoginCode } from '../api/auth'
 
 // Images
 import LOGO from '../assets/logo1.png'
@@ -44,6 +44,10 @@ const Login = () => {
     const [twoFACode, setTwoFACode] = useState('')
     const [twoFAUserId, setTwoFAUserId] = useState(null)
     const [twoFAEmail, setTwoFAEmail] = useState('')
+    const [resendCooldown, setResendCooldown] = useState(60) // Start with 60s countdown
+    const [resendLoading, setResendLoading] = useState(false)
+    const [resendSuccess, setResendSuccess] = useState(false)
+    const [resendAttempts, setResendAttempts] = useState(0)
 
     // Handle capslock detection
     const handleCapsLock = (e) => {
@@ -59,6 +63,24 @@ const Login = () => {
             window.removeEventListener('keyup', handleCapsLock)
         }
     }, [])
+
+    // Cooldown timer for resend - only runs when 2FA is shown
+    useEffect(() => {
+        if (show2FA && resendCooldown > 0) {
+            const timer = setTimeout(() => {
+                setResendCooldown(resendCooldown - 1)
+            }, 1000)
+            return () => clearTimeout(timer)
+        }
+    }, [show2FA, resendCooldown])
+
+    // Initialize countdown when 2FA screen is shown
+    useEffect(() => {
+        if (show2FA) {
+            setResendCooldown(60)
+            setResendAttempts(0)
+        }
+    }, [show2FA])
 
     // Auto-check for existing session on mount and redirect to proper dashboard
     useEffect(() => {
@@ -194,14 +216,71 @@ const Login = () => {
         setFormError(null)
 
         try {
-            await verify2FALogin(twoFAUserId, twoFACode)
-            // On success, signIn will handle the session and redirect
-            // We need to check the session and redirect manually
-            window.location.reload() // Force reload to refresh auth context
+            const response = await verify2FALogin(twoFAUserId, twoFACode)
+
+            // Check if we got user data in response
+            if (response?.status === 'success' && response?.user) {
+                const role = response.user.role
+
+                // Navigate directly based on role for faster experience
+                switch (role) {
+                    case 'admin':
+                        navigate('/admin', { replace: true })
+                        break
+                    case 'doctor':
+                        navigate('/pediapro', { replace: true })
+                        break
+                    case 'parent':
+                        navigate('/parent', { replace: true })
+                        break
+                    case 'vital_custodian':
+                    case 'nurse':
+                        navigate('/nurse', { replace: true })
+                        break
+                    case 'facility_admin':
+                        navigate('/facility_admin', { replace: true })
+                        break
+                    default:
+                        navigate('/', { replace: true })
+                }
+
+                // Trigger page reload to refresh auth context
+                setTimeout(() => {
+                    window.location.reload()
+                }, 100)
+            } else {
+                // Fallback to reload
+                window.location.reload()
+            }
         } catch (err) {
             setFormError(err?.message || 'Invalid verification code. Please try again.')
-        } finally {
             setIsLoading(false)
+        }
+    }
+
+    async function handleResend2FACode() {
+        if (resendCooldown > 0 || resendAttempts >= 3) {
+            return
+        }
+
+        setResendLoading(true)
+        setFormError(null)
+        setResendSuccess(false)
+
+        try {
+            await resend2FALoginCode(twoFAUserId)
+            setResendSuccess(true)
+            setResendCooldown(60) // Reset to 60 second countdown
+            setResendAttempts(resendAttempts + 1)
+
+            // Clear success message after 3 seconds
+            setTimeout(() => {
+                setResendSuccess(false)
+            }, 3000)
+        } catch (err) {
+            setFormError(err?.message || 'Failed to resend code. Please try again.')
+        } finally {
+            setResendLoading(false)
         }
     }
 
@@ -211,6 +290,9 @@ const Login = () => {
         setTwoFAUserId(null)
         setTwoFAEmail('')
         setFormError(null)
+        setResendCooldown(60)
+        setResendSuccess(false)
+        setResendAttempts(0)
     }
 
     return (
@@ -229,7 +311,14 @@ const Login = () => {
                 className="login-bg text-black flex justify-center items-center"
             >
                 <form
-                    onSubmit={show2FA ? (e) => { e.preventDefault(); handle2FAVerify(); } : handleSubmit}
+                    onSubmit={
+                        show2FA
+                            ? (e) => {
+                                  e.preventDefault()
+                                  handle2FAVerify()
+                              }
+                            : handleSubmit
+                    }
                     className="flex flex-col justify-center items-center shadow p-6 border-1 border-gray-200 bg-white w-md rounded-lg"
                 >
                     <div id="header-container" className="p-4 mb-6 space-y-2">
@@ -237,7 +326,9 @@ const Login = () => {
                         <span className="text-center">
                             {show2FA ? (
                                 <>
-                                    <h1 className="text-2xl font-bold">Two-Factor Authentication</h1>
+                                    <h1 className="text-2xl font-bold">
+                                        Two-Factor Authentication
+                                    </h1>
                                     <p className="text-sm">Enter the code sent to your email</p>
                                 </>
                             ) : (
@@ -266,7 +357,10 @@ const Login = () => {
                                 </div>
 
                                 <div>
-                                    <label htmlFor="2fa-code" className="block text-sm font-medium text-gray-700 mb-3">
+                                    <label
+                                        htmlFor="2fa-code"
+                                        className="block text-sm font-medium text-gray-700 mb-3"
+                                    >
                                         Verification Code
                                     </label>
                                     <div className="flex justify-center">
@@ -290,13 +384,60 @@ const Login = () => {
                                     </p>
                                 </div>
 
-                                <button
-                                    type="button"
-                                    onClick={handleBack2FA}
-                                    className="text-sm text-primary hover:text-secondary transition duration-300 ease-in-out"
-                                >
-                                    ← Back to login
-                                </button>
+                                {/* Resend code section */}
+                                {resendSuccess && (
+                                    <div className="p-3 bg-green-50 border border-green-200 rounded-md">
+                                        <p className="text-sm text-green-700 text-center">
+                                            ✓ Verification code sent successfully!
+                                        </p>
+                                    </div>
+                                )}
+
+                                <div className="text-center">
+                                    <p className="text-sm text-gray-600">
+                                        Didn't receive the code?{' '}
+                                        <button
+                                            type="button"
+                                            onClick={handleResend2FACode}
+                                            disabled={
+                                                resendCooldown > 0 ||
+                                                resendLoading ||
+                                                resendAttempts >= 3
+                                            }
+                                            className={`font-medium transition-colors ${
+                                                resendCooldown > 0 ||
+                                                resendLoading ||
+                                                resendAttempts >= 3
+                                                    ? 'text-gray-400 cursor-not-allowed'
+                                                    : 'text-primary hover:text-secondary cursor-pointer'
+                                            }`}
+                                        >
+                                            {resendLoading ? (
+                                                'Sending...'
+                                            ) : resendAttempts >= 3 ? (
+                                                'Max attempts reached'
+                                            ) : resendCooldown > 0 ? (
+                                                <>Resend Code ({resendCooldown}s)</>
+                                            ) : (
+                                                'Resend Code'
+                                            )}
+                                        </button>
+                                        {resendAttempts > 0 && resendAttempts < 3 && (
+                                            <span className="text-xs text-gray-500 ml-2">
+                                                ({resendAttempts}/3 attempts)
+                                            </span>
+                                        )}
+                                    </p>
+                                </div>
+                                <div className="flex justify-center items-center">
+                                    <button
+                                        type="button"
+                                        onClick={handleBack2FA}
+                                        className="text-sm text-black hover:text-primary transition duration-300 ease-in-out cursor-pointer"
+                                    >
+                                        Back to login
+                                    </button>
+                                </div>
                             </div>
                         ) : (
                             /* Login Form */
@@ -397,10 +538,10 @@ const Login = () => {
                                 isLoading={isLoading}
                                 onClick={show2FA ? handle2FAVerify : handleSubmit}
                                 className="w-[90%] mt-6 bg-primary text-white"
-                                loadingText={show2FA ? "Verifying..." : "Signing in..."}
+                                loadingText={show2FA ? 'Verifying...' : 'Signing in...'}
                                 type="submit"
                                 disabled={show2FA && twoFACode.length !== 6}
-                                children={show2FA ? "Verify Code" : "Sign in"}
+                                children={show2FA ? 'Verify Code' : 'Sign in'}
                             />
                         </div>
                     </div>
@@ -421,8 +562,8 @@ const Login = () => {
                                             <span className="underline text-primary">Why?</span>
                                         </TooltipTrigger>
                                         <TooltipContent>
-                                            Consult the nearest available clinic with KEEPSAKE to have an
-                                            account.
+                                            Consult the nearest available clinic with KEEPSAKE to
+                                            have an account.
                                         </TooltipContent>
                                     </Tooltip>
                                 </TooltipProvider>

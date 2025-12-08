@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PIN Required - KEEPSAKE</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .pin-container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            max-width: 400px;
+            width: 100%;
+            padding: 40px 30px;
+            text-align: center;
+        }
+
+        .lock-icon {
+            width: 80px;
+            height: 80px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 24px;
+            font-size: 40px;
+            color: white;
+        }
+
+        h1 {
+            font-size: 24px;
+            font-weight: 700;
+            color: #1a1a1a;
+            margin-bottom: 12px;
+        }
+
+        .subtitle {
+            font-size: 14px;
+            color: #6b7280;
+            margin-bottom: 32px;
+        }
+
+        .error-message {
+            background: #fef2f2;
+            border: 1px solid #fca5a5;
+            border-radius: 12px;
+            padding: 12px 16px;
+            margin-bottom: 24px;
+            color: #991b1b;
+            font-size: 14px;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            justify-content: center;
+        }
+
+        .pin-form {
+            margin-bottom: 24px;
+        }
+
+        .pin-input-container {
+            display: flex;
+            gap: 12px;
+            justify-content: center;
+            margin-bottom: 24px;
+        }
+
+        .pin-digit {
+            width: 60px;
+            height: 70px;
+            font-size: 32px;
+            font-weight: 700;
+            text-align: center;
+            border: 2px solid #e5e7eb;
+            border-radius: 12px;
+            outline: none;
+            transition: all 0.2s;
+        }
+
+        .pin-digit:focus {
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .submit-btn {
+            width: 100%;
+            padding: 16px;
+            font-size: 16px;
+            font-weight: 600;
+            color: white;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .submit-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+        }
+
+        .submit-btn:active {
+            transform: translateY(0);
+        }
+
+        .submit-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .security-note {
+            font-size: 12px;
+            color: #9ca3af;
+            margin-top: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+        }
+
+        /* Responsive */
+        @media (max-width: 480px) {
+            .pin-digit {
+                width: 50px;
+                height: 60px;
+                font-size: 28px;
+            }
+
+            .pin-input-container {
+                gap: 8px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="pin-container">
+        <div class="lock-icon">🔒</div>
+        <h1>PIN Required</h1>
+        <p class="subtitle">Please enter the 4-digit PIN to access this prescription</p>
+
+        {% if error %}
+        <div class="error-message">
+            <span>⚠</span>
+            <span>{{ error }}</span>
+        </div>
+        {% endif %}
+
+        <form method="GET" class="pin-form" id="pinForm">
+            <input type="hidden" name="token" value="{{ token }}">
+
+            <div class="pin-input-container">
+                <input type="text"
+                       class="pin-digit"
+                       maxlength="1"
+                       pattern="[0-9]"
+                       inputmode="numeric"
+                       id="pin1"
+                       required
+                       autofocus>
+                <input type="text"
+                       class="pin-digit"
+                       maxlength="1"
+                       pattern="[0-9]"
+                       inputmode="numeric"
+                       id="pin2"
+                       required>
+                <input type="text"
+                       class="pin-digit"
+                       maxlength="1"
+                       pattern="[0-9]"
+                       inputmode="numeric"
+                       id="pin3"
+                       required>
+                <input type="text"
+                       class="pin-digit"
+                       maxlength="1"
+                       pattern="[0-9]"
+                       inputmode="numeric"
+                       id="pin4"
+                       required>
+            </div>
+
+            <input type="hidden" name="pin" id="pinValue">
+
+            <button type="submit" class="submit-btn">
+                Access Prescription
+            </button>
+        </form>
+
+        <div class="security-note">
+            <span>🛡️</span>
+            <span>Secured by KEEPSAKE Healthcare System</span>
+        </div>
+    </div>
+
+    <script>
+        const pinInputs = document.querySelectorAll('.pin-digit');
+        const form = document.getElementById('pinForm');
+        const pinValue = document.getElementById('pinValue');
+
+        // Auto-focus next input
+        pinInputs.forEach((input, index) => {
+            input.addEventListener('input', (e) => {
+                const value = e.target.value;
+
+                // Only allow numbers
+                if (!/^[0-9]$/.test(value)) {
+                    e.target.value = '';
+                    return;
+                }
+
+                // Move to next input
+                if (value && index < pinInputs.length - 1) {
+                    pinInputs[index + 1].focus();
+                }
+
+                // Auto-submit when all 4 digits are filled
+                if (index === pinInputs.length - 1 && value) {
+                    submitForm();
+                }
+            });
+
+            // Handle backspace
+            input.addEventListener('keydown', (e) => {
+                if (e.key === 'Backspace' && !e.target.value && index > 0) {
+                    pinInputs[index - 1].focus();
+                }
+            });
+
+            // Handle paste
+            input.addEventListener('paste', (e) => {
+                e.preventDefault();
+                const pastedData = e.clipboardData.getData('text');
+                const digits = pastedData.match(/\d/g);
+
+                if (digits && digits.length === 4) {
+                    digits.forEach((digit, i) => {
+                        if (pinInputs[i]) {
+                            pinInputs[i].value = digit;
+                        }
+                    });
+                    pinInputs[3].focus();
+                    submitForm();
+                }
+            });
+        });
+
+        function submitForm() {
+            const pin = Array.from(pinInputs).map(input => input.value).join('');
+            if (pin.length === 4) {
+                pinValue.value = pin;
+                form.submit();
+            }
+        }
+
+        form.addEventListener('submit', (e) => {
+            e.preventDefault();
+            submitForm();
+        });
+    </script>
+</body>
+</html>

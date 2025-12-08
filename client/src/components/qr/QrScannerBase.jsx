@@ -10,7 +10,6 @@ import { useQrScanner } from '../../context/QrScannerContext'
 import { accessQRCode, grantParentAccess, checkQRCodeType } from '../../api/qrCode'
 
 // UI Components
-import { IoMdArrowBack } from 'react-icons/io'
 import {
     FiCheckCircle,
     FiAlertCircle,
@@ -31,19 +30,6 @@ import EnhancedQrScanner from '../ui/EnhancedQrScanner'
 import { Card } from '../ui/Card'
 import { Button } from '../ui/Button'
 import QRPinInputModal from './QRPinInputModal'
-
-// Role-specific dashboard routes for navigation
-const DASHBOARD_ROUTES = {
-    pediapro: '/pediapro',
-    doctor: '/pediapro',
-    vital_custodian: '/vital_custodian',
-    nurse: '/vital_custodian',
-    keepsaker: '/parent',
-    parent: '/parent',
-    facility_admin: '/facility_admin',
-    admin: '/admin',
-    system_admin: '/admin',
-}
 
 // Role display names
 const ROLE_NAMES = {
@@ -73,7 +59,7 @@ const SCAN_MODES = {
     UPLOAD: 'upload',
 }
 
-const QrScannerBase = ({ roleTitle = 'User', roleColor = 'primary', customBackPath = null }) => {
+const QrScannerBase = ({ roleTitle = 'User', roleColor = 'primary' }) => {
     const navigate = useNavigate()
     const { user, isAuthenticated } = useAuth()
     const { processQrData, clearScanResult, getRoleAction, getNavigationPath } = useQrScanner()
@@ -87,10 +73,8 @@ const QrScannerBase = ({ roleTitle = 'User', roleColor = 'primary', customBackPa
     const [qrMetadata, setQrMetadata] = useState(null)
     const [loading, setLoading] = useState(false)
     const [error, setError] = useState(null)
-    const [scanSuccess, setScanSuccess] = useState(false)
 
     // Upload state
-    const [uploadedImage, setUploadedImage] = useState(null)
     const [uploadPreview, setUploadPreview] = useState(null)
     const [isDragging, setIsDragging] = useState(false)
     const [processingUpload, setProcessingUpload] = useState(false)
@@ -105,7 +89,6 @@ const QrScannerBase = ({ roleTitle = 'User', roleColor = 'primary', customBackPa
 
     // Parent access grant state
     const [parentAccessGrant, setParentAccessGrant] = useState(null)
-    const [parentAccessLoading, setParentAccessLoading] = useState(false)
 
     // Get role display name
     const getRoleDisplayName = (role) => {
@@ -115,16 +98,6 @@ const QrScannerBase = ({ roleTitle = 'User', roleColor = 'primary', customBackPa
     // Get action display name
     const getActionDisplayName = (action) => {
         return ACTION_NAMES[action] || 'View'
-    }
-
-    // Handle role-aware back navigation
-    const handleGoBack = () => {
-        if (customBackPath) {
-            navigate(customBackPath)
-            return
-        }
-        const dashboardPath = DASHBOARD_ROUTES[user?.role] || '/'
-        navigate(dashboardPath)
     }
 
     // Extract token from QR code data (could be URL or direct token)
@@ -177,51 +150,76 @@ const QrScannerBase = ({ roleTitle = 'User', roleColor = 'primary', customBackPa
     }
 
     // Validate token with backend API
-    const validateToken = async (token, pin = null) => {
-        try {
-            const response = await accessQRCode(token, pin)
+    const validateToken = useCallback(async (token, pin = null) => {
+        const response = await accessQRCode(token, pin)
 
-            // Set patient info from response
-            const patientData = response.patient_data || {}
-            setPatientInfo({
-                id: patientData.patient_id || patientData.id,
-                name:
-                    `${patientData.firstname || ''} ${patientData.middlename || ''} ${
-                        patientData.lastname || ''
-                    }`.trim() || 'Unknown Patient',
-                dateOfBirth: patientData.date_of_birth || patientData.dateOfBirth,
-                sex: patientData.sex,
-                bloodType: patientData.bloodtype,
-                allergies: patientData.allergies || [],
-                prescriptions: patientData.prescriptions || [],
-                vaccinations: patientData.vaccinations || [],
-                appointments: patientData.appointments || [],
-                vitals: patientData.vitals || [],
-                facilityId: patientData.facility_id || user?.facility_id,
-            })
+        // Set patient info from response
+        const patientData = response.patient_data || {}
+        setPatientInfo({
+            id: patientData.patient_id || patientData.id,
+            name:
+                `${patientData.firstname || ''} ${patientData.middlename || ''} ${
+                    patientData.lastname || ''
+                }`.trim() || 'Unknown Patient',
+            dateOfBirth: patientData.date_of_birth || patientData.dateOfBirth,
+            sex: patientData.sex,
+            bloodType: patientData.bloodtype,
+            allergies: patientData.allergies || [],
+            prescriptions: patientData.prescriptions || [],
+            vaccinations: patientData.vaccinations || [],
+            appointments: patientData.appointments || [],
+            vitals: patientData.vitals || [],
+            facilityId: patientData.facility_id || user?.facility_id,
+        })
 
-            // Set QR metadata
-            setQrMetadata({
-                accessType: response.access_type,
-                scope: response.qr_metadata?.scope || [],
-                expiresAt: response.qr_metadata?.expires_at,
-                usesRemaining: response.qr_metadata?.max_uses
-                    ? response.qr_metadata.max_uses - (response.qr_metadata.use_count || 0)
-                    : null,
-                shareType: response.qr_metadata?.share_type,
-                generatedBy: response.qr_metadata?.generated_by_name,
-            })
+        // Set QR metadata
+        setQrMetadata({
+            accessType: response.access_type,
+            scope: response.qr_metadata?.scope || [],
+            expiresAt: response.qr_metadata?.expires_at,
+            usesRemaining: response.qr_metadata?.max_uses
+                ? response.qr_metadata.max_uses - (response.qr_metadata.use_count || 0)
+                : null,
+            shareType: response.qr_metadata?.share_type,
+            generatedBy: response.qr_metadata?.generated_by_name,
+        })
 
-            return true
-        } catch (err) {
-            throw err
+        return true
+    }, [user?.facility_id])
+
+    // Fetch patient information (legacy flow for non-token QR codes)
+    const fetchPatientInfoLegacy = useCallback(async (scanResult) => {
+        const qrData = scanResult.parsedData
+        let patientId = null
+
+        if (qrData.patientId || qrData.patient_id) {
+            patientId = qrData.patientId || qrData.patient_id
+        } else if (qrData.id) {
+            patientId = qrData.id
+        } else if (qrData.type === 'text') {
+            patientId = qrData.value
         }
-    }
+
+        if (patientId) {
+            // Simulate API delay
+            await new Promise((resolve) => setTimeout(resolve, 500))
+
+            // Mock patient data for legacy QR codes
+            setPatientInfo({
+                id: patientId,
+                name: qrData.patientName || 'Unknown Patient',
+                dateOfBirth: qrData.dateOfBirth || 'N/A',
+                facilityId: qrData.facilityId || user?.facility_id,
+            })
+
+            // No metadata for legacy codes
+            setQrMetadata(null)
+        }
+    }, [user?.facility_id])
 
     // Process QR code data (shared by both camera and upload)
-    const processScannedData = async (decodedText) => {
+    const processScannedData = useCallback(async (decodedText) => {
         try {
-            setScanSuccess(true)
             setError(null)
             setLoading(true)
 
@@ -232,10 +230,11 @@ const QrScannerBase = ({ roleTitle = 'User', roleColor = 'primary', customBackPa
             // Extract token or legacy data
             const extracted = extractToken(decodedText)
 
-            // Handle prescription QR codes - redirect to dedicated prescription view page
+            // Handle prescription QR codes - open Flask backend HTML view in new tab
             if (extracted.type === 'prescription') {
-                console.log('Prescription QR detected, redirecting to prescription view...')
-                navigate(`/prescription/view?token=${extracted.value}`)
+                console.log('Prescription QR detected, opening Flask prescription view in new tab...')
+                const backendUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000'
+                window.open(`${backendUrl}/qr/prescription/public?token=${extracted.value}`, '_blank')
                 return
             }
 
@@ -256,18 +255,14 @@ const QrScannerBase = ({ roleTitle = 'User', roleColor = 'primary', customBackPa
                         }
 
                         // Process parent access grant
-                        setParentAccessLoading(true)
                         try {
                             const grantResult = await grantParentAccess(extracted.value)
                             setParentAccessGrant(grantResult)
                             setLoading(false)
-                            setParentAccessLoading(false)
                             return
                         } catch (grantErr) {
                             setError(grantErr.message || 'Failed to grant parent access')
                             setLoading(false)
-                            setParentAccessLoading(false)
-                            setScanSuccess(false)
                             return
                         }
                     }
@@ -298,16 +293,15 @@ const QrScannerBase = ({ roleTitle = 'User', roleColor = 'primary', customBackPa
             console.error('Error handling scan:', err)
             setError(err.message || 'Failed to process scanned QR code')
             setLoading(false)
-            setScanSuccess(false)
         }
-    }
+    }, [processQrData, navigate, user, validateToken, fetchPatientInfoLegacy])
 
     // Handle successful QR code scan from camera
     const handleScanSuccess = useCallback(
-        async (decodedText, decodedResult) => {
+        async (decodedText) => {
             await processScannedData(decodedText)
         },
-        [processQrData, navigate]
+        [processScannedData]
     )
 
     // Handle QR code upload and decode
@@ -335,7 +329,6 @@ const QrScannerBase = ({ roleTitle = 'User', roleColor = 'primary', customBackPa
                 // Create image from file
                 const imageUrl = URL.createObjectURL(file)
                 setUploadPreview(imageUrl)
-                setUploadedImage(file)
 
                 const img = new Image()
                 img.onload = async () => {
@@ -421,7 +414,6 @@ const QrScannerBase = ({ roleTitle = 'User', roleColor = 'primary', customBackPa
 
     // Clear upload preview
     const clearUpload = () => {
-        setUploadedImage(null)
         setUploadPreview(null)
         setError(null)
         if (fileInputRef.current) {
@@ -452,42 +444,22 @@ const QrScannerBase = ({ roleTitle = 'User', roleColor = 'primary', customBackPa
         setShowPinModal(false)
         setPendingToken(null)
         setPinError(null)
-        setScanSuccess(false)
         setScannedData(null)
-    }
-
-    // Fetch patient information (legacy flow for non-token QR codes)
-    const fetchPatientInfoLegacy = async (scanResult) => {
-        const qrData = scanResult.parsedData
-        let patientId = null
-
-        if (qrData.patientId || qrData.patient_id) {
-            patientId = qrData.patientId || qrData.patient_id
-        } else if (qrData.id) {
-            patientId = qrData.id
-        } else if (qrData.type === 'text') {
-            patientId = qrData.value
-        }
-
-        if (patientId) {
-            // Simulate API delay
-            await new Promise((resolve) => setTimeout(resolve, 500))
-
-            // Mock patient data for legacy QR codes
-            setPatientInfo({
-                id: patientId,
-                name: qrData.patientName || 'Unknown Patient',
-                dateOfBirth: qrData.dateOfBirth || 'N/A',
-                facilityId: qrData.facilityId || user?.facility_id,
-            })
-
-            // No metadata for legacy codes
-            setQrMetadata(null)
-        }
     }
 
     // Handle navigation to patient details
     const handleViewDetails = () => {
+        // Check if this is a prescription QR code - open Flask HTML view in new tab
+        if (qrMetadata?.shareType === 'prescription') {
+            const backendUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000'
+            // Get the token from the scanned data
+            const extracted = extractToken(scannedData?.rawData || '')
+            if (extracted && extracted.value) {
+                window.open(`${backendUrl}/qr/prescription/public?token=${extracted.value}`, '_blank')
+                return
+            }
+        }
+
         if (patientInfo?.id) {
             const role = user?.role
             let path = null
@@ -534,13 +506,10 @@ const QrScannerBase = ({ roleTitle = 'User', roleColor = 'primary', customBackPa
         setPatientInfo(null)
         setQrMetadata(null)
         setError(null)
-        setScanSuccess(false)
         setPendingToken(null)
         setPinError(null)
-        setUploadedImage(null)
         setUploadPreview(null)
         setParentAccessGrant(null)
-        setParentAccessLoading(false)
         clearScanResult()
         if (fileInputRef.current) {
             fileInputRef.current.value = ''
@@ -619,15 +588,7 @@ const QrScannerBase = ({ roleTitle = 'User', roleColor = 'primary', customBackPa
             <canvas ref={canvasRef} className="hidden" />
 
             {/* Back Button */}
-            <div className="absolute top-8 left-8 z-10">
-                <div
-                    onClick={handleGoBack}
-                    className="flex items-center gap-2 text-gray-700 hover:text-primary transition duration-300 ease-in-out cursor-pointer bg-white px-4 py-2 rounded-lg shadow-sm hover:shadow-md"
-                >
-                    <IoMdArrowBack className="text-2xl" />
-                    <span className="text-sm font-medium">Go back</span>
-                </div>
-            </div>
+            <div className="absolute top-8 left-8 z-10"></div>
 
             <div className="container mx-auto px-4">
                 <div className="max-w-4xl mx-auto">
