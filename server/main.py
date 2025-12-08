@@ -108,7 +108,7 @@ def setup_redis_session():
             SESSION_COOKIE_HTTPONLY = True,
             SESSION_COOKIE_SECURE = True if os.environ.get('FLASK_ENV') == 'production' else False,
             SESSION_COOKIE_SAMESITE = 'Lax',
-            PERMANENT_SESSION_LIFETIME = timedelta(minutes=30), #30 minutes timeout
+            PERMANENT_SESSION_LIFETIME = timedelta(minutes=43800), #30 minutes timeout
             SESSION_COOKIE_DOMAIN = os.environ.get('COOKIE_DOMAIN')
         )
 
@@ -148,12 +148,15 @@ app.config.update(
 Session(app)
 
 # Allow local Vite dev server
-allowed_origins = [
-    "http://localhost:5173",
-    "http://127.0.0.1:5173",
-    "http://localhost:5000",
-    "http://127.0.0.1:5000"
-]
+if os.environ.get('FLASK_ENV') == 'production':
+    allowed_origins = [
+        "https://keepsake-pi.vercel.app/",
+
+    ]
+else:
+    allowed_origins = [
+        "http://localhost:5173",
+    ]
 
 CORS(
     app,
