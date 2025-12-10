@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/Input'
+import { Skeleton } from '@/components/ui/Skeleton'
 import {
     Select,
     SelectContent,
@@ -83,7 +84,7 @@ const STATUS_ICONS = {
 /**
  * Stats Card Component
  */
-const StatsCard = ({ title, value, icon: Icon, color = 'cyan', subtitle }) => {
+const StatsCard = ({ title, value, icon: Icon, color = 'cyan', subtitle, isLoading = false }) => {
     const colorClasses = {
         cyan: 'bg-cyan-100 text-cyan-600',
         amber: 'bg-amber-100 text-amber-600',
@@ -96,10 +97,18 @@ const StatsCard = ({ title, value, icon: Icon, color = 'cyan', subtitle }) => {
         <Card>
             <CardContent className="p-6">
                 <div className="flex items-center justify-between">
-                    <div>
+                    <div className="flex-1">
                         <p className="text-sm font-medium text-gray-500">{title}</p>
-                        <p className="text-3xl font-bold text-gray-900 mt-1">{value}</p>
-                        {subtitle && <p className="text-xs text-gray-500 mt-1">{subtitle}</p>}
+                        {isLoading ? (
+                            <Skeleton className="h-8 w-16 mt-2" />
+                        ) : (
+                            <>
+                                <p className="text-3xl font-bold text-gray-900 mt-1">{value}</p>
+                                {subtitle && (
+                                    <p className="text-xs text-gray-500 mt-1">{subtitle}</p>
+                                )}
+                            </>
+                        )}
                     </div>
                     <div className={`p-3 rounded-xl ${colorClasses[color]}`}>
                         <Icon className="h-6 w-6" />
@@ -117,7 +126,8 @@ const FeedbackDashboard = () => {
     // State
     const [feedbackList, setFeedbackList] = useState([])
     const [stats, setStats] = useState(null)
-    const [isLoading, setIsLoading] = useState(true)
+    const [isLoadingFeedback, setIsLoadingFeedback] = useState(true)
+    const [isLoadingStats, setIsLoadingStats] = useState(true)
     const [isRefreshing, setIsRefreshing] = useState(false)
 
     // Filters
@@ -141,6 +151,7 @@ const FeedbackDashboard = () => {
     // Fetch feedback data
     const fetchFeedback = useCallback(async () => {
         try {
+            setIsLoadingFeedback(true)
             const params = {
                 page: currentPage,
                 limit: itemsPerPage,
@@ -159,37 +170,39 @@ const FeedbackDashboard = () => {
         } catch (error) {
             console.error('Error fetching feedback:', error)
             showToast('error', 'Failed to load feedback. Please try again.')
+        } finally {
+            setIsLoadingFeedback(false)
         }
-    }, [currentPage, statusFilter, typeFilter, showToast])
+    }, [currentPage, statusFilter, typeFilter])
 
     // Fetch stats
     const fetchStats = useCallback(async () => {
         try {
+            setIsLoadingStats(true)
             const response = await getFeedbackStats()
             if (response.status === 'success') {
                 setStats(response.data)
             }
         } catch (error) {
             console.error('Error fetching stats:', error)
+        } finally {
+            setIsLoadingStats(false)
         }
     }, [])
 
     // Initial load
     useEffect(() => {
-        const loadData = async () => {
-            setIsLoading(true)
-            await Promise.all([fetchFeedback(), fetchStats()])
-            setIsLoading(false)
-        }
-        loadData()
+        // Load data in parallel
+        fetchFeedback()
+        fetchStats()
     }, [fetchFeedback, fetchStats])
 
     // Refresh when filters change
     useEffect(() => {
-        if (!isLoading) {
+        if (!isLoadingFeedback && !isLoadingStats) {
             fetchFeedback()
         }
-    }, [currentPage, statusFilter, typeFilter])
+    }, [currentPage, statusFilter, typeFilter, fetchFeedback])
 
     // Handlers
     const handleRefresh = async () => {
@@ -252,14 +265,6 @@ const FeedbackDashboard = () => {
         })
     }
 
-    if (isLoading) {
-        return (
-            <div className="flex items-center justify-center min-h-[400px]">
-                <Loader2 className="h-8 w-8 animate-spin text-cyan-600" />
-            </div>
-        )
-    }
-
     return (
         <div className="space-y-6">
             {/* Header */}
@@ -275,42 +280,45 @@ const FeedbackDashboard = () => {
             </div>
 
             {/* Stats Cards */}
-            {stats && (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-                    <StatsCard
-                        title="Total Feedback"
-                        value={stats.total}
-                        icon={BarChart3}
-                        color="cyan"
-                    />
-                    <StatsCard
-                        title="Bug Reports"
-                        value={stats.by_type?.bug_report || 0}
-                        icon={Bug}
-                        color="red"
-                    />
-                    <StatsCard
-                        title="Feature Requests"
-                        value={stats.by_type?.feature_suggestion || 0}
-                        icon={Lightbulb}
-                        color="amber"
-                    />
-                    <StatsCard
-                        title="Pending Review"
-                        value={
-                            (stats.by_status?.submitted || 0) + (stats.by_status?.under_review || 0)
-                        }
-                        icon={Clock}
-                        color="purple"
-                    />
-                    <StatsCard
-                        title="Resolved"
-                        value={stats.by_status?.resolved || 0}
-                        icon={CheckCircle}
-                        color="green"
-                    />
-                </div>
-            )}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+                <StatsCard
+                    title="Total Feedback"
+                    value={stats?.total || 0}
+                    icon={BarChart3}
+                    color="cyan"
+                    isLoading={isLoadingStats}
+                />
+                <StatsCard
+                    title="Bug Reports"
+                    value={stats?.by_type?.bug_report || 0}
+                    icon={Bug}
+                    color="red"
+                    isLoading={isLoadingStats}
+                />
+                <StatsCard
+                    title="Feature Requests"
+                    value={stats?.by_type?.feature_suggestion || 0}
+                    icon={Lightbulb}
+                    color="amber"
+                    isLoading={isLoadingStats}
+                />
+                <StatsCard
+                    title="Pending Review"
+                    value={
+                        (stats?.by_status?.submitted || 0) + (stats?.by_status?.under_review || 0)
+                    }
+                    icon={Clock}
+                    color="purple"
+                    isLoading={isLoadingStats}
+                />
+                <StatsCard
+                    title="Resolved"
+                    value={stats?.by_status?.resolved || 0}
+                    icon={CheckCircle}
+                    color="green"
+                    isLoading={isLoadingStats}
+                />
+            </div>
 
             {/* Filters */}
             <Card>
@@ -369,7 +377,23 @@ const FeedbackDashboard = () => {
 
             {/* Mobile Card View */}
             <div className="block lg:hidden space-y-4">
-                {filteredFeedback.length === 0 ? (
+                {isLoadingFeedback ? (
+                    Array.from({ length: 3 }).map((_, i) => (
+                        <Card key={i} className="overflow-hidden">
+                            <CardContent className="p-4">
+                                <div className="flex items-start justify-between mb-3">
+                                    <Skeleton className="h-5 w-32" />
+                                    <Skeleton className="h-6 w-24 rounded-full" />
+                                </div>
+                                <Skeleton className="h-6 w-48 mb-3" />
+                                <div className="flex gap-2 pt-2 border-t">
+                                    <Skeleton className="h-10 flex-1" />
+                                    <Skeleton className="h-10 w-10" />
+                                </div>
+                            </CardContent>
+                        </Card>
+                    ))
+                ) : filteredFeedback.length === 0 ? (
                     <Card>
                         <CardContent className="text-center py-12 text-gray-500">
                             No feedback found matching your criteria.
@@ -454,7 +478,33 @@ const FeedbackDashboard = () => {
                             </TableRow>
                         </TableHeader>
                         <TableBody>
-                            {filteredFeedback.length === 0 ? (
+                            {isLoadingFeedback ? (
+                                Array.from({ length: 5 }).map((_, i) => (
+                                    <TableRow key={i}>
+                                        <TableCell>
+                                            <Skeleton className="h-4 w-12" />
+                                        </TableCell>
+                                        <TableCell>
+                                            <Skeleton className="h-4 w-48" />
+                                        </TableCell>
+                                        <TableCell>
+                                            <Skeleton className="h-4 w-20" />
+                                        </TableCell>
+                                        <TableCell>
+                                            <Skeleton className="h-6 w-24 rounded-full" />
+                                        </TableCell>
+                                        <TableCell>
+                                            <Skeleton className="h-4 w-32" />
+                                        </TableCell>
+                                        <TableCell className="text-right">
+                                            <div className="flex justify-end gap-2">
+                                                <Skeleton className="h-8 w-8 rounded" />
+                                                <Skeleton className="h-8 w-8 rounded" />
+                                            </div>
+                                        </TableCell>
+                                    </TableRow>
+                                ))
+                            ) : filteredFeedback.length === 0 ? (
                                 <TableRow>
                                     <TableCell
                                         colSpan={6}
