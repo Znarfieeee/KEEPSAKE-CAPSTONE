@@ -52,7 +52,7 @@ const systemSideNavLinks = [
     {
         icon: <BiHelpCircle className="text-xl" />,
         title: 'Help & Support',
-        to: '/pediapro/help-support',
+        to: '/pediapro/help_support',
     },
     {
         icon: <MessageSquarePlus className="text-xl" />,
