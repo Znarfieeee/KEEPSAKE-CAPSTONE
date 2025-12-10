@@ -14,15 +14,12 @@ export const AuthProvider = ({ children }) => {
     const navigate = useNavigate()
 
     // Session timing constants
-    const REFRESH_INTERVAL = 15 * 60 * 1000 // 15 minutes - refresh tokens
-    const ACTIVITY_THROTTLE = 30 * 1000 // 30 seconds - throttle activity updates
-    const VISIBILITY_REFRESH_THRESHOLD = 5 * 60 * 1000 // 5 minutes - refresh when returning to tab
-    // Note: No IDLE_LOGOUT_TIME - sessions persist for 30 days based on backend Redis timeout
+    // Sessions persist for 30 days in Redis - no auto-logout
+    // Only refresh JWT tokens periodically to maintain valid authentication
+    const REFRESH_INTERVAL = 15 * 60 * 1000 // 15 minutes - refresh JWT tokens
 
     const refreshTimerRef = useRef(null)
-    const lastActivityRef = useRef(Date.now())
     const lastRefreshRef = useRef(Date.now())
-    const isActiveRef = useRef(true)
     const refreshPromiseRef = useRef(null) // Prevent concurrent refresh calls
 
     const clearAllTimers = useCallback(() => {
@@ -63,7 +60,6 @@ export const AuthProvider = ({ children }) => {
             if (data.status === 'success' && data.user) {
                 setUser(data.user)
                 setIsAuthenticated(true)
-                lastActivityRef.current = Date.now()
                 lastRefreshRef.current = Date.now()
                 setSessionStatus('active')
 
@@ -186,8 +182,6 @@ export const AuthProvider = ({ children }) => {
         async (silent = false) => {
             try {
                 setLoading(true)
-                isActiveRef.current = false
-
                 clearAllTimers()
 
                 if (!silent) {
@@ -222,49 +216,26 @@ export const AuthProvider = ({ children }) => {
         [clearAllTimers, navigate]
     )
 
-    const handleActivity = useCallback(() => {
-        if (!isAuthenticated) return
-
-        const now = Date.now()
-        const timeSinceLastActivity = now - lastActivityRef.current
-
-        if (timeSinceLastActivity < ACTIVITY_THROTTLE) return
-
-        lastActivityRef.current = now
-        isActiveRef.current = true
-        setSessionStatus('active')
-
-        // Idle logout disabled - sessions now expire based on backend Redis timeout (30 days)
-        // No automatic logout on inactivity - only token expiry will log users out
-    }, [isAuthenticated, ACTIVITY_THROTTLE])
-
+    // Start automatic token refresh timer
+    // No activity tracking - sessions persist for 30 days in Redis
+    // Only refresh JWT tokens periodically to maintain authentication
     useEffect(() => {
         if (!isAuthenticated) return
 
-        const events = ['mousemove', 'keydown', 'click', 'scroll', 'touchstart']
-        events.forEach((e) => window.addEventListener(e, handleActivity))
-
-        return () => {
-            events.forEach((e) => window.removeEventListener(e, handleActivity))
-        }
-    }, [isAuthenticated, handleActivity])
-
-    const _startSessionManagement = useCallback(() => {
-        if (!isAuthenticated) return
         clearAllTimers()
+
+        // Refresh tokens every 15 minutes
         refreshTimerRef.current = setInterval(async () => {
             const now = Date.now()
             const timeSinceLastRefresh = now - lastRefreshRef.current
 
-            // Refresh token every 15 minutes regardless of activity
-            // No idle check - sessions persist for 30 days based on backend Redis timeout
             if (timeSinceLastRefresh >= REFRESH_INTERVAL) {
                 await runRefreshSession()
             }
         }, REFRESH_INTERVAL)
 
-        handleActivity()
-    }, [isAuthenticated, handleActivity, clearAllTimers, runRefreshSession, REFRESH_INTERVAL])
+        return () => clearAllTimers()
+    }, [isAuthenticated, clearAllTimers, runRefreshSession, REFRESH_INTERVAL])
 
     // Removed debug helpers (btnClicked/alerts) for production readiness
 
@@ -279,16 +250,12 @@ export const AuthProvider = ({ children }) => {
                 if (hasValidSession) {
                     // Session exists and is valid, user is logged in
                     lastRefreshRef.current = Date.now()
-                    lastActivityRef.current = Date.now()
                     setSessionStatus('active')
                 } else {
                     // Try to refresh the session with the stored token
                     const refreshedSession = await runRefreshSession()
 
-                    if (refreshedSession) {
-                        // Session refreshed successfully
-                        lastActivityRef.current = Date.now()
-                    } else {
+                    if (!refreshedSession) {
                         // No valid session, user needs to log in
                         setUser(null)
                         setIsAuthenticated(false)
@@ -308,33 +275,36 @@ export const AuthProvider = ({ children }) => {
         initializeAuth()
     }, [checkExistingSession, runRefreshSession])
 
+    // Refresh session when tab becomes visible (user returns to app)
+    // or when connection is restored (only if more than 5 minutes since last refresh)
     useEffect(() => {
         const handleVisibilityChange = () => {
             if (document.visibilityState === 'visible' && isAuthenticated) {
-                handleActivity()
-
                 const now = Date.now()
                 const timeSinceLastRefresh = now - lastRefreshRef.current
+                const FIVE_MINUTES = 5 * 60 * 1000
 
-                if (timeSinceLastRefresh > VISIBILITY_REFRESH_THRESHOLD) {
+                // Only refresh if it's been more than 5 minutes
+                if (timeSinceLastRefresh > FIVE_MINUTES) {
                     runRefreshSession()
                 }
             }
         }
 
-        document.addEventListener('visibilitychange', handleVisibilityChange)
-        return () => document.removeEventListener('visibilitychange', handleVisibilityChange)
-    }, [isAuthenticated, handleActivity, runRefreshSession, VISIBILITY_REFRESH_THRESHOLD])
-
-    useEffect(() => {
         const handleOnline = () => {
+            // Refresh session when coming back online
             if (isAuthenticated) {
                 runRefreshSession()
             }
         }
 
+        document.addEventListener('visibilitychange', handleVisibilityChange)
         window.addEventListener('online', handleOnline)
-        return () => window.removeEventListener('online', handleOnline)
+
+        return () => {
+            document.removeEventListener('visibilitychange', handleVisibilityChange)
+            window.removeEventListener('online', handleOnline)
+        }
     }, [isAuthenticated, runRefreshSession])
 
     const updateUser = useCallback((updatedUserData) => {
@@ -359,7 +329,7 @@ export const AuthProvider = ({ children }) => {
         isAuthenticated,
         loading,
         isRefreshing,
-        sessionStatus, // 'active', 'warning', 'expired'
+        sessionStatus, // 'active' or 'expired'
 
         // Auth actions
         signIn,
@@ -368,18 +338,14 @@ export const AuthProvider = ({ children }) => {
         refreshSession: runRefreshSession,
         updateUser,
 
-        // Legacy/debug: removed in production
-
         // Utility functions for components that need session info
         isSessionActive: () => sessionStatus === 'active',
-        isSessionWarning: () => sessionStatus === 'warning',
 
-        // Session timing info (for components that might show countdown timers)
+        // Session timing info
         sessionTiming: {
-            lastActivity: lastActivityRef.current,
             lastRefresh: lastRefreshRef.current,
             refreshIntervalMs: REFRESH_INTERVAL,
-            // Note: No idle timeout - sessions persist for 30 days via backend
+            // Sessions persist for 30 days in Redis - no auto-logout
         },
     }
 

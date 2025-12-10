@@ -647,7 +647,7 @@ const AddPatientPrescriptionModal = ({ prescription, setIsOpen, onSuccess }) => 
                         </DialogClose>
                         <Button
                             type="submit"
-                            disabled={isLoading || Object.keys(errors).length > 0}
+                            // disabled={isLoading || Object.keys(errors).length > 0}
                             className="min-w-[120px]"
                         >
                             {isLoading ? (

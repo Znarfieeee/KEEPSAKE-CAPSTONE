@@ -109,13 +109,13 @@ def prepare_patient_payload(data, created_by):
         "created_by": created_by,
         "is_active": True
     }
-    
+
     # Add optional fields only if they have values
-    optional_fields = ['birth_weight', 'birth_height', 'bloodtype', 'gestation_weeks']
+    optional_fields = ['birth_weight', 'birth_height', 'bloodtype', 'gestation_weeks', 'mother', 'father']
     for field in optional_fields:
         if data.get(field) is not None:
             payload[field] = data.get(field)
-            
+
     return payload
 
 def prepare_delivery_payload(data, patient_id, recorded_by):
@@ -1823,9 +1823,9 @@ def update_patient_record(patient_id):
             }), 404
             
         updated_by = current_user.get('id')
-        
+
         # Only update patient table fields
-        patient_fields = ['firstname', 'lastname', 'date_of_birth', 'sex', 'birth_weight', 'birth_height', 'bloodtype', 'gestation_weeks']
+        patient_fields = ['firstname', 'middlename', 'lastname', 'date_of_birth', 'sex', 'birth_weight', 'birth_height', 'bloodtype', 'gestation_weeks', 'mother', 'father']
         
         if any(k in data for k in patient_fields):
             patient_payload = prepare_patient_payload(data, updated_by)

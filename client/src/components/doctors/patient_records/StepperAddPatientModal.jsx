@@ -380,13 +380,29 @@ const ReviewStep = ({
         </div>
     )
 
-    const FieldDisplay = ({ label, value }) =>
-        value ? (
+    const FieldDisplay = ({ label, value }) => {
+        // Handle different value types properly
+        if (value === null || value === undefined || value === '') {
+            return null
+        }
+
+        // Format boolean values
+        let displayValue = value
+        if (typeof value === 'boolean') {
+            displayValue = value ? 'Yes' : 'No'
+        }
+
+        // Format string 'true' or 'false' that might come from form
+        if (value === 'true') displayValue = 'Yes'
+        if (value === 'false') displayValue = 'No'
+
+        return (
             <div className="flex justify-between">
                 <span className="text-muted-foreground">{label}:</span>
-                <span>{value}</span>
+                <span>{displayValue}</span>
             </div>
-        ) : null
+        )
+    }
 
     return (
         <div className="space-y-6">
@@ -451,13 +467,18 @@ const ReviewStep = ({
                     <ReviewSection
                         title="Screening Information"
                         icon={Activity}
-                        isEmpty={!Object.values(screeningForm).some(Boolean)}
+                        isEmpty={!Object.values(screeningForm).some((val) => val !== false && val !== '' && val !== null && val !== undefined)}
                     >
                         <FieldDisplay label="ENS Date" value={screeningForm.ens_date} />
-                        <FieldDisplay label="ENS Remarks" value={screeningForm.ens_remarks} />
+                        <FieldDisplay label="ENS Normal Results" value={screeningForm.ens_remarks} />
                         <FieldDisplay label="NHS Date" value={screeningForm.nhs_date} />
-                        <FieldDisplay label="NHS Right Ear" value={screeningForm.nhs_right_ear} />
-                        <FieldDisplay label="NHS Left Ear" value={screeningForm.nhs_left_ear} />
+                        <FieldDisplay label="NHS Right Ear Pass" value={screeningForm.nhs_right_ear} />
+                        <FieldDisplay label="NHS Left Ear Pass" value={screeningForm.nhs_left_ear} />
+                        <FieldDisplay label="POS Date" value={screeningForm.pos_date} />
+                        <FieldDisplay label="POS Right Hand/Foot Pass" value={screeningForm.pos_for_cchd_right} />
+                        <FieldDisplay label="POS Left Hand/Foot Pass" value={screeningForm.pos_for_cchd_left} />
+                        <FieldDisplay label="ROR Date" value={screeningForm.ror_date} />
+                        <FieldDisplay label="ROR Results" value={screeningForm.ror_remarks} />
                     </ReviewSection>
                 )}
 
