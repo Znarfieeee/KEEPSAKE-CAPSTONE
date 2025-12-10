@@ -52,6 +52,8 @@ const patientInitForm = {
     birth_height: '',
     bloodtype: '',
     gestation_weeks: '',
+    mother: '',
+    father: '',
 }
 
 const deliveryInitForm = {
@@ -413,6 +415,8 @@ const ReviewStep = ({
                     />
                     <FieldDisplay label="Blood Type" value={patientForm.bloodtype} />
                     <FieldDisplay label="Gestation Weeks" value={patientForm.gestation_weeks} />
+                    <FieldDisplay label="Mother's Name" value={patientForm.mother} />
+                    <FieldDisplay label="Father's Name" value={patientForm.father} />
                 </ReviewSection>
 
                 {/* Delivery Information */}

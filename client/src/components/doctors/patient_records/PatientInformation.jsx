@@ -60,6 +60,10 @@ const PatientInformation = ({ patient, onUpdate, readOnly = false }) => {
                             <label className="text-sm text-gray-600">AGE</label>
                             <p className="font-medium">{`${patient.age}` || '—'}</p>
                         </div>
+                        <div>
+                            <label className="text-sm text-gray-600">MOTHER'S NAME</label>
+                            <p className="font-medium">{patient.mother || 'N/A'}</p>
+                        </div>
                     </div>
                     <div className="space-y-4">
                         <div>
@@ -69,6 +73,10 @@ const PatientInformation = ({ patient, onUpdate, readOnly = false }) => {
                         <div>
                             <label className="text-sm text-gray-600">BIRTHDATE</label>
                             <p className="font-medium">{patient.date_of_birth}</p>
+                        </div>
+                        <div>
+                            <label className="text-sm text-gray-600">FATHER'S NAME</label>
+                            <p className="font-medium">{patient.father || 'N/A'}</p>
                         </div>
                     </div>
                     <div className="space-y-4">

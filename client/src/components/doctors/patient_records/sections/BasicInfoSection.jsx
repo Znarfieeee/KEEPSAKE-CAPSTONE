@@ -150,6 +150,24 @@ const BasicInfoSection = ({ form, updateForm }) => {
                         onChange={(e) => updateForm('birth_height', e.target.value)}
                     />
                 </div>
+                <div className="space-y-2">
+                    <Label className="text-sm font-medium">Mother's Name</Label>
+                    <Input
+                        className="border-input"
+                        placeholder="Enter mother's name"
+                        value={form.mother}
+                        onChange={(e) => updateForm('mother', e.target.value)}
+                    />
+                </div>
+                <div className="space-y-2">
+                    <Label className="text-sm font-medium">Father's Name</Label>
+                    <Input
+                        className="border-input"
+                        placeholder="Enter father's name"
+                        value={form.father}
+                        onChange={(e) => updateForm('father', e.target.value)}
+                    />
+                </div>
             </div>
         </div>
     )
