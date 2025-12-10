@@ -364,7 +364,7 @@ const EditPatientModal = ({ onClose, patient, onSuccess }) => {
 
         const optimisticPatientData = {
             ...patient,
-            ...(basicChanged ? sanitizeObject(patientForm) : {}),
+            ...sanitizeObject(patientForm), // Always include patient fields for display consistency
             related_records: updatedRelatedRecords,
         }
 

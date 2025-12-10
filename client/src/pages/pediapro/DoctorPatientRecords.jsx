@@ -83,7 +83,10 @@ function DoctorPatientRecords() {
         return {
             id: raw.patient_id || raw.user_id,
             firstname: raw.firstname,
+            middlename: raw.middlename,
             lastname: raw.lastname,
+            mother: raw.mother,
+            father: raw.father,
             age: age,
             ageUnit: ageUnit,
             sex: raw.sex,
@@ -209,6 +212,61 @@ function DoctorPatientRecords() {
     usePatientsRealtime({
         onPatientChange: handlePatientChange,
     })
+
+    // Listen for optimistic patient updates from EditPatientModal
+    useEffect(() => {
+        const handleOptimisticUpdate = (event) => {
+            const { patient_data, optimistic } = event.detail
+
+            if (optimistic && patient_data) {
+                // Format the updated patient data
+                const formattedPatient = formatPatient({
+                    ...patient_data,
+                    patient_id: patient_data.patient_id || patient_data.id,
+                    date_of_birth: patient_data.date_of_birth || patient_data.birthdate,
+                })
+
+                // Update the patients list immediately
+                setPatients((prev) =>
+                    prev.map((p) => (p.id === formattedPatient.id ? formattedPatient : p))
+                )
+
+                // Update modal data if currently viewing/editing this patient
+                if (showDetailModal && selectedPatient?.id === formattedPatient.id) {
+                    setSelectedPatient(formattedPatient)
+                }
+                if (showEditModal && editingPatient?.id === formattedPatient.id) {
+                    setEditingPatient(formattedPatient)
+                }
+            }
+        }
+
+        const handlePatientCreated = (event) => {
+            const newPatientData = event.detail
+
+            // Format the new patient data
+            const formattedPatient = formatPatient({
+                ...newPatientData,
+                patient_id: newPatientData.patient_id || newPatientData.id,
+                date_of_birth: newPatientData.date_of_birth || newPatientData.birthdate,
+            })
+
+            // Add to patients list if not already present
+            setPatients((prev) => {
+                const exists = prev.some((p) => p.id === formattedPatient.id)
+                if (exists) return prev
+                return [...prev, formattedPatient]
+            })
+        }
+
+        window.addEventListener('patient-updated', handleOptimisticUpdate)
+        window.addEventListener('patient-created', handlePatientCreated)
+
+        return () => {
+            window.removeEventListener('patient-updated', handleOptimisticUpdate)
+            window.removeEventListener('patient-created', handlePatientCreated)
+        }
+    }, [formatPatient, showDetailModal, selectedPatient, showEditModal, editingPatient])
 
     // Event handlers
     const handleAddPatient = () => {
