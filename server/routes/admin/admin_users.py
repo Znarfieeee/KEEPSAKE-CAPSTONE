@@ -869,17 +869,10 @@ def toggle_user_status(user_id):
     try:
         current_user = request.current_user
 
-        # Check if user exists
-        user_check = admin_supabase.table('users').select('*').eq('user_id', user_id).execute()
-
-        if not user_check.data:
-            return jsonify({
-                "status": "error",
-                "message": "User not found"
-            }), 404
-
-        user_data = user_check.data[0]
-        current_status = user_data.get('is_active', False)
+        # Get current user metadata
+        current_user_auth = admin_supabase.auth.admin.get_user_by_id(user_id)
+        current_metadata = current_user_auth.user.user_metadata or {}
+        current_status = current_metadata.get('is_active', False)
         new_status = not current_status  # Toggle the status
 
         # Prevent deactivating yourself
@@ -889,31 +882,20 @@ def toggle_user_status(user_id):
                 "message": "You cannot deactivate your own account"
             }), 400
 
-        # Update user status
-        user_response = admin_supabase.table('users').update({
+        # Update auth.users.raw_user_meta_data with toggled is_active
+        updated_metadata = {
+            **current_metadata,
             'is_active': new_status,
             'updated_at': datetime.utcnow().isoformat()
-        }).eq('user_id', user_id).execute()
+        }
 
-        if getattr(user_response, 'error', None):
-            current_app.logger.error(f"Failed to toggle user status: {user_response.error}")
-            return jsonify({
-                "status": "error",
-                "message": "Failed to update user status"
-            }), 500
+        admin_supabase.auth.admin.update_user_by_id(
+            user_id,
+            {"user_metadata": updated_metadata}
+        )
 
-        # If deactivating, also handle auth ban and sessions
+        # Clear user's sessions if deactivating
         if new_status is False:
-            # Ban user in Supabase Auth to prevent login
-            try:
-                admin_supabase.auth.admin.update_user_by_id(
-                    user_id,
-                    {"ban_duration": "876600h"}  # Ban for ~100 years
-                )
-            except Exception as auth_error:
-                current_app.logger.warning(f"Could not ban user in auth: {auth_error}")
-
-            # Clear user's sessions from Redis
             try:
                 from utils.redis_client import redis_client
                 SESSION_PREFIX = "keepsake_session:"
@@ -931,20 +913,10 @@ def toggle_user_status(user_id):
             except Exception as session_error:
                 current_app.logger.warning(f"Could not clear user sessions: {session_error}")
 
-        # If activating, unban the user
-        else:
-            try:
-                admin_supabase.auth.admin.update_user_by_id(
-                    user_id,
-                    {"ban_duration": "none"}  # Remove ban
-                )
-            except Exception as auth_error:
-                current_app.logger.warning(f"Could not unban user in auth: {auth_error}")
-
         invalidate_caches('users', user_id)
 
         action = "deactivated" if new_status is False else "activated"
-        current_app.logger.info(f"AUDIT: Admin {current_user.get('email')} {action} user {user_data.get('email')} (ID: {user_id}) from IP {request.remote_addr}")
+        current_app.logger.info(f"AUDIT: Admin {current_user.get('email')} {action} user ID: {user_id} from IP {request.remote_addr}")
 
         return jsonify({
             "status": "success",

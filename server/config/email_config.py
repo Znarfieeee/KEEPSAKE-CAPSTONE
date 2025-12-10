@@ -7,6 +7,9 @@ import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 import logging
+# import sendgrid
+# from sendgrid.helpers.mail import Mail
+# from sendgrid import SendGridAPIClient
 
 logger = logging.getLogger(__name__)
 
@@ -29,7 +32,9 @@ class EmailConfig:
 
     # Email configuration
     SMTP_TIMEOUT = 10  # Connection timeout in seconds
-
+    
+    # SENDGRID_API_KEY = os.environ.get('SENDGRID_API_KEY', '')
+    
     @classmethod
     def is_configured(cls):
         """Check if SMTP credentials are configured"""
@@ -37,6 +42,11 @@ class EmailConfig:
             logger.warning("SMTP credentials not configured. Email functionality will be disabled.")
             return False
         return True
+        
+        # if not cls.SENDGRID_API_KEY:
+        #     logger.warning("SendGrid API key not configured. Email functionality will be disabled.")
+        #     return False
+        # return True
 
     @classmethod
     def get_smtp_connection(cls):
@@ -78,6 +88,26 @@ class EmailConfig:
             logger.error(f"SMTP connection error: {str(e)}")
             raise Exception(f"Email service error: {str(e)}")
 
+    # @classmethod
+    # def send_email(cls, to_email, subject, html_content):
+    #     if not cls.is_configured():
+    #         raise Exception('SendGrip API key not configured. Please set SENDGRID_API_KEY in environment variables.')
+        
+    #     message = Mail(
+    #         from_email =(cls.SMTP_FROM_EMAIL, cls.SMTP_FROM_NAME),
+    #         to_emails=to_email,
+    #         subject=subject,
+    #         html_content=html_content
+    #     )
+    #     try:
+    #         sg = SendGridAPIClient(cls.SENDGRID_API_KEY)
+    #         resp = sg.send(message)
+    #         logger.info(f"Email sent to {to_email}: {resp.status_code}")
+    #         return resp.status_code
+    #     except Exception as e:
+    #         logger.error(f"Failed to send email to {to_email}: {str(e)}")
+    #         raise Exception(f"Failed to send email: {str(e)}")
+
     @classmethod
     def test_connection(cls):
         """
@@ -93,6 +123,12 @@ class EmailConfig:
             server = cls.get_smtp_connection()
             server.quit()
             return True, "SMTP connection successful"
+            # status = cls.send_email(
+            #     to_email=cls.SMTP_FROM_EMAIL,
+            #     subject="Test Email",
+            #     html_content="<strong>Testing email from KEEPSAKE (SendGrid config)</strong>"
+            # )
+            # return True, f"SendGrid test email sent, status code: {status}"
         except Exception as e:
             return False, str(e)
 

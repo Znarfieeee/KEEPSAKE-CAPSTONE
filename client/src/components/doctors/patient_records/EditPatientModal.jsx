@@ -143,6 +143,8 @@ const EditPatientModal = ({ onClose, patient, onSuccess }) => {
                 birth_height: patient.birth_height || '',
                 bloodtype: patient.bloodtype || '',
                 gestation_weeks: patient.gestation_weeks || '',
+                mother: patient.mother || '',
+                father: patient.father || '',
             }
             setPatientForm(patientData)
             originalData.current.patient = { ...patientData }
@@ -284,24 +286,112 @@ const EditPatientModal = ({ onClose, patient, onSuccess }) => {
     const handleSubmit = async () => {
         if (!validateBasicInfo()) return
 
+        const patientId = patient.patient_id || patient.id
+
+        // Check which sections actually changed
+        const basicChanged = hasFormChanged(patientForm, originalData.current.patient)
+        const deliveryChanged =
+            dirtyFields.delivery && hasFormChanged(deliveryForm, originalData.current.delivery)
+        const screeningChanged =
+            dirtyFields.screening &&
+            hasFormChanged(screeningForm, originalData.current.screening)
+        const allergiesChanged =
+            dirtyFields.allergies &&
+            hasFormChanged(allergiesForm, originalData.current.allergies)
+        const anthroChanged =
+            dirtyFields.anthropometric &&
+            hasFormChanged(anthroForm, originalData.current.anthro)
+
+        // If no changes, just close
+        if (!basicChanged && !deliveryChanged && !screeningChanged && !allergiesChanged && !anthroChanged) {
+            showToast('info', 'No changes detected')
+            onClose()
+            return
+        }
+
+        // OPTIMISTIC UPDATE: Immediately update the UI before backend processing
+        const updatedRelatedRecords = { ...patient.related_records }
+        const updatedSections = []
+
+        if (deliveryChanged) {
+            updatedRelatedRecords.delivery = sanitizeObject(deliveryForm)
+            updatedSections.push('delivery')
+        }
+
+        if (screeningChanged) {
+            updatedRelatedRecords.screening = sanitizeObject(screeningForm)
+            updatedSections.push('screening')
+        }
+
+        if (anthroChanged) {
+            const newMeasurement = {
+                ...sanitizeObject(anthroForm),
+                am_id: anthroForm.am_id || `temp_${Date.now()}`,
+            }
+            const existingMeasurements =
+                patient.related_records?.anthropometric_measurements ||
+                patient.related_records?.anthropometric ||
+                []
+
+            if (Array.isArray(existingMeasurements) && existingMeasurements.length > 0) {
+                updatedRelatedRecords.anthropometric_measurements = [
+                    ...existingMeasurements.slice(0, -1),
+                    newMeasurement,
+                ]
+            } else {
+                updatedRelatedRecords.anthropometric_measurements = [newMeasurement]
+            }
+            updatedSections.push('anthropometric')
+        }
+
+        if (allergiesChanged) {
+            const sanitizedAllergy = sanitizeObject(allergiesForm)
+            const existingAllergies = patient.related_records?.allergies || []
+
+            if (allergiesForm.allergy_id && Array.isArray(existingAllergies)) {
+                updatedRelatedRecords.allergies = existingAllergies.map((allergy) =>
+                    allergy.allergy_id === allergiesForm.allergy_id
+                        ? { ...allergy, ...sanitizedAllergy }
+                        : allergy
+                )
+            } else if (Array.isArray(existingAllergies)) {
+                updatedRelatedRecords.allergies = [...existingAllergies, sanitizedAllergy]
+            } else {
+                updatedRelatedRecords.allergies = [sanitizedAllergy]
+            }
+            updatedSections.push('allergies')
+        }
+
+        const optimisticPatientData = {
+            ...patient,
+            ...sanitizeObject(patientForm), // Always include patient fields for display consistency
+            related_records: updatedRelatedRecords,
+        }
+
+        // Dispatch optimistic update immediately
+        if (typeof window !== 'undefined') {
+            window.dispatchEvent(new CustomEvent('patient-updated', {
+                detail: {
+                    patient_id: patientId,
+                    updated_sections: updatedSections,
+                    failed_sections: [],
+                    timestamp: new Date().toISOString(),
+                    patient_data: optimisticPatientData,
+                    original_patient: patient,
+                    optimistic: true, // Flag to indicate this is an optimistic update
+                }
+            }))
+        }
+
+        // Show success immediately
+        showToast('success', 'Patient updated successfully')
+
+        // Close modal immediately
+        onClose()
+
+        // Now process the backend updates asynchronously
         try {
             setLoading(true)
-
-            const patientId = patient.patient_id || patient.id
-
-            // Check which sections actually changed
-            const basicChanged = hasFormChanged(patientForm, originalData.current.patient)
-            const deliveryChanged =
-                dirtyFields.delivery && hasFormChanged(deliveryForm, originalData.current.delivery)
-            const screeningChanged =
-                dirtyFields.screening &&
-                hasFormChanged(screeningForm, originalData.current.screening)
-            const allergiesChanged =
-                dirtyFields.allergies &&
-                hasFormChanged(allergiesForm, originalData.current.allergies)
-            const anthroChanged =
-                dirtyFields.anthropometric &&
-                hasFormChanged(anthroForm, originalData.current.anthro)
 
             // Update main patient record if changed
             if (basicChanged) {
@@ -315,14 +405,14 @@ const EditPatientModal = ({ onClose, patient, onSuccess }) => {
 
             // Update only the sections that actually changed
             const promises = []
-            const updatedSections = []
+            const backendUpdatedSections = []
             const failedSections = []
 
             if (deliveryChanged && hasFormData(deliveryForm)) {
                 promises.push(
                     updateDeliveryRecord(patientId, sanitizeObject(deliveryForm))
                         .then(() => {
-                            updatedSections.push('delivery')
+                            backendUpdatedSections.push('delivery')
                             return { section: 'delivery', success: true }
                         })
                         .catch((error) => {
@@ -337,7 +427,7 @@ const EditPatientModal = ({ onClose, patient, onSuccess }) => {
                 promises.push(
                     updateScreeningRecord(patientId, sanitizeObject(screeningForm))
                         .then(() => {
-                            updatedSections.push('screening')
+                            backendUpdatedSections.push('screening')
                             return { section: 'screening', success: true }
                         })
                         .catch((error) => {
@@ -353,7 +443,7 @@ const EditPatientModal = ({ onClose, patient, onSuccess }) => {
                 promises.push(
                     updateAnthropometricRecord(patientId, sanitizedAnthro)
                         .then(() => {
-                            updatedSections.push('anthropometric')
+                            backendUpdatedSections.push('anthropometric')
                             return { section: 'anthropometric', success: true }
                         })
                         .catch((error) => {
@@ -369,7 +459,7 @@ const EditPatientModal = ({ onClose, patient, onSuccess }) => {
                 promises.push(
                     updateAllergyRecord(patientId, sanitizedAllergy)
                         .then(() => {
-                            updatedSections.push('allergies')
+                            backendUpdatedSections.push('allergies')
                             return { section: 'allergies', success: true }
                         })
                         .catch((error) => {
@@ -384,106 +474,45 @@ const EditPatientModal = ({ onClose, patient, onSuccess }) => {
             if (promises.length > 0) {
                 await Promise.allSettled(promises)
 
+                // If any sections failed, show warning and dispatch rollback
                 if (failedSections.length > 0) {
+                    console.warn('Some sections failed to update:', failedSections)
                     showToast(
                         'warning',
-                        `Patient updated, but failed to update: ${failedSections.join(', ')}`
+                        `Some sections failed to save: ${failedSections.join(', ')}. Please try again.`
                     )
-                } else {
-                    showToast('success', 'Patient and related data updated successfully')
+
+                    // Dispatch rollback event for failed sections
+                    if (typeof window !== 'undefined') {
+                        window.dispatchEvent(new CustomEvent('patient-update-failed', {
+                            detail: {
+                                patient_id: patientId,
+                                failed_sections: failedSections,
+                                original_patient: patient,
+                                timestamp: new Date().toISOString(),
+                            }
+                        }))
+                    }
                 }
-            } else if (basicChanged) {
-                showToast('success', 'Patient updated successfully')
-            } else {
-                showToast('info', 'No changes detected')
-                onClose()
-                return
             }
-
-            // Dispatch event for real-time updates - ONLY include sections that changed
-            if (typeof window !== 'undefined' && patient) {
-                // Start with a complete copy of existing related_records
-                const updatedRelatedRecords = { ...patient.related_records }
-
-                // Only update sections that actually changed and succeeded
-                if (deliveryChanged && updatedSections.includes('delivery')) {
-                    updatedRelatedRecords.delivery = sanitizeObject(deliveryForm)
-                }
-
-                if (screeningChanged && updatedSections.includes('screening')) {
-                    updatedRelatedRecords.screening = sanitizeObject(screeningForm)
-                }
-
-                if (anthroChanged && updatedSections.includes('anthropometric')) {
-                    const newMeasurement = {
-                        ...sanitizeObject(anthroForm),
-                        am_id: anthroForm.am_id || `temp_${Date.now()}`,
-                    }
-
-                    // Get existing measurements (handle both key names)
-                    const existingMeasurements =
-                        patient.related_records?.anthropometric_measurements ||
-                        patient.related_records?.anthropometric ||
-                        []
-
-                    // Update the measurement array
-                    if (Array.isArray(existingMeasurements) && existingMeasurements.length > 0) {
-                        // Update the last measurement
-                        updatedRelatedRecords.anthropometric_measurements = [
-                            ...existingMeasurements.slice(0, -1),
-                            newMeasurement,
-                        ]
-                    } else {
-                        updatedRelatedRecords.anthropometric_measurements = [newMeasurement]
-                    }
-                }
-
-                if (allergiesChanged && updatedSections.includes('allergies')) {
-                    const sanitizedAllergy = sanitizeObject(allergiesForm)
-                    const existingAllergies = patient.related_records?.allergies || []
-
-                    if (allergiesForm.allergy_id && Array.isArray(existingAllergies)) {
-                        // Update existing allergy
-                        updatedRelatedRecords.allergies = existingAllergies.map((allergy) =>
-                            allergy.allergy_id === allergiesForm.allergy_id
-                                ? { ...allergy, ...sanitizedAllergy }
-                                : allergy
-                        )
-                    } else if (Array.isArray(existingAllergies)) {
-                        // Add new allergy
-                        updatedRelatedRecords.allergies = [...existingAllergies, sanitizedAllergy]
-                    } else {
-                        updatedRelatedRecords.allergies = [sanitizedAllergy]
-                    }
-                }
-
-                const updatedPatientData = {
-                    ...patient,
-                    ...(basicChanged ? sanitizeObject(patientForm) : {}),
-                    related_records: updatedRelatedRecords,
-                }
-
-                const eventDetail = {
-                    patient_id: patientId,
-                    updated_sections: updatedSections,
-                    failed_sections: failedSections,
-                    timestamp: new Date().toISOString(),
-                    patient_data: updatedPatientData,
-                    original_patient: patient,
-                }
-
-                window.dispatchEvent(new CustomEvent('patient-updated', { detail: eventDetail }))
-            }
-
-            // Close modal after brief delay
-            setTimeout(() => {
-                onClose()
-            }, 500)
         } catch (error) {
             console.error('Error in patient update process:', error)
             const errorMessage =
                 error.message || error.response?.data?.message || 'Failed to update patient record'
             showToast('error', errorMessage)
+
+            // Dispatch rollback event on complete failure
+            if (typeof window !== 'undefined') {
+                window.dispatchEvent(new CustomEvent('patient-update-failed', {
+                    detail: {
+                        patient_id: patientId,
+                        failed_sections: ['all'],
+                        original_patient: patient,
+                        timestamp: new Date().toISOString(),
+                        error: errorMessage,
+                    }
+                }))
+            }
         } finally {
             setLoading(false)
         }

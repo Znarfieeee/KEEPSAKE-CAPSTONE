@@ -1,4 +1,5 @@
 import React, { useState, useEffect, lazy, Suspense } from 'react'
+import { useAuth } from '@/context/auth'
 
 // UI Components
 import { NoResults } from '@/components/ui/no-results'
@@ -7,6 +8,7 @@ import { Button } from '@/components/ui/Button'
 import { Eye, Search, PlusCircle, Share2 } from 'lucide-react'
 import { Dialog, DialogTrigger } from '@/components/ui/Dialog'
 import { showToast } from '../../../util/alertHelper'
+import PrescriptionQRDialog from '@/components/qr/PrescriptionQRDialog'
 
 const AddPatientPrescriptionModal = lazy(() => import('./AddPatientPrescriptionModal'))
 const PatientPrescriptionDetailModal = lazy(() => import('./PatientPrescriptionDetailModal'))
@@ -20,10 +22,15 @@ const PatientPrescription = ({
     onPrescriptionAdded,
     readOnly = false,
 }) => {
+    const { user } = useAuth()
     const [isOpen, setIsOpen] = useState(false)
     const [selectedPrescription, setSelectedPrescription] = useState(null)
     const [isDetailModalOpen, setIsDetailModalOpen] = useState(false)
+    const [isQRDialogOpen, setIsQRDialogOpen] = useState(false)
     const [localPrescriptions, setLocalPrescriptions] = useState(prescription)
+
+    // Check if user is a nurse
+    const isNurse = user?.role === 'nurse' || 'vital_custodian'
 
     // Sync external prescription changes with local state
     useEffect(() => {
@@ -95,7 +102,7 @@ const PatientPrescription = ({
                             className="h-10 w-full rounded-md border border-gray-200 bg-white pl-9 pr-4 text-sm placeholder:text-gray-500 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
                         />
                     </div>
-                    {!readOnly && (
+                    {!readOnly && !isNurse && (
                         <div className="relative flex-1 lg:flex-none">
                             <Dialog open={isOpen} onOpenChange={setIsOpen}>
                                 <DialogTrigger asChild>
@@ -179,7 +186,8 @@ const PatientPrescription = ({
                                                 size="icon"
                                                 className="hover:text-green-600 hover:bg-green-100"
                                                 onClick={() => {
-                                                    showToast('success', 'Sharing via QR Code')
+                                                    setSelectedPrescription(rx)
+                                                    setIsQRDialogOpen(true)
                                                 }}
                                             >
                                                 <Share2 className="size-4" />
@@ -203,6 +211,13 @@ const PatientPrescription = ({
                     </tbody>
                 </table>
             </div>
+
+            {/* QR Dialog */}
+            <PrescriptionQRDialog
+                isOpen={isQRDialogOpen}
+                onClose={() => setIsQRDialogOpen(false)}
+                prescription={selectedPrescription}
+            />
 
             {/* Detail Modal */}
             <Suspense fallback={null}>

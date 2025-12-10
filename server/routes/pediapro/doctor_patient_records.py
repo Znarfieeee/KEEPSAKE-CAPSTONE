@@ -109,13 +109,13 @@ def prepare_patient_payload(data, created_by):
         "created_by": created_by,
         "is_active": True
     }
-    
+
     # Add optional fields only if they have values
-    optional_fields = ['birth_weight', 'birth_height', 'bloodtype', 'gestation_weeks']
+    optional_fields = ['birth_weight', 'birth_height', 'bloodtype', 'gestation_weeks', 'mother', 'father']
     for field in optional_fields:
         if data.get(field) is not None:
             payload[field] = data.get(field)
-            
+
     return payload
 
 def prepare_delivery_payload(data, patient_id, recorded_by):
@@ -1823,9 +1823,9 @@ def update_patient_record(patient_id):
             }), 404
             
         updated_by = current_user.get('id')
-        
+
         # Only update patient table fields
-        patient_fields = ['firstname', 'lastname', 'date_of_birth', 'sex', 'birth_weight', 'birth_height', 'bloodtype', 'gestation_weeks']
+        patient_fields = ['firstname', 'middlename', 'lastname', 'date_of_birth', 'sex', 'birth_weight', 'birth_height', 'bloodtype', 'gestation_weeks', 'mother', 'father']
         
         if any(k in data for k in patient_fields):
             patient_payload = prepare_patient_payload(data, updated_by)
@@ -2173,7 +2173,7 @@ def register_patient_to_facility(patient_id):
             "message": f"Error registering patient to facility: {str(e)}"
         }), 500
 
-@patrecord_bp.route('/patient_record/<patient_id>', methods=['DELETE'])
+@patrecord_bp.route('/patient_record/<patient_id>', methods=['PATCH'])
 @require_auth
 @require_role('doctor', 'facility_admin')
 def delete_patient_record(patient_id):
@@ -2185,49 +2185,53 @@ def delete_patient_record(patient_id):
     """
     try:
         current_user = request.current_user
+        user_facility_id = current_user.get('facility_id')
 
-        current_app.logger.info(f"AUDIT: User {current_user.get('email', 'Unknown')} attempting to delete patient record {patient_id}")
+        current_app.logger.info(f"AUDIT: User {current_user.get('email', 'Unknown')} attempting to deactivate patient record {patient_id}")
 
-        # Check if patient exists
-        patient_check = get_authenticated_client().table('patients').select('*').eq('patient_id', patient_id).single().execute()
-        if not patient_check.data:
-            current_app.logger.warning(f"AUDIT: Patient {patient_id} not found during delete attempt")
-            return jsonify({
-                "status": "error",
-                "message": "Patient not found"
-            }), 404
+        # # Check if patient exists
+        # patient_check = get_authenticated_client().table('patients').select('*').eq('patient_id', patient_id).single().execute()
+        # if not patient_check.data:
+        #     current_app.logger.warning(f"AUDIT: Patient {patient_id} not found during delete attempt")
+        #     return jsonify({
+        #         "status": "error",
+        #         "message": "Patient not found"
+        #     }), 404
 
-        patient_data = patient_check.data
-        patient_name = f"{patient_data.get('firstname', '')} {patient_data.get('lastname', '')}"
+        # patient_data = patient_check.data
+        # patient_name = f"{patient_data.get('firstname', '')} {patient_data.get('lastname', '')}"
 
-        # Delete related records first (to avoid foreign key constraints)
-        related_tables = [
-            'delivery_record',
-            'anthropometric_measurements',
-            'growth_milestones',
-            'screening_tests',
-            'prescriptions',
-            'vaccinations',
-            'facility_patients',
-            'allergies',
-            'parent_access',
-            'appointments'
-        ]
+        # # Delete related records first (to avoid foreign key constraints)
+        # related_tables = [
+        #     'delivery_record',
+        #     'anthropometric_measurements',
+        #     'growth_milestones',
+        #     'screening_tests',
+        #     'prescriptions',
+        #     'vaccinations',
+        #     'facility_patients',
+        #     'allergies',
+        #     'parent_access',
+        #     'appointments'
+        # ]
 
-        deleted_related = {}
-        for table in related_tables:
-            try:
-                delete_resp = get_authenticated_client().table(table).delete().eq('patient_id', patient_id).execute()
-                deleted_count = len(delete_resp.data) if delete_resp.data else 0
-                deleted_related[table] = deleted_count
-                current_app.logger.info(f"AUDIT: Deleted {deleted_count} records from {table} for patient {patient_id}")
-            except Exception as table_error:
-                current_app.logger.warning(f"AUDIT: Failed to delete from {table} for patient {patient_id}: {str(table_error)}")
-                # Continue with other tables even if one fails
-                deleted_related[table] = 0
+        # deleted_related = {}
+        # for table in related_tables:
+        #     try:
+        #         delete_resp = get_authenticated_client().table(table).delete().eq('patient_id', patient_id).execute()
+        #         deleted_count = len(delete_resp.data) if delete_resp.data else 0
+        #         deleted_related[table] = deleted_count
+        #         current_app.logger.info(f"AUDIT: Deleted {deleted_count} records from {table} for patient {patient_id}")
+        #     except Exception as table_error:
+        #         current_app.logger.warning(f"AUDIT: Failed to delete from {table} for patient {patient_id}: {str(table_error)}")
+        #         # Continue with other tables even if one fails
+        #         deleted_related[table] = 0
 
         # Delete the main patient record
-        patient_delete_resp = get_authenticated_client().table('patients').delete().eq('patient_id', patient_id).execute()
+        patient_delete_resp = get_authenticated_client().table('patients')\
+            .update({'is_active': False})\
+            .eq('patient_id', patient_id)\
+            .execute()
 
         if getattr(patient_delete_resp, 'error', None):
             current_app.logger.error(f"AUDIT: Failed to delete patient {patient_id}: {patient_delete_resp.error.message if patient_delete_resp.error else 'Unknown error'}")
@@ -2245,37 +2249,34 @@ def delete_patient_record(patient_id):
             }), 404
 
         # Invalidate caches
-        invalidate_caches('patient', patient_id)
+        redis_client.delete(f"patient_records:facility:{user_facility_id}")  # Clear facility-specific cache
+        redis_client.delete(f"{PATIENT_CACHE_PREFIX}{patient_id}")  # Clear patient-specific cache
+        redis_client.delete("patient_records:all")  # Clear all patients cache
         
-        try:
-            facility_id = patient_data.get('facility_id') or current_user.get('facility_id')
-            cleared = clear_patient_cache(patient_id=patient_id, facility_id=facility_id)
-            current_app.logger.info(f"AUDIT: Cleared {cleared} Redis cache keys for patient {patient_id}")
-        except Exception as redis_err:
-            current_app.logger.warning(f"AUDIT: Failed to clear Redis cache for patient {patient_id}: {redis_err}")
+        # try:
+        #     facility_id = patient_data.get('facility_id') or current_user.get('facility_id')
+        #     cleared = clear_patient_cache(patient_id=patient_id, facility_id=facility_id)
+        #     current_app.logger.info(f"AUDIT: Cleared {cleared} Redis cache keys for patient {patient_id}")
+        # except Exception as redis_err:
+        #     current_app.logger.warning(f"AUDIT: Failed to clear Redis cache for patient {patient_id}: {redis_err}")
 
         # Log successful deletion with details
-        total_related_deleted = sum(deleted_related.values())
-        current_app.logger.info(f"AUDIT: Successfully deleted patient {patient_id} ({patient_name}) and {total_related_deleted} related records by user {current_user.get('email', 'Unknown')}")
-        current_app.logger.info(f"AUDIT: Deletion breakdown: {json.dumps(deleted_related)}")
+        # total_related_deleted = sum(deleted_related.values())
+        # current_app.logger.info(f"AUDIT: Successfully deleted patient {patient_id} ({patient_name}) and {total_related_deleted} related records by user {current_user.get('email', 'Unknown')}")
+        # current_app.logger.info(f"AUDIT: Deletion breakdown: {json.dumps(deleted_related)}")
 
         return jsonify({
             "status": "success",
-            "message": f"Patient record '{patient_name}' and all related data deleted successfully",
-            "data": {
-                "deleted_patient": patient_data,
-                "related_records_deleted": deleted_related,
-                "total_related_deleted": total_related_deleted
-            }
+            "message": f"Patient deactivated successfully",
         }), 200
 
     except Exception as e:
-        current_app.logger.error(f"AUDIT: Unexpected error deleting patient {patient_id}: {str(e)}")
+        current_app.logger.error(f"AUDIT: Unexpected error deactivating patient {patient_id}: {str(e)}")
         import traceback
         current_app.logger.error(f"AUDIT: Traceback: {traceback.format_exc()}")
         return jsonify({
             "status": "error",
-            "message": "An unexpected error occurred while deleting the patient record",
+            "message": "An unexpected error occurred while deactivating the patient record",
             "details": str(e)
         }), 500
         

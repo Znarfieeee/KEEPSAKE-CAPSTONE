@@ -24,32 +24,29 @@ REFRESH_TOKEN_TIMEOUT = 7 * 24 * 60 * 60  # 7 days
 
 auth_bp = Blueprint('auth', __name__)
 
-def is_first_login(user_id, supabase_user):
+def is_first_login(last_sign_in_at, user_id=None):
     """
-    Detect if this is the user's first login.
-    Checks the public.users table's last_sign_in_at field.
-    If it's NULL, the user hasn't completed their first login yet.
+    Detect if this is the user's first login based on last_sign_in_at value.
+    If last_sign_in_at is NULL/empty, the user hasn't completed their first login yet.
+
+    Args:
+        last_sign_in_at: The last_sign_in_at timestamp from users table
+        user_id: Optional user_id for logging purposes
+
+    Returns:
+        bool: True if this is the first login, False otherwise
     """
     try:
-        # Fetch the user record from public.users table
-        user_record = supabase.table('users').select('last_sign_in_at').eq('user_id', user_id).execute()
+        is_first = last_sign_in_at is None or last_sign_in_at == ''
 
-        if not user_record.data:
-            current_app.logger.warning(f"No user record found for user_id {user_id} in is_first_login check")
-            return False
+        if user_id:
+            current_app.logger.info(f"FIRST LOGIN CHECK: user_id={user_id}, last_sign_in_at={last_sign_in_at}, is_first_login={is_first}")
 
-        # If last_sign_in_at is NULL/None in public.users, it's the first login
-        last_signed_in = user_record.data[0].get('last_sign_in_at')
-
-        current_app.logger.info(f"FIRST LOGIN CHECK: user_id={user_id}, last_sign_in_at={last_signed_in}, is_first_login={last_signed_in is None or last_signed_in == ''}")
-
-        if last_signed_in is None or last_signed_in == '':
-            return True
-
-        return False
+        return is_first
     except Exception as e:
         # If there's an error checking, assume not first login for safety
-        current_app.logger.error(f"Error checking first login status for user {user_id}: {str(e)}")
+        if user_id:
+            current_app.logger.error(f"Error checking first login status for user {user_id}: {str(e)}")
         return False
 oauth = OAuth()
 
@@ -318,8 +315,8 @@ def google_callback():
         if session_id:
             existing_session = get_session_data(session_id)
             if existing_session:
-                # Check if this is first login
-                first_login = is_first_login(existing_session.get('user_id'), None)
+                # Check if this is first login using session data
+                first_login = is_first_login(existing_session.get('last_sign_in_at'))
 
                 update_session_activity(session_id)
                 user_data = {
@@ -379,8 +376,8 @@ def google_callback():
             
             last_sign_in = datetime.datetime.utcnow().isoformat()
 
-            # Check if this is the user's first login (checks public.users.last_sign_in_at)
-            first_login = is_first_login(user_record['user_id'], None)
+            # Check if this is the user's first login using data from user_record
+            first_login = is_first_login(user_record.get('last_sign_in_at'), user_record['user_id'])
 
             # Get the user's facility_id from facility_users table
             get_facility_id = supabase.table('facility_users')\
@@ -548,8 +545,8 @@ def login():
                         "message": "Your account has been deactivated. Please contact your administrator for assistance."
                     }), 401
 
-                # Check if this is first login
-                first_login = is_first_login(existing_session.get('user_id'), None)
+                # Check if this is first login using session data
+                first_login = is_first_login(existing_session.get('last_sign_in_at'))
 
                 update_session_activity(session_id)
                 user_data = {
@@ -564,7 +561,7 @@ def login():
                     'phone_number': existing_session.get('phone_number'),
                     'last_sign_in_at': existing_session.get('last_sign_in_at'),
                     'is_first_login': first_login,
-                    'font_size': existing_session.get('font_size', 16)
+                    'font_size': existing_session.get('font_size')
                 }
 
                 current_app.logger.info(f"AUDIT: User {existing_session.get('email')} reused existing session from IP {request.remote_addr}")
@@ -609,36 +606,71 @@ def login():
                     "status": "error",
                     "message": "Authentication failed. Please try again."
                 }), 401
-            
+
             user_metadata = auth_response.user.user_metadata or {}
-            
-            get_facility_id = supabase.table('facility_users')\
-                .select('facility_id')\
-                .eq('user_id', auth_response.user.id)\
-                .execute()
 
-            facility_id = get_facility_id.data[0]['facility_id'] if get_facility_id.data else None
+            # Consolidated query: Fetch user data with facility relation in ONE query
+            # Note: user_2fa_settings is queried separately as it references auth.users, not public.users
+            try:
+                user_data_response = supabase.table('users').select('''
+                    user_id,
+                    email,
+                    firstname,
+                    lastname,
+                    specialty,
+                    license_number,
+                    phone_number,
+                    is_active,
+                    font_size,
+                    last_sign_in_at,
+                    role,
+                    facility_users!facility_users_user_id_fkey(facility_id)
+                ''').eq('user_id', auth_response.user.id).single().execute()
 
-            # Check if user account is active in users table and get font_size
-            user_info = supabase.table('users')\
-                .select('is_active, font_size')\
-                .eq('user_id', auth_response.user.id)\
-                .execute()
+                if not user_data_response.data:
+                    current_app.logger.error(f"AUDIT: No user data found for {email}")
+                    return jsonify({
+                        "status": "error",
+                        "message": "User data not found. Please contact your administrator."
+                    }), 404
 
-            if user_info.data and not user_info.data[0].get('is_active', True):
-                current_app.logger.warning(f"AUDIT: Login attempted for deactivated account {email} from IP {request.remote_addr}")
+                user_record = user_data_response.data
+
+                # Check if account is active
+                if not user_record.get('is_active', True):
+                    current_app.logger.warning(f"AUDIT: Login attempted for deactivated account {email} from IP {request.remote_addr}")
+                    return jsonify({
+                        "status": "error",
+                        "message": "Your account has been deactivated. Please contact your administrator for assistance."
+                    }), 401
+
+                # Extract facility_id from nested relation (facility_users returns array)
+                facility_id = user_record['facility_users'][0]['facility_id'] if user_record.get('facility_users') and len(user_record['facility_users']) > 0 else None
+
+            except Exception as data_fetch_error:
+                current_app.logger.error(f"AUDIT: Error fetching user data for {email}: {str(data_fetch_error)}")
                 return jsonify({
                     "status": "error",
-                    "message": "Your account has been deactivated. Please contact your administrator for assistance."
-                }), 401
+                    "message": "Failed to retrieve user information. Please try again."
+                }), 500
 
-            # Check if user has 2FA enabled
-            twofa_settings = supabase.table('user_2fa_settings')\
-                .select('is_enabled, method')\
-                .eq('user_id', auth_response.user.id)\
-                .execute()
+            # Check if user has 2FA enabled (separate query as it references auth.users, not public.users)
+            try:
+                twofa_response = supabase.table('user_2fa_settings')\
+                    .select('is_enabled, method')\
+                    .eq('user_id', auth_response.user.id)\
+                    .execute()
 
-            if twofa_settings.data and twofa_settings.data[0].get('is_enabled', False):
+                twofa_settings = twofa_response.data[0] if twofa_response.data else {}
+                is_2fa_enabled = twofa_settings.get('is_enabled', False)
+
+            except Exception as twofa_fetch_error:
+                # If 2FA settings fetch fails, assume 2FA is not enabled and continue
+                current_app.logger.warning(f"Could not fetch 2FA settings for {email}: {str(twofa_fetch_error)}")
+                is_2fa_enabled = False
+                twofa_settings = {}
+
+            if is_2fa_enabled:
                 # 2FA is enabled - generate verification code and send email
                 try:
                     # Generate 2FA login code
@@ -695,11 +727,11 @@ def login():
             # Get user's last sign in time from Supabase auth
             last_sign_in = auth_response.user.last_sign_in_at.isoformat() if auth_response.user.last_sign_in_at else None
 
-            # Check if this is the user's first login (checks public.users.last_signed_in_at)
-            first_login = is_first_login(auth_response.user.id, auth_response.user)
+            # Check if this is the user's first login using data from consolidated query
+            first_login = is_first_login(user_record.get('last_sign_in_at'), auth_response.user.id)
 
-            # Get font_size from public.users table
-            font_size = user_info.data[0].get('font_size', 16) if user_info.data else 16
+            # Get font_size from consolidated query
+            font_size = user_record.get('font_size', 16)
 
             user_data = {
                 'id': auth_response.user.id,
@@ -894,8 +926,8 @@ def verify_2fa_login():
 
         facility_id = get_facility_id.data[0]['facility_id'] if get_facility_id.data else None
 
-        # Check if this is the user's first login
-        first_login = is_first_login(user_id, auth_user)
+        # Check if this is the user's first login using data from user_record
+        first_login = is_first_login(user_record.get('last_sign_in_at'), user_id)
 
         # Get user metadata
         user_metadata = auth_user.user_metadata or {}
@@ -1207,8 +1239,8 @@ def get_session():
                 "message": "Your account has been deactivated. Please contact your administrator for assistance."
             }), 401
 
-        # Check if this is first login by verifying last_sign_in_at in public.users table
-        first_login = is_first_login(session_data.get("user_id"), None)
+        # Check if this is first login using session data
+        first_login = is_first_login(session_data.get("last_sign_in_at"))
 
         update_session_activity(session_id)
 

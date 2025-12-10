@@ -473,7 +473,7 @@ const PrescriptionQRDialog = ({ isOpen, onClose, prescription, onGenerate = null
                                     !prescription?.patient_id ||
                                     (usePinProtection && pinCode.length !== 4)
                                 }
-                                className="w-full bg-gradient-to-br from-accent to-secondary text-white font-semibold py-4 rounded-xl hover:-translate-y-0.5 hover:shadow-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0 flex items-center justify-center gap-2 text-base"
+                                className="w-full bg-primary text-white font-semibold py-4 rounded-xl hover:-translate-y-0.5 hover:shadow-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0 flex items-center justify-center gap-2 text-base"
                             >
                                 <Pill className="text-xl" />
                                 {usePinProtection && pinCode.length !== 4
@@ -496,7 +496,7 @@ const PrescriptionQRDialog = ({ isOpen, onClose, prescription, onGenerate = null
                             </h3>
                             <p className="text-gray-500 text-sm leading-relaxed mb-6">{error}</p>
                             <button
-                                className="bg-gradient-to-br from-accent to-primary text-white border-none px-8 py-3 rounded-xl text-[15px] font-semibold cursor-pointer transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_10px_20px_rgba(37,99,235,0.3)]"
+                                className="bg-accent text-white border-none px-8 py-3 rounded-xl text-[15px] font-semibold cursor-pointer transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_10px_20px_rgba(37,99,235,0.3)]"
                                 onClick={handleGenerate}
                             >
                                 Try Again

@@ -7,22 +7,22 @@ from flask import Blueprint, jsonify, request, current_app
 from datetime import datetime, timezone
 from utils.access_control import require_auth, require_role
 from config.settings import supabase, sr_client
-from config.stripe_config import get_stripe_client, PARENT_PLAN_PRICING, STRIPE_WEBHOOK_SECRET, get_stripe_price_id
+# from config.stripe_config import get_stripe_client, PARENT_PLAN_PRICING, STRIPE_WEBHOOK_SECRET, get_stripe_price_id
 from utils.audit_logger import log_action
 from utils.sanitize import sanitize_request_data
 import uuid
 
 parent_subscription_bp = Blueprint('parent_subscription', __name__)
-stripe = get_stripe_client()
+# stripe = get_stripe_client()
 
-# Validate Stripe configuration on module load
-if not stripe.api_key:
-    import logging
-    logging.warning("STRIPE_SECRET_KEY not configured! Payment features will not work. Please set STRIPE_SECRET_KEY in server/.env")
+# # Validate Stripe configuration on module load
+# if not stripe.api_key:
+#     import logging
+#     logging.warning("STRIPE_SECRET_KEY not configured! Payment features will not work. Please set STRIPE_SECRET_KEY in server/.env")
 
-if not STRIPE_WEBHOOK_SECRET:
-    import logging
-    logging.warning("STRIPE_WEBHOOK_SECRET not configured! Webhook processing will fail. Please set STRIPE_WEBHOOK_SECRET in server/.env")
+# if not STRIPE_WEBHOOK_SECRET:
+#     import logging
+#     logging.warning("STRIPE_WEBHOOK_SECRET not configured! Webhook processing will fail. Please set STRIPE_WEBHOOK_SECRET in server/.env")
 
 # ============================================
 # PARENT SUBSCRIPTION ENDPOINTS
@@ -287,35 +287,35 @@ def stripe_webhook():
         400: Invalid payload or signature
         500: Server error
     """
-    try:
-        payload = request.get_data(as_text=True)
-        sig_header = request.headers.get('Stripe-Signature')
+    # try:
+        # payload = request.get_data(as_text=True)
+        # sig_header = request.headers.get('Stripe-Signature')
 
-        try:
-            event = stripe.Webhook.construct_event(
-                payload, sig_header, STRIPE_WEBHOOK_SECRET
-            )
-        except ValueError:
-            current_app.logger.error("Invalid webhook payload")
-            return jsonify({"error": "Invalid payload"}), 400
-        except stripe.error.SignatureVerificationError:
-            current_app.logger.error("Invalid webhook signature")
-            return jsonify({"error": "Invalid signature"}), 400
+        # try:
+        #     event = stripe.Webhook.construct_event(
+        #         payload, sig_header, STRIPE_WEBHOOK_SECRET
+        #     )
+        # except ValueError:
+        #     current_app.logger.error("Invalid webhook payload")
+        #     return jsonify({"error": "Invalid payload"}), 400
+        # except stripe.error.SignatureVerificationError:
+        #     current_app.logger.error("Invalid webhook signature")
+        #     return jsonify({"error": "Invalid signature"}), 400
 
         # Handle different event types
-        event_type = event['type']
-        current_app.logger.info(f"Processing Stripe webhook: {event_type}")
+    #     event_type = event['type']
+    #     current_app.logger.info(f"Processing Stripe webhook: {event_type}")
 
-        if event_type == 'payment_intent.succeeded':
-            handle_payment_succeeded(event['data']['object'])
-        else:
-            current_app.logger.info(f"Unhandled event type: {event_type}")
+    #     if event_type == 'payment_intent.succeeded':
+    #         handle_payment_succeeded(event['data']['object'])
+    #     else:
+    #         current_app.logger.info(f"Unhandled event type: {event_type}")
 
-        return jsonify({"status": "success"}), 200
+    #     return jsonify({"status": "success"}), 200
 
-    except Exception as e:
-        current_app.logger.error(f"Webhook error: {str(e)}")
-        return jsonify({"error": str(e)}), 500
+    # except Exception as e:
+    #     current_app.logger.error(f"Webhook error: {str(e)}")
+    #     return jsonify({"error": str(e)}), 500
 
 
 def handle_payment_succeeded(payment_intent):

@@ -50,7 +50,7 @@ const systemSideNavLinks = [
     {
         icon: <BiHelpCircle className="text-xl" />,
         title: 'Help & Support',
-        to: '/nurse/help-support',
+        to: '/nurse/help_support',
     },
     {
         icon: <MessageSquarePlus className="text-xl" />,

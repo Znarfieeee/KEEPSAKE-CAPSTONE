@@ -303,28 +303,23 @@ const PrescriptionDocument = React.forwardRef(
                         </div>
                     </div>
 
-                    {/* ===== PATIENT INFORMATION BOX ===== */}
-                    <div className="border-2 border-gray-300 rounded-lg p-4 mb-5 bg-gradient-to-r from-gray-50 to-white">
-                        <div className="flex items-center gap-2 mb-3 pb-2 border-b border-gray-200">
-                            <User className="w-4 h-4 text-blue-600" />
-                            <h3 className="text-xs font-bold text-blue-800 uppercase tracking-wide">
-                                Patient Information
-                            </h3>
-                        </div>
-                        <div className="grid grid-cols-12 gap-4">
-                            <div className="col-span-9">
-                                <label className="text-[10px] text-gray-500 uppercase tracking-wide font-semibold block">
-                                    Patient Name
+                    {/* ===== PATIENT INFORMATION SECTION ===== */}
+                    <div className="mb-5 p-4 bg-gray-50 border-l-4 border-blue-600 rounded-r-lg">
+                        <h3 className="text-xs font-bold text-blue-800 uppercase tracking-wide mb-3 pb-2 border-b border-gray-300">
+                            Patient Information
+                        </h3>
+                        <div className="grid grid-cols-2 gap-6 text-sm">
+                            <div>
+                                <label className="text-[10px] text-gray-600 uppercase tracking-wide font-semibold block mb-1">
+                                    Name
                                 </label>
-                                <p className="text-lg font-bold text-gray-900 border-b-2 border-gray-400 pb-1 mt-0.5">
-                                    {patientName}
-                                </p>
+                                <p className="text-base font-bold text-gray-900">{patientName}</p>
                             </div>
-                            <div className="col-span-3">
-                                <label className="text-[10px] text-gray-500 uppercase tracking-wide font-semibold block">
+                            <div>
+                                <label className="text-[10px] text-gray-600 uppercase tracking-wide font-semibold block mb-1">
                                     Age
                                 </label>
-                                <p className="text-lg font-bold text-gray-900 border-b-2 border-gray-400 pb-1 mt-0.5">
+                                <p className="text-base font-bold text-gray-900">
                                     {patientAge ? `${patientAge} yrs` : 'N/A'}
                                 </p>
                             </div>
@@ -332,21 +327,37 @@ const PrescriptionDocument = React.forwardRef(
 
                         {/* Follow-up Date in Patient Info Section */}
                         {prescription?.return_date && (
-                            <div className="mt-4 pt-3 border-t border-gray-200">
-                                <div className="flex items-center justify-between bg-blue-50 border border-blue-200 rounded-lg px-4 py-2">
-                                    <div className="flex items-center gap-2">
-                                        <Calendar className="w-5 h-5 text-blue-600" />
-                                        <span className="text-sm font-medium text-blue-800">
-                                            Follow-up Appointment:
-                                        </span>
-                                    </div>
-                                    <span className="text-lg font-bold text-blue-900">
+                            <div className="mt-4 pt-3 border-t border-gray-300">
+                                <div className="flex items-center justify-between bg-blue-50 border-l-3 border-blue-600 px-3 py-2 rounded-r">
+                                    <span className="text-sm font-medium text-blue-800">
+                                        Follow-up Appointment:
+                                    </span>
+                                    <span className="font-bold text-blue-900">
                                         {formatDate(prescription.return_date)}
                                     </span>
                                 </div>
                             </div>
                         )}
                     </div>
+
+                    {/* ===== ALLERGIES SECTION ===== */}
+                    {prescription?.allergies && prescription.allergies.length > 0 && (
+                        <div className="mb-5 p-4 bg-red-50 border-l-4 border-red-500 rounded-r-lg">
+                            <h3 className="text-xs font-bold text-red-800 uppercase tracking-wide mb-2 pb-1">
+                                ⚠ Known Allergies
+                            </h3>
+                            <div className="flex flex-wrap gap-2">
+                                {prescription.allergies.map((allergy, idx) => (
+                                    <span
+                                        key={idx}
+                                        className="bg-red-600 text-white px-3 py-1 rounded text-xs font-semibold"
+                                    >
+                                        {typeof allergy === 'string' ? allergy : allergy.allergen}
+                                    </span>
+                                ))}
+                            </div>
+                        </div>
+                    )}
 
                     {/* ===== DIAGNOSIS / CLINICAL FINDINGS ===== */}
                     {prescription?.findings && (
@@ -384,211 +395,123 @@ const PrescriptionDocument = React.forwardRef(
                                 medications.map((med, index) => (
                                     <div
                                         key={med.pm_id || med.id || index}
-                                        className="medication-item bg-gray-50 border border-gray-200 rounded-lg p-4"
+                                        className="bg-white border border-gray-300 rounded-lg p-4"
                                     >
-                                        <div className="flex items-start gap-3">
-                                            <span className="flex-shrink-0 w-8 h-8 bg-blue-800 text-white rounded-full flex items-center justify-center text-sm font-bold shadow-md">
-                                                {index + 1}
+                                        <div className="mb-3 pb-2 border-b border-gray-300">
+                                            <span className="text-sm font-bold text-gray-900">
+                                                {index + 1}.{' '}
+                                                {med.medication_name || 'Unnamed Medication'}
                                             </span>
-                                            <div className="flex-1">
-                                                <div className="flex items-baseline gap-2 flex-wrap">
-                                                    <p className="text-lg font-bold text-gray-900">
-                                                        {med.medication_name ||
-                                                            'Unnamed Medication'}
-                                                    </p>
-                                                    {med.dosage && (
-                                                        <span className="text-blue-700 font-semibold bg-blue-50 px-2 py-0.5 rounded text-sm">
-                                                            {med.dosage}
-                                                        </span>
-                                                    )}
-                                                </div>
-                                                <div className="mt-2 text-sm text-gray-700 space-y-1.5">
-                                                    <p className="flex items-center gap-2">
-                                                        <span className="font-bold text-blue-800 bg-blue-100 px-2 py-0.5 rounded text-xs">
-                                                            Sig:
-                                                        </span>
-                                                        <span>
-                                                            {formatFrequency(med.frequency)} for{' '}
-                                                            {formatDuration(med.duration)}
-                                                        </span>
-                                                    </p>
-                                                    {med.quantity && (
-                                                        <p className="flex items-center gap-2">
-                                                            <span className="font-bold text-green-800 bg-green-100 px-2 py-0.5 rounded text-xs">
-                                                                Qty:
-                                                            </span>
-                                                            <span className="font-semibold">
-                                                                {med.quantity}
-                                                            </span>
-                                                        </p>
-                                                    )}
-                                                    {med.special_instructions && (
-                                                        <p className="flex items-start gap-2 bg-amber-50 border border-amber-200 rounded px-3 py-2 mt-2">
-                                                            <AlertCircle className="w-4 h-4 text-amber-600 mt-0.5 flex-shrink-0" />
-                                                            <span className="text-amber-800">
-                                                                {med.special_instructions}
-                                                            </span>
-                                                        </p>
-                                                    )}
-                                                    {med.refills_authorized > 0 && (
-                                                        <p className="text-green-700 font-medium">
-                                                            ✓ {med.refills_authorized} refill
-                                                            {med.refills_authorized !== 1
-                                                                ? 's'
-                                                                : ''}{' '}
-                                                            authorized
-                                                        </p>
-                                                    )}
-                                                </div>
-                                            </div>
                                         </div>
+
+                                        <div className="text-xs text-gray-700 space-y-2">
+                                            <div>
+                                                <span className="font-bold text-gray-900 uppercase text-[9px] letter-spacing-wide">
+                                                    Dosage:
+                                                </span>
+                                                <span className="text-gray-700 font-semibold ml-2">
+                                                    {med.dosage || 'As directed'}
+                                                </span>
+                                            </div>
+                                            <div>
+                                                <span className="font-bold text-gray-900 uppercase text-[9px] letter-spacing-wide">
+                                                    Frequency:
+                                                </span>
+                                                <span className="text-gray-700 font-semibold ml-2">
+                                                    {formatFrequency(med.frequency)}
+                                                </span>
+                                            </div>
+                                            <div>
+                                                <span className="font-bold text-gray-900 uppercase text-[9px] letter-spacing-wide">
+                                                    Duration:
+                                                </span>
+                                                <span className="text-gray-700 font-semibold ml-2">
+                                                    {formatDuration(med.duration)}
+                                                </span>
+                                            </div>
+                                            {med.quantity && (
+                                                <div>
+                                                    <span className="font-bold text-gray-900 uppercase text-[9px] letter-spacing-wide">
+                                                        Quantity:
+                                                    </span>
+                                                    <span className="text-gray-700 font-semibold ml-2">
+                                                        {med.quantity}
+                                                    </span>
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        {med.special_instructions && (
+                                            <div className="mt-3 pt-2 border-t border-dashed border-gray-300">
+                                                <p className="text-xs text-gray-700 italic">
+                                                    <span className="font-bold">Instructions:</span>{' '}
+                                                    {med.special_instructions}
+                                                </p>
+                                            </div>
+                                        )}
                                     </div>
                                 ))
                             ) : (
-                                <p className="text-gray-500 italic py-6 text-center bg-gray-50 rounded-lg border border-dashed border-gray-300">
+                                <p className="text-gray-500 italic py-6 text-center bg-gray-50 rounded-lg border border-dashed border-gray-300 text-sm">
                                     No medications prescribed for this consultation.
                                 </p>
                             )}
                         </div>
                     </div>
 
-                    {/* ===== SPECIAL INSTRUCTIONS ===== */}
+                    {/* ===== DOCTOR INSTRUCTIONS ===== */}
                     {prescription?.doctor_instructions && (
-                        <div className="mb-5 bg-gradient-to-r from-amber-50 to-yellow-50 border-2 border-amber-300 rounded-lg p-4">
-                            <div className="flex items-center gap-2 mb-2">
-                                <AlertCircle className="w-5 h-5 text-amber-600" />
-                                <h3 className="text-xs font-bold text-amber-800 uppercase tracking-wide">
-                                    Doctor's Instructions
-                                </h3>
-                            </div>
-                            <p className="text-amber-900 leading-relaxed text-[15px]">
+                        <div className="mb-5 p-4 bg-yellow-50 border-l-4 border-amber-400 rounded-r-lg">
+                            <h3 className="text-xs font-bold text-amber-800 uppercase tracking-wide mb-2 pb-1">
+                                Additional Instructions
+                            </h3>
+                            <p className="text-amber-900 leading-relaxed text-sm whitespace-pre-wrap">
                                 {prescription.doctor_instructions}
                             </p>
                         </div>
                     )}
 
-                    {/* ===== SIGNATURE SECTION (Bottom Right) ===== */}
+                    {/* ===== SIGNATURE SECTION ===== */}
                     <div className="mt-8 pt-6 border-t-2 border-gray-300">
-                        <div className="flex justify-between items-end">
-                            {/* Left: Important Notes */}
-                            <div className="text-xs text-gray-600 max-w-xs space-y-2">
-                                <div className="bg-gray-50 border border-gray-200 rounded-lg p-3">
-                                    <p className="font-bold text-gray-700 mb-2 uppercase tracking-wide text-[10px]">
-                                        Important Notes:
-                                    </p>
-                                    <ul className="space-y-1 text-gray-600">
-                                        <li className="flex items-start gap-1.5">
-                                            <span className="text-blue-600">•</span>
-                                            <span>
-                                                This prescription is valid for 30 days from the date
-                                                issued
-                                            </span>
-                                        </li>
-                                        <li className="flex items-start gap-1.5">
-                                            <span className="text-blue-600">•</span>
-                                            <span>Present to a licensed pharmacy only</span>
-                                        </li>
-                                        <li className="flex items-start gap-1.5">
-                                            <span className="text-blue-600">•</span>
-                                            <span>Keep this document for your medical records</span>
-                                        </li>
-                                    </ul>
-                                </div>
+                        <div className="text-right">
+                            <div className="border-b-2 border-gray-800 pb-2 mb-2 h-20 flex items-end justify-center">
+                                <p className="text-gray-500 text-sm italic">Signature</p>
                             </div>
 
-                            {/* Right: Doctor Signature */}
-                            <div className="text-center min-w-[300px]">
-                                {/* Signature Line */}
-                                <div className="border-b-2 border-gray-800 pb-2 mb-2 h-16 flex items-end justify-center">
-                                    <p
-                                        className="text-2xl text-blue-900"
-                                        style={{
-                                            fontFamily:
-                                                "'Brush Script MT', 'Segoe Script', 'Lucida Handwriting', cursive",
-                                        }}
-                                    >
-                                        {doctorName}
-                                    </p>
-                                </div>
+                            <p className="font-bold text-gray-900 text-lg mb-1">{doctorName}</p>
+                            <p className="text-sm text-blue-700 font-medium mb-2">
+                                {doctorSpecialty}
+                            </p>
 
-                                {/* Doctor Info */}
-                                <p className="font-bold text-gray-900 text-lg">{doctorName}</p>
-                                <p className="text-sm text-blue-700 font-medium">
-                                    {doctorSpecialty}
-                                </p>
-
-                                <div className="mt-2 text-xs text-gray-600 space-y-0.5 bg-gray-50 rounded-lg py-2 px-4 inline-block">
+                            {(doctor?.license_number || doctor?.prc_number) && (
+                                <div className="text-xs text-gray-600 space-y-0.5">
                                     {doctor?.license_number && (
-                                        <p className="flex items-center justify-center gap-1.5">
-                                            <span className="font-semibold">License No:</span>
-                                            <span className="font-mono bg-white px-1.5 py-0.5 rounded">
-                                                {doctor.license_number}
-                                            </span>
+                                        <p>
+                                            <span className="font-semibold">License No:</span>{' '}
+                                            {doctor.license_number}
                                         </p>
                                     )}
                                     {doctor?.prc_number && (
-                                        <p className="flex items-center justify-center gap-1.5">
-                                            <span className="font-semibold">PRC No:</span>
-                                            <span className="font-mono bg-white px-1.5 py-0.5 rounded">
-                                                {doctor.prc_number}
-                                            </span>
+                                        <p>
+                                            <span className="font-semibold">PRC No:</span>{' '}
+                                            {doctor.prc_number}
                                         </p>
-                                    )}
-                                    {doctorPhone && (
-                                        <p className="flex items-center justify-center gap-1.5 mt-1">
-                                            <Phone className="w-3 h-3 text-blue-600" />
-                                            <span>{doctorPhone}</span>
-                                        </p>
-                                    )}
-                                    {!doctor?.license_number && !doctor?.prc_number && (
-                                        <>
-                                            <p className="flex items-center justify-center gap-1.5">
-                                                <span className="font-semibold">License No:</span>
-                                                <span className="font-mono text-gray-400">
-                                                    MD-XXXXXX
-                                                </span>
-                                            </p>
-                                            <p className="flex items-center justify-center gap-1.5">
-                                                <span className="font-semibold">PRC No:</span>
-                                                <span className="font-mono text-gray-400">
-                                                    XXXXXXX
-                                                </span>
-                                            </p>
-                                        </>
                                     )}
                                 </div>
-                            </div>
+                            )}
                         </div>
                     </div>
 
                     {/* ===== FOOTER ===== */}
-                    <footer className="mt-8 pt-4 border-t border-gray-300">
-                        <div className="flex items-center justify-between text-[10px] text-gray-400">
-                            <div className="flex items-center gap-2">
-                                <img
-                                    src={KeepsakeLogo}
-                                    alt="KEEPSAKE"
-                                    className="w-5 h-5 opacity-50"
-                                />
-                                <span>Powered by KEEPSAKE Healthcare System</span>
-                            </div>
-                            <div className="text-right">
-                                <p>
-                                    Document ID:{' '}
-                                    <span className="font-mono">
-                                        RX-
-                                        {prescription?.rx_id?.slice(0, 8).toUpperCase() || 'XXXXXX'}
-                                    </span>
-                                </p>
-                                <p>
-                                    Generated:{' '}
-                                    {formatShortDate(prescription?.created_at || new Date())}
-                                </p>
-                            </div>
-                        </div>
-                        <p className="text-center text-[9px] text-gray-400 mt-2 italic">
-                            This is a computer-generated prescription from {facilityName}. No
-                            signature required if digitally authenticated.
+                    <footer className="mt-8 pt-4 border-t-2 border-blue-600 text-center">
+                        <p className="text-xs text-gray-600 leading-relaxed">
+                            KEEPSAKE Healthcare System | www.keepsake.com | hello@keepsake.com
+                            <br />
+                            <span className="font-semibold">
+                                Secure Digital Prescription from KEEPSAKE Healthcare System
+                            </span>
+                            <br />
+                            Generated on {formatShortDate(new Date().toISOString())}
                         </p>
                     </footer>
                 </div>

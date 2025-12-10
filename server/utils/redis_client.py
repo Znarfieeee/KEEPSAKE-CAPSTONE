@@ -10,25 +10,36 @@ logger = logging.getLogger(__name__)
 
 def get_redis_client():
     """Return a configured Redis client with proper encoding."""
+    try:
+        # Get Redis configuration from environment variables with proper type conversion
+        host = os.environ.get("REDIS_HOST", "localhost")
+        port = int(os.environ.get("REDIS_PORT", 6379))
+        ssl_config = os.environ.get("REDIS_SSL", "False")
+        ssl = ssl_config.lower() == "true"
+        password = os.environ.get("REDIS_PASSWORD", None)
 
-    # Get Redis configuration from environment variables with proper type conversion
-    host = os.environ.get("REDIS_HOST")
-    port = int(os.environ.get("REDIS_PORT"))
-    ssl = os.environ.get("REDIS_SSL").lower() == "true"
-    password = os.environ.get("REDIS_PASSWORD")
+        # Create Redis client with timeout
+        client = redis.Redis(
+            host=host,
+            port=port,
+            password=password if password else None,
+            db=1,
+            decode_responses=True,
+            ssl=ssl,
+            socket_connect_timeout=5,
+            socket_timeout=5,
+            socket_keepalive=True,
+            retry_on_timeout=True,
+            health_check_interval=30
+        )
 
-    return redis.Redis(
-        host=host,
-        port=port,
-        password=password,
-        db=1,
-        decode_responses=True,
-        # encoding='utf-8',
-        # encoding_errors='replace',  # Replace invalid UTF-8 bytes instead of crashing
-        ssl=ssl,
-        # socket_connect_timeout=5,
-        # socket_keepalive=True
-    )
+        # Test connection
+        client.ping()
+        return client
+
+    except Exception as e:
+        logger.warning(f"Redis connection failed: {e}")
+        raise
     
 def clear_corrupted_sessions():
     try:
@@ -91,4 +102,9 @@ def clear_patient_cache(patient_id=None, facility_id=None):
     logger.info(f"Cleared total {total_deleted} patient cache keys for patterns: {patterns}")
     return total_deleted
         
-redis_client = get_redis_client() 
+# Initialize Redis client (may be None if Redis is unavailable)
+try:
+    redis_client = get_redis_client()
+except Exception as e:
+    logger.warning(f"Redis client initialization failed: {e}")
+    redis_client = None 
