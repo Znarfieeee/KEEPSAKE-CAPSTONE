@@ -4,7 +4,6 @@ import {
     getPatients,
     getPatientById,
     updatePatientRecord,
-    deactivate_patient,
     deletePatientRecord,
 } from '@/api/doctors/patient'
 
@@ -134,23 +133,23 @@ function DoctorPatientRecords() {
                     }
                     break
 
-                case 'DELETE':
-                    setPatients((prev) => prev.filter((p) => p.id !== patient.id))
-                    showToast(
-                        'warning',
-                        `Patient "${patient.firstname} ${patient.lastname}" removed`
-                    )
+                // case 'DELETE':
+                //     setPatients((prev) => prev.filter((p) => p.id !== patient.id))
+                //     showToast(
+                //         'warning',
+                //         `Patient "${patient.firstname} ${patient.lastname}" removed`
+                //     )
 
-                    // Close modals if viewing/editing deleted patient
-                    if (showDetailModal && selectedPatient?.id === patient.id) {
-                        setShowDetailModal(false)
-                        setSelectedPatient(null)
-                    }
-                    if (showEditModal && editingPatient?.id === patient.id) {
-                        setShowEditModal(false)
-                        setEditingPatient(null)
-                    }
-                    break
+                //     // Close modals if viewing/editing deleted patient
+                //     if (showDetailModal && selectedPatient?.id === patient.id) {
+                //         setShowDetailModal(false)
+                //         setSelectedPatient(null)
+                //     }
+                //     if (showEditModal && editingPatient?.id === patient.id) {
+                //         setShowEditModal(false)
+                //         setEditingPatient(null)
+                //     }
+                //     break
 
                 default:
                     console.warn('Unknown real-time event type: ', type)

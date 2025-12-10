@@ -117,8 +117,7 @@ const PatientRecordsTable = ({
                                             patient.sex
                                         )}`}
                                     >
-                                        {patient.sex.charAt(0).toUpperCase() +
-                                            patient.sex.slice(1).toLowerCase()}
+                                        {patient.sex == 'male' ? 'Male' : 'Female'}
                                     </span>
                                 </td>
                                 <td className="p-2 sm:p-3 whitespace-nowrap capitalize text-center text-xs sm:text-sm">
@@ -175,7 +174,7 @@ const PatientRecordsTable = ({
                                         </TooltipHelper>
 
                                         {user?.role === 'doctor' ? (
-                                            <TooltipHelper content="Delete Patient">
+                                            <TooltipHelper content="Deactivate Patient">
                                                 <Button
                                                     variant="ghost"
                                                     size="sm"
