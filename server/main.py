@@ -3,6 +3,7 @@ from flask_cors import CORS
 from datetime import timedelta
 import os, sys, json
 from flask_session import Session # type: ignore
+from dotenv import load_dotenv
 
 # Utilities & Configs
 from config.settings import settings_bp
@@ -40,6 +41,7 @@ from routes.public_routes import public_bp
 from routes.password_reset_routes import password_reset_bp
 
 app = Flask("keepsake")
+load_dotenv()
 
 # Clear corrupted sessions before initializing OAuth
 try:
@@ -90,12 +92,12 @@ def setup_redis_session():
     """Setup Redis session with proper error handling"""
     try:
         redis_client = get_redis_client()
-        
+
         # Clear any corrupted sessions on startup
         corrupted_count = clear_corrupted_sessions()
         if corrupted_count > 0:
             app.logger.warning(f"Cleared {corrupted_count} corrupted sessions on startup")
-        
+
         # HIPAA/GDPR compliant session configuration
         app.config.update(
             SECRET_KEY = os.environ.get('FLASK_SECRET_KEY'),
@@ -108,24 +110,24 @@ def setup_redis_session():
             SESSION_COOKIE_HTTPONLY = True,
             SESSION_COOKIE_SECURE = True if os.environ.get('FLASK_ENV') == 'production' else False,
             SESSION_COOKIE_SAMESITE = 'Lax',
-            PERMANENT_SESSION_LIFETIME = timedelta(minutes=43800), #30 minutes timeout
+            PERMANENT_SESSION_LIFETIME = timedelta(minutes=30), #30 minutes timeout
             SESSION_COOKIE_DOMAIN = os.environ.get('COOKIE_DOMAIN')
         )
 
         # Initialize Flask-session with error handling
         try:
-            Session(app)
+            # Session(app)
             app.logger.info("Flask-Session initialized successfully")
         except Exception as e:
             app.logger.error(f"Failed to initialize Flask-Session: {e}")
             raise
-            
+
         return redis_client
-        
+
     except Exception as e:
         app.logger.error(f"Redis session setup failed: {e}")
         raise
-    
+
 redis_client = setup_redis_session()
 
 # HIPAA/GDPR compliant session configuration
@@ -147,11 +149,18 @@ app.config.update(
 # Initialize Flask-session
 Session(app)
 
+# Allow local Vite dev server
+allowed_origins = [
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+    "http://localhost:5000",
+    "http://127.0.0.1:5000"
+]
+
 CORS(
-    app, origins=[
-        "https://keepsake-pi.vercel.app",
-        "http://localhost:5173"
-        ], supports_credentials=True,
+    app,
+    resources={r"/*": {"origins": allowed_origins}},
+    supports_credentials=True,
 )
 
 # Configure logging for HIPAA audit trail
@@ -229,7 +238,7 @@ def handle_startup_errors():
         sys.exit(1)
 
     print("[READY] All systems ready!")
-    
+
 @app.route("/")
 def landing_page():
     return jsonify({"message": "Success", "status": "success"}), 200
@@ -255,28 +264,28 @@ def health_check():
         "redis": "unknown",
         "session_store": "unknown"
     }
-    
+
     status_code = 200
-    
+
     try:
         # Test basic Redis connection
         redis_client.ping()
         health_status["redis"] = "connected"
-        
+
         # Test session functionality
         test_key = "health_check_test"
         test_value = "test_data"
         redis_client.setex(test_key, 10, test_value)
         retrieved_value = redis_client.get(test_key)
         redis_client.delete(test_key)
-        
+
         if retrieved_value == test_value:
             health_status["session_store"] = "operational"
         else:
             health_status["session_store"] = "degraded"
             health_status["status"] = "degraded"
             status_code = 503
-            
+
     except UnicodeDecodeError as e:
         health_status["redis"] = "encoding_error"
         health_status["status"] = "unhealthy"
@@ -298,32 +307,32 @@ def manual_session_cleanup():
         from utils.access_control import require_auth, require_role
         # This would normally be protected by auth decorators
         # Simplified for demonstration
-        
+
         corrupted_count = clear_corrupted_sessions()
-        
+
         return jsonify({
             "status": "success",
             "message": f"Cleaned up {corrupted_count} corrupted sessions",
             "cleaned_count": corrupted_count
         }), 200
-        
+
     except Exception as e:
         return jsonify({
             "status": "error", 
             "message": f"Cleanup failed: {str(e)}"
         }), 500
-    
+
 @app.errorhandler(UnicodeDecodeError)
 def handle_unicode_error(e):
     """Handle Unicode decode errors that might occur with corrupted Redis data"""
     app.logger.error(f"Unicode decode error: {e}")
-    
+
     # Try to clear corrupted sessions
     try:
         clear_corrupted_sessions()
     except:
         pass  # Best effort
-    
+
     return jsonify({
         "status": "error",
         "message": "Session data corrupted. Please log in again."
@@ -334,7 +343,7 @@ if not app.debug:
     # Centralized audit logger setup (attaches handlers to app.logger)
     configure_audit_logger(attach_to_logger=app.logger)
     app.logger.info('Keepsake medical app startup')
-    
+
 @app.before_request
 def handle_preflight():
     if request.method == "OPTIONS":
@@ -353,13 +362,13 @@ def add_security_headers(response):
     response.headers['X-XSS-Protection'] = '1; mode=block'
     response.headers['Strict-Transport-Security'] = 'max-age=31536000; includeSubDomains'
     response.headers['Referrer-Policy'] = 'strict-origin-when-cross-origin'
-    
+
     response.headers.pop('Server', None)
-    
+
     return response
 
 if __name__ == "__main__":
     handle_startup_errors()
-    app.run(debug=False, 
+    app.run(debug=True, 
             # host='192.168.1.8'
-            )
+    )
