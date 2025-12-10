@@ -61,6 +61,8 @@ const SEGMENT_LABELS = {
     // Nurse || Staff
     nurse: 'Dashboard',
 
+    help_support: 'Help & Support',
+
     feedback: 'Feedback',
     feedback_dashboard: 'Feedback',
 }
