@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/Input'
-import { Skeleton } from '@/components/ui/Skeleton'
+import { Skeleton } from '@/components/ui/skeleton'
 import {
     Select,
     SelectContent,
