@@ -1,13 +1,14 @@
 import datetime
 import json
 import logging
+import os
 import redis
 from typing import Optional, Dict, Any
 from utils.redis_client import redis_client
 
 SESSION_PREFIX = 'keepsake_session:'
 # SESSION_TIMEOUT = 1800  # 30 minutes (old auto-logout)
-SESSION_TIMEOUT = 86400 * 30  # 30 days - effectively no auto-logout for inactive sessions
+SESSION_TIMEOUT = int(os.environ.get('SESSION_TIMEOUT', 86400 * 30))  # 30 days - effectively no auto-logout for inactive sessions
 
 logger = logging.getLogger(__name__)
 

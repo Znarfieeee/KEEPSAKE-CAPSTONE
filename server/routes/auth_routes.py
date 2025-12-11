@@ -19,8 +19,8 @@ ACCESS_COOKIE = "keepsake_session"      # short-lived JWT
 REFRESH_COOKIE = "keepsake_session"    # long-lived refresh token
 SESSION_PREFIX = "keepsake_session:"
 CACHE_PREFIX = "patient_cache:"
-SESSION_TIMEOUT = 86400 * 30  # 30 days - no auto-logout for inactive sessions
-REFRESH_TOKEN_TIMEOUT = 7 * 24 * 60 * 60  # 7 days
+SESSION_TIMEOUT = int(os.environ.get('SESSION_TIMEOUT', 86400 * 30))  # 30 days - no auto-logout for inactive sessions
+REFRESH_TOKEN_TIMEOUT = SESSION_TIMEOUT  # Match SESSION_TIMEOUT to prevent premature logout
 
 auth_bp = Blueprint('auth', __name__)
 
@@ -798,7 +798,7 @@ def login():
                 httponly=True,
                 secure=secure_cookie,
                 samesite=cookie_samesite,
-                max_age=REFRESH_TOKEN_TIMEOUT,
+                max_age=REFRESH_TOKEN_TIMEOUT,  # 30 days - matches SESSION_TIMEOUT
                 path="/",
                 domain=None,  # Let browser determine domain
             )
@@ -1030,7 +1030,7 @@ def verify_2fa_login():
             httponly=True,
             secure=secure_cookie,
             samesite=cookie_samesite,
-            max_age=REFRESH_TOKEN_TIMEOUT,
+            max_age=REFRESH_TOKEN_TIMEOUT,  # 30 days - matches SESSION_TIMEOUT
             path="/",
             domain=None,
         )
@@ -1280,13 +1280,13 @@ def refresh_token():
         # Get the current session ID
         session_id = request.cookies.get('session_id')
         refresh_token = request.cookies.get(REFRESH_COOKIE)
-        
-        if not session_id or not refresh_token:
+
+        if not session_id:
             return jsonify({
                 "status": "error",
-                "message": "No valid session found"
+                "message": "No session found"
             }), 401
-            
+
         try:
             # Get the existing session data
             session_data = get_session_data(session_id)
@@ -1295,6 +1295,22 @@ def refresh_token():
                     "status": "error",
                     "message": "Session expired"
                 }), 401
+
+            # Check if user authenticated via Google OAuth (no Supabase tokens)
+            auth_provider = session_data.get('auth_provider', 'supabase')
+            if auth_provider == 'google' or not refresh_token:
+                # Google OAuth users don't have Supabase refresh tokens
+                # Just update session activity and return current session
+                update_session_activity(session_id)
+
+                current_app.logger.info(f"Session refreshed for {auth_provider} user {session_data.get('email')}")
+
+                return jsonify({
+                    "status": "success",
+                    "message": "Session refreshed successfully",
+                    "user": session_data,
+                    "expires_at": session_data.get('expires_at')
+                }), 200
             
             # Create a new session with the refresh token
             auth_response = supabase.auth.refresh_session({
@@ -1328,21 +1344,30 @@ def refresh_token():
             # Update cookies
             secure_cookie = request.is_secure
             cookie_samesite = "None" if secure_cookie else "Lax"
-            # Set both cookies with consistent settings
-            for cookie_name, cookie_value in [
-                ('session_id', session_id),
-                (REFRESH_COOKIE, auth_response.session.refresh_token)
-            ]:
-                response.set_cookie(
-                    cookie_name,
-                    cookie_value,
-                    httponly=True,
-                    secure=secure_cookie,
-                    samesite=cookie_samesite,
-                    max_age=SESSION_TIMEOUT,
-                    path="/",
-                    domain=None  # Let browser set automatically
-                )
+
+            # Set session cookie
+            response.set_cookie(
+                'session_id',
+                session_id,
+                httponly=True,
+                secure=secure_cookie,
+                samesite=cookie_samesite,
+                max_age=SESSION_TIMEOUT,
+                path="/",
+                domain=None
+            )
+
+            # Set refresh token cookie with REFRESH_TOKEN_TIMEOUT
+            response.set_cookie(
+                REFRESH_COOKIE,
+                auth_response.session.refresh_token,
+                httponly=True,
+                secure=secure_cookie,
+                samesite=cookie_samesite,
+                max_age=REFRESH_TOKEN_TIMEOUT,
+                path="/",
+                domain=None
+            )
           
             return response, 200
             
