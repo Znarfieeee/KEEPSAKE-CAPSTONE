@@ -160,8 +160,11 @@ else:
     Session(app)
     
 
+FRONTEND_URL = os.environ.get('FRONTEND_URL')
+
 # Allow local Vite dev server
 allowed_origins = [
+    FRONTEND_URL,
     'keepsake-pi.vercel.app',
     'localhost:5379',
     'localhost:5000',
