@@ -1,8 +1,26 @@
 import React from 'react'
 import { X, Download } from 'lucide-react'
+import { generateInvoicePDF } from '@/util/pdfGenerator'
 
 const InvoiceDetailModal = ({ open, invoice, onClose }) => {
     if (!open || !invoice) return null
+
+    const handleDownloadPDF = () => {
+        try {
+            console.log('[InvoiceDetailModal] Generating PDF for invoice:', invoice.invoice_number)
+            const result = generateInvoicePDF(invoice)
+
+            if (result.success) {
+                console.log('[InvoiceDetailModal] PDF generated successfully:', result.filename)
+            } else {
+                console.error('[InvoiceDetailModal] PDF generation failed:', result.error)
+                alert(`Failed to generate PDF: ${result.error}`)
+            }
+        } catch (error) {
+            console.error('[InvoiceDetailModal] Error generating PDF:', error)
+            alert('Failed to generate PDF')
+        }
+    }
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center">
@@ -12,7 +30,7 @@ const InvoiceDetailModal = ({ open, invoice, onClose }) => {
                     <h2 className="text-xl font-semibold">Invoice Details</h2>
                     <div className="flex items-center gap-2">
                         <button
-                            onClick={() => alert('PDF download coming soon!')}
+                            onClick={handleDownloadPDF}
                             className="px-3 py-1.5 bg-green-600 text-white rounded hover:bg-green-700 inline-flex items-center gap-2 text-sm"
                         >
                             <Download className="h-4 w-4" />

@@ -23,7 +23,7 @@ def get_redis_client():
             host=host,
             port=port,
             password=password if password else None,
-            db=1,
+            db=0,  # Upstash only supports database 0
             decode_responses=True,
             ssl=ssl,
             socket_connect_timeout=5,

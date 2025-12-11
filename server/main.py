@@ -161,7 +161,7 @@ else:
     
 allowed_origins = [
     'https://keepsake-pi.vercel.app',
-    'localhost:5379',
+    'http://localhost:5173',
     'localhost:5000',
 ]
 
