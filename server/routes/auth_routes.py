@@ -1313,9 +1313,8 @@ def refresh_token():
                 }), 200
             
             # Create a new session with the refresh token
-            auth_response = supabase.auth.refresh_session({
-                "refresh_token": refresh_token
-            })
+            # Note: The Supabase Python client expects the refresh token as a direct parameter
+            auth_response = supabase.auth.refresh_session(refresh_token)
             
             if not auth_response or not auth_response.session:
                 print("Debug - Failed to get new session from Supabase")

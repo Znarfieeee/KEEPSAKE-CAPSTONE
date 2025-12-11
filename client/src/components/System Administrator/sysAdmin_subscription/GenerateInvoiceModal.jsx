@@ -49,11 +49,21 @@ const GenerateInvoiceModal = ({ open, onClose, onGenerated }) => {
             const response = await generateInvoice(facilityId, periodStart, periodEnd, notes)
 
             if (response?.status === 'success') {
+                // Dispatch custom event for immediate real-time update
+                if (response.data) {
+                    console.log('[GenerateInvoiceModal] Dispatching invoice-created event:', response.data)
+                    window.dispatchEvent(
+                        new CustomEvent('invoice-created', {
+                            detail: response.data,
+                        })
+                    )
+                }
                 onGenerated()
             } else {
                 setError(response?.message || 'Failed to generate invoice')
             }
         } catch (err) {
+            console.error('[GenerateInvoiceModal] Error generating invoice:', err)
             setError('Failed to generate invoice')
         } finally {
             setLoading(false)

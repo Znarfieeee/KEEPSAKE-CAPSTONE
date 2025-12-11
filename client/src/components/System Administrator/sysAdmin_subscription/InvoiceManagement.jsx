@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useCallback, lazy, Suspense } from 'react'
 import { Eye, Download, DollarSign, Plus, Search, AlertCircle } from 'lucide-react'
-import { getInvoices } from '@/api/admin/subscription'
+import { getInvoices, getInvoiceById } from '@/api/admin/subscription'
 import { Badge } from '@/components/ui/badge'
 import { useInvoicesRealtime } from '@/hook/useSubscriptionRealtime'
+import { generateInvoicePDF } from '@/util/pdfGenerator'
 
 const GenerateInvoiceModal = lazy(() => import('./GenerateInvoiceModal'))
 const InvoiceDetailModal = lazy(() => import('./InvoiceDetailModal'))
@@ -157,9 +158,31 @@ const InvoiceManagement = ({ filters }) => {
     }
 
     const handleDownload = async (invoice) => {
-        // Placeholder for PDF download
-        console.log('Download invoice:', invoice.invoice_number)
-        alert('PDF download feature coming soon!')
+        try {
+            console.log('[InvoiceManagement] Downloading invoice PDF:', invoice.invoice_number)
+
+            // Fetch full invoice details if needed (to ensure we have all related data)
+            let fullInvoice = invoice
+            if (invoice.invoice_id && !invoice.healthcare_facilities) {
+                const response = await getInvoiceById(invoice.invoice_id)
+                if (response?.status === 'success' && response.data) {
+                    fullInvoice = response.data
+                }
+            }
+
+            // Generate PDF
+            const result = generateInvoicePDF(fullInvoice)
+
+            if (result.success) {
+                console.log('[InvoiceManagement] PDF generated successfully:', result.filename)
+            } else {
+                console.error('[InvoiceManagement] PDF generation failed:', result.error)
+                setError(`Failed to generate PDF: ${result.error}`)
+            }
+        } catch (error) {
+            console.error('[InvoiceManagement] Error downloading PDF:', error)
+            setError('Failed to download invoice PDF')
+        }
     }
 
     const filteredInvoices = invoices.filter((inv) => {

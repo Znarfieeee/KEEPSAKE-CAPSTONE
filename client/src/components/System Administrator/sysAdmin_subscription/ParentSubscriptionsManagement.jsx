@@ -108,6 +108,46 @@ const ParentSubscriptionsManagement = () => {
         setFilters((prev) => ({ ...prev, page: newPage }))
     }
 
+    const handleExport = () => {
+        try {
+            console.log('[ParentSubscriptionsManagement] Exporting subscriptions to CSV')
+
+            // Prepare CSV headers
+            const headers = ['Name', 'Email', 'Plan', 'Status', 'Current Period', 'Created']
+
+            // Prepare CSV rows
+            const rows = subscriptions.map(sub => [
+                `${sub.users?.first_name || ''} ${sub.users?.last_name || ''}`.trim() || 'N/A',
+                sub.users?.email || 'N/A',
+                (sub.plan_type || 'free').toUpperCase(),
+                (sub.status || 'unknown').toUpperCase(),
+                sub.current_period_start && sub.current_period_end
+                    ? `${formatDate(sub.current_period_start)} - ${formatDate(sub.current_period_end)}`
+                    : 'N/A',
+                formatDate(sub.created_at),
+            ])
+
+            // Create CSV content
+            const csvContent = [headers, ...rows].map(row => row.join(',')).join('\n')
+
+            // Create blob and download
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
+            const url = window.URL.createObjectURL(blob)
+            const a = document.createElement('a')
+            a.href = url
+            a.download = `parent-subscriptions-${new Date().toISOString().split('T')[0]}.csv`
+            document.body.appendChild(a)
+            a.click()
+            window.URL.revokeObjectURL(url)
+            document.body.removeChild(a)
+
+            console.log('[ParentSubscriptionsManagement] CSV export successful')
+        } catch (error) {
+            console.error('[ParentSubscriptionsManagement] Export failed:', error)
+            setError('Failed to export subscriptions')
+        }
+    }
+
     const getStatusBadge = (status) => {
         const variants = {
             active: 'default',
@@ -238,7 +278,11 @@ const ParentSubscriptionsManagement = () => {
                             >
                                 Refresh
                             </button>
-                            <button className="px-3 py-1 text-sm bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors flex items-center gap-2">
+                            <button
+                                onClick={handleExport}
+                                disabled={loading || subscriptions.length === 0}
+                                className="px-3 py-1 text-sm bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
                                 <Download className="h-4 w-4" />
                                 Export
                             </button>

@@ -31,11 +31,21 @@ const MarkPaidModal = ({ open, invoice, onClose, onPaid }) => {
             })
 
             if (response?.status === 'success') {
+                // Dispatch custom event for immediate real-time update
+                if (response.data) {
+                    console.log('[MarkPaidModal] Dispatching invoice-updated event:', response.data)
+                    window.dispatchEvent(
+                        new CustomEvent('invoice-updated', {
+                            detail: response.data,
+                        })
+                    )
+                }
                 onPaid()
             } else {
                 setError(response?.message || 'Failed to record payment')
             }
         } catch (err) {
+            console.error('[MarkPaidModal] Error recording payment:', err)
             setError('Failed to record payment')
         } finally {
             setLoading(false)

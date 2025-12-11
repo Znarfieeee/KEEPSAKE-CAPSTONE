@@ -670,12 +670,14 @@ def mark_invoice_paid(invoice_id):
 def get_subscription_analytics():
     """Get subscription analytics and metrics"""
     try:
+        current_app.logger.info("[ANALYTICS] Fetching subscription analytics...")
         bust_cache = request.args.get('bust_cache', 'false').lower() == 'true'
 
         # Check cache
         if not bust_cache:
             cached = redis_client.get(SUBSCRIPTION_CACHE_KEY)
             if cached:
+                current_app.logger.info("[ANALYTICS] Returning cached data")
                 return jsonify({
                     "status": "success",
                     "data": json.loads(cached),
@@ -683,12 +685,14 @@ def get_subscription_analytics():
                 }), 200
 
         # Fetch facilities
+        current_app.logger.info("[ANALYTICS] Fetching facilities from database...")
         facilities_resp = sr_client.table('healthcare_facilities')\
             .select('*')\
             .is_('deleted_at', 'null')\
             .execute()
 
         facilities = facilities_resp.data or []
+        current_app.logger.info(f"[ANALYTICS] Found {len(facilities)} facilities")
 
         # Fetch invoices
         invoices_resp = sr_client.table('invoices')\
@@ -697,20 +701,25 @@ def get_subscription_analytics():
 
         invoices = invoices_resp.data or []
 
-        # Calculate metrics
-        total_revenue_ytd = sum(
-            float(inv.get('total_amount', 0)) for inv in invoices
-            if inv.get('status') == 'paid' and
-            datetime.fromisoformat(inv['issue_date']).year == datetime.now().year
-        )
-
-        # Plan distribution
+        # Calculate metrics based on facility plans (ignoring subscription_expires)
+        # Sum up revenue from ALL facilities based on their plan type
+        total_revenue_ytd = 0
         plan_distribution = {}
-        for facility in facilities:
-            plan = facility.get('plan', 'standard')
-            plan_distribution[plan] = plan_distribution.get(plan, 0) + 1
 
-        # Revenue by plan
+        current_app.logger.info(f"[ANALYTICS] Calculating revenue from {len(facilities)} facilities")
+        for facility in facilities:
+            plan = facility.get('plan', 'standard').lower()
+            # Count facilities by plan
+            plan_distribution[plan] = plan_distribution.get(plan, 0) + 1
+            # Add monthly revenue based on plan
+            plan_revenue = PLAN_PRICING.get(plan, PLAN_PRICING['standard'])
+            total_revenue_ytd += plan_revenue
+            current_app.logger.info(f"[ANALYTICS] Facility: {facility.get('facility_name')} | Plan: {plan} | Revenue: ₱{plan_revenue}")
+
+        current_app.logger.info(f"[ANALYTICS] Total Revenue Calculated: ₱{total_revenue_ytd}")
+        current_app.logger.info(f"[ANALYTICS] Plan Distribution: {plan_distribution}")
+
+        # Revenue by plan (monthly revenue per plan type)
         revenue_by_plan = {
             'standard': PLAN_PRICING['standard'] * plan_distribution.get('standard', 0),
             'premium': PLAN_PRICING['premium'] * plan_distribution.get('premium', 0),
@@ -750,6 +759,8 @@ def get_subscription_analytics():
             'monthly_revenue_trend': monthly_revenue,
             'average_revenue_per_facility': total_revenue_ytd / len(facilities) if facilities else 0
         }
+
+        current_app.logger.info(f"[ANALYTICS] Returning analytics data: total_revenue_ytd=₱{analytics_data['total_revenue_ytd']}, active_subscriptions={analytics_data['total_active_subscriptions']}")
 
         # Cache for 5 minutes
         redis_client.setex(SUBSCRIPTION_CACHE_KEY, CACHE_TTL, json.dumps(analytics_data))

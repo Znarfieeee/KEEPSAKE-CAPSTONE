@@ -5,10 +5,10 @@ import TeamGallery3D from '@/pages/components/landing/TeamGallery3D'
 import Footer4Col from '@/components/mvpblocks/footer-4col'
 import { Target, Eye, Heart, Shield, Users, Lightbulb, Phone, Mail, MapPin } from 'lucide-react'
 
-import devOne from '@/assets/11.jpg'
-import devTwo from '@/assets/22.jpg'
-import devThree from '@/assets/33.jpg'
-import devFour from '@/assets/44.jpg'
+import devOne from '@/assets/ProjMan.jpg'
+import devTwo from '@/assets/Programmer.jpg'
+import devThree from '@/assets/UIUX.jpg'
+import devFour from '@/assets/DatMan.jpg'
 
 const AboutPage = () => {
     // Team data - Replace with actual team member information

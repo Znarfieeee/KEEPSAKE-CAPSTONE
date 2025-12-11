@@ -51,6 +51,8 @@ const StatCard = ({ icon: Icon, title, value, subtitle, trend, colorClass, loadi
 }
 
 const SubscriptionMetrics = ({ data, loading }) => {
+    console.log('[SubscriptionMetrics] Rendering with data:', data, 'loading:', loading)
+
     return (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             <StatCard

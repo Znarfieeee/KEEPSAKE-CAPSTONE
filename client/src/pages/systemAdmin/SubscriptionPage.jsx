@@ -45,17 +45,22 @@ const SubscriptionPage = () => {
 
     const fetchAnalytics = async (bustCache = false) => {
         try {
+            console.log('[SubscriptionPage] Fetching analytics...', { bustCache })
             setLoading(true)
             setError(null)
             const response = await getSubscriptionAnalytics(bustCache)
 
+            console.log('[SubscriptionPage] Analytics response:', response)
+
             if (response?.status === 'success') {
+                console.log('[SubscriptionPage] Setting analytics data:', response.data)
                 setAnalyticsData(response.data)
             } else {
+                console.error('[SubscriptionPage] Failed response:', response)
                 setError('Failed to load subscription data')
             }
         } catch (err) {
-            console.error('Error fetching analytics:', err)
+            console.error('[SubscriptionPage] Error fetching analytics:', err)
             setError('Failed to load subscription data')
         } finally {
             setLoading(false)
@@ -72,10 +77,10 @@ const SubscriptionPage = () => {
             {/* Header */}
             <div className="flex items-center justify-between">
                 <div>
-                    <h1 className="text-3xl font-bold text-gray-900">Subscription & Billing</h1>
+                    {/* <h1 className="text-3xl font-bold text-gray-900">Subscription & Billing</h1>
                     <p className="text-gray-600 mt-1">
                         Manage facility subscriptions, invoices, and payments
-                    </p>
+                    </p> */}
                 </div>
                 <button
                     onClick={() => fetchAnalytics(true)}
