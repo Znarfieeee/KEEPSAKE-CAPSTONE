@@ -159,11 +159,13 @@ else:
     )
     Session(app)
     
-FRONTEND_URL = os.environ.get('FRONTEND_URL')
-BACKEND_URL = os.environ.get('BACKEND_URL')
 
 # Allow local Vite dev server
-allowed_origins = [ FRONTEND_URL, BACKEND_URL ]
+allowed_origins = [
+    'keepsake-pi.vercel.app',
+    'localhost:5379',
+    'localhost:5000',
+]
 
 CORS(
     app,
