@@ -95,6 +95,229 @@ def set_cache_data(cache_key, data):
         current_app.logger.error(f"Error caching data: {str(e)}")
 
 # ============================================================================
+# HELPER FUNCTIONS FOR REPORT CALCULATIONS
+# ============================================================================
+
+def get_current_year_month():
+    """Get current year and month"""
+    now = datetime.now()
+    return now.year, now.month
+
+def calculate_monthly_active_users(year, month):
+    """
+    Calculate Monthly Active Users (MAU) for a specific month
+    Reuses existing get_mau_by_week RPC function from dashboard
+    Returns MAU data with weekly breakdown and growth metrics
+    """
+    try:
+        month_names = ["Jan", "Feb", "Mar", "Apr", "May", "Jun",
+                       "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+
+        # Get current month's data using RPC
+        current_result = admin_supabase.rpc('get_mau_by_week', {
+            'p_year': year,
+            'p_month': month,
+            'p_source': 'sessions'
+        }).execute()
+
+        # Get previous month's data for growth calculation
+        prev_month = month - 1 if month > 1 else 12
+        prev_year = year if month > 1 else year - 1
+
+        prev_result = admin_supabase.rpc('get_mau_by_week', {
+            'p_year': prev_year,
+            'p_month': prev_month,
+            'p_source': 'sessions'
+        }).execute()
+
+        # Parse current month data
+        if not current_result or not current_result.data:
+            return None
+
+        current_weeks = current_result.data.get('weeks', {})
+        total_mau = sum(current_weeks.values())
+
+        # Build weekly breakdown with month labels
+        weekly_breakdown = [
+            {
+                "week": f"{month_names[month - 1]} W{week}",
+                "count": count
+            }
+            for week, count in sorted(current_weeks.items(), key=lambda x: int(x[0]))
+        ]
+
+        # Calculate growth vs previous month
+        prev_weeks = prev_result.data.get('weeks', {}) if prev_result and prev_result.data else {}
+        prev_total = sum(prev_weeks.values())
+
+        if prev_total > 0:
+            growth = round(((total_mau - prev_total) / prev_total) * 100, 1)
+        else:
+            growth = 0.0
+
+        # PERFORMANCE: Skip historical months to speed up loading (reduced from 5 RPC calls to 2)
+        # Historical trend removed for better UX - focus on current month data
+
+        current_app.logger.info(f"MAU calculation complete: {total_mau} for {year}-{month}")
+
+        return {
+            "currentMonth": {
+                "year": year,
+                "month": month,
+                "total": total_mau,
+                "weeklyBreakdown": weekly_breakdown,
+                "growth": growth
+            }
+        }
+
+    except Exception as e:
+        current_app.logger.error(f"Error calculating MAU: {str(e)}")
+        return None
+
+def calculate_user_activity_metrics(user_activity, users_data):
+    """Calculate metrics specific to user activity report"""
+    try:
+        current_app.logger.info(f"Calculating user activity metrics: {len(user_activity)} activity records, {len(users_data)} users")
+
+        if not user_activity or len(user_activity) == 0:
+            current_app.logger.warning("No user activity data available")
+            return {
+                "totalLogins": 0,
+                "totalRegistrations": 0,
+                "avgDailyActive": 0,
+                "peakActivityDate": "N/A",
+                "activeUsersChange": 0
+            }
+
+        total_logins = sum(day.get('logins', 0) for day in user_activity)
+        total_registrations = sum(day.get('registrations', 0) for day in user_activity)
+        total_active = sum(day.get('active_users', 0) for day in user_activity)
+        avg_daily_active = round(total_active / len(user_activity), 1) if user_activity else 0
+
+        # Find peak activity date (most logins)
+        peak_activity = max(user_activity, key=lambda x: x.get('logins', 0)) if user_activity else {}
+        peak_date = peak_activity.get('date', 'N/A')
+
+        # Calculate active users in last 7 days vs previous 7 days for change %
+        now = datetime.now()
+        seven_days_ago = (now - timedelta(days=7)).strftime('%Y-%m-%d')
+        fourteen_days_ago = (now - timedelta(days=14)).strftime('%Y-%m-%d')
+
+        recent_active = sum(1 for u in users_data if u.get('last_sign_in_at', '') and u.get('last_sign_in_at', '') >= seven_days_ago)
+        previous_active = sum(1 for u in users_data
+                             if u.get('last_sign_in_at', '') and fourteen_days_ago <= u.get('last_sign_in_at', '') < seven_days_ago)
+
+        if previous_active > 0:
+            active_change = round(((recent_active - previous_active) / previous_active) * 100, 1)
+        else:
+            active_change = 0.0
+
+        result = {
+            "totalLogins": total_logins,
+            "totalRegistrations": total_registrations,
+            "avgDailyActive": avg_daily_active,
+            "peakActivityDate": peak_date,
+            "activeUsersChange": active_change
+        }
+
+        current_app.logger.info(f"User activity metrics: {result}")
+        return result
+
+    except Exception as e:
+        current_app.logger.error(f"Error calculating user activity metrics: {str(e)}")
+        import traceback
+        current_app.logger.error(f"Traceback: {traceback.format_exc()}")
+        return {"totalLogins": 0, "totalRegistrations": 0, "avgDailyActive": 0,
+                "peakActivityDate": "N/A", "activeUsersChange": 0}
+
+def calculate_facility_metrics(facility_stats):
+    """Calculate metrics specific to facility performance report"""
+    try:
+        current_app.logger.info(f"Calculating facility metrics: {len(facility_stats)} facilities")
+
+        if not facility_stats or len(facility_stats) == 0:
+            current_app.logger.warning("No facility stats available")
+            return {
+                "totalPatients": 0,
+                "totalAppointments": 0,
+                "avgPatientsPerFacility": 0,
+                "topPerformingFacility": "N/A"
+            }
+
+        total_patients = sum(f.get('patients', 0) for f in facility_stats)
+        total_appointments = sum(f.get('appointments', 0) for f in facility_stats)
+        avg_patients = round(total_patients / len(facility_stats), 1) if facility_stats else 0
+
+        # Find top performing facility by appointments
+        top_facility = max(facility_stats, key=lambda x: x.get('appointments', 0)) if facility_stats else {}
+        top_name = top_facility.get('facility', 'N/A')
+
+        result = {
+            "totalPatients": total_patients,
+            "totalAppointments": total_appointments,
+            "avgPatientsPerFacility": avg_patients,
+            "topPerformingFacility": top_name
+        }
+
+        current_app.logger.info(f"Facility metrics: {result}")
+        return result
+
+    except Exception as e:
+        current_app.logger.error(f"Error calculating facility metrics: {str(e)}")
+        import traceback
+        current_app.logger.error(f"Traceback: {traceback.format_exc()}")
+        return {"totalPatients": 0, "totalAppointments": 0,
+                "avgPatientsPerFacility": 0, "topPerformingFacility": "N/A"}
+
+def calculate_system_metrics(system_usage, all_logs_count=0):
+    """Calculate metrics specific to system usage report"""
+    try:
+        current_app.logger.info(f"Calculating system metrics: {len(system_usage) if system_usage else 0} usage items, {all_logs_count} logs")
+
+        if not system_usage or len(system_usage) == 0:
+            current_app.logger.warning("No system usage data available")
+            return {
+                "totalApiCalls": 0,
+                "mostCommonAction": "N/A",
+                "avgCallsPerHour": 0,
+                "systemLoad": "Low"
+            }
+
+        # Find most common action category
+        most_common = max(system_usage, key=lambda x: x.get('value', 0)) if system_usage else {}
+        most_common_action = most_common.get('category', 'N/A')
+
+        total_calls = all_logs_count if all_logs_count > 0 else sum(item.get('value', 0) for item in system_usage)
+
+        # Calculate avg calls per hour (assuming 24 hour period)
+        avg_per_hour = round(total_calls / 24, 1)
+
+        # Determine system load level
+        if avg_per_hour > 100:
+            system_load = "High"
+        elif avg_per_hour > 50:
+            system_load = "Medium"
+        else:
+            system_load = "Low"
+
+        result = {
+            "totalApiCalls": total_calls,
+            "mostCommonAction": most_common_action,
+            "avgCallsPerHour": avg_per_hour,
+            "systemLoad": system_load
+        }
+
+        current_app.logger.info(f"System metrics: {result}")
+        return result
+
+    except Exception as e:
+        current_app.logger.error(f"Error calculating system metrics: {str(e)}")
+        import traceback
+        current_app.logger.error(f"Traceback: {traceback.format_exc()}")
+        return {"totalApiCalls": 0, "mostCommonAction": "N/A",
+                "avgCallsPerHour": 0, "systemLoad": "Low"}
+
+# ============================================================================
 # CONSOLIDATED ENDPOINT - Single route to fetch all report data at once
 # This reduces HTTP requests from 5 to 1, improving performance significantly
 # ============================================================================
@@ -109,8 +332,9 @@ def get_all_reports():
         end_date = request.args.get('end_date')
         role_filter = request.args.get('role')
         bust_cache = request.args.get('bust_cache', 'false').lower() == 'true'
+        selected_month = request.args.get('selected_month')  # Format: 'YYYY-MM'
 
-        filters = {'start_date': start_date, 'end_date': end_date, 'role': role_filter}
+        filters = {'start_date': start_date, 'end_date': end_date, 'role': role_filter, 'selected_month': selected_month}
         cache_key = get_cache_key('all_reports', filters)
         cached_result = get_cached_data(cache_key, bust_cache)
 
@@ -126,6 +350,8 @@ def get_all_reports():
 
         # USER ACTIVITY
         activity_by_date = {}
+
+        # Track registrations and active users by creation date
         for user in users:
             if user.get('created_at'):
                 date_str = user['created_at'][:10]
@@ -134,30 +360,58 @@ def get_all_reports():
                 activity_by_date[date_str]['registrations'] += 1
                 if user.get('is_active'):
                     activity_by_date[date_str]['active_users'] += 1
-                if user.get('last_sign_in_at') and user['last_sign_in_at'][:10] == date_str:
-                    activity_by_date[date_str]['logins'] += 1
+
+        # Track logins separately by last_sign_in_at date (FIXED!)
+        for user in users:
+            if user.get('last_sign_in_at'):
+                login_date = user['last_sign_in_at'][:10]
+                if login_date not in activity_by_date:
+                    activity_by_date[login_date] = {'date': login_date, 'logins': 0, 'registrations': 0, 'active_users': 0}
+                activity_by_date[login_date]['logins'] += 1
+
         user_activity = sorted(activity_by_date.values(), key=lambda x: x['date'])
 
-        # FACILITY STATS
+        current_app.logger.info(f"User activity calculated: {len(user_activity)} days of activity, total logins across all days: {sum(d['logins'] for d in user_activity)}")
+
+        # FACILITY STATS - OPTIMIZED with batched queries
+        # Performance improvement: 3n queries → 3 queries (where n = number of facilities)
         facilities = admin_supabase.table('healthcare_facilities').select('facility_id, facility_name').execute().data or []
-        facility_stats = []
-        for facility in facilities:
-            fid = facility['facility_id']
-            patients = admin_supabase.table('facility_patients').select('patient_id', count='exact').eq('facility_id', fid).eq('is_active', True).execute()
-            appts_q = admin_supabase.table('appointments').select('appointment_id', count='exact').eq('facility_id', fid)
-            if start_date:
-                appts_q = appts_q.gte('appointment_date', start_date)
-            if end_datetime:
-                appts_q = appts_q.lt('appointment_date', end_datetime.strftime('%Y-%m-%d'))
-            appts = appts_q.execute()
-            staff = admin_supabase.table('facility_users').select('user_id', count='exact').eq('facility_id', fid).execute()
-            facility_stats.append({
-                'facility': facility['facility_name'],
-                'facility_id': fid,
-                'patients': getattr(patients, 'count', len(patients.data or [])),
-                'appointments': getattr(appts, 'count', len(appts.data or [])),
-                'staff': getattr(staff, 'count', len(staff.data or []))
-            })
+        facility_ids = [f['facility_id'] for f in facilities]
+
+        if facility_ids:
+            # Batch query 1: All patients grouped by facility
+            patients_result = admin_supabase.rpc('count_patients_by_facility', {
+                'facility_ids': facility_ids
+            }).execute()
+            patients_by_fid = {row['facility_id']: row['count'] for row in (patients_result.data or [])}
+
+            # Batch query 2: All appointments grouped by facility (with optional date filtering)
+            appts_result = admin_supabase.rpc('count_appointments_by_facility', {
+                'facility_ids': facility_ids,
+                'start_date': start_date,
+                'end_date': end_datetime.strftime('%Y-%m-%d') if end_datetime else None
+            }).execute()
+            appts_by_fid = {row['facility_id']: row['count'] for row in (appts_result.data or [])}
+
+            # Batch query 3: All staff grouped by facility
+            staff_result = admin_supabase.rpc('count_staff_by_facility', {
+                'facility_ids': facility_ids
+            }).execute()
+            staff_by_fid = {row['facility_id']: row['count'] for row in (staff_result.data or [])}
+
+            # Build facility stats from aggregated data
+            facility_stats = []
+            for facility in facilities:
+                fid = facility['facility_id']
+                facility_stats.append({
+                    'facility': facility['facility_name'],
+                    'facility_id': fid,
+                    'patients': patients_by_fid.get(fid, 0),
+                    'appointments': appts_by_fid.get(fid, 0),
+                    'staff': staff_by_fid.get(fid, 0)
+                })
+        else:
+            facility_stats = []
 
         # SYSTEM USAGE
         audit_q = admin_supabase.table('audit_logs').select('action_type, table_name')
@@ -226,7 +480,63 @@ def get_all_reports():
             'apiCalls': getattr(api_calls, 'count', len(api_calls.data or []))
         }
 
-        data = {'userActivity': user_activity, 'facilityStats': facility_stats, 'systemUsage': system_usage, 'userRoleDistribution': user_role_distribution, 'summaryMetrics': summary_metrics}
+        # Calculate report-specific metrics
+        current_app.logger.info(f"=== Starting Metric Calculations ===")
+        current_app.logger.info(f"Input data: {len(user_activity)} user activity days, {len(users)} users, {len(facility_stats)} facilities, {len(system_usage)} system usage items")
+
+        user_activity_metrics = calculate_user_activity_metrics(user_activity, users)
+        current_app.logger.info(f"User activity metrics calculated: {user_activity_metrics}")
+
+        facility_metrics = calculate_facility_metrics(facility_stats)
+        current_app.logger.info(f"Facility metrics calculated: {facility_metrics}")
+
+        system_metrics = calculate_system_metrics(system_usage, len(logs))
+        current_app.logger.info(f"System metrics calculated: {system_metrics}")
+
+        # Calculate Monthly Active Users (MAU) if selected_month provided
+        monthly_active_users = None
+        try:
+            if selected_month:
+                try:
+                    year, month = map(int, selected_month.split('-'))
+                    current_app.logger.info(f"Calculating MAU for selected month: {year}-{month}")
+                    monthly_active_users = calculate_monthly_active_users(year, month)
+                except ValueError as ve:
+                    current_app.logger.warning(f"Invalid selected_month format: {selected_month}, error: {str(ve)}")
+            else:
+                # Default to current month
+                current_year, current_month = get_current_year_month()
+                current_app.logger.info(f"Calculating MAU for current month: {current_year}-{current_month}")
+                monthly_active_users = calculate_monthly_active_users(current_year, current_month)
+
+            if monthly_active_users:
+                current_app.logger.info(f"MAU calculation successful: {monthly_active_users.get('total', 0)} users")
+            else:
+                current_app.logger.warning("MAU calculation returned None")
+        except Exception as mau_error:
+            current_app.logger.error(f"Error in MAU calculation wrapper: {str(mau_error)}")
+            import traceback
+            current_app.logger.error(f"Traceback: {traceback.format_exc()}")
+
+        data = {
+            'userActivity': user_activity,
+            'facilityStats': facility_stats,
+            'systemUsage': system_usage,
+            'userRoleDistribution': user_role_distribution,
+            'summaryMetrics': summary_metrics,
+            'userActivityMetrics': user_activity_metrics,
+            'facilityMetrics': facility_metrics,
+            'systemMetrics': system_metrics,
+            'monthlyActiveUsers': monthly_active_users
+        }
+
+        # Final verification log
+        current_app.logger.info(f"=== Final Response Data ===")
+        current_app.logger.info(f"userActivityMetrics keys: {list(user_activity_metrics.keys())}")
+        current_app.logger.info(f"facilityMetrics keys: {list(facility_metrics.keys())}")
+        current_app.logger.info(f"systemMetrics keys: {list(system_metrics.keys())}")
+        current_app.logger.info(f"MAU data present: {monthly_active_users is not None}")
+
         set_cache_data(cache_key, data)
         return jsonify({"status": "success", "data": data, "cached": False, "cache_expires_in": CACHE_TTL}), 200
 

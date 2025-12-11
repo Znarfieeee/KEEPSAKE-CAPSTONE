@@ -119,30 +119,43 @@ def prepare_patient_payload(data, created_by):
     return payload
 
 def prepare_delivery_payload(data, patient_id, recorded_by):
+    """Prepare delivery payload, converting empty strings to None for date fields"""
+    # Helper to convert empty strings to None
+    def clean_value(value, is_date=False):
+        if is_date:
+            # For date fields, convert empty strings to None
+            return None if value in ('', None) else value
+        # For other fields, keep empty strings as is for text fields
+        return None if value in ('', None) else value
+
     return {
         "patient_id": patient_id,
-        "type_of_delivery": data.get("type_of_delivery"),
+        "type_of_delivery": clean_value(data.get("type_of_delivery")),
         "apgar_score": data.get('apgar_score'),
-        "mother_blood_type": data.get('mother_blood_type'),
-        "father_blood_type": data.get('father_blood_type'),
-        "patient_blood_type": data.get('patient_blood_type'),
-        "distinguishable_marks": data.get('distinguishable_marks'),
-        "vitamin_k_date": data.get('vitamin_k_date'),
-        "vitamin_k_location": data.get('vitamin_k_location'),
-        "hepatitis_b_date": data.get('hepatitis_b_date'),
-        "hepatitis_b_location": data.get('hepatitis_b_location'),
-        "bcg_vaccination_date": data.get('bcg_vaccination_date'),
-        "bcg_vaccination_location": data.get('bcg_vaccination_location'),
-        "other_medications": data.get('other_medications'),
-        "follow_up_visit_date": data.get('follow_up_visit_date'),
-        "follow_up_visit_site": data.get('follow_up_visit_site'),
-        "discharge_diagnosis": data.get('discharge_diagnosis'),
-        "obstetrician": data.get('obstetrician'),
-        "pediatrician": data.get('pediatrician'),
+        "mother_blood_type": clean_value(data.get('mother_blood_type')),
+        "father_blood_type": clean_value(data.get('father_blood_type')),
+        "patient_blood_type": clean_value(data.get('patient_blood_type')),
+        "distinguishable_marks": clean_value(data.get('distinguishable_marks')),
+        "vitamin_k_date": clean_value(data.get('vitamin_k_date'), is_date=True),
+        "vitamin_k_location": clean_value(data.get('vitamin_k_location')),
+        "hepatitis_b_date": clean_value(data.get('hepatitis_b_date'), is_date=True),
+        "hepatitis_b_location": clean_value(data.get('hepatitis_b_location')),
+        "bcg_vaccination_date": clean_value(data.get('bcg_vaccination_date'), is_date=True),
+        "bcg_vaccination_location": clean_value(data.get('bcg_vaccination_location')),
+        "other_medications": clean_value(data.get('other_medications')),
+        "follow_up_visit_date": clean_value(data.get('follow_up_visit_date'), is_date=True),
+        "follow_up_visit_site": clean_value(data.get('follow_up_visit_site')),
+        "discharge_diagnosis": clean_value(data.get('discharge_diagnosis')),
+        "obstetrician": clean_value(data.get('obstetrician')),
+        "pediatrician": clean_value(data.get('pediatrician')),
         "recorded_by": recorded_by,
     }
 
 def prepare_anthropometric_payload(data, patient_id, recorded_by):
+    """Prepare anthropometric payload, converting empty strings to None for date fields"""
+    def clean_date(value):
+        return None if value in ('', None) else value
+
     return {
         "patient_id": patient_id,
         "weight": data.get('weight'),
@@ -150,33 +163,46 @@ def prepare_anthropometric_payload(data, patient_id, recorded_by):
         "head_circumference": data.get('head_circumference'),
         "chest_circumference": data.get('chest_circumference'),
         "abdominal_circumference": data.get('abdominal_circumference'),
-        "measurement_date": data.get('measurement_date'),
+        "measurement_date": clean_date(data.get('measurement_date')),
         "recorded_by": recorded_by
     }
 
 def prepare_screening_payload(data, patient_id, recorded_by):
+    """Prepare screening payload, converting empty strings to None for date fields"""
+    def clean_date(value):
+        return None if value in ('', None) else value
+
     return {
         "patient_id": patient_id,
-        "ens_date": data.get('ens_date'),
+        "ens_date": clean_date(data.get('ens_date')),
         "ens_remarks": data.get('ens_remarks'),
-        "nhs_date": data.get('nhs_date'),
+        "nhs_date": clean_date(data.get('nhs_date')),
         "nhs_right_ear": data.get('nhs_right_ear'),
         "nhs_left_ear": data.get('nhs_left_ear'),
-        "pos_date": data.get('pos_date'),
+        "pos_date": clean_date(data.get('pos_date')),
         "pos_for_cchd_right": data.get('pos_for_cchd_right'),
         "pos_for_cchd_left": data.get('pos_for_cchd_left'),
-        "ror_date": data.get('ror_date'),
+        "ror_date": clean_date(data.get('ror_date')),
         "ror_remarks": data.get('ror_remarks'),
         "recorded_by": recorded_by,
     }
 
 def prepare_allergy_payload(data, patient_id, recorded_by):
+    """Prepare allergy payload, converting empty strings to None for date fields"""
+    def clean_date(value):
+        return None if value in ('', None) else value
+
+    date_identified = clean_date(data.get('date_identified'))
+    # Only use default date if no date was provided at all
+    if date_identified is None:
+        date_identified = datetime.datetime.utcnow().date().isoformat()
+
     return {
         "patient_id": patient_id,
         "allergen": data.get('allergen'),
         "reaction_type": data.get('reaction_type'),
         "severity": data.get('severity'),
-        "date_identified": data.get('date_identified') or datetime.datetime.utcnow().date().isoformat(),
+        "date_identified": date_identified,
         "notes": data.get('notes'),
         "recorded_by": recorded_by,
     }

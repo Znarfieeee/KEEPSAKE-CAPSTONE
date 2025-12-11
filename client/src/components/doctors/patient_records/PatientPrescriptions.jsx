@@ -29,8 +29,9 @@ const PatientPrescription = ({
     const [isQRDialogOpen, setIsQRDialogOpen] = useState(false)
     const [localPrescriptions, setLocalPrescriptions] = useState(prescription)
 
-    // Check if user is a nurse
-    const isNurse = user?.role === 'nurse' || 'vital_custodian'
+    // Check if user can add prescriptions - only doctors, facility admins, and pediapros can add
+    // Nurses (vital_custodians) cannot add prescriptions
+    const canAddPrescription = user?.role && ['doctor', 'pediapro', 'facility_admin'].includes(user.role)
 
     // Sync external prescription changes with local state
     useEffect(() => {
@@ -102,7 +103,7 @@ const PatientPrescription = ({
                             className="h-10 w-full rounded-md border border-gray-200 bg-white pl-9 pr-4 text-sm placeholder:text-gray-500 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
                         />
                     </div>
-                    {!readOnly && !isNurse && (
+                    {!readOnly && canAddPrescription && (
                         <div className="relative flex-1 lg:flex-none">
                             <Dialog open={isOpen} onOpenChange={setIsOpen}>
                                 <DialogTrigger asChild>

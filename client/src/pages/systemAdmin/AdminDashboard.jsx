@@ -581,18 +581,43 @@ const AdminDashboard = () => {
                         </div>
                     ) : (
                         <ResponsiveContainer width="100%" height={220}>
-                            <BarChart data={dashboardData?.weekly_active_users || []}>
-                                <CartesianGrid strokeDasharray="3 3" />
-                                <XAxis dataKey="week" />
-                                <YAxis />
-                                <Tooltip />
-                                <Bar
+                            <LineChart data={dashboardData?.weekly_active_users || []}>
+                                <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                                <XAxis
+                                    dataKey="week"
+                                    tick={{ fontSize: 12 }}
+                                    tickLine={false}
+                                    axisLine={{ stroke: '#d1d5db' }}
+                                />
+                                <YAxis
+                                    tick={{ fontSize: 12 }}
+                                    tickLine={false}
+                                    axisLine={{ stroke: '#d1d5db' }}
+                                />
+                                <Tooltip
+                                    contentStyle={{
+                                        backgroundColor: '#fff',
+                                        border: '1px solid #e5e7eb',
+                                        borderRadius: '8px',
+                                        boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)',
+                                    }}
+                                    formatter={(value) => [value.toLocaleString(), 'Active Users']}
+                                    labelStyle={{ fontWeight: 'bold', marginBottom: '4px' }}
+                                />
+                                <Legend
+                                    wrapperStyle={{ paddingTop: '10px' }}
+                                    iconType="line"
+                                />
+                                <Line
+                                    type="monotone"
                                     dataKey="active_users"
-                                    fill="#3b82f6"
-                                    radius={[8, 8, 0, 0]}
+                                    stroke="#3b82f6"
+                                    strokeWidth={3}
+                                    dot={{ fill: '#3b82f6', r: 5, strokeWidth: 2, stroke: '#fff' }}
+                                    activeDot={{ r: 7 }}
                                     name="Active Users"
                                 />
-                            </BarChart>
+                            </LineChart>
                         </ResponsiveContainer>
                     )}
                 </div>

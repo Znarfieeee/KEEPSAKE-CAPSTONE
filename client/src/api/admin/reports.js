@@ -11,6 +11,7 @@ import { axiosConfig } from '../axiosConfig'
  * @param {string} params.end_date - End date (YYYY-MM-DD)
  * @param {string} params.role - Optional role filter
  * @param {boolean} params.bust_cache - Force refresh cache
+ * @param {string} params.selected_month - Selected month for MAU (YYYY-MM format)
  * @returns {Promise} API response with all report data
  */
 export const getAllReports = async (params = {}) => {

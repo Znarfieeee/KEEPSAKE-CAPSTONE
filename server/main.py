@@ -158,14 +158,12 @@ else:
         SESSION_PERMANENT = False
     )
     Session(app)
+    
+FRONTEND_URL = os.environ.get('FRONTEND_URL')
+BACKEND_URL = os.environ.get('BACKEND_URL')
 
 # Allow local Vite dev server
-allowed_origins = [
-    "http://localhost:5173",
-    "http://127.0.0.1:5173",
-    "http://localhost:5000",
-    "http://127.0.0.1:5000"
-]
+allowed_origins = [ url for url in [FRONTEND_URL, BACKEND_URL] if url ]
 
 CORS(
     app,

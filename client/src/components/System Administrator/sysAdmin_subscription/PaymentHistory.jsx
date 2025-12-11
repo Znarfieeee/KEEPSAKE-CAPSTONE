@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from 'react'
-import { Search, Download } from 'lucide-react'
+import React, { useState, useEffect, useCallback } from 'react'
+import { Search, Download, AlertCircle } from 'lucide-react'
 import { getPaymentHistory } from '@/api/admin/subscription'
 import { Badge } from '@/components/ui/badge'
+import { usePaymentsRealtime } from '@/hook/useSubscriptionRealtime'
 
 const StatusBadge = ({ status }) => {
     const styles = {
@@ -26,6 +27,7 @@ const StatusBadge = ({ status }) => {
 const PaymentHistory = ({ filters }) => {
     const [payments, setPayments] = useState([])
     const [loading, setLoading] = useState(true)
+    const [error, setError] = useState(null)
     const [search, setSearch] = useState('')
     const [page, setPage] = useState(1)
     const [itemsPerPage, setItemsPerPage] = useState(25)
@@ -37,6 +39,8 @@ const PaymentHistory = ({ filters }) => {
     const fetchPayments = async () => {
         try {
             setLoading(true)
+            setError(null) // Clear previous errors
+            console.log('[PaymentHistory] Fetching payments with filters:', filters)
             const response = await getPaymentHistory({
                 ...filters,
                 start_date: filters.dateRange?.start,
@@ -46,15 +50,57 @@ const PaymentHistory = ({ filters }) => {
                 per_page: itemsPerPage,
             })
 
+            console.log('[PaymentHistory] API Response:', response)
             if (response?.status === 'success') {
+                console.log('[PaymentHistory] Data received:', response.data?.length, 'payments')
                 setPayments(response.data || [])
+            } else {
+                setError(response?.message || 'Failed to load payment history')
             }
         } catch (error) {
-            console.error('Failed to load payment history:', error)
+            console.error('[PaymentHistory] Fetch error:', error)
+            console.error('[PaymentHistory] Error details:', {
+                message: error.message,
+                response: error.response?.data,
+                status: error.response?.status
+            })
+            setError(error.response?.data?.message || error.message || 'Failed to load payment history')
         } finally {
             setLoading(false)
         }
     }
+
+    // Real-time payment updates
+    const handlePaymentChange = useCallback(({ type, payment, raw }) => {
+        const formattedPayment = raw || payment
+
+        console.log('[PaymentHistory] Real-time event:', type, formattedPayment)
+
+        switch (type) {
+            case 'INSERT':
+                setPayments(prev => {
+                    const exists = prev.some(p => p.transaction_id === formattedPayment.transaction_id)
+                    if (exists) return prev
+                    return [formattedPayment, ...prev]
+                })
+                break
+
+            case 'UPDATE':
+                setPayments(prev => prev.map(p =>
+                    p.transaction_id === formattedPayment.transaction_id
+                        ? { ...p, ...formattedPayment }
+                        : p
+                ))
+                break
+
+            case 'DELETE':
+                setPayments(prev => prev.filter(p => p.transaction_id !== formattedPayment.transaction_id))
+                break
+        }
+    }, [])
+
+    // Subscribe to real-time updates
+    usePaymentsRealtime({ onPaymentChange: handlePaymentChange })
 
     const filteredPayments = payments.filter((payment) => {
         if (!search) return true
@@ -110,6 +156,22 @@ const PaymentHistory = ({ filters }) => {
                     Export CSV
                 </button>
             </div>
+
+            {/* Error Message */}
+            {error && (
+                <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex items-center gap-3">
+                    <AlertCircle className="h-5 w-5 text-red-600 flex-shrink-0" />
+                    <div className="flex-1">
+                        <p className="text-sm font-medium text-red-800">{error}</p>
+                    </div>
+                    <button
+                        onClick={() => fetchPayments()}
+                        className="px-3 py-1.5 text-sm bg-red-100 text-red-700 rounded hover:bg-red-200 transition-colors"
+                    >
+                        Retry
+                    </button>
+                </div>
+            )}
 
             {/* Search */}
             <div className="relative">

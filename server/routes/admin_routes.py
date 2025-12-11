@@ -103,26 +103,93 @@ def filter_by_date_range(items, date_field, start_date, end_date):
     return filtered
 
 
-def calculate_weekly_active_users(users):
-    """Calculate active users (logged in) per week for last 4 weeks"""
-    now = datetime.now(timezone.utc)
-    weeks = []
+def calculate_weekly_active_users_from_supabase():
+    """Calculate active users per week using Supabase edge function get_mau_by_week"""
+    try:
+        now = datetime.now(timezone.utc)
+        current_year = now.year
+        current_month = now.month
+        month_names = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
 
-    for i in range(4, 0, -1):
-        week_start = now - timedelta(weeks=i)
-        week_end = now - timedelta(weeks=i-1)
+        # Get current month's data
+        current_result = sr_client.rpc('get_mau_by_week', {
+            'p_year': current_year,
+            'p_month': current_month,
+            'p_source': 'sessions'  # Using 'sessions' for more accurate active user tracking
+        }).execute()
 
-        # Count users who logged in during this week
-        count = sum(1 for user in users
-                   if user.get('last_sign_in_at')
-                   and week_start <= datetime.fromisoformat(str(user['last_sign_in_at']).replace('Z', '+00:00')) < week_end)
+        # Get previous month's data in case we need it (for early weeks in current month)
+        prev_month = current_month - 1 if current_month > 1 else 12
+        prev_year = current_year if current_month > 1 else current_year - 1
 
-        weeks.append({
-            "week": f"Week {5-i}",
-            "active_users": count
-        })
+        prev_result = sr_client.rpc('get_mau_by_week', {
+            'p_year': prev_year,
+            'p_month': prev_month,
+            'p_source': 'sessions'
+        }).execute()
 
-    return weeks
+        # Parse the results - RPC returns directly as dict: {"year": 2025, "month": 12, "weeks": {"1": 10, "2": 11}, "source": "sessions"}
+        all_week_data = []
+
+        # Extract previous month weeks
+        if prev_result and prev_result.data:
+            prev_weeks = prev_result.data.get('weeks', {})
+            for week_num, count in prev_weeks.items():
+                all_week_data.append({
+                    'month': prev_month,
+                    'year': prev_year,
+                    'week': int(week_num),
+                    'count': count,
+                    'month_name': month_names[prev_month - 1]
+                })
+
+        # Extract current month weeks
+        if current_result and current_result.data:
+            current_weeks = current_result.data.get('weeks', {})
+            for week_num, count in current_weeks.items():
+                all_week_data.append({
+                    'month': current_month,
+                    'year': current_year,
+                    'week': int(week_num),
+                    'count': count,
+                    'month_name': month_names[current_month - 1]
+                })
+
+        # Sort by year, month, then week
+        all_week_data.sort(key=lambda x: (x['year'], x['month'], x['week']))
+
+        # Get the last 4 weeks that have data or are in the current/previous month
+        last_4_weeks = all_week_data[-4:] if len(all_week_data) >= 4 else all_week_data
+
+        # Format for the frontend with month labels
+        formatted_weeks = []
+        for week_data in last_4_weeks:
+            formatted_weeks.append({
+                "week": f"{week_data['month_name']} W{week_data['week']}",
+                "active_users": week_data['count']
+            })
+
+        # Ensure we always return 4 weeks (pad with zeros if needed)
+        while len(formatted_weeks) < 4:
+            formatted_weeks.append({
+                "week": f"Week {len(formatted_weeks) + 1}",
+                "active_users": 0
+            })
+
+        current_app.logger.info(f"Weekly active users calculated: {formatted_weeks}")
+        return formatted_weeks
+
+    except Exception as e:
+        current_app.logger.error(f"Error calculating weekly active users from Supabase: {str(e)}")
+        import traceback
+        current_app.logger.error(f"Traceback: {traceback.format_exc()}")
+        # Return fallback data
+        return [
+            {"week": "Week 1", "active_users": 0},
+            {"week": "Week 2", "active_users": 0},
+            {"week": "Week 3", "active_users": 0},
+            {"week": "Week 4", "active_users": 0}
+        ]
 
 
 def calculate_monthly_revenue_trend(facilities):
@@ -372,8 +439,8 @@ def calculate_dashboard_metrics():
             'subscription_rate': round((len(subscribed_parents) / len(parent_users) * 100), 1) if len(parent_users) > 0 else 0
         }
 
-        # Weekly active users (users who logged in each week)
-        weekly_active_users = calculate_weekly_active_users(users)
+        # Weekly active users (from Supabase edge function)
+        weekly_active_users = calculate_weekly_active_users_from_supabase()
 
         # Monthly revenue trend
         monthly_revenue_trend = calculate_monthly_revenue_trend(facilities)
