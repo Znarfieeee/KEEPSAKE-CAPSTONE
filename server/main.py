@@ -163,7 +163,7 @@ FRONTEND_URL = os.environ.get('FRONTEND_URL')
 BACKEND_URL = os.environ.get('BACKEND_URL')
 
 # Allow local Vite dev server
-allowed_origins = [ url for url in [FRONTEND_URL, BACKEND_URL] if url ]
+allowed_origins = [ FRONTEND_URL, BACKEND_URL ]
 
 CORS(
     app,
@@ -373,13 +373,6 @@ if __name__ == "__main__":
         print(f"[ERROR] Startup check failed: {startup_error}")
         print("[INFO] Starting server anyway (development mode)")
 
-    print("Starting Flask development server...")
-    print("Server will be available at: http://localhost:5000")
-    print("Press CTRL+C to quit\n")
-
     app.run(
-        debug=True,
-        host='0.0.0.0',
-        port=5000,
-        use_reloader=True
+        debug=False
     )
