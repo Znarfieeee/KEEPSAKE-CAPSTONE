@@ -1,16 +1,18 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import {
     getParentSubscriptions,
     getParentSubscriptionAnalytics,
 } from '@/api/admin/parentSubscription'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/badge'
-import { Users, TrendingUp, DollarSign, Activity, Filter, Download } from 'lucide-react'
+import { Users, TrendingUp, DollarSign, Activity, Filter, Download, AlertCircle } from 'lucide-react'
+import { useParentSubscriptionsRealtime } from '@/hook/useSubscriptionRealtime'
 
 const ParentSubscriptionsManagement = () => {
     const [subscriptions, setSubscriptions] = useState([])
     const [analytics, setAnalytics] = useState(null)
     const [loading, setLoading] = useState(true)
+    const [error, setError] = useState(null)
     const [filters, setFilters] = useState({
         status: '',
         plan_type: '',
@@ -26,6 +28,8 @@ const ParentSubscriptionsManagement = () => {
     const fetchData = async () => {
         try {
             setLoading(true)
+            setError(null) // Clear previous errors
+            console.log('[ParentSubscriptionsManagement] Fetching data with filters:', filters)
 
             // Fetch subscriptions and analytics in parallel
             const [subsResp, analyticsResp] = await Promise.all([
@@ -33,20 +37,64 @@ const ParentSubscriptionsManagement = () => {
                 getParentSubscriptionAnalytics(),
             ])
 
+            console.log('[ParentSubscriptionsManagement] Subscriptions response:', subsResp)
+            console.log('[ParentSubscriptionsManagement] Analytics response:', analyticsResp)
+
             if (subsResp.status === 'success') {
+                console.log('[ParentSubscriptionsManagement] Data received:', subsResp.data?.length, 'subscriptions')
                 setSubscriptions(subsResp.data || [])
                 setPagination(subsResp.pagination)
+            } else {
+                setError(subsResp?.message || 'Failed to load parent subscriptions')
             }
 
             if (analyticsResp.status === 'success') {
                 setAnalytics(analyticsResp.data)
             }
         } catch (error) {
-            console.error('Error fetching parent subscriptions:', error)
+            console.error('[ParentSubscriptionsManagement] Fetch error:', error)
+            console.error('[ParentSubscriptionsManagement] Error details:', {
+                message: error.message,
+                response: error.response?.data,
+                status: error.response?.status
+            })
+            setError(error.response?.data?.message || error.message || 'Failed to load parent subscriptions')
         } finally {
             setLoading(false)
         }
     }
+
+    // Real-time subscription updates
+    const handleSubscriptionChange = useCallback(({ type, subscription, raw }) => {
+        const formattedSub = raw || subscription
+
+        console.log('[ParentSubscriptionsManagement] Real-time event:', type, formattedSub)
+
+        switch (type) {
+            case 'INSERT':
+                setSubscriptions(prev => {
+                    const exists = prev.some(s => s.subscription_id === formattedSub.subscription_id)
+                    if (exists) return prev
+                    return [formattedSub, ...prev]
+                })
+                break
+
+            case 'UPDATE':
+                setSubscriptions(prev => prev.map(s =>
+                    s.subscription_id === formattedSub.subscription_id
+                        ? { ...s, ...formattedSub }
+                        : s
+                ))
+                break
+
+            case 'DELETE':
+                setSubscriptions(prev => prev.filter(s => s.subscription_id !== formattedSub.subscription_id))
+                break
+        }
+    }, [])
+
+    // Subscribe to real-time updates
+    useParentSubscriptionsRealtime({ onSubscriptionChange: handleSubscriptionChange })
 
     const handleFilterChange = (key, value) => {
         setFilters((prev) => ({
@@ -198,6 +246,22 @@ const ParentSubscriptionsManagement = () => {
                     </div>
                 </CardHeader>
                 <CardContent>
+                    {/* Error Message */}
+                    {error && (
+                        <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex items-center gap-3 mb-6">
+                            <AlertCircle className="h-5 w-5 text-red-600 flex-shrink-0" />
+                            <div className="flex-1">
+                                <p className="text-sm font-medium text-red-800">{error}</p>
+                            </div>
+                            <button
+                                onClick={() => fetchData()}
+                                className="px-3 py-1.5 text-sm bg-red-100 text-red-700 rounded hover:bg-red-200 transition-colors"
+                            >
+                                Retry
+                            </button>
+                        </div>
+                    )}
+
                     {/* Filters */}
                     <div className="flex items-center gap-4 mb-6">
                         <div className="flex items-center gap-2">

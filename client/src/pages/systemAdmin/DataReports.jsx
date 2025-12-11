@@ -27,15 +27,27 @@ import {
     Settings,
     Eye,
     AlertCircle,
+    UserPlus,
+    Zap,
 } from 'lucide-react'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/Button'
+import { Skeleton } from '@/components/ui/skeleton'
 import { showToast } from '@/util/alertHelper'
 import ReportFilters from '@/components/System Administrator/sysAdmin_reports/ReportFilters'
 import ReportsSkeleton from '@/components/System Administrator/sysAdmin_reports/ReportsSkeleton'
 import { getAllReports } from '@/api/admin/reports'
 import { calculateDateRange } from '@/util/dateRangeHelper'
+import ReportSpecificContent from '@/components/System Administrator/sysAdmin_reports/ReportSpecificContent'
+import MonthlyActiveUsersCard from '@/components/System Administrator/sysAdmin_reports/MonthlyActiveUsersCard'
+import MonthSelector from '@/components/System Administrator/sysAdmin_reports/MonthSelector'
+
+// Helper function to get current year-month in YYYY-MM format
+const getCurrentYearMonth = () => {
+    const now = new Date()
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
+}
 
 // Service Health Bar Component
 const ServiceHealthBar = ({ label, value, color }) => {
@@ -81,6 +93,7 @@ const DataReports = () => {
         dateRange: { startDate: '', endDate: '' },
         roleFilter: 'all',
         exportFormat: null,
+        selectedMonth: getCurrentYearMonth(), // NEW: Track selected month for MAU
     })
 
     // Data state
@@ -89,6 +102,10 @@ const DataReports = () => {
         facilityStats: [],
         systemUsage: [],
         userRoleDistribution: [],
+        userActivityMetrics: {}, // NEW: User activity specific metrics
+        facilityMetrics: {}, // NEW: Facility specific metrics
+        systemMetrics: {}, // NEW: System usage specific metrics
+        monthlyActiveUsers: null, // NEW: MAU data with historical trend
     })
     const [summaryMetrics, setSummaryMetrics] = useState(null)
     const [loading, setLoading] = useState(true)
@@ -96,35 +113,45 @@ const DataReports = () => {
     const [cacheInfo, setCacheInfo] = useState({ cached: false, cache_expires_in: 0 })
 
     // Data fetching function - Fetches ALL data once, filtering happens on frontend
-    const fetchReportData = useCallback(async (bustCache = false) => {
-        setLoading(true)
-        setError(null)
-        try {
-            // Fetch ALL report data without filters (filters applied on frontend)
-            const params = { bust_cache: bustCache }
-            const response = await getAllReports(params)
+    const fetchReportData = useCallback(
+        async (bustCache = false) => {
+            setLoading(true)
+            setError(null)
+            try {
+                // Fetch ALL report data with selected month for MAU
+                const params = {
+                    bust_cache: bustCache,
+                    selected_month: filters.selectedMonth, // Pass selected month to backend
+                }
+                const response = await getAllReports(params)
 
-            // Store raw data (we'll filter it on frontend)
-            setReportData({
-                userActivity: response.data.userActivity || [],
-                facilityStats: response.data.facilityStats || [],
-                systemUsage: response.data.systemUsage || [],
-                userRoleDistribution: response.data.userRoleDistribution || [],
-            })
+                // Store raw data (we'll filter it on frontend)
+                setReportData({
+                    userActivity: response.data.userActivity || [],
+                    facilityStats: response.data.facilityStats || [],
+                    systemUsage: response.data.systemUsage || [],
+                    userRoleDistribution: response.data.userRoleDistribution || [],
+                    userActivityMetrics: response.data.userActivityMetrics || {},
+                    facilityMetrics: response.data.facilityMetrics || {},
+                    systemMetrics: response.data.systemMetrics || {},
+                    monthlyActiveUsers: response.data.monthlyActiveUsers || null,
+                })
 
-            setSummaryMetrics(response.data.summaryMetrics)
-            setCacheInfo({
-                cached: response.cached || false,
-                cache_expires_in: response.cache_expires_in || 0,
-            })
-        } catch (error) {
-            console.error('Error fetching report data:', error)
-            setError(error.message || 'Failed to load report data')
-            showToast('error', 'Failed to load report data')
-        } finally {
-            setLoading(false)
-        }
-    }, []) // No dependencies - only fetch once on mount
+                setSummaryMetrics(response.data.summaryMetrics)
+                setCacheInfo({
+                    cached: response.cached || false,
+                    cache_expires_in: response.cache_expires_in || 0,
+                })
+            } catch (error) {
+                console.error('Error fetching report data:', error)
+                setError(error.message || 'Failed to load report data')
+                showToast('error', 'Failed to load report data')
+            } finally {
+                setLoading(false)
+            }
+        },
+        [filters.selectedMonth]
+    ) // Re-fetch when selected month changes
 
     // Fetch data only on mount or manual refresh
     useEffect(() => {
@@ -156,6 +183,25 @@ const DataReports = () => {
             userRoleDistribution: filteredRoleDistribution,
         }
     }, [reportData, filters.datePreset, filters.dateRange, filters.roleFilter])
+
+    // Handle month change for MAU
+    const handleMonthChange = (newMonth) => {
+        setFilters({ ...filters, selectedMonth: newMonth })
+    }
+
+    // Get report-specific metrics based on selected report type
+    const getReportMetrics = () => {
+        switch (selectedReport) {
+            case 'user-activity':
+                return reportData.userActivityMetrics
+            case 'facility-stats':
+                return reportData.facilityMetrics
+            case 'system-usage':
+                return reportData.systemMetrics
+            default:
+                return {}
+        }
+    }
 
     // Export functions
     const exportToCSV = (data, filename) => {
@@ -366,7 +412,7 @@ const DataReports = () => {
         }
     }
 
-    const StatBox = ({ icon: Icon, label, value, color = 'blue' }) => {
+    const StatBox = ({ icon: Icon, label, value, color = 'blue', isLoading = false }) => {
         const colorClasses = {
             blue: 'bg-blue-50 border-blue-200 text-blue-700',
             green: 'bg-green-50 border-green-200 text-green-700',
@@ -377,9 +423,13 @@ const DataReports = () => {
         return (
             <div className={`${colorClasses[color]} border rounded-lg p-4`}>
                 <div className="flex items-center justify-between">
-                    <div>
+                    <div className="flex-1">
                         <p className="text-sm text-gray-600">{label}</p>
-                        <p className="text-2xl font-bold mt-1">{value}</p>
+                        {isLoading ? (
+                            <Skeleton className="h-8 w-24 mt-1" />
+                        ) : (
+                            <p className="text-2xl font-bold mt-1">{value}</p>
+                        )}
                     </div>
                     <Icon size={32} className="opacity-50" />
                 </div>
@@ -521,173 +571,455 @@ const DataReports = () => {
                 </CardContent>
             </Card>
 
-            {/* Infrastructure Health Section */}
+            {/* Monthly Active Users - Only for user-activity report */}
+            {selectedReport === 'user-activity' &&
+                (loading ? (
+                    <Card className="border border-gray-200 shadow-sm mb-8">
+                        <CardHeader className="border-b border-gray-200">
+                            <div className="flex justify-between items-center">
+                                <CardTitle className="text-lg font-bold text-gray-900 flex items-center gap-2">
+                                    <Users size={20} />
+                                    Monthly Active Users (MAU)
+                                </CardTitle>
+                                <MonthSelector
+                                    value={filters.selectedMonth}
+                                    onChange={handleMonthChange}
+                                />
+                            </div>
+                        </CardHeader>
+                        <CardContent className="pt-6">
+                            <div className="space-y-4">
+                                <div className="grid grid-cols-3 gap-4">
+                                    <Skeleton className="h-24 w-full" />
+                                    <Skeleton className="h-24 w-full" />
+                                    <Skeleton className="h-24 w-full" />
+                                </div>
+                                <Skeleton className="h-[200px] w-full" />
+                            </div>
+                        </CardContent>
+                    </Card>
+                ) : reportData.monthlyActiveUsers ? (
+                    <MonthlyActiveUsersCard
+                        mauData={reportData.monthlyActiveUsers}
+                        selectedMonth={filters.selectedMonth}
+                        onMonthChange={handleMonthChange}
+                    />
+                ) : (
+                    <Card className="border border-gray-200 shadow-sm mb-8">
+                        <CardHeader className="border-b border-gray-200">
+                            <div className="flex justify-between items-center">
+                                <CardTitle className="text-lg font-bold text-gray-900 flex items-center gap-2">
+                                    <Users size={20} />
+                                    Monthly Active Users (MAU)
+                                </CardTitle>
+                                <MonthSelector
+                                    value={filters.selectedMonth}
+                                    onChange={handleMonthChange}
+                                />
+                            </div>
+                        </CardHeader>
+                        <CardContent className="pt-6">
+                            <div className="flex flex-col items-center justify-center h-[200px] text-gray-500">
+                                <p className="text-lg font-medium mb-2">
+                                    No MAU data available for selected month
+                                </p>
+                                <p className="text-sm text-gray-400">
+                                    Try selecting a different month or check if the get_mau_by_week
+                                    function is configured
+                                </p>
+                            </div>
+                        </CardContent>
+                    </Card>
+                ))}
+
+            {/* Dynamic 3-Card Section - Changes based on selected report */}
             <div className="grid grid-cols-3 gap-6 mb-8">
-                {/* Infrastructure Health Card */}
+                {/* CARD 1 - First Metric Card (changes based on report type) */}
                 <Card className="border border-gray-200 shadow-sm">
                     <CardHeader className="border-b border-gray-200">
                         <CardTitle className="text-lg font-bold text-gray-900">
-                            Infrastructure Health
+                            {selectedReport === 'user-activity' && 'User Activity Metrics'}
+                            {selectedReport === 'facility-stats' && 'Facility Performance'}
+                            {selectedReport === 'system-usage' && 'System Usage Metrics'}
                         </CardTitle>
                     </CardHeader>
                     <CardContent className="pt-6">
-                        <div className="space-y-3">
-                            {/* Overall Health Score */}
-                            <div className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg p-3 border border-blue-200">
-                                <div className="flex items-center justify-between">
-                                    <span className="text-sm font-medium text-gray-700">
-                                        Overall Health
-                                    </span>
-                                    <span className="text-2xl font-bold text-blue-600">
-                                        {summaryMetrics?.infrastructureHealth?.overall?.toFixed(
-                                            1
-                                        ) || '0.0'}
-                                        %
-                                    </span>
-                                </div>
-                            </div>
-
-                            {/* Individual Service Health */}
-                            <div className="space-y-2">
-                                <ServiceHealthBar
-                                    label="Database"
-                                    value={summaryMetrics?.infrastructureHealth?.database || 0}
+                        {/* User Activity Report - Card 1 */}
+                        {selectedReport === 'user-activity' && (
+                            <div className="space-y-3">
+                                <StatBox
+                                    icon={Activity}
+                                    label="Total Logins"
+                                    value={reportData.userActivityMetrics?.totalLogins || 0}
                                     color="blue"
+                                    isLoading={loading}
                                 />
-                                <ServiceHealthBar
-                                    label="Auth"
-                                    value={summaryMetrics?.infrastructureHealth?.auth || 0}
+                                <StatBox
+                                    icon={UserPlus}
+                                    label="New Registrations"
+                                    value={reportData.userActivityMetrics?.totalRegistrations || 0}
                                     color="green"
+                                    isLoading={loading}
                                 />
-                                <ServiceHealthBar
-                                    label="Storage"
-                                    value={summaryMetrics?.infrastructureHealth?.storage || 0}
+                                <StatBox
+                                    icon={Users}
+                                    label="Avg Daily Active"
+                                    value={reportData.userActivityMetrics?.avgDailyActive || 0}
                                     color="purple"
-                                />
-                                <ServiceHealthBar
-                                    label="Realtime"
-                                    value={summaryMetrics?.infrastructureHealth?.realtime || 0}
-                                    color="orange"
-                                />
-                                <ServiceHealthBar
-                                    label="Edge Functions"
-                                    value={
-                                        summaryMetrics?.infrastructureHealth?.edge_functions || 0
-                                    }
-                                    color="indigo"
+                                    isLoading={loading}
                                 />
                             </div>
+                        )}
 
-                            {/* Issues Display */}
-                            {summaryMetrics?.infrastructureHealth?.issues?.length > 0 && (
-                                <div className="mt-3 p-2 bg-red-50 border border-red-200 rounded-lg">
-                                    <p className="text-xs font-semibold text-red-700 mb-1">
-                                        Active Issues:
-                                    </p>
-                                    <div className="space-y-1">
-                                        {summaryMetrics.infrastructureHealth.issues.map(
-                                            (issue, idx) => (
-                                                <p key={idx} className="text-xs text-red-600">
-                                                    • {issue.service}: {issue.message}
-                                                </p>
-                                            )
-                                        )}
-                                    </div>
-                                </div>
-                            )}
-                        </div>
-                    </CardContent>
-                </Card>
+                        {/* Facility Performance Report - Card 1 */}
+                        {selectedReport === 'facility-stats' && (
+                            <div className="space-y-3">
+                                <StatBox
+                                    icon={Building2}
+                                    label="Total Patients"
+                                    value={reportData.facilityMetrics?.totalPatients || 0}
+                                    color="blue"
+                                    isLoading={loading}
+                                />
+                                <StatBox
+                                    icon={Calendar}
+                                    label="Total Appointments"
+                                    value={reportData.facilityMetrics?.totalAppointments || 0}
+                                    color="green"
+                                    isLoading={loading}
+                                />
+                                <StatBox
+                                    icon={Users}
+                                    label="Avg Patients/Facility"
+                                    value={reportData.facilityMetrics?.avgPatientsPerFacility || 0}
+                                    color="purple"
+                                    isLoading={loading}
+                                />
+                            </div>
+                        )}
 
-                {/* User Role Distribution */}
-                <Card className="border border-gray-200 shadow-sm">
-                    <CardHeader className="border-b border-gray-200">
-                        <CardTitle className="text-lg font-bold text-gray-900">
-                            User Role Distribution
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent className="pt-6">
-                        {filteredData.userRoleDistribution.length > 0 ? (
-                            <ResponsiveContainer width="100%" height={300}>
-                                <PieChart>
-                                    <Pie
-                                        data={filteredData.userRoleDistribution}
-                                        cx="50%"
-                                        cy="50%"
-                                        labelLine={false}
-                                        label={({ name, value }) => `${name}: ${value}`}
-                                        outerRadius={80}
-                                        fill="#8884d8"
-                                        dataKey="value"
-                                    >
-                                        {filteredData.userRoleDistribution.map((entry, index) => (
-                                            <Cell key={`cell-${index}`} fill={entry.color} />
-                                        ))}
-                                    </Pie>
-                                    <Tooltip />
-                                </PieChart>
-                            </ResponsiveContainer>
-                        ) : (
-                            <div className="flex items-center justify-center h-[300px] text-gray-500">
-                                No data available for selected filters
+                        {/* System Usage Report - Card 1 */}
+                        {selectedReport === 'system-usage' && (
+                            <div className="space-y-3">
+                                <StatBox
+                                    icon={Activity}
+                                    label="Total API Calls"
+                                    value={reportData.systemMetrics?.totalApiCalls || 0}
+                                    color="blue"
+                                    isLoading={loading}
+                                />
+                                <StatBox
+                                    icon={Eye}
+                                    label="Most Common Action"
+                                    value={reportData.systemMetrics?.mostCommonAction || 'N/A'}
+                                    color="green"
+                                    isLoading={loading}
+                                />
+                                <StatBox
+                                    icon={Zap}
+                                    label="System Load"
+                                    value={reportData.systemMetrics?.systemLoad || 'Low'}
+                                    color="purple"
+                                    isLoading={loading}
+                                />
                             </div>
                         )}
                     </CardContent>
                 </Card>
 
-                {/* System Health Breakdown */}
+                {/* CARD 2 - Second Metric Card (changes based on report type) */}
                 <Card className="border border-gray-200 shadow-sm">
                     <CardHeader className="border-b border-gray-200">
                         <CardTitle className="text-lg font-bold text-gray-900">
-                            System Health Breakdown
+                            {selectedReport === 'user-activity' && 'User Role Distribution'}
+                            {selectedReport === 'facility-stats' && 'Top Performing Facilities'}
+                            {selectedReport === 'system-usage' && 'Infrastructure Health'}
                         </CardTitle>
                     </CardHeader>
                     <CardContent className="pt-6">
-                        <div className="space-y-4">
-                            <div className="bg-gradient-to-r from-green-50 to-blue-50 rounded-lg p-4 border border-green-200">
-                                <div className="text-center">
-                                    <p className="text-sm font-medium text-gray-600 mb-2">
-                                        Overall System Health
-                                    </p>
-                                    <p className="text-4xl font-bold text-green-600">
-                                        {summaryMetrics?.systemHealth?.toFixed(1) || '0.0'}%
-                                    </p>
-                                </div>
-                            </div>
-
+                        {/* User Activity - Show Role Distribution */}
+                        {selectedReport === 'user-activity' && loading && (
                             <div className="space-y-3">
-                                <div className="flex items-center justify-between p-3 bg-blue-50 rounded-lg border border-blue-200">
-                                    <div>
-                                        <p className="text-xs font-medium text-gray-600">
-                                            Business Metrics
-                                        </p>
-                                        <p className="text-sm text-gray-700 mt-1">
-                                            Users & Facilities
-                                        </p>
-                                    </div>
-                                    <p className="text-lg font-bold text-blue-600">40%</p>
-                                </div>
+                                <Skeleton className="h-[300px] w-full" />
+                            </div>
+                        )}
 
-                                <div className="flex items-center justify-between p-3 bg-purple-50 rounded-lg border border-purple-200">
-                                    <div>
-                                        <p className="text-xs font-medium text-gray-600">
-                                            Infrastructure
-                                        </p>
-                                        <p className="text-sm text-gray-700 mt-1">
-                                            Database, Auth, Storage
-                                        </p>
-                                    </div>
-                                    <p className="text-lg font-bold text-purple-600">60%</p>
+                        {selectedReport === 'user-activity' &&
+                            !loading &&
+                            filteredData.userRoleDistribution.length > 0 && (
+                                <ResponsiveContainer width="100%" height={300}>
+                                    <PieChart>
+                                        <Pie
+                                            data={filteredData.userRoleDistribution}
+                                            cx="50%"
+                                            cy="50%"
+                                            labelLine={false}
+                                            label={({ name, value }) => `${name}: ${value}`}
+                                            outerRadius={80}
+                                            fill="#8884d8"
+                                            dataKey="value"
+                                        >
+                                            {filteredData.userRoleDistribution.map(
+                                                (entry, index) => (
+                                                    <Cell
+                                                        key={`cell-${index}`}
+                                                        fill={entry.color}
+                                                    />
+                                                )
+                                            )}
+                                        </Pie>
+                                        <Tooltip />
+                                    </PieChart>
+                                </ResponsiveContainer>
+                            )}
+
+                        {selectedReport === 'user-activity' &&
+                            !loading &&
+                            filteredData.userRoleDistribution.length === 0 && (
+                                <div className="flex items-center justify-center h-[300px] text-gray-500">
+                                    No data available
+                                </div>
+                            )}
+
+                        {/* Facility Performance - Show Top Facilities */}
+                        {selectedReport === 'facility-stats' && loading && (
+                            <div className="space-y-3">
+                                <Skeleton className="h-20 w-full" />
+                                <Skeleton className="h-10 w-full" />
+                                <Skeleton className="h-10 w-full" />
+                                <Skeleton className="h-10 w-full" />
+                                <Skeleton className="h-10 w-full" />
+                            </div>
+                        )}
+
+                        {selectedReport === 'facility-stats' && !loading && (
+                            <div className="space-y-3">
+                                <div className="bg-gradient-to-r from-blue-50 to-green-50 rounded-lg p-4 border border-blue-200">
+                                    <p className="text-sm font-medium text-gray-600 mb-2">
+                                        Best Performer
+                                    </p>
+                                    <p className="text-2xl font-bold text-blue-600">
+                                        {reportData.facilityMetrics?.topPerformingFacility || 'N/A'}
+                                    </p>
+                                </div>
+                                <div className="space-y-2">
+                                    {filteredData.facilityStats.slice(0, 5).map((facility, idx) => (
+                                        <div
+                                            key={idx}
+                                            className="flex justify-between items-center p-2 bg-gray-50 rounded"
+                                        >
+                                            <span className="text-sm text-gray-700">
+                                                {facility.facility}
+                                            </span>
+                                            <span className="text-sm font-semibold text-blue-600">
+                                                {facility.appointments} appts
+                                            </span>
+                                        </div>
+                                    ))}
                                 </div>
                             </div>
+                        )}
 
-                            <div className="mt-4 p-3 bg-gray-50 rounded-lg border border-gray-200">
-                                <p className="text-xs text-gray-600">
-                                    <strong>Formula:</strong> System Health = (Active Users × 20%) +
-                                    (Active Facilities × 20%) + (Infrastructure × 60%)
-                                </p>
+                        {/* System Usage - Show Infrastructure Health */}
+                        {selectedReport === 'system-usage' && loading && (
+                            <div className="space-y-3">
+                                <Skeleton className="h-16 w-full" />
+                                <Skeleton className="h-10 w-full" />
+                                <Skeleton className="h-10 w-full" />
+                                <Skeleton className="h-10 w-full" />
                             </div>
-                        </div>
+                        )}
+
+                        {selectedReport === 'system-usage' && !loading && (
+                            <div className="space-y-3">
+                                <div className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg p-3 border border-blue-200">
+                                    <div className="flex items-center justify-between">
+                                        <span className="text-sm font-medium text-gray-700">
+                                            Overall Health
+                                        </span>
+                                        <span className="text-2xl font-bold text-blue-600">
+                                            {summaryMetrics?.infrastructureHealth?.overall?.toFixed(
+                                                1
+                                            ) || '0.0'}
+                                            %
+                                        </span>
+                                    </div>
+                                </div>
+                                <div className="space-y-2">
+                                    <ServiceHealthBar
+                                        label="Database"
+                                        value={summaryMetrics?.infrastructureHealth?.database || 0}
+                                        color="blue"
+                                    />
+                                    <ServiceHealthBar
+                                        label="Auth"
+                                        value={summaryMetrics?.infrastructureHealth?.auth || 0}
+                                        color="green"
+                                    />
+                                    <ServiceHealthBar
+                                        label="Storage"
+                                        value={summaryMetrics?.infrastructureHealth?.storage || 0}
+                                        color="purple"
+                                    />
+                                </div>
+                            </div>
+                        )}
+                    </CardContent>
+                </Card>
+
+                {/* CARD 3 - Third Metric Card (changes based on report type) */}
+                <Card className="border border-gray-200 shadow-sm">
+                    <CardHeader className="border-b border-gray-200">
+                        <CardTitle className="text-lg font-bold text-gray-900">
+                            {selectedReport === 'user-activity' && 'Activity Breakdown'}
+                            {selectedReport === 'facility-stats' && 'Facility Health'}
+                            {selectedReport === 'system-usage' && 'System Load Analysis'}
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent className="pt-6">
+                        {/* User Activity - Show Peak Activity Date & Change */}
+                        {selectedReport === 'user-activity' && loading && (
+                            <div className="space-y-4">
+                                <Skeleton className="h-24 w-full" />
+                                <Skeleton className="h-16 w-full" />
+                                <Skeleton className="h-12 w-full" />
+                            </div>
+                        )}
+
+                        {selectedReport === 'user-activity' && !loading && (
+                            <div className="space-y-4">
+                                <div className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg p-4 border border-blue-200">
+                                    <p className="text-sm font-medium text-gray-600 mb-2">
+                                        Peak Activity Date
+                                    </p>
+                                    <p className="text-2xl font-bold text-blue-600">
+                                        {reportData.userActivityMetrics?.peakActivityDate || 'N/A'}
+                                    </p>
+                                </div>
+                                <div className="space-y-2">
+                                    <StatBox
+                                        icon={TrendingUp}
+                                        label="7-Day Active Change"
+                                        value={`${
+                                            reportData.userActivityMetrics?.activeUsersChange || 0
+                                        }%`}
+                                        color="green"
+                                        isLoading={loading}
+                                    />
+                                    <div className="p-3 bg-gray-50 rounded-lg border border-gray-200">
+                                        <p className="text-xs text-gray-600">
+                                            Tracks change in active users over the last 7 days
+                                            compared to the previous 7 days.
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Facility Performance - Show Facility Breakdown */}
+                        {selectedReport === 'facility-stats' && loading && (
+                            <div className="space-y-4">
+                                <Skeleton className="h-28 w-full" />
+                                <Skeleton className="h-16 w-full" />
+                                <Skeleton className="h-16 w-full" />
+                            </div>
+                        )}
+
+                        {selectedReport === 'facility-stats' && !loading && (
+                            <div className="space-y-4">
+                                <div className="bg-gradient-to-r from-green-50 to-blue-50 rounded-lg p-4 border border-green-200">
+                                    <div className="text-center">
+                                        <p className="text-sm font-medium text-gray-600 mb-2">
+                                            Total Active Facilities
+                                        </p>
+                                        <p className="text-4xl font-bold text-green-600">
+                                            {summaryMetrics?.activeFacilities || 0}
+                                        </p>
+                                    </div>
+                                </div>
+                                <div className="space-y-3">
+                                    <div className="flex items-center justify-between p-3 bg-blue-50 rounded-lg border border-blue-200">
+                                        <div>
+                                            <p className="text-xs font-medium text-gray-600">
+                                                Avg Patients
+                                            </p>
+                                            <p className="text-sm text-gray-700 mt-1">
+                                                Per Facility
+                                            </p>
+                                        </div>
+                                        <p className="text-lg font-bold text-blue-600">
+                                            {reportData.facilityMetrics?.avgPatientsPerFacility ||
+                                                0}
+                                        </p>
+                                    </div>
+                                    <div className="flex items-center justify-between p-3 bg-purple-50 rounded-lg border border-purple-200">
+                                        <div>
+                                            <p className="text-xs font-medium text-gray-600">
+                                                Total Appointments
+                                            </p>
+                                            <p className="text-sm text-gray-700 mt-1">
+                                                All Facilities
+                                            </p>
+                                        </div>
+                                        <p className="text-lg font-bold text-purple-600">
+                                            {reportData.facilityMetrics?.totalAppointments || 0}
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* System Usage - Show System Health Breakdown */}
+                        {selectedReport === 'system-usage' && loading && (
+                            <div className="space-y-4">
+                                <Skeleton className="h-28 w-full" />
+                                <Skeleton className="h-16 w-full" />
+                                <Skeleton className="h-16 w-full" />
+                            </div>
+                        )}
+
+                        {selectedReport === 'system-usage' && !loading && (
+                            <div className="space-y-4">
+                                <div className="bg-gradient-to-r from-green-50 to-blue-50 rounded-lg p-4 border border-green-200">
+                                    <div className="text-center">
+                                        <p className="text-sm font-medium text-gray-600 mb-2">
+                                            Overall System Health
+                                        </p>
+                                        <p className="text-4xl font-bold text-green-600">
+                                            {summaryMetrics?.systemHealth?.toFixed(1) || '0.0'}%
+                                        </p>
+                                    </div>
+                                </div>
+                                <div className="space-y-3">
+                                    <div className="flex items-center justify-between p-3 bg-blue-50 rounded-lg border border-blue-200">
+                                        <div>
+                                            <p className="text-xs font-medium text-gray-600">
+                                                Avg Calls/Hour
+                                            </p>
+                                            <p className="text-sm text-gray-700 mt-1">
+                                                API Activity
+                                            </p>
+                                        </div>
+                                        <p className="text-lg font-bold text-blue-600">
+                                            {reportData.systemMetrics?.avgCallsPerHour || 0}
+                                        </p>
+                                    </div>
+                                    <div className="flex items-center justify-between p-3 bg-purple-50 rounded-lg border border-purple-200">
+                                        <div>
+                                            <p className="text-xs font-medium text-gray-600">
+                                                Load Level
+                                            </p>
+                                            <p className="text-sm text-gray-700 mt-1">
+                                                Current Status
+                                            </p>
+                                        </div>
+                                        <p className="text-lg font-bold text-purple-600">
+                                            {reportData.systemMetrics?.systemLoad || 'Low'}
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
                     </CardContent>
                 </Card>
             </div>

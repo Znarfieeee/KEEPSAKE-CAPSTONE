@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import { Search, Mail, AlertCircle } from 'lucide-react'
 import { getEmailNotifications } from '@/api/admin/subscription'
 import { Badge } from '@/components/ui/badge'
+import { useEmailNotificationsRealtime } from '@/hook/useSubscriptionRealtime'
 
 const StatusBadge = ({ status }) => {
     const styles = {
@@ -26,6 +27,7 @@ const StatusBadge = ({ status }) => {
 const EmailNotifications = () => {
     const [notifications, setNotifications] = useState([])
     const [loading, setLoading] = useState(true)
+    const [error, setError] = useState(null)
     const [search, setSearch] = useState('')
     const [typeFilter, setTypeFilter] = useState('all')
     const [statusFilter, setStatusFilter] = useState('all')
@@ -39,6 +41,8 @@ const EmailNotifications = () => {
     const fetchNotifications = async () => {
         try {
             setLoading(true)
+            setError(null) // Clear previous errors
+            console.log('[EmailNotifications] Fetching notifications with filters:', { typeFilter, statusFilter })
             const response = await getEmailNotifications({
                 type: typeFilter !== 'all' ? typeFilter : undefined,
                 status: statusFilter !== 'all' ? statusFilter : undefined,
@@ -46,15 +50,57 @@ const EmailNotifications = () => {
                 per_page: itemsPerPage,
             })
 
+            console.log('[EmailNotifications] API Response:', response)
             if (response?.status === 'success') {
+                console.log('[EmailNotifications] Data received:', response.data?.length, 'notifications')
                 setNotifications(response.data || [])
+            } else {
+                setError(response?.message || 'Failed to load notifications')
             }
         } catch (error) {
-            console.error('Failed to load notifications:', error)
+            console.error('[EmailNotifications] Fetch error:', error)
+            console.error('[EmailNotifications] Error details:', {
+                message: error.message,
+                response: error.response?.data,
+                status: error.response?.status
+            })
+            setError(error.response?.data?.message || error.message || 'Failed to load notifications')
         } finally {
             setLoading(false)
         }
     }
+
+    // Real-time notification updates
+    const handleNotificationChange = useCallback(({ type, notification, raw }) => {
+        const formattedNotif = raw || notification
+
+        console.log('[EmailNotifications] Real-time event:', type, formattedNotif)
+
+        switch (type) {
+            case 'INSERT':
+                setNotifications(prev => {
+                    const exists = prev.some(n => n.notification_id === formattedNotif.notification_id)
+                    if (exists) return prev
+                    return [formattedNotif, ...prev]
+                })
+                break
+
+            case 'UPDATE':
+                setNotifications(prev => prev.map(n =>
+                    n.notification_id === formattedNotif.notification_id
+                        ? { ...n, ...formattedNotif }
+                        : n
+                ))
+                break
+
+            case 'DELETE':
+                setNotifications(prev => prev.filter(n => n.notification_id !== formattedNotif.notification_id))
+                break
+        }
+    }, [])
+
+    // Subscribe to real-time updates
+    useEmailNotificationsRealtime({ onNotificationChange: handleNotificationChange })
 
     const filteredNotifications = notifications.filter((notif) => {
         if (!search) return true
@@ -79,6 +125,22 @@ const EmailNotifications = () => {
                     {notifications.filter((n) => n.status === 'queued').length} queued
                 </div>
             </div>
+
+            {/* Error Message */}
+            {error && (
+                <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex items-center gap-3">
+                    <AlertCircle className="h-5 w-5 text-red-600 flex-shrink-0" />
+                    <div className="flex-1">
+                        <p className="text-sm font-medium text-red-800">{error}</p>
+                    </div>
+                    <button
+                        onClick={() => fetchNotifications()}
+                        className="px-3 py-1.5 text-sm bg-red-100 text-red-700 rounded hover:bg-red-200 transition-colors"
+                    >
+                        Retry
+                    </button>
+                </div>
+            )}
 
             {/* Filters */}
             <div className="flex flex-wrap gap-4">

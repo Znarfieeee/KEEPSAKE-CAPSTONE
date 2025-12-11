@@ -1,7 +1,8 @@
-import React, { useState, useEffect, lazy, Suspense } from 'react'
-import { Eye, Download, DollarSign, Plus, Search } from 'lucide-react'
+import React, { useState, useEffect, useCallback, lazy, Suspense } from 'react'
+import { Eye, Download, DollarSign, Plus, Search, AlertCircle } from 'lucide-react'
 import { getInvoices } from '@/api/admin/subscription'
 import { Badge } from '@/components/ui/badge'
+import { useInvoicesRealtime } from '@/hook/useSubscriptionRealtime'
 
 const GenerateInvoiceModal = lazy(() => import('./GenerateInvoiceModal'))
 const InvoiceDetailModal = lazy(() => import('./InvoiceDetailModal'))
@@ -31,6 +32,7 @@ const StatusBadge = ({ status }) => {
 const InvoiceManagement = ({ filters }) => {
     const [invoices, setInvoices] = useState([])
     const [loading, setLoading] = useState(true)
+    const [error, setError] = useState(null)
     const [showDetail, setShowDetail] = useState(false)
     const [showGenerate, setShowGenerate] = useState(false)
     const [showMarkPaid, setShowMarkPaid] = useState(false)
@@ -46,6 +48,8 @@ const InvoiceManagement = ({ filters }) => {
     const fetchInvoices = async () => {
         try {
             setLoading(true)
+            setError(null) // Clear previous errors
+            console.log('[InvoiceManagement] Fetching invoices with filters:', filters)
             const response = await getInvoices({
                 ...filters,
                 start_date: filters.dateRange?.start,
@@ -55,15 +59,92 @@ const InvoiceManagement = ({ filters }) => {
                 per_page: itemsPerPage,
             })
 
+            console.log('[InvoiceManagement] API Response:', response)
             if (response?.status === 'success') {
+                console.log('[InvoiceManagement] Data received:', response.data?.length, 'invoices')
                 setInvoices(response.data || [])
+            } else {
+                setError(response?.message || 'Failed to load invoices')
             }
         } catch (error) {
-            console.error('Failed to load invoices:', error)
+            console.error('[InvoiceManagement] Fetch error:', error)
+            console.error('[InvoiceManagement] Error details:', {
+                message: error.message,
+                response: error.response?.data,
+                status: error.response?.status
+            })
+            setError(error.response?.data?.message || error.message || 'Failed to load invoices')
         } finally {
             setLoading(false)
         }
     }
+
+    // Real-time invoice updates
+    const handleInvoiceChange = useCallback(({ type, invoice, raw }) => {
+        const formattedInvoice = raw || invoice
+
+        console.log('[InvoiceManagement] Real-time event:', type, formattedInvoice)
+
+        switch (type) {
+            case 'INSERT':
+                setInvoices(prev => {
+                    const exists = prev.some(inv => inv.invoice_id === formattedInvoice.invoice_id)
+                    if (exists) return prev
+                    return [formattedInvoice, ...prev]
+                })
+                break
+
+            case 'UPDATE':
+                setInvoices(prev => prev.map(inv =>
+                    inv.invoice_id === formattedInvoice.invoice_id
+                        ? { ...inv, ...formattedInvoice }
+                        : inv
+                ))
+                // Update selectedInvoice if detail modal is open
+                if (selectedInvoice?.invoice_id === formattedInvoice.invoice_id) {
+                    setSelectedInvoice({ ...selectedInvoice, ...formattedInvoice })
+                }
+                break
+
+            case 'DELETE':
+                setInvoices(prev => prev.filter(inv => inv.invoice_id !== formattedInvoice.invoice_id))
+                // Close modals if showing deleted invoice
+                if (selectedInvoice?.invoice_id === formattedInvoice.invoice_id) {
+                    setShowDetail(false)
+                    setShowMarkPaid(false)
+                    setSelectedInvoice(null)
+                }
+                break
+        }
+    }, [selectedInvoice])
+
+    // Subscribe to real-time updates
+    useInvoicesRealtime({ onInvoiceChange: handleInvoiceChange })
+
+    // Listen for custom events from modals
+    useEffect(() => {
+        const handleInvoiceCreated = (event) => {
+            console.log('[InvoiceManagement] Custom event: invoice-created', event.detail)
+            if (event.detail) {
+                handleInvoiceChange({ type: 'INSERT', invoice: event.detail, raw: event.detail })
+            }
+        }
+
+        const handleInvoiceUpdated = (event) => {
+            console.log('[InvoiceManagement] Custom event: invoice-updated', event.detail)
+            if (event.detail) {
+                handleInvoiceChange({ type: 'UPDATE', invoice: event.detail, raw: event.detail })
+            }
+        }
+
+        window.addEventListener('invoice-created', handleInvoiceCreated)
+        window.addEventListener('invoice-updated', handleInvoiceUpdated)
+
+        return () => {
+            window.removeEventListener('invoice-created', handleInvoiceCreated)
+            window.removeEventListener('invoice-updated', handleInvoiceUpdated)
+        }
+    }, [handleInvoiceChange])
 
     const handleView = (invoice) => {
         setSelectedInvoice(invoice)
@@ -107,6 +188,22 @@ const InvoiceManagement = ({ filters }) => {
                     Generate Invoice
                 </button>
             </div>
+
+            {/* Error Message */}
+            {error && (
+                <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex items-center gap-3">
+                    <AlertCircle className="h-5 w-5 text-red-600 flex-shrink-0" />
+                    <div className="flex-1">
+                        <p className="text-sm font-medium text-red-800">{error}</p>
+                    </div>
+                    <button
+                        onClick={() => fetchInvoices()}
+                        className="px-3 py-1.5 text-sm bg-red-100 text-red-700 rounded hover:bg-red-200 transition-colors"
+                    >
+                        Retry
+                    </button>
+                </div>
+            )}
 
             {/* Search */}
             <div className="relative">
