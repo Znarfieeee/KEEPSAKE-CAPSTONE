@@ -16,15 +16,16 @@ import { cn, getStatusBadgeColor } from '@/util/utils'
 import { Button } from '@/components/ui/Button'
 import { Dialog, DialogTrigger } from '@/components/ui/Dialog'
 import ConfirmationDialog from '@/components/ui/ConfirmationDialog'
+import { ModalLoadingFallback } from '@/components/ui/LoadingFallback'
 import { showToast } from '@/util/alertHelper'
 import { cancelAppointment } from '@/api/doctors/appointment'
 
 // Helper
 import TooltipHelper from '@/util/TooltipHelper'
 
-// Lazy load modal components
-const ViewAppointmentModal = lazy(() => import('./ViewAppointmentModal'))
-const RescheduleAppointmentModal = lazy(() => import('./RescheduleAppointmentModal'))
+// Lazy load modal components - using alias paths for better production build reliability
+const ViewAppointmentModal = lazy(() => import('@/components/doctors/appointments/ViewAppointmentModal'))
+const RescheduleAppointmentModal = lazy(() => import('@/components/doctors/appointments/RescheduleAppointmentModal'))
 
 // Helper function to calculate age from date of birth
 const calculateAge = (dateOfBirth) => {
@@ -482,26 +483,14 @@ const AllAppointments = ({ appointments, onRefresh, loading = false }) => {
 
             {/* View Appointment Modal */}
             <Dialog open={showViewModal} onOpenChange={setShowViewModal}>
-                <Suspense
-                    fallback={
-                        <div className="flex items-center justify-center p-8">
-                            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
-                        </div>
-                    }
-                >
+                <Suspense fallback={<ModalLoadingFallback />}>
                     <ViewAppointmentModal appointment={selectedAppointment} onClose={closeModals} />
                 </Suspense>
             </Dialog>
 
             {/* Reschedule Appointment Modal */}
             <Dialog open={showRescheduleModal} onOpenChange={setShowRescheduleModal}>
-                <Suspense
-                    fallback={
-                        <div className="flex items-center justify-center p-8">
-                            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
-                        </div>
-                    }
-                >
+                <Suspense fallback={<ModalLoadingFallback />}>
                     <RescheduleAppointmentModal
                         appointment={selectedAppointment}
                         onSuccess={handleRescheduleSuccess}

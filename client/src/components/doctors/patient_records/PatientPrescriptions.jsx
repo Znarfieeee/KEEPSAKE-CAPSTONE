@@ -7,10 +7,13 @@ import { TooltipHelper } from '@/util/TooltipHelper'
 import { Button } from '@/components/ui/Button'
 import { Eye, Search, PlusCircle, Share2 } from 'lucide-react'
 import { Dialog, DialogTrigger } from '@/components/ui/Dialog'
+import { ModalLoadingFallback } from '@/components/ui/LoadingFallback'
 import { showToast } from '../../../util/alertHelper'
 import PrescriptionQRDialog from '@/components/qr/PrescriptionQRDialog'
 import AddPatientPrescriptionModal from './AddPatientPrescriptionModal'
-import PatientPrescriptionDetailModal from './PatientPrescriptionDetailModal'
+
+// Lazy load detail modal for better performance
+const PatientPrescriptionDetailModal = lazy(() => import('./PatientPrescriptionDetailModal'))
 
 const PatientPrescription = ({
     search,
@@ -219,7 +222,7 @@ const PatientPrescription = ({
             />
 
             {/* Detail Modal */}
-            <Suspense fallback={null}>
+            <Suspense fallback={<ModalLoadingFallback />}>
                 <PatientPrescriptionDetailModal
                     open={isDetailModalOpen}
                     onClose={() => setIsDetailModalOpen(false)}

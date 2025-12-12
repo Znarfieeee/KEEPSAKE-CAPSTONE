@@ -1,0 +1,81 @@
+# Keep Koyeb Container Awake
+# This workflow pings the backend every 5 minutes to prevent cold starts
+# Keeps your production server responsive for users
+
+name: Keep Backend Alive
+
+on:
+  schedule:
+    # Runs every 5 minutes (adjust as needed)
+    # Format: minute hour day month day-of-week
+    - cron: '*/5 * * * *'
+
+  # Allow manual trigger from GitHub Actions UI
+  workflow_dispatch:
+
+jobs:
+  ping-backend:
+    name: Ping Koyeb Backend
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Ping Health Endpoint
+        run: |
+          echo "🏥 Pinging KEEPSAKE backend to keep container awake..."
+
+          # Ping the health endpoint
+          response=$(curl -s -o /dev/null -w "%{http_code}" \
+            -X GET \
+            -H "User-Agent: GitHub-Actions-KeepAlive" \
+            --max-time 30 \
+            https://retail-dallas-keepsake-f6cfecb5.koyeb.app/health)
+
+          echo "📊 Response code: $response"
+
+          if [ "$response" = "200" ] || [ "$response" = "503" ]; then
+            echo "✅ Backend is responding (code: $response)"
+            exit 0
+          else
+            echo "⚠️ Unexpected response code: $response (but continuing...)"
+            exit 0
+          fi
+
+      - name: Ping Public Facilities Endpoint
+        run: |
+          echo "🏥 Pinging /public/facilities endpoint..."
+
+          response=$(curl -s -o /dev/null -w "%{http_code}" \
+            -X GET \
+            -H "User-Agent: GitHub-Actions-KeepAlive" \
+            --max-time 30 \
+            https://retail-dallas-keepsake-f6cfecb5.koyeb.app/public/facilities)
+
+          echo "📊 Response code: $response"
+
+          if [ "$response" = "200" ]; then
+            echo "✅ Public facilities endpoint is responding"
+          else
+            echo "⚠️ Unexpected response code: $response (but continuing...)"
+          fi
+
+      - name: Report Status
+        run: |
+          echo "🎉 Keep-alive ping completed at $(date)"
+          echo "Next ping scheduled in 5 minutes"
+
+  # Optional: Ping during business hours more frequently
+  ping-business-hours:
+    name: Frequent Ping (Business Hours)
+    runs-on: ubuntu-latest
+    # Only run during UTC business hours (adjust timezone as needed)
+    if: github.event.schedule == '*/5 * * * *' && (github.event.schedule.hour >= 0 && github.event.schedule.hour <= 16)
+
+    steps:
+      - name: Business Hours Ping
+        run: |
+          echo "🏢 Business hours keep-alive ping"
+          curl -s -o /dev/null -w "Response: %{http_code}\n" \
+            -X GET \
+            -H "User-Agent: GitHub-Actions-KeepAlive-BH" \
+            --max-time 30 \
+            https://retail-dallas-keepsake-f6cfecb5.koyeb.app/health

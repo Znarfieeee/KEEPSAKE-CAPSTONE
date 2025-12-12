@@ -4,10 +4,12 @@ import { getInvoices, getInvoiceById } from '@/api/admin/subscription'
 import { Badge } from '@/components/ui/badge'
 import { useInvoicesRealtime } from '@/hook/useSubscriptionRealtime'
 import { generateInvoicePDF } from '@/util/pdfGenerator'
+import { ModalLoadingFallback } from '@/components/ui/LoadingFallback'
 
-const GenerateInvoiceModal = lazy(() => import('./GenerateInvoiceModal'))
-const InvoiceDetailModal = lazy(() => import('./InvoiceDetailModal'))
-const MarkPaidModal = lazy(() => import('./MarkPaidModal'))
+// Lazy load modals - using alias paths for better production build reliability
+const GenerateInvoiceModal = lazy(() => import('@/components/System Administrator/sysAdmin_subscription/GenerateInvoiceModal'))
+const InvoiceDetailModal = lazy(() => import('@/components/System Administrator/sysAdmin_subscription/InvoiceDetailModal'))
+const MarkPaidModal = lazy(() => import('@/components/System Administrator/sysAdmin_subscription/MarkPaidModal'))
 
 const StatusBadge = ({ status }) => {
     const styles = {
@@ -373,7 +375,7 @@ const InvoiceManagement = ({ filters }) => {
             </div>
 
             {/* Modals */}
-            <Suspense fallback={null}>
+            <Suspense fallback={<ModalLoadingFallback />}>
                 {showDetail && (
                     <InvoiceDetailModal
                         open={showDetail}
