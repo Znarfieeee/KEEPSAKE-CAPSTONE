@@ -3,6 +3,7 @@ from config.settings import get_authenticated_client, supabase_service_role_clie
 from utils.access_control import require_auth
 from utils.sanitize import sanitize_request_data
 from utils.notification_utils import create_qr_access_alert
+from utils.invalidate_cache import invalidate_caches
 from datetime import datetime, timedelta, timezone
 import secrets
 import os
@@ -418,12 +419,16 @@ def validate_qr_access():
         # 6. Auto-register patient to this facility (if not already)
         if scanning_facility_id:
             try:
-                ensure_patient_facility_registration(
+                registration_result = ensure_patient_facility_registration(
                     patient_id=patient_id,
                     facility_id=scanning_facility_id,
                     registered_by=scanning_user_id,
                     registration_method='qr_code_scan'
                 )
+                # Invalidate patient records cache for this facility to reflect new registration
+                if registration_result:
+                    invalidate_caches('patient')
+                    current_app.logger.info(f"Cache invalidated after QR scan registration for patient {patient_id} at facility {scanning_facility_id}")
             except Exception as reg_error:
                 current_app.logger.warning(f"Failed to register patient to facility: {reg_error}")
 

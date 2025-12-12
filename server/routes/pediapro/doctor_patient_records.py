@@ -2147,6 +2147,9 @@ def register_patient_to_facility(patient_id):
                         "details": update_resp.error.message
                     }), 500
 
+                # Invalidate patient cache after reactivation
+                invalidate_caches('patient')
+
                 current_app.logger.info(f"AUDIT: Reactivated patient {patient_id} registration to facility {user_facility_id} by {current_user.get('email')}")
 
                 return jsonify({
@@ -2275,9 +2278,7 @@ def delete_patient_record(patient_id):
             }), 404
 
         # Invalidate caches
-        redis_client.delete(f"patient_records:facility:{user_facility_id}")  # Clear facility-specific cache
-        redis_client.delete(f"{PATIENT_CACHE_PREFIX}{patient_id}")  # Clear patient-specific cache
-        redis_client.delete("patient_records:all")  # Clear all patients cache
+        invalidate_caches('patient', patient_id)
         
         # try:
         #     facility_id = patient_data.get('facility_id') or current_user.get('facility_id')
