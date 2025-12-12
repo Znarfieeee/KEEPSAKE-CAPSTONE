@@ -40,6 +40,15 @@ const useDebounce = (value, delay) => {
     return debouncedValue
 }
 
+/**
+ * AuditLogsPage Component
+ *
+ * Key implementation details to prevent race conditions:
+ * 1. Uses isInitialMount ref to prevent debounced search effect from triggering on first render
+ * 2. Initial load explicitly passes empty string for search to avoid dependency issues
+ * 3. Abort controllers cancel previous requests to prevent stale data
+ * 4. Real-time updates use optimistic state updates instead of refetching
+ */
 const AuditLogsPage = () => {
     const [logs, setLogs] = useState([])
     const [stats, setStats] = useState(null)
@@ -69,6 +78,7 @@ const AuditLogsPage = () => {
     const [errorMessage, setErrorMessage] = useState(null)
     const [initialLoading, setInitialLoading] = useState(true)
     const [tablesList, setTablesList] = useState([])
+    const isInitialMount = useRef(true)
 
     // Refs for abort controllers
     const logsAbortController = useRef(null)
@@ -89,7 +99,7 @@ const AuditLogsPage = () => {
 
     // Fetch audit logs with retry logic and request cancellation
     const fetchAuditLogs = useCallback(
-        async (page = 1, shouldRetry = true) => {
+        async (page = 1, shouldRetry = true, customSearch = null) => {
             // Cancel any ongoing request
             logsAbortController.current?.abort()
             logsAbortController.current = new AbortController()
@@ -102,7 +112,7 @@ const AuditLogsPage = () => {
                     page,
                     limit: pagination.limit,
                     ...filters,
-                    search: debouncedSearch, // Use debounced search
+                    search: customSearch !== null ? customSearch : debouncedSearch, // Use debounced search
                 }
 
                 const response = await getAuditLogs(params, logsAbortController.current.signal)
@@ -147,7 +157,7 @@ const AuditLogsPage = () => {
                     if (shouldRetry && retryCount < 3) {
                         setRetryCount((prev) => prev + 1)
                         setTimeout(() => {
-                            fetchAuditLogs(page, true)
+                            fetchAuditLogs(page, true, customSearch)
                         }, 1000 * (retryCount + 1)) // Exponential backoff
                     } else {
                         showToast('error', 'Failed to fetch audit logs after multiple attempts.')
@@ -201,7 +211,7 @@ const AuditLogsPage = () => {
         }
     }, [])
 
-    // Real-time handler
+    // Real-time handler - updates local state without refetching
     const handleAuditLogChange = useCallback(
         ({ type, auditLog }) => {
             console.log('Audit log change received:', { type, auditLog })
@@ -209,7 +219,14 @@ const AuditLogsPage = () => {
             switch (type) {
                 case 'INSERT':
                     setLogs((prevLogs) => [auditLog, ...prevLogs])
-                    fetchStats()
+                    // Update stats optimistically
+                    setStats((prevStats) => {
+                        if (!prevStats) return prevStats
+                        return {
+                            ...prevStats,
+                            total_logs: (prevStats.total_logs || 0) + 1
+                        }
+                    })
                     break
                 case 'UPDATE':
                     setLogs((prevLogs) =>
@@ -218,13 +235,20 @@ const AuditLogsPage = () => {
                     break
                 case 'DELETE':
                     setLogs((prevLogs) => prevLogs.filter((log) => log.log_id !== auditLog.log_id))
-                    fetchStats()
+                    // Update stats optimistically
+                    setStats((prevStats) => {
+                        if (!prevStats) return prevStats
+                        return {
+                            ...prevStats,
+                            total_logs: Math.max(0, (prevStats.total_logs || 0) - 1)
+                        }
+                    })
                     break
                 default:
                     break
             }
         },
-        [fetchStats]
+        []
     )
 
     // Set up real-time subscription
@@ -234,18 +258,33 @@ const AuditLogsPage = () => {
     useEffect(() => {
         const loadInitialData = async () => {
             setInitialLoading(true)
-            await Promise.all([fetchAuditLogs(1), fetchStats(), fetchTablesList()])
-            setInitialLoading(false)
+            try {
+                await Promise.all([
+                    fetchAuditLogs(1, true, ''), // Pass empty string explicitly for initial load
+                    fetchStats(),
+                    fetchTablesList()
+                ])
+            } catch (error) {
+                console.error('Error during initial load:', error)
+            } finally {
+                setInitialLoading(false)
+                // Mark that initial mount is complete
+                isInitialMount.current = false
+            }
         }
         loadInitialData()
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [])
 
-    // Refetch when debounced search or filters change
+    // Refetch when debounced search changes (but not on initial mount)
     useEffect(() => {
-        if (debouncedSearch !== filters.search || debouncedSearch) {
-            fetchAuditLogs(1)
+        // Skip on initial mount to prevent race condition with initial load
+        if (isInitialMount.current) {
+            return
         }
+
+        // Only fetch if debounced search has actually changed
+        fetchAuditLogs(1)
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [debouncedSearch])
 
