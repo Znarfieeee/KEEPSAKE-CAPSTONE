@@ -15,4 +15,4 @@ COPY . .
 # Expose the port the app runs on
 EXPOSE 8000
 
-CMD ["gunicorn", "main:app", "--bind", "0.0.0.0:$PORT"]
+CMD ["sh", "-c", "gunicorn main:app --bind 0.0.0.0:${PORT:-8000} --workers 4 --timeout 120"]
