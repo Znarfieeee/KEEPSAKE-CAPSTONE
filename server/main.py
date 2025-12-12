@@ -134,9 +134,9 @@ if redis_client:
         SESSION_COOKIE_NAME = 'flask_session',
         SESSION_COOKIE_HTTPONLY = True,
         SESSION_COOKIE_SECURE = True if os.environ.get('FLASK_ENV') == 'production' else False,
-        SESSION_COOKIE_SAMESITE = 'Lax',
+        SESSION_COOKIE_SAMESITE = 'None' if os.environ.get('FLASK_ENV') == 'production' else 'Lax',
         PERMANENT_SESSION_LIFETIME = timedelta(minutes=30), #30 minutes timeout
-        SESSION_COOKIE_DOMAIN = os.environ.get('COOKIE_DOMAIN')
+        SESSION_COOKIE_DOMAIN = None  # Don't set domain for cross-domain cookies
     )
     try:
         Session(app)
@@ -147,7 +147,11 @@ if redis_client:
         app.config.update(
             SECRET_KEY = os.environ.get('FLASK_SECRET_KEY', 'dev-secret-key-change-in-production'),
             SESSION_TYPE = 'filesystem',
-            SESSION_PERMANENT = False
+            SESSION_PERMANENT = False,
+            SESSION_COOKIE_HTTPONLY = True,
+            SESSION_COOKIE_SECURE = True if os.environ.get('FLASK_ENV') == 'production' else False,
+            SESSION_COOKIE_SAMESITE = 'None' if os.environ.get('FLASK_ENV') == 'production' else 'Lax',
+            SESSION_COOKIE_DOMAIN = None
         )
         Session(app)
 else:
@@ -155,7 +159,11 @@ else:
     app.config.update(
         SECRET_KEY = os.environ.get('FLASK_SECRET_KEY', 'dev-secret-key-change-in-production'),
         SESSION_TYPE = 'filesystem',
-        SESSION_PERMANENT = False
+        SESSION_PERMANENT = False,
+        SESSION_COOKIE_HTTPONLY = True,
+        SESSION_COOKIE_SECURE = True if os.environ.get('FLASK_ENV') == 'production' else False,
+        SESSION_COOKIE_SAMESITE = 'None' if os.environ.get('FLASK_ENV') == 'production' else 'Lax',
+        SESSION_COOKIE_DOMAIN = None
     )
     Session(app)
     
