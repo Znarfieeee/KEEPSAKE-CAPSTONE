@@ -461,7 +461,7 @@ const FacilityContactModal = ({ isOpen, onClose, selectedPlan }) => {
     }
 
     return (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
             <div className="bg-white rounded-2xl p-8 max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-2xl">
                 <div className="flex items-center justify-between mb-6">
                     <h3 className="text-2xl font-bold text-gray-900">Contact Our Sales Team</h3>
@@ -604,7 +604,7 @@ const FacilityContactModal = ({ isOpen, onClose, selectedPlan }) => {
                         <button
                             type="submit"
                             disabled={submitting}
-                            className="flex-1 py-3 px-6 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold transition-colors shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                            className="flex-1 py-3 px-6 bg-primary hover:bg-accent text-white rounded-lg font-semibold transition-colors shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                             {submitting ? 'Submitting...' : 'Submit Request'}
                         </button>
