@@ -568,7 +568,7 @@ def manage_delivery_record(patient_id):
         db = get_write_client()  # Use service role for write operations
 
         # Verify patient exists
-        patient_check = db.table('patients').select('patient_id').eq('patient_id', patient_id).single().execute()
+        patient_check = db.table('patients').select('patient_id').eq('patient_id', patient_id).maybe_single().execute()
         if not patient_check.data:
             return jsonify({
                 "status": "error",
@@ -617,7 +617,7 @@ def manage_anthropometric_record(patient_id):
         current_app.logger.info(f"AUDIT: Managing anthropometric record for patient {patient_id} by user {current_user.get('email')}")
 
         # Verify patient exists
-        patient_check = db.table('patients').select('patient_id, firstname, lastname').eq('patient_id', patient_id).single().execute()
+        patient_check = db.table('patients').select('patient_id, firstname, lastname').eq('patient_id', patient_id).maybe_single().execute()
         if not patient_check.data:
             return jsonify({
                 "status": "error",
@@ -695,7 +695,7 @@ def add_growth_milestone(patient_id):
         current_app.logger.info(f"AUDIT: Adding growth milestone for patient {patient_id} by user {current_user.get('email')}")
 
         # Verify patient exists
-        patient_check = db.table('patients').select('patient_id, firstname, lastname').eq('patient_id', patient_id).single().execute()
+        patient_check = db.table('patients').select('patient_id, firstname, lastname').eq('patient_id', patient_id).maybe_single().execute()
         if not patient_check.data:
             current_app.logger.warning(f"AUDIT: Patient {patient_id} not found")
             return jsonify({
@@ -752,7 +752,7 @@ def update_growth_milestone(patient_id, measurement_id):
         current_app.logger.info(f"AUDIT: Updating growth milestone {measurement_id} for patient {patient_id}")
 
         # Verify patient exists
-        patient_check = db.table('patients').select('patient_id').eq('patient_id', patient_id).single().execute()
+        patient_check = db.table('patients').select('patient_id').eq('patient_id', patient_id).maybe_single().execute()
         if not patient_check.data:
             return jsonify({
                 "status": "error",
@@ -800,7 +800,7 @@ def delete_growth_milestone(patient_id, measurement_id):
         current_app.logger.info(f"AUDIT: Deleting growth milestone {measurement_id} for patient {patient_id}")
 
         # Verify patient exists
-        patient_check = db.table('patients').select('patient_id').eq('patient_id', patient_id).single().execute()
+        patient_check = db.table('patients').select('patient_id').eq('patient_id', patient_id).maybe_single().execute()
         if not patient_check.data:
             return jsonify({
                 "status": "error",
@@ -843,7 +843,7 @@ def manage_screening_record(patient_id):
         db = get_write_client()  # Use service role for write operations
 
         # Verify patient exists
-        patient_check = db.table('patients').select('patient_id').eq('patient_id', patient_id).single().execute()
+        patient_check = db.table('patients').select('patient_id').eq('patient_id', patient_id).maybe_single().execute()
         if not patient_check.data:
             return jsonify({
                 "status": "error",
@@ -888,7 +888,7 @@ def add_allergy_record(patient_id):
         current_app.logger.info(f"DEBUG: Adding allergy for patient {patient_id} with data: {data}")
 
         # Verify patient exists
-        patient_check = db.table('patients').select('patient_id').eq('patient_id', patient_id).single().execute()
+        patient_check = db.table('patients').select('patient_id').eq('patient_id', patient_id).maybe_single().execute()
         if not patient_check.data:
             return jsonify({
                 "status": "error",
@@ -938,7 +938,7 @@ def update_allergy_record(patient_id, allergy_id):
         db = get_write_client()  # Use service role for write operations
 
         # Verify patient exists
-        patient_check = db.table('patients').select('patient_id').eq('patient_id', patient_id).single().execute()
+        patient_check = db.table('patients').select('patient_id').eq('patient_id', patient_id).maybe_single().execute()
         if not patient_check.data:
             return jsonify({
                 "status": "error",
@@ -982,7 +982,7 @@ def delete_allergy_record(patient_id, allergy_id):
         db = get_write_client()  # Use service role for write operations
 
         # Verify patient exists
-        patient_check = db.table('patients').select('patient_id').eq('patient_id', patient_id).single().execute()
+        patient_check = db.table('patients').select('patient_id').eq('patient_id', patient_id).maybe_single().execute()
         if not patient_check.data:
             return jsonify({
                 "status": "error",
@@ -1027,7 +1027,7 @@ def update_parent_relationship(patient_id, access_id):
         current_user = request.current_user
 
         # Verify patient exists
-        patient_check = get_authenticated_client().table('patients').select('patient_id, firstname, lastname').eq('patient_id', patient_id).single().execute()
+        patient_check = get_authenticated_client().table('patients').select('patient_id, firstname, lastname').eq('patient_id', patient_id).maybe_single().execute()
         if not patient_check.data:
             return jsonify({
                 "status": "error",
@@ -1060,7 +1060,7 @@ def update_parent_relationship(patient_id, access_id):
                 lastname,
                 email
             )
-        ''').eq('access_id', access_id).eq('patient_id', patient_id).single().execute()
+        ''').eq('access_id', access_id).eq('patient_id', patient_id).maybe_single().execute()
 
         if not access_check.data:
             return jsonify({
@@ -1129,7 +1129,7 @@ def get_patient_parents(patient_id):
         current_app.logger.info(f"AUDIT: User {current_user.get('email')} fetching parents for patient {patient_id}")
 
         # Verify patient exists
-        patient_check = get_authenticated_client().table('patients').select('patient_id, firstname, lastname').eq('patient_id', patient_id).single().execute()
+        patient_check = get_authenticated_client().table('patients').select('patient_id, firstname, lastname').eq('patient_id', patient_id).maybe_single().execute()
         if not patient_check.data:
             return jsonify({
                 "status": "error",
@@ -1322,7 +1322,7 @@ def assign_existing_parent_to_child(patient_id):
             }), 400
 
         # Verify patient exists
-        patient_check = get_authenticated_client().table('patients').select('patient_id, firstname, lastname').eq('patient_id', patient_id).single().execute()
+        patient_check = get_authenticated_client().table('patients').select('patient_id, firstname, lastname').eq('patient_id', patient_id).maybe_single().execute()
         if not patient_check.data:
             current_app.logger.warning(f"AUDIT: Patient {patient_id} not found")
             return jsonify({
@@ -1331,7 +1331,7 @@ def assign_existing_parent_to_child(patient_id):
             }), 404
 
         # Verify parent user exists and has parent role
-        parent_check = get_authenticated_client().table('users').select('user_id, email, firstname, lastname, role, is_active').eq('user_id', parent_user_id).single().execute()
+        parent_check = get_authenticated_client().table('users').select('user_id, email, firstname, lastname, role, is_active').eq('user_id', parent_user_id).maybe_single().execute()
         if not parent_check.data:
             current_app.logger.warning(f"AUDIT: Parent user {parent_user_id} not found")
             return jsonify({
@@ -1464,7 +1464,7 @@ def create_and_assign_parent(patient_id):
             }), 400
 
         # Verify patient exists
-        patient_check = get_authenticated_client().table('patients').select('patient_id, firstname, lastname').eq('patient_id', patient_id).single().execute()
+        patient_check = get_authenticated_client().table('patients').select('patient_id, firstname, lastname').eq('patient_id', patient_id).maybe_single().execute()
         if not patient_check.data:
             current_app.logger.warning(f"AUDIT: Patient {patient_id} not found")
             return jsonify({
@@ -1755,7 +1755,7 @@ def remove_parent_assignment(patient_id, access_id):
         current_app.logger.info(f"AUDIT: User {current_user.get('email')} removing parent access {access_id} from patient {patient_id}")
 
         # Verify patient exists
-        patient_check = get_authenticated_client().table('patients').select('patient_id, firstname, lastname').eq('patient_id', patient_id).single().execute()
+        patient_check = get_authenticated_client().table('patients').select('patient_id, firstname, lastname').eq('patient_id', patient_id).maybe_single().execute()
         if not patient_check.data:
             return jsonify({
                 "status": "error",
@@ -1772,7 +1772,7 @@ def remove_parent_assignment(patient_id, access_id):
                 lastname,
                 email
             )
-        ''').eq('access_id', access_id).eq('patient_id', patient_id).single().execute()
+        ''').eq('access_id', access_id).eq('patient_id', patient_id).maybe_single().execute()
 
         if not access_check.data:
             return jsonify({
@@ -1840,7 +1840,7 @@ def update_patient_record(patient_id):
         current_app.logger.info(f"AUDIT: User {current_user.get('email')} attempting to update patient record {patient_id}")
         
         # Check if patient exists
-        patient_check = get_authenticated_client().table('patients').select('patient_id').eq('patient_id', patient_id).single().execute()
+        patient_check = get_authenticated_client().table('patients').select('patient_id').eq('patient_id', patient_id).maybe_single().execute()
         if not patient_check.data:
             current_app.logger.error(f"AUDIT: Patient {patient_id} not found during update attempt")
             return jsonify({
@@ -1942,10 +1942,10 @@ def get_patient_record_by_id(patient_id):
         resp = get_authenticated_client().table('patients')\
             .select('*')\
             .eq('patient_id', patient_id)\
-            .single()\
+            .maybe_single()\
             .execute()
 
-        if getattr(resp, 'error', None):
+        if getattr(resp, 'error', None) or not resp.data:
             return jsonify({
                 "status": "error",
                 "message": "Patient not found",
@@ -2107,7 +2107,7 @@ def register_patient_to_facility(patient_id):
             }), 403
 
         # Verify patient exists
-        patient_check = get_authenticated_client().table('patients').select('*').eq('patient_id', patient_id).single().execute()
+        patient_check = get_authenticated_client().table('patients').select('*').eq('patient_id', patient_id).maybe_single().execute()
         if not patient_check.data:
             return jsonify({
                 "status": "error",
