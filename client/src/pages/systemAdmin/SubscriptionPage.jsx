@@ -1,31 +1,18 @@
-import React, { useState, useEffect, lazy, Suspense } from 'react'
+import React, { useState, useEffect } from 'react'
 import { useAuth } from '@/context/auth'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { RefreshCw, AlertCircle } from 'lucide-react'
-import { Skeleton } from '@/components/ui/skeleton'
 import { getSubscriptionAnalytics } from '@/api/admin/subscription'
 import Unauthorized from '@/components/Unauthorized'
 
-// Direct imports for critical components
+// Direct imports for all components
 import SubscriptionMetrics from '@/components/System Administrator/sysAdmin_subscription/SubscriptionMetrics'
 import SubscriptionFilters from '@/components/System Administrator/sysAdmin_subscription/SubscriptionFilters'
-
-// Lazy load heavy components
-const InvoiceManagement = lazy(() =>
-    import('@/components/System Administrator/sysAdmin_subscription/InvoiceManagement')
-)
-const PaymentHistory = lazy(() =>
-    import('@/components/System Administrator/sysAdmin_subscription/PaymentHistory')
-)
-const SubscriptionAnalytics = lazy(() =>
-    import('@/components/System Administrator/sysAdmin_subscription/SubscriptionAnalytics')
-)
-const EmailNotifications = lazy(() =>
-    import('@/components/System Administrator/sysAdmin_subscription/EmailNotifications')
-)
-const ParentSubscriptionsManagement = lazy(() =>
-    import('@/components/System Administrator/sysAdmin_subscription/ParentSubscriptionsManagement')
-)
+import InvoiceManagement from '@/components/System Administrator/sysAdmin_subscription/InvoiceManagement'
+import PaymentHistory from '@/components/System Administrator/sysAdmin_subscription/PaymentHistory'
+import SubscriptionAnalytics from '@/components/System Administrator/sysAdmin_subscription/SubscriptionAnalytics'
+import EmailNotifications from '@/components/System Administrator/sysAdmin_subscription/EmailNotifications'
+import ParentSubscriptionsManagement from '@/components/System Administrator/sysAdmin_subscription/ParentSubscriptionsManagement'
 
 const SubscriptionPage = () => {
     const { user } = useAuth()
@@ -132,44 +119,36 @@ const SubscriptionPage = () => {
                     <TabsTrigger value="notifications">Notifications</TabsTrigger>
                 </TabsList>
 
-                <Suspense
-                    fallback={
-                        <div className="bg-white rounded-xl p-6">
-                            <Skeleton className="h-96" />
-                        </div>
-                    }
-                >
-                    <TabsContent value="overview">
-                        <SubscriptionAnalytics
-                            data={analyticsData}
-                            filters={{ statusFilter, planFilter }}
-                        />
-                    </TabsContent>
+                <TabsContent value="overview">
+                    <SubscriptionAnalytics
+                        data={analyticsData}
+                        filters={{ statusFilter, planFilter }}
+                    />
+                </TabsContent>
 
-                    <TabsContent value="invoices">
-                        <InvoiceManagement filters={{ dateRange, statusFilter }} />
-                    </TabsContent>
+                <TabsContent value="invoices">
+                    <InvoiceManagement filters={{ dateRange, statusFilter }} />
+                </TabsContent>
 
-                    <TabsContent value="payments">
-                        <PaymentHistory filters={{ dateRange, statusFilter }} />
-                    </TabsContent>
+                <TabsContent value="payments">
+                    <PaymentHistory filters={{ dateRange, statusFilter }} />
+                </TabsContent>
 
-                    <TabsContent value="parent-subscriptions">
-                        <ParentSubscriptionsManagement />
-                    </TabsContent>
+                <TabsContent value="parent-subscriptions">
+                    <ParentSubscriptionsManagement />
+                </TabsContent>
 
-                    <TabsContent value="analytics">
-                        <SubscriptionAnalytics
-                            data={analyticsData}
-                            filters={{ statusFilter, planFilter }}
-                            detailed
-                        />
-                    </TabsContent>
+                <TabsContent value="analytics">
+                    <SubscriptionAnalytics
+                        data={analyticsData}
+                        filters={{ statusFilter, planFilter }}
+                        detailed
+                    />
+                </TabsContent>
 
-                    <TabsContent value="notifications">
-                        <EmailNotifications />
-                    </TabsContent>
-                </Suspense>
+                <TabsContent value="notifications">
+                    <EmailNotifications />
+                </TabsContent>
             </Tabs>
         </div>
     )

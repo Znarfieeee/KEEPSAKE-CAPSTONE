@@ -1,4 +1,4 @@
-import React, { useState, useEffect, lazy, Suspense } from 'react'
+import React, { useState, useEffect } from 'react'
 import { useParams, useNavigate, useLocation, Link } from 'react-router-dom'
 import { useAuth } from '@/context/auth'
 
@@ -14,12 +14,10 @@ import PatientRecordsTabs from '@/components/doctors/patient_records/PatientReco
 import { getPatientById, updatePatientRecord, deletePatientRecord } from '@/api/doctors/patient'
 import LoadingSkeleton from '@/components/doctors/patient_records/LoadingSkeleton'
 import DoctorParentQRShareButton from '@/components/qr/DoctorParentQRShareButton'
+import EditPatientModal from '@/components/doctors/patient_records/EditPatientModal'
 
 // Helper
 import { showToast } from '@/util/alertHelper'
-
-// Lazy load the edit modal
-const EditPatientModal = lazy(() => import('@/components/doctors/patient_records/EditPatientModal'))
 
 const DoctorPatientInfo = () => {
     const { user } = useAuth()
@@ -244,16 +242,7 @@ const DoctorPatientInfo = () => {
                     if (!open) setEditingPatient(null)
                 }}
             >
-                <Suspense
-                    fallback={
-                        <div className="flex items-center justify-center p-8">
-                            <div className="flex items-center gap-2">
-                                <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent"></div>
-                                <span className="text-sm text-gray-600">Loading modal...</span>
-                            </div>
-                        </div>
-                    }
-                >
+                {showEditModal && (
                     <EditPatientModal
                         patient={editingPatient}
                         onClose={() => {
@@ -262,7 +251,7 @@ const DoctorPatientInfo = () => {
                         }}
                         onSuccess={handleUpdatePatient}
                     />
-                </Suspense>
+                )}
             </Dialog>
 
             {/* Delete Confirmation Dialog */}

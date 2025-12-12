@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, Suspense, lazy } from 'react'
+import React, { useState, useEffect, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
     Calendar,
@@ -23,11 +23,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Dialog } from '@/components/ui/Dialog'
 import { getAppointmentsForMyFacility } from '@/api/doctors/appointment'
 import { getPatients } from '@/api/doctors/patient'
-
-// Lazy load modal components for better performance
-const ScheduleAppointmentModal = lazy(() =>
-    import('@/components/doctors/appointments/ScheduleAppointmentModal')
-)
+import ScheduleAppointmentModal from '@/components/doctors/appointments/ScheduleAppointmentModal'
 
 const NurseDashboard = () => {
     const navigate = useNavigate()
@@ -574,17 +570,11 @@ const NurseDashboard = () => {
                 open={showScheduleAppointmentModal}
                 onOpenChange={setShowScheduleAppointmentModal}
             >
-                <Suspense
-                    fallback={
-                        <div className="flex items-center justify-center p-8">
-                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-                        </div>
-                    }
-                >
+                {showScheduleAppointmentModal && (
                     <ScheduleAppointmentModal
                         onSuccess={() => setShowScheduleAppointmentModal(false)}
                     />
-                </Suspense>
+                )}
             </Dialog>
         </div>
     )

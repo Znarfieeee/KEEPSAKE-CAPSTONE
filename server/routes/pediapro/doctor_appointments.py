@@ -340,7 +340,7 @@ def get_appointments_for_user_facility():
             .select('facility_id, healthcare_facilities!facility_users_facility_id_fkey(facility_id, facility_name)')\
             .eq('user_id', user_id)\
             .is_('end_date', 'null')\
-            .single()\
+            .maybe_single()\
             .execute()
 
         if getattr(facility_response, 'error', None):
@@ -809,13 +809,13 @@ def schedule_appointment():
         data['scheduled_by'] = current_user.get('id')
         
         current_app.logger.info(f"AUDIT: User {current_user.get('email')} attempting to schedule appointment")
-        
+
         facility_response = supabase.table('facility_users')\
             .select('facility_id')\
             .eq('user_id', current_user_id)\
-            .single()\
+            .maybe_single()\
             .execute()
-            
+
         if getattr(facility_response, 'error', None):
             current_app.logger.error(f"AUDIT: Failed to get facility id: {facility_response.error.message}")
             return jsonify({
@@ -823,7 +823,15 @@ def schedule_appointment():
                 "message": "Failed to get facility information",
                 "details": facility_response.error.message,
             }), 400
-            
+
+        # Check if user has a facility assignment
+        if not facility_response.data:
+            current_app.logger.error(f"AUDIT: User {current_user.get('email')} has no facility assignment")
+            return jsonify({
+                "status": "error",
+                "message": "No facility found for current user. Please contact your administrator."
+            }), 400
+
         facility_id = facility_response.data.get('facility_id')
         if not facility_id:
             return jsonify({
@@ -842,7 +850,7 @@ def schedule_appointment():
             patient_resp = supabase.table('patients')\
                 .select('firstname, lastname, middlename')\
                 .eq('patient_id', data['patient_id'])\
-                .single()\
+                .maybe_single()\
                 .execute()
                 
             if not getattr(patient_resp, 'error', None) and patient_resp.data:
@@ -859,7 +867,7 @@ def schedule_appointment():
             doctor_resp = supabase.table('users')\
                 .select('firstname, lastname')\
                 .eq('user_id', data['doctor_id'])\
-                .single()\
+                .maybe_single()\
                 .execute()
                 
             if not getattr(doctor_resp, 'error', None) and doctor_resp.data:
@@ -891,9 +899,9 @@ def schedule_appointment():
                 .eq('facility_id', appointments_payload['facility_id'])\
                 .eq('role', 'doctor')\
                 .is_('end_date', 'null')\
-                .single()\
+                .maybe_single()\
                 .execute()
-                
+
             if getattr(doctor_check, 'error', None) or not doctor_check.data:
                 return jsonify({
                     "status": "error",
@@ -976,7 +984,7 @@ def update_appointment(appointment_id):
             patient_resp = supabase.table('patients')\
                 .select('firstname, lastname, middlename')\
                 .eq('patient_id', data['patient_id'])\
-                .single()\
+                .maybe_single()\
                 .execute()
                 
             if not getattr(patient_resp, 'error', None) and patient_resp.data:
@@ -993,7 +1001,7 @@ def update_appointment(appointment_id):
             doctor_resp = supabase.table('users')\
                 .select('firstname, lastname')\
                 .eq('user_id', data['doctor_id'])\
-                .single()\
+                .maybe_single()\
                 .execute()
                 
             if not getattr(doctor_resp, 'error', None) and doctor_resp.data:

@@ -7,9 +7,12 @@ from flask import Blueprint, jsonify, request, current_app
 from config.settings import sr_client
 from utils.sanitize import sanitize_request_data
 from utils.access_control import require_auth, require_role
+from utils.email_service import EmailService
+from utils.email_templates import EmailTemplates
 import re
+import os
 
-facility_contact_bp = Blueprint('facility_contact', __name__)
+facility_contact_bp = Blueprint('facility_contact', __name__, url_prefix='/api')
 
 # Email validation regex
 EMAIL_REGEX = re.compile(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$')
@@ -349,40 +352,67 @@ def delete_facility_contact(request_id):
 
 def send_facility_contact_notification(contact_data):
     """
-    Send email notification to admin team about new facility contact request
+    Send email notifications for new facility contact request:
+    1. Notification to admin team
+    2. Confirmation to facility
 
     Args:
         contact_data (dict): Contact request data
 
-    Note:
-        This is a placeholder function. Implement email sending using your email service.
+    Returns:
+        tuple: (success: bool, message: str)
     """
-    # TODO: Implement email sending
-    # This could use:
-    # - Flask-Mail
-    # - SendGrid
-    # - AWS SES
-    # - Supabase Email (if configured)
+    try:
+        # Get admin email from environment variable
+        admin_email = os.environ.get('SMTP_EMAIL', 'marifranzespelita@gmail.com')
 
-    subject = f"New Facility Inquiry: {contact_data['facility_name']}"
-    body = f"""
-    New facility contact request received:
+        # 1. Send notification to admin team
+        admin_subject = f"New Facility Inquiry: {contact_data['facility_name']}"
+        admin_body_html = EmailTemplates.facility_contact_notification(contact_data)
 
-    Facility Name: {contact_data['facility_name']}
-    Contact Person: {contact_data['contact_person']}
-    Email: {contact_data['email']}
-    Phone: {contact_data['phone']}
-    Plan Interest: {contact_data.get('plan_interest', 'Not specified')}
+        admin_success, admin_message = EmailService.send_email(
+            recipient_email=admin_email,
+            subject=admin_subject,
+            body_html=admin_body_html,
+            notification_type='facility_contact_admin',
+            metadata={
+                'facility_name': contact_data['facility_name'],
+                'plan_interest': contact_data.get('plan_interest')
+            }
+        )
 
-    Message:
-    {contact_data.get('message', 'No message provided')}
+        if not admin_success:
+            current_app.logger.error(f"Failed to send admin notification: {admin_message}")
+            # Continue anyway - don't fail the whole process
 
-    Please follow up with this inquiry.
+        # 2. Send confirmation to facility
+        confirmation_subject = "Thank You for Your Interest in KEEPSAKE"
+        confirmation_body_html = EmailTemplates.facility_contact_confirmation(contact_data)
 
-    ---
-    KEEPSAKE Healthcare Management System
-    """
+        facility_success, facility_message = EmailService.send_email(
+            recipient_email=contact_data['email'],
+            subject=confirmation_subject,
+            body_html=confirmation_body_html,
+            notification_type='facility_contact_confirmation',
+            metadata={
+                'facility_name': contact_data['facility_name'],
+                'plan_interest': contact_data.get('plan_interest')
+            }
+        )
 
-    # Log for now (replace with actual email sending)
-    current_app.logger.info(f"Email notification would be sent: {subject}")
-    # TODO: Implement actual email sending here
+        if not facility_success:
+            current_app.logger.error(f"Failed to send facility confirmation: {facility_message}")
+
+        # Return success if at least one email was sent
+        if admin_success or facility_success:
+            current_app.logger.info(
+                f"Facility contact emails sent for {contact_data['facility_name']} "
+                f"(Admin: {admin_success}, Facility: {facility_success})"
+            )
+            return True, "Notification emails sent"
+        else:
+            return False, "Failed to send emails"
+
+    except Exception as e:
+        current_app.logger.error(f"Error sending facility contact emails: {str(e)}")
+        return False, str(e)

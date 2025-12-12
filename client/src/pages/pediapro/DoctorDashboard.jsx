@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, Suspense, lazy } from 'react'
+import React, { useState, useEffect, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
     Calendar,
@@ -20,13 +20,9 @@ import { Dialog } from '@/components/ui/Dialog'
 import { getAppointmentsForMyFacility } from '@/api/doctors/appointment'
 import { getPatients } from '@/api/doctors/patient'
 
-// Lazy load modal components for better performance
-const StepperAddPatientModal = lazy(() =>
-    import('@/components/doctors/patient_records/StepperAddPatientModal')
-)
-const ScheduleAppointmentModal = lazy(() =>
-    import('@/components/doctors/appointments/ScheduleAppointmentModal')
-)
+// Modal Components
+import StepperAddPatientModal from '@/components/doctors/patient_records/StepperAddPatientModal'
+import ScheduleAppointmentModal from '@/components/doctors/appointments/ScheduleAppointmentModal'
 
 const DoctorDashboard = () => {
     const navigate = useNavigate()
@@ -572,36 +568,19 @@ const DoctorDashboard = () => {
 
             {/* Modals */}
             {showAddPatientModal && (
-                <Suspense
-                    fallback={
-                        <Dialog open={true}>
-                            <div className="flex items-center justify-center p-8">
-                                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-                            </div>
-                        </Dialog>
-                    }
-                >
-                    <StepperAddPatientModal
-                        open={showAddPatientModal}
-                        onClose={() => setShowAddPatientModal(false)}
-                    />
-                </Suspense>
+                <StepperAddPatientModal
+                    open={showAddPatientModal}
+                    onClose={() => setShowAddPatientModal(false)}
+                />
             )}
 
-            <Dialog
-                open={showScheduleAppointmentModal}
-                onOpenChange={setShowScheduleAppointmentModal}
-            >
-                <Suspense
-                    fallback={
-                        <div className="flex items-center justify-center p-8">
-                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-                        </div>
-                    }
-                >
-                    <ScheduleAppointmentModal onSuccess={handleScheduleAppointmentSuccess} />
-                </Suspense>
-            </Dialog>
+            {showScheduleAppointmentModal && (
+                <ScheduleAppointmentModal
+                    open={showScheduleAppointmentModal}
+                    onClose={() => setShowScheduleAppointmentModal(false)}
+                    onSuccess={handleScheduleAppointmentSuccess}
+                />
+            )}
         </>
     )
 }

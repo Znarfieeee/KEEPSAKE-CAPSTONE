@@ -44,6 +44,24 @@ const EnhancedQrScanner = ({
         setDebugInfo(prev => ({ ...prev, status: message }))
     }, [debug])
 
+    // Stop scanning - memoized to prevent unnecessary effect re-runs
+    const stopScanning = useCallback(() => {
+        logDebug("Stopping scanner...")
+
+        if (animationRef.current) {
+            cancelAnimationFrame(animationRef.current)
+            animationRef.current = null
+        }
+
+        if (streamRef.current) {
+            streamRef.current.getTracks().forEach(track => track.stop())
+            streamRef.current = null
+        }
+
+        setIsScanning(false)
+        setCameraReady(false)
+    }, [logDebug])
+
     // Get available cameras
     useEffect(() => {
         const getCameras = async () => {
@@ -80,72 +98,14 @@ const EnhancedQrScanner = ({
         }
         getCameras()
 
+        // Only cleanup on unmount, not on every render
         return () => {
             stopScanning()
         }
-    }, [])
+    }, [logDebug, stopScanning, onScanError])
 
-    // Start camera when selected
-    useEffect(() => {
-        if (selectedCamera) {
-            startCamera()
-        }
-        return () => {
-            stopScanning()
-        }
-    }, [selectedCamera])
-
-    // Start camera stream
-    const startCamera = async () => {
-        if (!selectedCamera) return
-
-        try {
-            setError(null)
-            setCameraReady(false)
-            logDebug("Starting camera...")
-
-            // Stop existing stream
-            if (streamRef.current) {
-                streamRef.current.getTracks().forEach(track => track.stop())
-            }
-
-            // Get new stream with high resolution for better QR detection
-            const stream = await navigator.mediaDevices.getUserMedia({
-                video: {
-                    deviceId: { exact: selectedCamera },
-                    width: { ideal: 1280 },
-                    height: { ideal: 720 },
-                    facingMode: "environment"
-                }
-            })
-
-            streamRef.current = stream
-
-            if (videoRef.current) {
-                videoRef.current.srcObject = stream
-                videoRef.current.onloadedmetadata = () => {
-                    videoRef.current.play()
-                        .then(() => {
-                            logDebug("Camera started successfully")
-                            setCameraReady(true)
-                            setIsScanning(true)
-                            startScanning()
-                        })
-                        .catch(err => {
-                            logDebug("Play error:", err.message)
-                            setError("Failed to start video playback")
-                        })
-                }
-            }
-        } catch (err) {
-            logDebug("Failed to start camera:", err.message)
-            setError(`Failed to start camera: ${err.message}`)
-            setIsScanning(false)
-        }
-    }
-
-    // Main scanning loop using jsQR
-    const startScanning = () => {
+    // Main scanning loop using jsQR - memoized
+    const startScanning = useCallback(() => {
         const video = videoRef.current
         const canvas = canvasRef.current
         if (!video || !canvas) return
@@ -227,29 +187,75 @@ const EnhancedQrScanner = ({
 
         // Start the loop
         animationRef.current = requestAnimationFrame(scanFrame)
-    }
+    }, [logDebug, stopScanning, onScanSuccess])
 
-    // Stop scanning
-    const stopScanning = () => {
-        logDebug("Stopping scanner...")
+    // Start camera stream - memoized
+    const startCamera = useCallback(async () => {
+        if (!selectedCamera) return
 
-        if (animationRef.current) {
-            cancelAnimationFrame(animationRef.current)
-            animationRef.current = null
+        try {
+            setError(null)
+            setCameraReady(false)
+            logDebug("Starting camera...")
+
+            // Stop existing stream
+            if (streamRef.current) {
+                streamRef.current.getTracks().forEach(track => track.stop())
+            }
+
+            // Get new stream with high resolution for better QR detection
+            const stream = await navigator.mediaDevices.getUserMedia({
+                video: {
+                    deviceId: { exact: selectedCamera },
+                    width: { ideal: 1280 },
+                    height: { ideal: 720 },
+                    facingMode: "environment"
+                }
+            })
+
+            streamRef.current = stream
+
+            if (videoRef.current) {
+                videoRef.current.srcObject = stream
+                videoRef.current.onloadedmetadata = () => {
+                    videoRef.current.play()
+                        .then(() => {
+                            logDebug("Camera started successfully")
+                            setCameraReady(true)
+                            setIsScanning(true)
+                            startScanning()
+                        })
+                        .catch(err => {
+                            logDebug("Play error:", err.message)
+                            setError("Failed to start video playback")
+                        })
+                }
+            }
+        } catch (err) {
+            logDebug("Failed to start camera:", err.message)
+            setError(`Failed to start camera: ${err.message}`)
+            setIsScanning(false)
         }
+    }, [selectedCamera, logDebug, startScanning])
 
-        if (streamRef.current) {
-            streamRef.current.getTracks().forEach(track => track.stop())
-            streamRef.current = null
+
+    // Start camera when selected - with proper cleanup
+    useEffect(() => {
+        if (selectedCamera) {
+            startCamera()
         }
-
-        setIsScanning(false)
-        setCameraReady(false)
-    }
+        // Cleanup only runs when selectedCamera changes or component unmounts
+        return () => {
+            // Only stop if we're actually switching cameras or unmounting
+            if (streamRef.current) {
+                stopScanning()
+            }
+        }
+    }, [selectedCamera, startCamera, stopScanning])
 
     // Handle camera change
     const handleCameraChange = (deviceId) => {
-        stopScanning()
+        // stopScanning will be called by the useEffect cleanup
         setSelectedCamera(deviceId)
     }
 

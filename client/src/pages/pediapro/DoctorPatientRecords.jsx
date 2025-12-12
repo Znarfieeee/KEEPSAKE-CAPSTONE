@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect, useMemo, lazy, Suspense } from 'react'
+import React, { useState, useCallback, useEffect, useMemo } from 'react'
 import { useAuth } from '@/context/auth'
 import {
     getPatients,
@@ -16,25 +16,14 @@ import PatientRecordsTable from '@/components/doctors/patient_records/PatientRec
 import Unauthorized from '@/components/Unauthorized'
 import { Dialog } from '@/components/ui/Dialog'
 
+// Modal Components
+import StepperAddPatientModal from '@/components/doctors/patient_records/StepperAddPatientModal'
+import EditPatientModal from '@/components/doctors/patient_records/EditPatientModal'
+import InviteParentWithPatientSelectionModal from '@/components/doctors/patient_records/InviteParentWithPatientSelectionModal'
+
 // Helper
 import { showToast } from '@/util/alertHelper'
 import { usePatientsRealtime } from '@/hook/useSupabaseRealtime'
-
-// Import modals - Lazy loaded with preloading
-const StepperAddPatientModal = lazy(() =>
-    import('@/components/doctors/patient_records/StepperAddPatientModal')
-)
-const EditPatientModal = lazy(() => import('@/components/doctors/patient_records/EditPatientModal'))
-const InviteParentWithPatientSelectionModal = lazy(() =>
-    import('@/components/doctors/patient_records/InviteParentWithPatientSelectionModal')
-)
-
-// Preload the EditPatientModal when component mounts or when user interacts
-const preloadEditModal = () => {
-    const componentImport = () => import('@/components/doctors/patient_records/EditPatientModal')
-    return componentImport
-}
-// const PatientDetailModal = lazy(() => import('@/components/doctors/patient_records/PatientDetailModal'))
 
 function DoctorPatientRecords() {
     const { user } = useAuth()
@@ -58,7 +47,6 @@ function DoctorPatientRecords() {
     const [showInviteParentModal, setShowInviteParentModal] = useState(false)
     const [selectedPatient, setSelectedPatient] = useState(null)
     const [editingPatient, setEditingPatient] = useState(null)
-    const [editModalPreloaded, setEditModalPreloaded] = useState(false)
 
     // Helper to format patient data
     const formatPatient = useCallback((raw) => {
@@ -191,23 +179,6 @@ function DoctorPatientRecords() {
     useEffect(() => {
         fetchPatients()
     }, [fetchPatients])
-
-    // Preload EditPatientModal after initial load to improve UX
-    useEffect(() => {
-        const timer = setTimeout(() => {
-            if (!editModalPreloaded) {
-                preloadEditModal()()
-                    .then(() => {
-                        setEditModalPreloaded(true)
-                    })
-                    .catch(() => {
-                        // Silently fail, component will still load when needed
-                    })
-            }
-        }, 2000) // Preload after 2 seconds
-
-        return () => clearTimeout(timer)
-    }, [editModalPreloaded])
 
     usePatientsRealtime({
         onPatientChange: handlePatientChange,
@@ -366,19 +337,6 @@ function DoctorPatientRecords() {
         }
     }
 
-    // Handle preloading on hover for better UX
-    const handleEditHover = useCallback(() => {
-        if (!editModalPreloaded) {
-            preloadEditModal()()
-                .then(() => {
-                    setEditModalPreloaded(true)
-                })
-                .catch(() => {
-                    // Silently fail
-                })
-        }
-    }, [editModalPreloaded])
-
     const handleUpdatePatient = async (patientData) => {
         try {
             const response = await updatePatientRecord(patientData)
@@ -498,12 +456,10 @@ function DoctorPatientRecords() {
                     onInviteParent={handleInviteParent}
                     onRefresh={fetchPatients}
                 />
-                <Suspense fallback={null}>
-                    <StepperAddPatientModal
-                        open={showAddModal}
-                        onClose={() => setShowAddModal(false)}
-                    />
-                </Suspense>
+                <StepperAddPatientModal
+                    open={showAddModal}
+                    onClose={() => setShowAddModal(false)}
+                />
             </Dialog>
 
             <PatientRecordFilters
@@ -541,7 +497,6 @@ function DoctorPatientRecords() {
                 onView={handleView}
                 user={user}
                 onEdit={handleEdit}
-                onEditHover={handleEditHover}
                 onArchive={handleArchive}
                 onDelete={handleDelete}
             />
@@ -554,27 +509,23 @@ function DoctorPatientRecords() {
                     if (!open) setEditingPatient(null)
                 }}
             >
-                <Suspense fallback={null}>
-                    <EditPatientModal
-                        patient={editingPatient}
-                        onClose={() => {
-                            setShowEditModal(false)
-                            setEditingPatient(null)
-                        }}
-                        onSuccess={handleUpdatePatient}
-                    />
-                </Suspense>
+                <EditPatientModal
+                    patient={editingPatient}
+                    onClose={() => {
+                        setShowEditModal(false)
+                        setEditingPatient(null)
+                    }}
+                    onSuccess={handleUpdatePatient}
+                />
             </Dialog>
 
             {/* Invite Parent with Patient Selection Modal */}
-            <Suspense fallback={null}>
-                <InviteParentWithPatientSelectionModal
-                    open={showInviteParentModal}
-                    onClose={() => setShowInviteParentModal(false)}
-                    patients={filteredRecords}
-                    onSuccess={handleInviteParentSuccess}
-                />
-            </Suspense>
+            <InviteParentWithPatientSelectionModal
+                open={showInviteParentModal}
+                onClose={() => setShowInviteParentModal(false)}
+                patients={filteredRecords}
+                onSuccess={handleInviteParentSuccess}
+            />
         </div>
     )
 }

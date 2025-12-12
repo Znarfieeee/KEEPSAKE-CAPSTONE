@@ -18,8 +18,6 @@ import { showToast } from '@/util/alertHelper'
 
 // Import modals
 import StepperAddPatientModal from '@/components/doctors/patient_records/StepperAddPatientModal'
-// const EditPatientModal = lazy(() => import('@/components/doctors/patient_records/EditPatientModal'))
-// const PatientDetailModal = lazy(() => import('@/components/doctors/patient_records/PatientDetailModal'))
 
 function DoctorPatientRecords() {
     const { user } = useAuth()
