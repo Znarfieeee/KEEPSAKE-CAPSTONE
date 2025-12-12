@@ -822,7 +822,7 @@ def delete_user(user_id):
         # Step 11: Clear user's sessions from Redis
         try:
             from utils.redis_client import redis_client
-            SESSION_PREFIX = "keepsake_session:"
+            SESSION_PREFIX = "flask_session:"
 
             # Find all sessions for this user
             session_keys = redis_client.keys(f"{SESSION_PREFIX}*")
@@ -898,7 +898,7 @@ def toggle_user_status(user_id):
         if new_status is False:
             try:
                 from utils.redis_client import redis_client
-                SESSION_PREFIX = "keepsake_session:"
+                SESSION_PREFIX = "flask_session:"
 
                 session_keys = redis_client.keys(f"{SESSION_PREFIX}*")
                 for key in session_keys:

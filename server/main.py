@@ -4,6 +4,7 @@ from datetime import timedelta
 import os, sys, json
 from flask_session import Session # type: ignore
 from dotenv import load_dotenv
+from werkzeug.middleware.proxy_fix import ProxyFix
 
 # Utilities & Configs
 from config.settings import settings_bp
@@ -42,6 +43,18 @@ from routes.password_reset_routes import password_reset_bp
 
 app = Flask("keepsake")
 load_dotenv()
+
+# Configure ProxyFix for deployment behind reverse proxy (Koyeb, etc.)
+# This ensures Flask correctly identifies HTTPS connections and client IPs
+if os.environ.get('FLASK_ENV') == 'production':
+    app.wsgi_app = ProxyFix(
+        app.wsgi_app,
+        x_for=1,      # Trust X-Forwarded-For
+        x_proto=1,    # Trust X-Forwarded-Proto (HTTP vs HTTPS)
+        x_host=1,     # Trust X-Forwarded-Host
+        x_prefix=1    # Trust X-Forwarded-Prefix
+    )
+    print("[OK] ProxyFix enabled for production")
 
 # Clear corrupted sessions before initializing OAuth
 try:

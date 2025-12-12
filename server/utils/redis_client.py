@@ -44,7 +44,7 @@ def get_redis_client():
 def clear_corrupted_sessions():
     try:
         client = get_redis_client()
-        pattern = "keepsake_session:*"
+        pattern = "flask_session:*"
         
         keys = client.keys(pattern)    
         

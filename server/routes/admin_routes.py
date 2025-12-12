@@ -12,9 +12,9 @@ from utils.audit_logger import log_action
 from dateutil.relativedelta import relativedelta
 
 # Use project-specific cookie names instead of the Supabase defaults
-ACCESS_COOKIE = "keepsake_session"      # short-lived JWT
-REFRESH_COOKIE = "keepsake_session"    # long-lived refresh token
-SESSION_PREFIX = "keepsake_session:"
+ACCESS_COOKIE = "flask_session"      # short-lived JWT
+REFRESH_COOKIE = "flask_session"    # long-lived refresh token
+SESSION_PREFIX = "flask_session:"
 SESSION_TIMEOUT = 86400 * 30  # 30 days - no auto-logout for inactive sessions
 REFRESH_TOKEN_TIMEOUT = 7 * 24 * 60 * 60  # 7 days
 

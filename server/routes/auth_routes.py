@@ -15,9 +15,9 @@ from utils.audit_logger import audit_access
 from utils.token_utils import verify_supabase_jwt, SupabaseJWTError
 
 # Use project-specific cookie names instead of the Supabase defaults
-ACCESS_COOKIE = "keepsake_session"      # short-lived JWT
-REFRESH_COOKIE = "keepsake_session"    # long-lived refresh token
-SESSION_PREFIX = "keepsake_session:"
+ACCESS_COOKIE = "flask_session"      # short-lived JWT
+REFRESH_COOKIE = "flask_session"    # long-lived refresh token
+SESSION_PREFIX = "flask_session:"
 CACHE_PREFIX = "patient_cache:"
 SESSION_TIMEOUT = int(os.environ.get('SESSION_TIMEOUT', 86400 * 30))  # 30 days - no auto-logout for inactive sessions
 REFRESH_TOKEN_TIMEOUT = SESSION_TIMEOUT  # Match SESSION_TIMEOUT to prevent premature logout
@@ -1189,7 +1189,7 @@ def logout():
             samesite="Lax",
         )
         response.delete_cookie(
-            'keepsake_session',
+            'flask_session',
             path="/",
             secure=secure_cookie,
             samesite="Lax",

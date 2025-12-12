@@ -9,7 +9,7 @@ import re
 import json
 
 settings_bp = Blueprint('user_settings', __name__)
-SESSION_PREFIX = 'keepsake_session:'
+SESSION_PREFIX = 'flask_session:'
 SESSION_TIMEOUT = 86400 * 30  # 30 days - no auto-logout for inactive sessions
 
 # Email validation regex
@@ -605,7 +605,7 @@ def deactivate_account():
         # Clear user's session from Redis
         session_id = request.cookies.get('session_id')
         if session_id:
-            redis_client.delete(f"keepsake_session:{session_id}")
+            redis_client.delete(f"flask_session:{session_id}")
 
         # Try to ban user in Supabase auth
         sr_client = supabase_service_role_client()
