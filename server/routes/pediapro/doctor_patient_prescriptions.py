@@ -1,5 +1,5 @@
 from flask import Flask, jsonify, request, current_app, Blueprint
-from config.settings import supabase
+from config.settings import get_authenticated_client
 from utils.access_control import require_auth, require_role
 from utils.redis_client import get_redis_client
 from utils.invalidate_cache import invalidate_caches
@@ -57,6 +57,7 @@ def upsert_related_record(table_name, payload, patient_id, rx_id=None):
     For medications: uses rx_id as key and handles array of medications
     """
     try:
+        supabase = get_authenticated_client()
         if table_name == 'prescription_medications':
             # For medications, always insert new records for a prescription
             result = supabase.table(table_name).insert(payload).execute()
@@ -70,15 +71,15 @@ def upsert_related_record(table_name, payload, patient_id, rx_id=None):
                 # Always insert new prescription
                 result = supabase.table(table_name).insert(payload).execute()
                 current_app.logger.info(f"Created new {table_name} record for patient {patient_id}")
-                
+
                 if not result.data:
                     raise Exception(f"Failed to create {table_name}")
                 return result
-                
+
             except Exception as table_error:
                 current_app.logger.error(f"Database operation failed: {str(table_error)}")
                 raise
-            
+
     except Exception as e:
         current_app.logger.error(f"Error upserting {table_name} for patient {patient_id}: {str(e)}")
         raise
@@ -89,10 +90,11 @@ def upsert_related_record(table_name, payload, patient_id, rx_id=None):
 @require_role('facility_admin', 'doctor', 'pediapro', 'nurse', 'vital_custodian', 'parent', 'guardian', 'keepsaker')
 def get_all_patient_rx(patient_id):
     try:
+        supabase = get_authenticated_client()
         bust_cache = request.args.get('bust_cache', 'false').lower() == 'true'
-        
+
         cache_key = cache_key_for_patient(patient_id)
-        
+
         if not bust_cache:
             try:
                 cached = redis_client.get(cache_key)
@@ -107,13 +109,13 @@ def get_all_patient_rx(patient_id):
                     }), 200
             except Exception as cache_error:
                 current_app.logger.warning(f"Cache retrieval failed for {cache_key}: {str(cache_error)}")
-                
+
         rx_resp = supabase.table('prescriptions')\
             .select('*, doctor:users!prescriptions_doctor_id_fkey(user_id, firstname, middlename, lastname, specialty, license_number, prc_number, phone_number), facility:healthcare_facilities!prescriptions_facility_id_fkey(facility_id, facility_name, address, city, zip_code, contact_number, email, website, logo_url)')\
             .eq('patient_id', patient_id)\
             .order('prescription_date', desc=True)\
             .execute()
-        
+
         if not rx_resp:
             current_app.logger.error(f"Prescription fetch error: {rx_resp}")
             return jsonify({
@@ -121,11 +123,11 @@ def get_all_patient_rx(patient_id):
                 'message': "Failed to fetch prescription",
                 "details": rx_resp.error.message if rx_resp else 'Unknown'
             }), 400
-            
+
         prescriptions = rx_resp.data or []
-            
+
         rx_ids = [rx.get('rx_id') for rx in prescriptions if rx.get('rx_id')]
-            
+
         rx_med_resp = supabase.table('prescription_medications')\
             .select('*')\
             .in_('rx_id', rx_ids)\
@@ -192,13 +194,14 @@ def get_all_patient_rx(patient_id):
 @require_role('facility_admin', 'doctor', 'pediapro')
 def create_patient_prescription(patient_id):
     try:
+        supabase = get_authenticated_client()
         raw_data = request.json
         data = sanitize_request_data(raw_data)
-        
+
         current_user = request.current_user
-        
+
         created_by = current_user.get('id')
-        
+
         patient_check = supabase.table('patients').select('patient_id, date_of_birth').eq('patient_id', patient_id).single().execute()
         
         if not patient_check.data:

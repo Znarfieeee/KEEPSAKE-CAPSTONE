@@ -22,7 +22,7 @@ const AboutPage = () => {
         },
         {
             name: 'Eldrin A. Trapa',
-            role: 'Full Stack Developer',
+            role: 'Frontend Developer',
             bio: 'Specialized in building secure and scalable healthcare management systems.',
             image: devTwo,
             linkedin: 'https://linkedin.com',
@@ -37,7 +37,7 @@ const AboutPage = () => {
         {
             name: 'Rolly C. Alonso',
             role: 'Database Manager',
-            bio: 'Expert in database architecture and API development for healthcare systems.',
+            bio: 'Passionate of keeping healthcare records.',
             image: devFour,
             linkedin: 'https://linkedin.com',
         },
