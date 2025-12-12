@@ -5,6 +5,7 @@ from gotrue.errors import AuthApiError
 from datetime import datetime
 from utils.sessions import get_session_data, update_session_activity
 from utils.redis_client import redis_client
+from utils.invalidate_cache import invalidate_caches
 import re
 import json
 
@@ -133,6 +134,9 @@ def update_profile():
                     current_app.logger.info(f"Redis session updated for user {user_id}")
             except Exception as session_error:
                 current_app.logger.warning(f"Failed to update Redis session: {str(session_error)}")
+
+        # Invalidate user cache
+        invalidate_caches('users', user_id)
 
         current_app.logger.info(f"AUDIT: User {user_id} updated profile from IP {request.remote_addr}")
 
@@ -287,6 +291,9 @@ def complete_first_login():
                 "status": "error",
                 "message": "Failed to complete first login"
             }), 500
+
+        # Invalidate user cache
+        invalidate_caches('users', user_id)
 
         current_app.logger.info(f"AUDIT: User {email} completed first login from IP {request.remote_addr}")
 
@@ -518,6 +525,9 @@ def update_phone():
             except Exception as session_error:
                 current_app.logger.warning(f"Failed to update Redis session: {str(session_error)}")
 
+        # Invalidate user cache
+        invalidate_caches('users', user_id)
+
         current_app.logger.info(f"AUDIT: User {user_id} updated phone number from IP {request.remote_addr}")
 
         # Return updated user data for frontend
@@ -602,6 +612,9 @@ def deactivate_account():
                 "message": "Failed to deactivate account"
             }), 500
             
+        # Invalidate user cache
+        invalidate_caches('users', user_id)
+
         # Clear user's session from Redis
         session_id = request.cookies.get('session_id')
         if session_id:
@@ -976,6 +989,9 @@ def update_font_size():
                     current_app.logger.info(f"Redis session updated with font size for user {user_id}")
             except Exception as session_error:
                 current_app.logger.warning(f"Failed to update Redis session: {str(session_error)}")
+
+        # Invalidate user cache
+        invalidate_caches('users', user_id)
 
         current_app.logger.info(f"AUDIT: User {user_id} updated font size to {font_size}px from IP {request.remote_addr}")
 

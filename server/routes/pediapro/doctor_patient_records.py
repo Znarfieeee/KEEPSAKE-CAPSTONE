@@ -503,7 +503,7 @@ def add_patient_record():
             else:
                 current_app.logger.warning(f"AUDIT: User {current_user.get('email')} has no facility_id, patient {patient_id} not registered to any facility")
 
-            invalidate_caches('patient')
+            invalidate_caches('patient', patient_id)
 
             current_app.logger.info(f"AUDIT: Successfully created patient record with ID {patient_id} for user {current_user.get('email', 'Unknown')}")
 
@@ -2148,7 +2148,7 @@ def register_patient_to_facility(patient_id):
                     }), 500
 
                 # Invalidate patient cache after reactivation
-                invalidate_caches('patient')
+                invalidate_caches('patient', patient_id)
 
                 current_app.logger.info(f"AUDIT: Reactivated patient {patient_id} registration to facility {user_facility_id} by {current_user.get('email')}")
 
@@ -2185,7 +2185,7 @@ def register_patient_to_facility(patient_id):
                 "details": resp.error.message
             }), 500
 
-        invalidate_caches('patient')
+        invalidate_caches('patient', patient_id)
 
         current_app.logger.info(f"AUDIT: Successfully registered patient {patient_id} to facility {user_facility_id} by {current_user.get('email')}")
 

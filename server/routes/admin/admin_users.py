@@ -448,6 +448,7 @@ def assign_user_to_facility(user_id):
             }), 500
 
         invalidate_caches('users', user_id)
+        invalidate_caches('facility_users', facility_id)
 
         return jsonify({
             "status": "success",
@@ -478,6 +479,7 @@ def remove_user_from_facility(user_id, facility_id):
             }), 500
 
         invalidate_caches('users', user_id)
+        invalidate_caches('facility_users', facility_id)
 
         return jsonify({
             "status": "success",

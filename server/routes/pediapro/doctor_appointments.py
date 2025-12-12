@@ -1017,12 +1017,13 @@ def update_appointment(appointment_id):
                 "message": str(ve)
             }), 400
         
-        # Update the appointment
+        # Update the appointment with select to return updated data
         resp = supabase.table('appointments')\
             .update(appointments_payload)\
             .eq('appointment_id', appointment_id)\
+            .select()\
             .execute()
-                    
+
         if getattr(resp, 'error', None):
             current_app.logger.error(f"AUDIT: Failed to update appointment {appointment_id}: {resp.error.message}")
             return jsonify({
@@ -1030,8 +1031,8 @@ def update_appointment(appointment_id):
                 "message": "Failed to update appointment",
                 "details": resp.error.message
             }), 400
-        
-        if not resp.data:
+
+        if not resp.data or len(resp.data) == 0:
             return jsonify({
                 "status": "error",
                 "message": "Appointment not found or no changes made"
@@ -1063,8 +1064,30 @@ def cancel_appointment(appointment_id):
     try:
         current_user = request.current_user
         current_app.logger.info(f"AUDIT: User {current_user.get('email')} attempting to cancel appointment {appointment_id}")
-        
-        # Update appointment status to cancelled
+
+        # First, verify the appointment exists
+        verify_resp = supabase.table('appointments')\
+            .select('appointment_id, status')\
+            .eq('appointment_id', appointment_id)\
+            .maybe_single()\
+            .execute()
+
+        if getattr(verify_resp, 'error', None):
+            current_app.logger.error(f"AUDIT: Error verifying appointment {appointment_id}: {verify_resp.error.message}")
+            return jsonify({
+                "status": "error",
+                "message": "Error verifying appointment",
+                "details": verify_resp.error.message
+            }), 400
+
+        if not verify_resp.data:
+            current_app.logger.error(f"DEBUG: Appointment {appointment_id} not found or access denied")
+            return jsonify({
+                "status": "error",
+                "message": "Appointment not found"
+            }), 404
+
+        # Update appointment status to cancelled with select to return updated data
         resp = supabase.table('appointments')\
             .update({
                 'status': 'cancelled',
@@ -1072,8 +1095,9 @@ def cancel_appointment(appointment_id):
                 'updated_at': datetime.datetime.utcnow().isoformat()
             })\
             .eq('appointment_id', appointment_id)\
+            .select()\
             .execute()
-        
+
         if getattr(resp, 'error', None):
             current_app.logger.error(f"AUDIT: Failed to cancel appointment {appointment_id}: {resp.error.message}")
             return jsonify({
@@ -1081,8 +1105,8 @@ def cancel_appointment(appointment_id):
                 "message": "Failed to cancel appointment",
                 "details": resp.error.message
             }), 400
-        
-        if not resp.data:
+
+        if not resp.data or len(resp.data) == 0:
             return jsonify({
                 "status": "error",
                 "message": "Appointment not found"
@@ -1134,8 +1158,32 @@ def update_appointment_status(appointment_id):
             }), 400
 
         current_app.logger.info(f"AUDIT: User {current_user.get('email')} updating appointment {appointment_id} status to {data['status']}")
-        
-        # Update appointment status
+
+        # First, verify the appointment exists and get its current data
+        verify_resp = supabase.table('appointments')\
+            .select('appointment_id, facility_id, status')\
+            .eq('appointment_id', appointment_id)\
+            .maybe_single()\
+            .execute()
+
+        if getattr(verify_resp, 'error', None):
+            current_app.logger.error(f"AUDIT: Error verifying appointment {appointment_id}: {verify_resp.error.message}")
+            return jsonify({
+                "status": "error",
+                "message": "Error verifying appointment",
+                "details": verify_resp.error.message
+            }), 400
+
+        if not verify_resp.data:
+            current_app.logger.error(f"DEBUG: Appointment {appointment_id} not found or access denied")
+            return jsonify({
+                "status": "error",
+                "message": f"Appointment not found with ID {appointment_id}. Please refresh the page."
+            }), 404
+
+        current_app.logger.info(f"DEBUG: Appointment found, current status: {verify_resp.data.get('status')}")
+
+        # Update appointment status with select to return updated data
         resp = supabase.table('appointments')\
             .update({
                 'status': data['status'],
@@ -1144,11 +1192,12 @@ def update_appointment_status(appointment_id):
                 'notes': data.get('notes', '')  # Optional notes for status change
             })\
             .eq('appointment_id', appointment_id)\
+            .select()\
             .execute()
 
         # Debug logging
-        current_app.logger.info(f"DEBUG: Supabase response data: {resp.data if resp.data else 'No data'}")
-        current_app.logger.info(f"DEBUG: Supabase response error: {getattr(resp, 'error', None)}")
+        current_app.logger.info(f"DEBUG: Supabase update response data: {resp.data if resp.data else 'No data'}")
+        current_app.logger.info(f"DEBUG: Supabase update response error: {getattr(resp, 'error', None)}")
 
         if getattr(resp, 'error', None):
             current_app.logger.error(f"AUDIT: Failed to update appointment status {appointment_id}: {resp.error.message}")
