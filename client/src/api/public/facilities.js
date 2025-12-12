@@ -11,12 +11,9 @@ import axios from 'axios'
  * @param {boolean} bustCache - Whether to bypass cache
  * @returns {Promise<Object>} List of active facilities with public information
  */
-export const getPublicFacilities = async (bustCache = false) => {
+export const getPublicFacilities = async () => {
     try {
-        const params = bustCache ? '?bust_cache=true' : ''
-        const response = await axios.get(
-            `${backendConnection()}/public/facilities${params}`
-        )
+        const response = await axios.get(`${backendConnection()}/public/facilities`)
         return response.data
     } catch (error) {
         console.error('Error fetching public facilities:', error)
@@ -25,5 +22,5 @@ export const getPublicFacilities = async (bustCache = false) => {
 }
 
 export default {
-    getPublicFacilities
+    getPublicFacilities,
 }
