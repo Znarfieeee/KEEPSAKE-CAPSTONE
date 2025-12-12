@@ -116,17 +116,17 @@ const STEPS = [
         required: true,
     },
     {
+        id: 'screening',
+        title: 'Screening Tests',
+        description: 'Apgar screening test results',
+        icon: Activity,
+        required: false,
+    },
+    {
         id: 'delivery',
         title: 'Delivery Information',
         description: 'Birth and delivery process details',
         icon: Stethoscope,
-        required: false,
-    },
-    {
-        id: 'screening',
-        title: 'Screening Tests',
-        description: 'Newborn screening test results',
-        icon: Activity,
         required: false,
     },
     {
@@ -467,16 +467,36 @@ const ReviewStep = ({
                     <ReviewSection
                         title="Screening Information"
                         icon={Activity}
-                        isEmpty={!Object.values(screeningForm).some((val) => val !== false && val !== '' && val !== null && val !== undefined)}
+                        isEmpty={
+                            !Object.values(screeningForm).some(
+                                (val) =>
+                                    val !== false && val !== '' && val !== null && val !== undefined
+                            )
+                        }
                     >
                         <FieldDisplay label="ENS Date" value={screeningForm.ens_date} />
-                        <FieldDisplay label="ENS Normal Results" value={screeningForm.ens_remarks} />
+                        <FieldDisplay
+                            label="ENS Normal Results"
+                            value={screeningForm.ens_remarks}
+                        />
                         <FieldDisplay label="NHS Date" value={screeningForm.nhs_date} />
-                        <FieldDisplay label="NHS Right Ear Pass" value={screeningForm.nhs_right_ear} />
-                        <FieldDisplay label="NHS Left Ear Pass" value={screeningForm.nhs_left_ear} />
+                        <FieldDisplay
+                            label="NHS Right Ear Pass"
+                            value={screeningForm.nhs_right_ear}
+                        />
+                        <FieldDisplay
+                            label="NHS Left Ear Pass"
+                            value={screeningForm.nhs_left_ear}
+                        />
                         <FieldDisplay label="POS Date" value={screeningForm.pos_date} />
-                        <FieldDisplay label="POS Right Hand/Foot Pass" value={screeningForm.pos_for_cchd_right} />
-                        <FieldDisplay label="POS Left Hand/Foot Pass" value={screeningForm.pos_for_cchd_left} />
+                        <FieldDisplay
+                            label="POS Right Hand/Foot Pass"
+                            value={screeningForm.pos_for_cchd_right}
+                        />
+                        <FieldDisplay
+                            label="POS Left Hand/Foot Pass"
+                            value={screeningForm.pos_for_cchd_left}
+                        />
                         <FieldDisplay label="ROR Date" value={screeningForm.ror_date} />
                         <FieldDisplay label="ROR Results" value={screeningForm.ror_remarks} />
                     </ReviewSection>
