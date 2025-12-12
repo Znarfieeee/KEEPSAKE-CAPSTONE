@@ -9,9 +9,8 @@ import { Eye, Search, PlusCircle, Share2 } from 'lucide-react'
 import { Dialog, DialogTrigger } from '@/components/ui/Dialog'
 import { showToast } from '../../../util/alertHelper'
 import PrescriptionQRDialog from '@/components/qr/PrescriptionQRDialog'
-
-const AddPatientPrescriptionModal = lazy(() => import('./AddPatientPrescriptionModal'))
-const PatientPrescriptionDetailModal = lazy(() => import('./PatientPrescriptionDetailModal'))
+import AddPatientPrescriptionModal from './AddPatientPrescriptionModal'
+import PatientPrescriptionDetailModal from './PatientPrescriptionDetailModal'
 
 const PatientPrescription = ({
     search,
@@ -31,7 +30,8 @@ const PatientPrescription = ({
 
     // Check if user can add prescriptions - only doctors, facility admins, and pediapros can add
     // Nurses (vital_custodians) cannot add prescriptions
-    const canAddPrescription = user?.role && ['doctor', 'pediapro', 'facility_admin'].includes(user.role)
+    const canAddPrescription =
+        user?.role && ['doctor', 'pediapro', 'facility_admin'].includes(user.role)
 
     // Sync external prescription changes with local state
     useEffect(() => {
@@ -112,14 +112,12 @@ const PatientPrescription = ({
                                         Add Prescription
                                     </Button>
                                 </DialogTrigger>
-                                <Suspense fallback={null}>
-                                    <AddPatientPrescriptionModal
-                                        prescription={{ patient_id: patient?.patient_id }}
-                                        isLoading={isLoading}
-                                        setIsOpen={setIsOpen}
-                                        onSuccess={handlePrescriptionAdded}
-                                    />
-                                </Suspense>
+                                <AddPatientPrescriptionModal
+                                    prescription={{ patient_id: patient?.patient_id }}
+                                    isLoading={isLoading}
+                                    setIsOpen={setIsOpen}
+                                    onSuccess={handlePrescriptionAdded}
+                                />
                             </Dialog>
                         </div>
                     )}
