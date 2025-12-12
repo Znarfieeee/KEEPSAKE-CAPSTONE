@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef, lazy, Suspense } from 'react'
+import React, { useState, useEffect, useCallback, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '@/context/auth'
 import { getAppointmentsByDoctor } from '@/api/doctors/appointment'
@@ -13,11 +13,7 @@ import { showToast } from '@/util/alertHelper'
 import { Button } from '@/components/ui/Button'
 import { Dialog, DialogTrigger } from '@/components/ui/Dialog'
 import { PlusCircle } from 'lucide-react'
-
-// Lazy load the modal component
-const ScheduleAppointmentModal = lazy(() =>
-    import('@/components/doctors/appointments/ScheduleAppointmentModal')
-)
+import ScheduleAppointmentModal from '@/components/doctors/appointments/ScheduleAppointmentModal'
 
 const DoctorAppointments = () => {
     // State management
@@ -336,18 +332,12 @@ const DoctorAppointments = () => {
                         </Button>
                     </DialogTrigger>
 
-                    <Suspense
-                        fallback={
-                            <div className="flex items-center justify-center p-8">
-                                <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
-                            </div>
-                        }
-                    >
+                    {isModalOpen && (
                         <ScheduleAppointmentModal
                             isOpen={isModalOpen}
                             onSuccess={handleScheduleSuccess}
                         />
-                    </Suspense>
+                    )}
                 </Dialog>
             </div>
 

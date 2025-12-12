@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useCallback, lazy, Suspense } from 'react'
+import React, { useMemo, useState, useCallback } from 'react'
 import { useAuth } from '@/context/auth'
 import { useFacilityUsers } from '@/hooks/useFacilityUsers'
 
@@ -12,16 +12,10 @@ import Unauthorized from '@/components/Unauthorized'
 import { useFacilityUsersRealtime } from '@/hook/useSupabaseRealtime'
 import { showToast } from '@/util/alertHelper'
 
-// Lazy-loaded components (modals are heavy and used conditionally)
-const AddUserModal = lazy(() =>
-    import('@/components/facilityAdmin/fadmin_facilityUsers/AddUserModal')
-)
-const UserDetailModal = lazy(() =>
-    import('@/components/facilityAdmin/fadmin_facilityUsers/UserDetailModal')
-)
-const EditUserModal = lazy(() =>
-    import('@/components/facilityAdmin/fadmin_facilityUsers/EditUserModal')
-)
+// Modal components
+import AddUserModal from '@/components/facilityAdmin/fadmin_facilityUsers/AddUserModal'
+import UserDetailModal from '@/components/facilityAdmin/fadmin_facilityUsers/UserDetailModal'
+import EditUserModal from '@/components/facilityAdmin/fadmin_facilityUsers/EditUserModal'
 const FadminFacilityUsersRegistry = () => {
     const { user } = useAuth()
     const {
@@ -272,38 +266,36 @@ const FadminFacilityUsersRegistry = () => {
                 onDeactivate={handleDeactivateUser}
             />
 
-            {/* Modals – lazily loaded */}
-            <Suspense fallback={null}>
-                {showAddUser && (
-                    <AddUserModal
-                        open={showAddUser}
-                        onClose={() => setShowAddUser(false)}
-                        onSave={handleCreateUser}
-                        loading={actionLoading}
-                    />
-                )}
-                {showDetail && (
-                    <UserDetailModal
-                        open={showDetail}
-                        user={selectedUser}
-                        onClose={() => setShowDetail(false)}
-                        onEdit={handleEditUser}
-                        onDelete={handleDeleteUser}
-                        onActivate={handleActivateUser}
-                        onDeactivate={handleDeactivateUser}
-                        loading={actionLoading}
-                    />
-                )}
-                {showEdit && (
-                    <EditUserModal
-                        open={showEdit}
-                        user={editingUser}
-                        onSave={handleUpdateUser}
-                        onClose={() => setShowEdit(false)}
-                        loading={actionLoading}
-                    />
-                )}
-            </Suspense>
+            {/* Modals */}
+            {showAddUser && (
+                <AddUserModal
+                    open={showAddUser}
+                    onClose={() => setShowAddUser(false)}
+                    onSave={handleCreateUser}
+                    loading={actionLoading}
+                />
+            )}
+            {showDetail && (
+                <UserDetailModal
+                    open={showDetail}
+                    user={selectedUser}
+                    onClose={() => setShowDetail(false)}
+                    onEdit={handleEditUser}
+                    onDelete={handleDeleteUser}
+                    onActivate={handleActivateUser}
+                    onDeactivate={handleDeactivateUser}
+                    loading={actionLoading}
+                />
+            )}
+            {showEdit && (
+                <EditUserModal
+                    open={showEdit}
+                    user={editingUser}
+                    onSave={handleUpdateUser}
+                    onClose={() => setShowEdit(false)}
+                    loading={actionLoading}
+                />
+            )}
         </div>
     )
 }

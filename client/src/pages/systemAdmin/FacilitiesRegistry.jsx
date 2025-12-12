@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useCallback, useState, lazy, Suspense } from 'react'
+import React, { useEffect, useMemo, useCallback, useState } from 'react'
 import { useAuth } from '@/context/auth'
 import { useNavigate } from 'react-router-dom'
 import { useFacilitiesRealtime } from '@/hook/useSupabaseRealtime'
@@ -12,13 +12,9 @@ import FacilityTable from '@/components/System Administrator/sysAdmin_facilities
 import EditFacility from '@/components/System Administrator/sysAdmin_facilities/EditFacility'
 import Unauthorized from '@/components/Unauthorized'
 
-// Lazy-loaded components (modals are heavy and used conditionally)
-const RegisterFacilityModal = lazy(() =>
-    import('@/components/System Administrator/sysAdmin_facilities/RegisterFacilityModal')
-)
-const FacilityDetailModal = lazy(() =>
-    import('@/components/System Administrator/sysAdmin_facilities/FacilityDetailModal')
-)
+// Modal Components
+import RegisterFacilityModal from '@/components/System Administrator/sysAdmin_facilities/RegisterFacilityModal'
+import FacilityDetailModal from '@/components/System Administrator/sysAdmin_facilities/FacilityDetailModal'
 
 const FacilitiesRegistry = () => {
     const { user } = useAuth()
@@ -381,32 +377,30 @@ const FacilitiesRegistry = () => {
                 onDelete={handleDelete}
             />
 
-            {/* Modals – lazily loaded */}
-            <Suspense fallback={null}>
-                {showRegister && (
-                    <RegisterFacilityModal
-                        open={showRegister}
-                        onClose={() => setShowRegister(false)}
-                    />
-                )}
-                {showDetail && (
-                    <FacilityDetailModal
-                        open={showDetail}
-                        facility={detailFacility}
-                        onClose={() => setShowDetail(false)}
-                        onEdit={handleEditFacility}
-                    />
-                )}
-                {showEdit && (
-                    <EditFacility
-                        open={showEdit}
-                        facility={editingFacility}
-                        onSave={handleUpdateFacility}
-                        onClose={() => setShowEdit(false)}
-                        onUpdate={handleUpdateFacility}
-                    />
-                )}
-            </Suspense>
+            {/* Modals */}
+            {showRegister && (
+                <RegisterFacilityModal
+                    open={showRegister}
+                    onClose={() => setShowRegister(false)}
+                />
+            )}
+            {showDetail && (
+                <FacilityDetailModal
+                    open={showDetail}
+                    facility={detailFacility}
+                    onClose={() => setShowDetail(false)}
+                    onEdit={handleEditFacility}
+                />
+            )}
+            {showEdit && (
+                <EditFacility
+                    open={showEdit}
+                    facility={editingFacility}
+                    onSave={handleUpdateFacility}
+                    onClose={() => setShowEdit(false)}
+                    onUpdate={handleUpdateFacility}
+                />
+            )}
         </div>
     )
 }
