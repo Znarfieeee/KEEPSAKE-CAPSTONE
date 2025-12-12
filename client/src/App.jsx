@@ -331,7 +331,7 @@ function App() {
                             element: <FacilityAdminQrScanner />,
                         },
                         {
-                            path: 'help-support',
+                            path: 'help_support',
                             element: <HelpSupport />,
                         },
                         {
@@ -373,7 +373,7 @@ function App() {
                             element: <Settings />,
                         },
                         {
-                            path: 'help-support',
+                            path: 'help_support',
                             element: <HelpSupport />,
                         },
                         {
@@ -419,7 +419,7 @@ function App() {
                             element: <Settings />,
                         },
                         {
-                            path: 'help-support',
+                            path: 'help_support',
                             element: <HelpSupport />,
                         },
                         {
