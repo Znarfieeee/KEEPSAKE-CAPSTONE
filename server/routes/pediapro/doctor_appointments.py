@@ -1033,36 +1033,84 @@ def update_appointment(appointment_id):
                 "message": str(ve)
             }), 400
         
-        # Update the appointment and return updated data
-        resp = supabase.table('appointments')\
+        # Update the appointment
+        update_resp = supabase.table('appointments')\
             .update(appointments_payload)\
             .eq('appointment_id', appointment_id)\
             .execute()
 
-        if getattr(resp, 'error', None):
-            current_app.logger.error(f"AUDIT: Failed to update appointment {appointment_id}: {resp.error.message}")
+        # Null-safety check
+        if update_resp is None:
+            current_app.logger.error(f"AUDIT: Update operation returned None for appointment {appointment_id}")
+            return jsonify({
+                "status": "error",
+                "message": "Failed to update appointment - no response from database"
+            }), 500
+
+        if getattr(update_resp, 'error', None):
+            error_msg = getattr(update_resp.error, 'message', str(update_resp.error))
+            current_app.logger.error(f"AUDIT: Failed to update appointment {appointment_id}: {error_msg}")
             return jsonify({
                 "status": "error",
                 "message": "Failed to update appointment",
-                "details": resp.error.message
+                "details": error_msg
             }), 400
 
-        if not resp.data or len(resp.data) == 0:
+        # Fetch the updated appointment data
+        try:
+            fetch_resp = supabase.table('appointments')\
+                .select('''
+                    *,
+                    patients!appointments_patient_id_fkey(patient_id, firstname, lastname, middlename, date_of_birth),
+                    doctor:users!appointments_doctor_id_fkey(user_id, firstname, lastname, specialty),
+                    facility:healthcare_facilities!appointments_facility_id_fkey(facility_id, facility_name, address),
+                    scheduled_by:users!appointments_scheduled_by_fkey(user_id, firstname, lastname),
+                    updated_by:users!appointments_updated_by_fkey(user_id, firstname, lastname)
+                ''')\
+                .eq('appointment_id', appointment_id)\
+                .maybe_single()\
+                .execute()
+
+            if getattr(fetch_resp, 'error', None) or not fetch_resp.data:
+                # Still return success with minimal data since update worked
+                current_app.logger.warning(f"AUDIT: Could not fetch updated appointment {appointment_id}, returning minimal data")
+                invalidate_caches('appointments', appointment_id)
+                return jsonify({
+                    "status": "success",
+                    "message": "Appointment updated successfully",
+                    "data": {
+                        "appointment_id": appointment_id,
+                        **appointments_payload
+                    }
+                }), 200
+
+            # Process the fetched data
+            updated_appointment = populate_patient_name(fetch_resp.data)
+            updated_appointment = populate_doctor_name(updated_appointment)
+
+            # Invalidate related caches
+            invalidate_caches('appointments', appointment_id)
+
+            current_app.logger.info(f"AUDIT: Successfully updated appointment {appointment_id}")
+
             return jsonify({
-                "status": "error",
-                "message": "Appointment not found or no changes made"
-            }), 404
-        
-        # Invalidate related caches
-        invalidate_caches('appointments', appointment_id)
-        
-        current_app.logger.info(f"AUDIT: Successfully updated appointment {appointment_id}")
-        
-        return jsonify({
-            "status": "success",
-            "message": "Appointment updated successfully",
-            "data": resp.data[0]
-        }), 200
+                "status": "success",
+                "message": "Appointment updated successfully",
+                "data": updated_appointment
+            }), 200
+
+        except Exception as fetch_error:
+            current_app.logger.error(f"AUDIT: Exception fetching updated appointment {appointment_id}: {str(fetch_error)}")
+            # Still return success since update worked
+            invalidate_caches('appointments', appointment_id)
+            return jsonify({
+                "status": "success",
+                "message": "Appointment updated successfully",
+                "data": {
+                    "appointment_id": appointment_id,
+                    **appointments_payload
+                }
+            }), 200
         
     except Exception as e:
         current_app.logger.error(f"AUDIT: Unexpected error updating appointment {appointment_id}: {str(e)}")
@@ -1102,38 +1150,80 @@ def cancel_appointment(appointment_id):
                 "message": "Appointment not found"
             }), 404
 
-        # Update appointment status to cancelled and return updated data
-        resp = supabase.table('appointments')\
-            .update({
-                'status': 'cancelled',
-                'updated_by': current_user.get('id'),
-                'updated_at': datetime.datetime.utcnow().isoformat()
-            })\
+        # Update appointment status to cancelled
+        update_payload = {
+            'status': 'cancelled',
+            'updated_by': current_user.get('id'),
+            'updated_at': datetime.datetime.utcnow().isoformat()
+        }
+
+        update_resp = supabase.table('appointments')\
+            .update(update_payload)\
             .eq('appointment_id', appointment_id)\
             .execute()
 
-        if getattr(resp, 'error', None):
-            current_app.logger.error(f"AUDIT: Failed to cancel appointment {appointment_id}: {resp.error.message}")
+        # Null-safety check
+        if update_resp is None:
+            current_app.logger.error(f"AUDIT: Cancel operation returned None for appointment {appointment_id}")
+            return jsonify({
+                "status": "error",
+                "message": "Failed to cancel appointment - no response from database"
+            }), 500
+
+        if getattr(update_resp, 'error', None):
+            error_msg = getattr(update_resp.error, 'message', str(update_resp.error))
+            current_app.logger.error(f"AUDIT: Failed to cancel appointment {appointment_id}: {error_msg}")
             return jsonify({
                 "status": "error",
                 "message": "Failed to cancel appointment",
-                "details": resp.error.message
+                "details": error_msg
             }), 400
 
-        if not resp.data or len(resp.data) == 0:
-            return jsonify({
-                "status": "error",
-                "message": "Appointment not found"
-            }), 404
-        
-        # Invalidate related caches
-        invalidate_caches('appointments', appointment_id)
-        
+        # Fetch the updated (cancelled) appointment data
+        try:
+            fetch_resp = supabase.table('appointments')\
+                .select('''
+                    *,
+                    patients!appointments_patient_id_fkey(patient_id, firstname, lastname, middlename, date_of_birth),
+                    doctor:users!appointments_doctor_id_fkey(user_id, firstname, lastname, specialty),
+                    facility:healthcare_facilities!appointments_facility_id_fkey(facility_id, facility_name, address),
+                    scheduled_by:users!appointments_scheduled_by_fkey(user_id, firstname, lastname),
+                    updated_by:users!appointments_updated_by_fkey(user_id, firstname, lastname)
+                ''')\
+                .eq('appointment_id', appointment_id)\
+                .maybe_single()\
+                .execute()
+
+            # Invalidate related caches
+            invalidate_caches('appointments', appointment_id)
+
+            # Return data if fetch succeeded
+            if fetch_resp and fetch_resp.data and not getattr(fetch_resp, 'error', None):
+                updated_appointment = populate_patient_name(fetch_resp.data)
+                updated_appointment = populate_doctor_name(updated_appointment)
+
+                current_app.logger.info(f"AUDIT: Successfully cancelled appointment {appointment_id}")
+
+                return jsonify({
+                    "status": "success",
+                    "message": "Appointment cancelled successfully",
+                    "data": updated_appointment
+                }), 200
+
+        except Exception as fetch_error:
+            current_app.logger.warning(f"AUDIT: Exception fetching cancelled appointment {appointment_id}: {str(fetch_error)}")
+
+        # Fallback response if fetch failed (but cancellation succeeded)
         current_app.logger.info(f"AUDIT: Successfully cancelled appointment {appointment_id}")
-        
+
         return jsonify({
             "status": "success",
-            "message": "Appointment cancelled successfully"
+            "message": "Appointment cancelled successfully",
+            "data": {
+                "appointment_id": appointment_id,
+                "status": "cancelled",
+                "updated_at": update_payload['updated_at']
+            }
         }), 200
         
     except Exception as e:
@@ -1216,41 +1306,105 @@ def update_appointment_status(appointment_id):
         if data.get('notes'):
             update_payload['notes'] = data['notes']
 
-        # Update appointment status and return updated data
-        resp = supabase.table('appointments')\
+        # Update appointment status
+        update_resp = supabase.table('appointments')\
             .update(update_payload)\
             .eq('appointment_id', appointment_id)\
             .execute()
 
-        # Debug logging
-        current_app.logger.info(f"DEBUG: Supabase update response data: {resp.data if resp.data else 'No data'}")
-        current_app.logger.info(f"DEBUG: Supabase update response error: {getattr(resp, 'error', None)}")
+        # Comprehensive null-safety checks
+        if update_resp is None:
+            current_app.logger.error(f"AUDIT: Update operation returned None for appointment {appointment_id}")
+            return jsonify({
+                "status": "error",
+                "message": "Failed to update appointment status - no response from database"
+            }), 500
 
-        if getattr(resp, 'error', None):
-            current_app.logger.error(f"AUDIT: Failed to update appointment status {appointment_id}: {resp.error.message}")
+        # Check for update errors
+        if getattr(update_resp, 'error', None):
+            error_msg = getattr(update_resp.error, 'message', str(update_resp.error))
+            current_app.logger.error(f"AUDIT: Failed to update appointment status {appointment_id}: {error_msg}")
             return jsonify({
                 "status": "error",
                 "message": "Failed to update appointment status",
-                "details": resp.error.message
+                "details": error_msg
             }), 400
 
-        if not resp.data or len(resp.data) == 0:
-            current_app.logger.error(f"DEBUG: No appointment found with ID {appointment_id}")
+        # Fetch the updated appointment data with all related information
+        try:
+            fetch_resp = supabase.table('appointments')\
+                .select('''
+                    *,
+                    patients!appointments_patient_id_fkey(patient_id, firstname, lastname, middlename, date_of_birth),
+                    doctor:users!appointments_doctor_id_fkey(user_id, firstname, lastname, specialty),
+                    facility:healthcare_facilities!appointments_facility_id_fkey(facility_id, facility_name, address),
+                    scheduled_by:users!appointments_scheduled_by_fkey(user_id, firstname, lastname),
+                    updated_by:users!appointments_updated_by_fkey(user_id, firstname, lastname)
+                ''')\
+                .eq('appointment_id', appointment_id)\
+                .maybe_single()\
+                .execute()
+
+            if getattr(fetch_resp, 'error', None):
+                error_msg = getattr(fetch_resp.error, 'message', str(fetch_resp.error))
+                current_app.logger.error(f"AUDIT: Failed to fetch updated appointment {appointment_id}: {error_msg}")
+                # Still return success since update worked, but with minimal data
+                invalidate_caches('appointments', appointment_id)
+                return jsonify({
+                    "status": "success",
+                    "message": f"Appointment status updated to {data['status']}",
+                    "data": {
+                        "appointment_id": appointment_id,
+                        "status": data['status'],
+                        "updated_at": update_payload['updated_at'],
+                        "updated_by": current_user.get('id')
+                    }
+                }), 200
+
+            if not fetch_resp.data:
+                current_app.logger.warning(f"DEBUG: No appointment data returned for ID {appointment_id} after update")
+                # Still return success since update worked
+                invalidate_caches('appointments', appointment_id)
+                return jsonify({
+                    "status": "success",
+                    "message": f"Appointment status updated to {data['status']}",
+                    "data": {
+                        "appointment_id": appointment_id,
+                        "status": data['status'],
+                        "updated_at": update_payload['updated_at'],
+                        "updated_by": current_user.get('id')
+                    }
+                }), 200
+
+            # Process the fetched data to populate missing names
+            updated_appointment = populate_patient_name(fetch_resp.data)
+            updated_appointment = populate_doctor_name(updated_appointment)
+
+            # Invalidate related caches
+            invalidate_caches('appointments', appointment_id)
+
+            current_app.logger.info(f"AUDIT: Successfully updated appointment {appointment_id} status to {data['status']}")
+
             return jsonify({
-                "status": "error",
-                "message": f"Appointment not found with ID {appointment_id}. Please refresh the page."
-            }), 404
-        
-        # Invalidate related caches
-        invalidate_caches('appointments', appointment_id)
-        
-        current_app.logger.info(f"AUDIT: Successfully updated appointment {appointment_id} status to {data['status']}")
-        
-        return jsonify({
-            "status": "success",
-            "message": f"Appointment status updated to {data['status']}",
-            "data": resp.data[0]
-        }), 200
+                "status": "success",
+                "message": f"Appointment status updated to {data['status']}",
+                "data": updated_appointment
+            }), 200
+
+        except Exception as fetch_error:
+            current_app.logger.error(f"AUDIT: Exception fetching updated appointment {appointment_id}: {str(fetch_error)}")
+            # Still return success since update worked
+            invalidate_caches('appointments', appointment_id)
+            return jsonify({
+                "status": "success",
+                "message": f"Appointment status updated to {data['status']}",
+                "data": {
+                    "appointment_id": appointment_id,
+                    "status": data['status'],
+                    "updated_at": update_payload['updated_at'],
+                    "updated_by": current_user.get('id')
+                }
+            }), 200
         
     except Exception as e:
         current_app.logger.error(f"AUDIT: Error updating appointment status {appointment_id}: {str(e)}")

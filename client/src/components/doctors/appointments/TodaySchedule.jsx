@@ -67,6 +67,15 @@ const AppointmentCard = ({ appointment, onAction }) => {
                     return
             }
 
+            // Validate response structure
+            if (!response) {
+                throw new Error('No response received from server')
+            }
+
+            if (response.status !== 'success') {
+                throw new Error(response.message || 'Operation failed')
+            }
+
             // Dispatch custom event for immediate real-time update
             if (response?.data) {
                 window.dispatchEvent(
@@ -80,28 +89,53 @@ const AppointmentCard = ({ appointment, onAction }) => {
             await onAction?.(actionType, appointment, response)
         } catch (error) {
             console.error(`Error ${actionType}ing appointment:`, error)
-            console.error('Error response:', error.response)
-            console.error('Error config:', error.config)
 
             let errorMessage = `Failed to ${actionType} appointment`
+            let shouldRefresh = false
 
             if (error.response) {
-                // Server responded with error
-                errorMessage =
-                    error.response?.data?.message ||
-                    error.response?.data?.details ||
-                    `Server error (${error.response.status}): ${error.response.statusText}`
-                console.error('Server response data:', error.response.data)
+                // Server responded with error status
+                const status = error.response.status
+                const data = error.response.data
+
+                console.error('Server response data:', data)
+                console.error('Response status:', status)
+
+                if (status === 404) {
+                    errorMessage = data?.message || 'Appointment not found. The page will refresh.'
+                    shouldRefresh = true
+                } else if (status === 400) {
+                    errorMessage = data?.message || data?.details || 'Invalid request'
+                } else if (status === 401 || status === 403) {
+                    errorMessage = 'You do not have permission to perform this action'
+                } else if (status === 500) {
+                    errorMessage = data?.message || 'Server error. Please try again later.'
+                } else {
+                    errorMessage =
+                        data?.message ||
+                        data?.details ||
+                        `Server error (${status}): ${error.response.statusText}`
+                }
             } else if (error.request) {
-                // Request was made but no response
-                errorMessage = 'No response from server. Please check your connection.'
-            } else {
-                // Error in request setup
-                errorMessage = error.message || errorMessage
+                // Request was made but no response received
+                console.error('No response received:', error.request)
+                errorMessage = 'No response from server. Please check your internet connection.'
+                shouldRefresh = true
+            } else if (error.message) {
+                // Error in request setup or validation
+                errorMessage = error.message
             }
 
             showToast('error', errorMessage)
-            throw error
+
+            // Refresh appointments if needed (e.g., 404 or network errors)
+            if (shouldRefresh && onAction) {
+                setTimeout(() => {
+                    window.location.reload()
+                }, 2000)
+            }
+
+            // Don't re-throw the error - we've handled it
         } finally {
             setLoadingAction(null)
         }
