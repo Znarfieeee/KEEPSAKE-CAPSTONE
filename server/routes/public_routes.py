@@ -38,6 +38,20 @@ def get_public_facilities():
     - deleted_at IS NULL
     """
     try:
+        bust_cache = request.args.get('bust_cache', 'false').lower() == 'true'
+
+        # Check cache first (unless bust_cache is requested)
+        if not bust_cache:
+            cached = redis_client.get(PUBLIC_FACILITIES_CACHE_KEY)
+            if cached:
+                cached_data = json.loads(cached)
+                current_app.logger.debug(f"Returning cached public facilities ({len(cached_data)} facilities)")
+                return jsonify({
+                    "status": "success",
+                    "data": cached_data,
+                    "cached": True,
+                    "timestamp": datetime.datetime.utcnow().isoformat()
+                }), 200
 
         # Fetch from database with filters
         current_date = datetime.datetime.utcnow().isoformat()
@@ -58,6 +72,13 @@ def get_public_facilities():
             }), 500
 
         facilities = resp.data or []
+
+        # Cache the results (10-minute TTL)
+        redis_client.setex(
+            PUBLIC_FACILITIES_CACHE_KEY,
+            PUBLIC_FACILITIES_CACHE_TTL,
+            json.dumps(facilities)
+        )
 
         current_app.logger.info(f"Fetched {len(facilities)} active public facilities from database")
 
