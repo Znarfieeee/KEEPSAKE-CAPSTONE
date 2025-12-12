@@ -103,41 +103,104 @@ export const scheduleAppointment = async (appointmentData) => {
 
 export const updateAppointment = async (appointmentId, appointmentData) => {
     try {
+        // Validate inputs
+        if (!appointmentId) {
+            throw new Error('Appointment ID is required')
+        }
+        if (!appointmentData || typeof appointmentData !== 'object') {
+            throw new Error('Valid appointment data is required')
+        }
+
         const response = await axios.put(
             `${backendConnection()}/appointments/${appointmentId}`,
             appointmentData,
             axiosConfig
         )
+
+        // Validate response structure
+        if (!response || !response.data) {
+            throw new Error('Invalid response from server')
+        }
+
+        if (response.data.status !== 'success') {
+            throw new Error(response.data.message || 'Failed to update appointment')
+        }
+
         return response.data
     } catch (error) {
         console.error('Update appointment error:', error)
+        // Add more context to the error
+        if (error.response) {
+            error.message = error.response.data?.message || error.response.data?.details || error.message
+        }
         throw error
     }
 }
 
 export const updateAppointmentStatus = async (appointmentId, status, notes = '') => {
     try {
+        // Validate inputs
+        if (!appointmentId) {
+            throw new Error('Appointment ID is required')
+        }
+        if (!status) {
+            throw new Error('Status is required')
+        }
+
         const response = await axios.patch(
             `${backendConnection()}/appointments/${appointmentId}/status`,
             { status, notes },
             axiosConfig
         )
+
+        // Validate response structure
+        if (!response || !response.data) {
+            throw new Error('Invalid response from server')
+        }
+
+        if (response.data.status !== 'success') {
+            throw new Error(response.data.message || 'Failed to update appointment status')
+        }
+
         return response.data
     } catch (error) {
         console.error('Update appointment status error:', error)
+        // Add more context to the error
+        if (error.response) {
+            error.message = error.response.data?.message || error.response.data?.details || error.message
+        }
         throw error
     }
 }
 
 export const cancelAppointment = async (appointmentId) => {
     try {
+        // Validate inputs
+        if (!appointmentId) {
+            throw new Error('Appointment ID is required')
+        }
+
         const response = await axios.delete(
             `${backendConnection()}/appointments/${appointmentId}`,
             axiosConfig
         )
+
+        // Validate response structure
+        if (!response || !response.data) {
+            throw new Error('Invalid response from server')
+        }
+
+        if (response.data.status !== 'success') {
+            throw new Error(response.data.message || 'Failed to cancel appointment')
+        }
+
         return response.data
     } catch (error) {
         console.error('Cancel appointment error:', error)
+        // Add more context to the error
+        if (error.response) {
+            error.message = error.response.data?.message || error.response.data?.details || error.message
+        }
         throw error
     }
 }
