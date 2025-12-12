@@ -800,6 +800,14 @@ def schedule_appointment():
     """Schedule a new appointment"""
     try:
         raw_data = request.json
+        
+        # Validate request data exists
+        if raw_data is None:
+            return jsonify({
+                "status": "error",
+                "message": "Request body is required"
+            }), 400
+        
         data = sanitize_request_data(raw_data)
         current_user = request.current_user
         
@@ -971,6 +979,14 @@ def update_appointment(appointment_id):
     """Update an existing appointment"""
     try:
         raw_data = request.json
+        
+        # Validate request data exists
+        if raw_data is None:
+            return jsonify({
+                "status": "error",
+                "message": "Request body is required"
+            }), 400
+        
         data = sanitize_request_data(raw_data)
         current_user = request.current_user
         
@@ -1134,6 +1150,14 @@ def update_appointment_status(appointment_id):
     """Update appointment status (scheduled, confirmed, completed, no_show)"""
     try:
         raw_data = request.json
+        
+        # Validate request data exists
+        if raw_data is None:
+            return jsonify({
+                "status": "error",
+                "message": "Request body is required"
+            }), 400
+        
         data = sanitize_request_data(raw_data)
         current_user = request.current_user
 

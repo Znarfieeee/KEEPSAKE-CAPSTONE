@@ -196,6 +196,14 @@ def create_patient_prescription(patient_id):
     try:
         supabase = get_authenticated_client()
         raw_data = request.json
+        
+        # Validate request data exists
+        if raw_data is None:
+            return jsonify({
+                "status": "error",
+                "message": "Request body is required"
+            }), 400
+        
         data = sanitize_request_data(raw_data)
 
         current_user = request.current_user
