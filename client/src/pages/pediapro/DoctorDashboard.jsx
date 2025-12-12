@@ -32,6 +32,7 @@ const DoctorDashboard = () => {
     const [loadingAppointments, setLoadingAppointments] = useState(true)
     const [loadingPatients, setLoadingPatients] = useState(true)
     const [loadingVaccinations, setLoadingVaccinations] = useState(true)
+    const [error, setError] = useState(null)
 
     // Modal states
     const [showAddPatientModal, setShowAddPatientModal] = useState(false)
@@ -68,15 +69,52 @@ const DoctorDashboard = () => {
             setLoadingAppointments(true)
             setLoadingPatients(true)
             setLoadingVaccinations(true)
+            setError(null)
 
             const [appointmentsRes, patientsRes] = await Promise.all([
-                getAppointmentsForMyFacility(),
-                getPatients(),
+                getAppointmentsForMyFacility().catch(err => ({ error: err, status: 'error' })),
+                getPatients().catch(err => ({ error: err, status: 'error' })),
             ])
 
+            // Check for facility assignment errors
+            const facilityError = [appointmentsRes, patientsRes].find(
+                res => res?.error?.response?.status === 403 ||
+                       res?.error?.response?.data?.message?.includes('not assigned to any facility')
+            )
+
+            if (facilityError) {
+                setError({
+                    type: 'no_facility',
+                    message: 'You are not assigned to any healthcare facility. Please contact your system administrator to assign you to a facility.',
+                    details: facilityError?.error?.response?.data?.message
+                })
+                setAppointments([])
+                setPatients([])
+                setVaccinations([])
+                return
+            }
+
+            // Check for authentication errors
+            const authError = [appointmentsRes, patientsRes].find(
+                res => res?.error?.response?.status === 401
+            )
+
+            if (authError) {
+                setError({
+                    type: 'auth_error',
+                    message: 'Your session has expired. Please log in again.',
+                    details: authError?.error?.response?.data?.message
+                })
+                return
+            }
+
+            // Process successful responses
             if (appointmentsRes?.status === 'success') {
                 setAppointments(appointmentsRes.data || [])
+            } else if (appointmentsRes?.status === 'error') {
+                console.error('Failed to fetch appointments:', appointmentsRes.error)
             }
+
             if (patientsRes?.status === 'success') {
                 setPatients(patientsRes.data || [])
                 // Extract vaccination data from patient related records
@@ -87,9 +125,16 @@ const DoctorDashboard = () => {
                     }
                 })
                 setVaccinations(allVaccinations)
+            } else if (patientsRes?.status === 'error') {
+                console.error('Failed to fetch patients:', patientsRes.error)
             }
         } catch (err) {
             console.error('Error fetching dashboard data:', err)
+            setError({
+                type: 'unexpected_error',
+                message: 'An unexpected error occurred while loading dashboard data. Please refresh the page.',
+                details: err.message
+            })
         } finally {
             setLoadingAppointments(false)
             setLoadingPatients(false)
@@ -383,13 +428,60 @@ const DoctorDashboard = () => {
     return (
         <>
             <div className="p-6 bg-gray-50 min-h-screen">
-                {/* Header */}
-                {/* <div className="mb-6">
-                    <h1 className="text-3xl font-bold text-gray-900">Doctor Dashboard</h1>
-                    <p className="text-gray-600 text-sm mt-1">
-                        Welcome back! Here's your facility overview.
-                    </p>
-                </div> */}
+                {/* Error Banner */}
+                {error && (
+                    <div className={`mb-6 p-4 rounded-lg border ${
+                        error.type === 'no_facility'
+                            ? 'bg-yellow-50 border-yellow-200'
+                            : error.type === 'auth_error'
+                            ? 'bg-red-50 border-red-200'
+                            : 'bg-orange-50 border-orange-200'
+                    }`}>
+                        <div className="flex items-start gap-3">
+                            <div className={`mt-0.5 ${
+                                error.type === 'no_facility'
+                                    ? 'text-yellow-600'
+                                    : error.type === 'auth_error'
+                                    ? 'text-red-600'
+                                    : 'text-orange-600'
+                            }`}>
+                                <AlertCircle className="h-5 w-5" />
+                            </div>
+                            <div className="flex-1">
+                                <h3 className={`font-semibold ${
+                                    error.type === 'no_facility'
+                                        ? 'text-yellow-900'
+                                        : error.type === 'auth_error'
+                                        ? 'text-red-900'
+                                        : 'text-orange-900'
+                                }`}>
+                                    {error.type === 'no_facility'
+                                        ? 'Facility Assignment Required'
+                                        : error.type === 'auth_error'
+                                        ? 'Session Expired'
+                                        : 'Error Loading Dashboard'}
+                                </h3>
+                                <p className={`mt-1 text-sm ${
+                                    error.type === 'no_facility'
+                                        ? 'text-yellow-800'
+                                        : error.type === 'auth_error'
+                                        ? 'text-red-800'
+                                        : 'text-orange-800'
+                                }`}>
+                                    {error.message}
+                                </p>
+                                {error.type === 'auth_error' && (
+                                    <button
+                                        onClick={() => navigate('/login')}
+                                        className="mt-3 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+                                    >
+                                        Log In Again
+                                    </button>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                )}
 
                 {/* Main Grid Layout */}
                 <div className="grid grid-cols-12 grid-rows-5 gap-4">
