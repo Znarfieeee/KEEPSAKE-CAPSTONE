@@ -121,7 +121,7 @@ const PatientRecordsTable = ({
                                     </span>
                                 </td>
                                 <td className="p-2 sm:p-3 whitespace-nowrap capitalize text-center text-xs sm:text-sm">
-                                    {patient.age}
+                                    {patient.age || 0}
                                 </td>
                                 <td className="p-2 sm:p-3 whitespace-nowrap text-xs sm:text-sm">
                                     {patient.birthdate}

@@ -1014,7 +1014,7 @@ def delete_allergy_record(patient_id, allergy_id):
 
 @patrecord_bp.route('/patient_record/<patient_id>/parent_access/<access_id>', methods=['PUT'])
 @require_auth
-@require_role('doctor', 'facility_admin')
+@require_role('doctor', 'facility_admin', 'nurse')
 def update_parent_relationship(patient_id, access_id):
     """
     Update the relationship type for an existing parent-child assignment.
@@ -1286,7 +1286,7 @@ def search_parents():
 
 @patrecord_bp.route('/patient_record/<patient_id>/assign-parent', methods=['POST'])
 @require_auth
-@require_role('doctor', 'facility_admin')
+@require_role('doctor', 'facility_admin', 'nurse')
 def assign_existing_parent_to_child(patient_id):
     """
     Assign an existing parent user to a child (patient).
@@ -1410,7 +1410,7 @@ def assign_existing_parent_to_child(patient_id):
 
 @patrecord_bp.route('/patient_record/<patient_id>/create-and-assign-parent', methods=['POST'])
 @require_auth
-@require_role('doctor', 'facility_admin')
+@require_role('doctor', 'facility_admin', 'nurse')
 def create_and_assign_parent(patient_id):
     """
     Create a new parent user account and immediately assign them to a patient.
@@ -1741,7 +1741,7 @@ def create_and_assign_parent(patient_id):
 
 @patrecord_bp.route('/patient_record/<patient_id>/remove-parent/<access_id>', methods=['DELETE'])
 @require_auth
-@require_role('doctor', 'facility_admin')
+@require_role('doctor', 'facility_admin', 'nurse')
 def remove_parent_assignment(patient_id, access_id):
     """
     Remove a parent's access to a patient's records.
@@ -2089,7 +2089,7 @@ def get_patient_record_by_id(patient_id):
 
 @patrecord_bp.route('/patient_record/<patient_id>/register_to_facility', methods=['POST'])
 @require_auth
-@require_role('doctor', 'facility_admin')
+@require_role('doctor', 'facility_admin', 'nurse')
 def register_patient_to_facility(patient_id):
     """
     Register an existing patient to the user's facility.
@@ -2201,7 +2201,7 @@ def register_patient_to_facility(patient_id):
 
 @patrecord_bp.route('/patient_record/<patient_id>', methods=['PATCH'])
 @require_auth
-@require_role('doctor', 'facility_admin')
+@require_role('doctor', 'facility_admin', 'nurse')
 def delete_patient_record(patient_id):
     """
     Delete patient record and all related records.
