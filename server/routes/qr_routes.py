@@ -1,5 +1,5 @@
 from flask import Blueprint, jsonify, request, current_app, render_template
-from config.settings import supabase, supabase_service_role_client
+from config.settings import get_authenticated_client, supabase_service_role_client
 from utils.access_control import require_auth
 from utils.sanitize import sanitize_request_data
 from utils.notification_utils import create_qr_access_alert
@@ -185,6 +185,7 @@ def ensure_patient_facility_registration(patient_id, facility_id, registered_by,
 def generate_token():
     """Generate a new QR code for patient access"""
     try:
+        supabase = get_authenticated_client()
         raw_data = request.json
         data = sanitize_request_data(raw_data)
         required_fields = ['patient_id', 'share_type', 'expires_in_days']
@@ -784,6 +785,7 @@ def access_prescription_public():
 def list_qr_codes():
     """List QR codes for the current facility"""
     try:
+        supabase = get_authenticated_client()
         patient_id = request.args.get('patient_id')
 
         query = supabase.table('qr_codes').select('*')
@@ -808,6 +810,7 @@ def list_qr_codes():
 def revoke_qr_code(qr_id):
     """Revoke a QR code by setting is_active to False"""
     try:
+        supabase = get_authenticated_client()
         qr = supabase.table('qr_codes')\
             .select('*')\
             .eq('qr_id', qr_id)\
@@ -842,6 +845,7 @@ def revoke_qr_code(qr_id):
 def get_qr_audit_history(qr_id):
     """Get audit history for a specific QR code"""
     try:
+        supabase = get_authenticated_client()
         qr = supabase.table('qr_codes')\
             .select('*')\
             .eq('qr_id', qr_id)\
@@ -879,6 +883,7 @@ def get_qr_audit_history(qr_id):
 def get_qr_details(qr_id):
     """Get details of a specific QR code"""
     try:
+        supabase = get_authenticated_client()
         qr = supabase.table('qr_codes')\
             .select('*')\
             .eq('qr_id', qr_id)\

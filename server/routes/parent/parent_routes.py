@@ -1,6 +1,6 @@
 from flask import Blueprint, jsonify, request, current_app
 from utils.access_control import require_auth, require_role
-from config.settings import supabase, supabase_service_role_client
+from config.settings import get_authenticated_client, supabase_service_role_client
 from postgrest.exceptions import APIError as AuthApiError
 import traceback
 import uuid
@@ -29,6 +29,7 @@ def get_parent_children():
     Returns patient information with their medical data access.
     """
     try:
+        supabase = get_authenticated_client()
         current_user = request.current_user
         user_id = current_user.get('id')
 
@@ -273,6 +274,7 @@ def get_child_details(patient_id):
 def get_child_appointments(patient_id):
     """Get appointments for a specific child"""
     try:
+        supabase = get_authenticated_client()
         # Validate patient_id format
         if not patient_id or not is_valid_uuid(patient_id):
             return jsonify({
