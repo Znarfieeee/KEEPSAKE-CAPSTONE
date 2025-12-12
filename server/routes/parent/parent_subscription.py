@@ -10,6 +10,7 @@ from config.settings import supabase, sr_client
 # from config.stripe_config import get_stripe_client, PARENT_PLAN_PRICING, STRIPE_WEBHOOK_SECRET, get_stripe_price_id
 from utils.audit_logger import log_action
 from utils.sanitize import sanitize_request_data
+from utils.invalidate_cache import invalidate_caches
 import uuid
 
 parent_subscription_bp = Blueprint('parent_subscription', __name__)
@@ -192,6 +193,9 @@ def process_mock_payment():
             }
         )
 
+        # Invalidate user cache
+        invalidate_caches('users', user_id)
+
         return jsonify({
             "status": "success",
             "message": "Payment successful! Premium subscription activated.",
@@ -256,6 +260,9 @@ def cancel_subscription():
             record_id=user_id,
             new_values={'action': 'subscription_cancelled'}
         )
+
+        # Invalidate user cache
+        invalidate_caches('users', user_id)
 
         return jsonify({
             "status": "success",

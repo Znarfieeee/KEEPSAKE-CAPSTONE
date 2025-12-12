@@ -2,6 +2,7 @@ from flask import Blueprint, jsonify, request, current_app
 from utils.access_control import require_auth, require_role
 from config.settings import supabase, sr_client
 from utils.audit_logger import log_action
+from utils.invalidate_cache import invalidate_caches
 from werkzeug.utils import secure_filename
 import uuid
 from datetime import datetime
@@ -276,6 +277,9 @@ def upload_document():
             f"for patient {patient_id} (document_id: {document_id})"
         )
 
+        # Invalidate patient cache
+        invalidate_caches('patient', patient_id)
+
         return jsonify({
             "status": "success",
             "message": "Document uploaded successfully",
@@ -541,6 +545,9 @@ def delete_document(document_id):
             f"AUDIT: User {user_id} ({user_role}) soft deleted document {document_id} "
             f"for patient {doc['patient_id']}"
         )
+
+        # Invalidate patient cache
+        invalidate_caches('patient', doc['patient_id'])
 
         return jsonify({
             "status": "success",

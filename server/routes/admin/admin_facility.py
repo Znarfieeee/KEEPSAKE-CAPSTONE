@@ -632,7 +632,11 @@ def update_facility_user(facility_id, user_id):
 
             if facility_update_result.get('error'):
                 raise Exception(f"Failed to update facility user: {facility_update_result['error']}")
-        
+
+        # Invalidate caches after user update
+        invalidate_caches('users', user_id)
+        invalidate_caches('facility_users', facility_id)
+
         # Audit logging is handled automatically by the database trigger
         current_app.logger.info(f"AUDIT: Successfully updated user {user_id} in facility {facility_id} by {current_user.get('email', 'unknown')}")
 
@@ -668,7 +672,11 @@ def delete_facility_user(facility_id, user_id):
             
         if update_result.get('error'):
             raise Exception(update_result['error'])
-            
+
+        # Invalidate caches after removing user from facility
+        invalidate_caches('users', user_id)
+        invalidate_caches('facility_users', facility_id)
+
         current_app.logger.info(f"AUDIT: Successfully removed user {user_id} from facility {facility_id} by {current_user.get('email', 'unknown')}")
         return jsonify({
             "status": "success",
@@ -749,7 +757,10 @@ def assign_patient_to_facility(facility_id):
         
         if assignment_result.get('error'):
             raise Exception(f"Failed to assign patient: {assignment_result['error']}")
-        
+
+        # Invalidate patient cache after facility assignment
+        invalidate_caches('patient', patient_id)
+
         # Audit logging is handled automatically by the database trigger
         current_app.logger.info(f"AUDIT: Successfully assigned patient {patient_id} to facility {facility_id} by {current_user.get('email', 'unknown')}")
 
