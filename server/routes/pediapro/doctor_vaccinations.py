@@ -3,6 +3,7 @@ from utils.access_control import require_auth, require_role
 from config.settings import supabase, supabase_service_role_client
 from datetime import datetime
 from utils.audit_logger import log_action
+from utils.invalidate_cache import invalidate_caches
 
 vaccinations_bp = Blueprint('vaccinations', __name__)
 
@@ -77,6 +78,9 @@ def create_vaccination(patient_id):
             patient_id=patient_id,
             new_values=vaccination_data
         )
+
+        # Invalidate patient cache
+        invalidate_caches('patient', patient_id)
 
         return jsonify({
             "status": "success",
@@ -160,6 +164,9 @@ def update_vaccination(patient_id, vax_id):
             new_values=update_data
         )
 
+        # Invalidate patient cache
+        invalidate_caches('patient', patient_id)
+
         return jsonify({
             "status": "success",
             "message": "Vaccination record updated successfully",
@@ -228,6 +235,9 @@ def delete_vaccination(patient_id, vax_id):
             new_values={'is_deleted': True, 'deleted_at': datetime.now().isoformat(), 'deleted_by': user_id}
         )
 
+        # Invalidate patient cache
+        invalidate_caches('patient', patient_id)
+
         return jsonify({
             "status": "success",
             "message": "Vaccination record deleted successfully"
@@ -295,6 +305,9 @@ def restore_vaccination(patient_id, vax_id):
             old_values={'is_deleted': True, 'deleted_at': old_vaccination.get('deleted_at'), 'deleted_by': old_vaccination.get('deleted_by')},
             new_values={'is_deleted': False, 'deleted_at': None, 'deleted_by': None, 'restored_by': user_id}
         )
+
+        # Invalidate patient cache
+        invalidate_caches('patient', patient_id)
 
         vaccination = response.data[0] if response.data else None
 

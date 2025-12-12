@@ -17,6 +17,10 @@ CACHE_KEYS = {
         'all': "facility_users:all",
         'prefix': "facility_users:"
     },
+    'facility_patients': {
+        'all': "facility_patients:all",
+        'prefix': "facility_patients:"
+    },
     'users': {
         'all': "users:all",
         'prefix': "users:"
@@ -33,7 +37,7 @@ CACHE_KEYS = {
         'all': 'appointments_all',
         'prefix': 'appointments:'
     }
-    
+
 }
 
 def invalidate_caches(cache_type, resource_id=None):
