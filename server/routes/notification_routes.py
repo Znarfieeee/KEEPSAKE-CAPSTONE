@@ -321,6 +321,14 @@ def update_notification_preferences():
             return jsonify({'status': 'error', 'message': 'User not authenticated'}), 401
 
         raw_data = request.json
+        
+        # Validate request data exists
+        if raw_data is None:
+            return jsonify({
+                'status': 'error',
+                'message': 'Request body is required'
+            }), 400
+        
         data = sanitize_request_data(raw_data, data_type='general')
 
         # Allowed fields to update
