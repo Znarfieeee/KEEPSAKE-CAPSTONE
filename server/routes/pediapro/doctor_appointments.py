@@ -1017,11 +1017,10 @@ def update_appointment(appointment_id):
                 "message": str(ve)
             }), 400
         
-        # Update the appointment with select to return updated data
+        # Update the appointment and return updated data
         resp = supabase.table('appointments')\
             .update(appointments_payload)\
             .eq('appointment_id', appointment_id)\
-            .select()\
             .execute()
 
         if getattr(resp, 'error', None):
@@ -1087,7 +1086,7 @@ def cancel_appointment(appointment_id):
                 "message": "Appointment not found"
             }), 404
 
-        # Update appointment status to cancelled with select to return updated data
+        # Update appointment status to cancelled and return updated data
         resp = supabase.table('appointments')\
             .update({
                 'status': 'cancelled',
@@ -1095,7 +1094,6 @@ def cancel_appointment(appointment_id):
                 'updated_at': datetime.datetime.utcnow().isoformat()
             })\
             .eq('appointment_id', appointment_id)\
-            .select()\
             .execute()
 
         if getattr(resp, 'error', None):
@@ -1183,16 +1181,21 @@ def update_appointment_status(appointment_id):
 
         current_app.logger.info(f"DEBUG: Appointment found, current status: {verify_resp.data.get('status')}")
 
-        # Update appointment status with select to return updated data
+        # Prepare update payload
+        update_payload = {
+            'status': data['status'],
+            'updated_by': current_user.get('id'),
+            'updated_at': datetime.datetime.utcnow().isoformat()
+        }
+
+        # Add notes only if provided (avoid overwriting with empty string)
+        if data.get('notes'):
+            update_payload['notes'] = data['notes']
+
+        # Update appointment status and return updated data
         resp = supabase.table('appointments')\
-            .update({
-                'status': data['status'],
-                'updated_by': current_user.get('id'),
-                'updated_at': datetime.datetime.utcnow().isoformat(),
-                'notes': data.get('notes', '')  # Optional notes for status change
-            })\
+            .update(update_payload)\
             .eq('appointment_id', appointment_id)\
-            .select()\
             .execute()
 
         # Debug logging
